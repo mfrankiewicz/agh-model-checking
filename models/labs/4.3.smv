@@ -1,0 +1,32 @@
+MODULE main
+VAR
+s : {s1, s2, s3, s4, s5};
+a : boolean;
+b : boolean;
+c : boolean;
+ASSIGN
+init(s) := {s1, s2};
+next(s) := case
+s = s1 : {s3, s4};
+s = s2 : s4;
+s = s3 : s4;
+s = s4 : {s2, s3, s5};
+s = s5 : {s4, s5};
+esac;
+a := case
+s = s1 : TRUE;
+s = s5 : TRUE;
+TRUE : FALSE;
+esac;
+b := case
+s = s3 : TRUE;
+s = s4 : TRUE;
+s = s5 : TRUE;
+TRUE : FALSE;
+esac;
+c := case
+s = s2 : TRUE;
+s = s3 : TRUE;
+s = s5 : TRUE;
+TRUE : FALSE;
+esac;
