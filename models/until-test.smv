@@ -9,17 +9,17 @@ ASSIGN
     next(s) := case
         s = s0 : s1;
         s = s1 : s2;
-        s = s2 : s1;
+        s = s2 : s2;
     esac;
     a := case
-        s = s0 : TRUE;
         TRUE : FALSE;
     esac;
     b := case
+        s = s0 : TRUE;
         s = s1 : TRUE;
+        s = s2 : TRUE;
         TRUE : FALSE;
     esac;
     c := case
-        s = s0 : TRUE;
         TRUE : FALSE;
     esac;
