@@ -1,6 +1,6 @@
-read_model -i models/labs/4.4.smv
+read_model -i models/labs/4.5.smv
 flatten_hierarchy
 encode_variables
 build_model -f -m Threshold
-check_ltlspec -p "!(!c U !b)"
+check_ltlspec
 quit

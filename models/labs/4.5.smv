@@ -69,3 +69,7 @@ ASSIGN
         s = s12 : TRUE;
         TRUE : FALSE;
     esac;
+    LTLSPEC G F ((b | c) & !a)
+    LTLSPEC X(!a U (a & c)) | G (!a | !c)
+    LTLSPEC F X c
+    LTLSPEC X(!a U (a & c))
