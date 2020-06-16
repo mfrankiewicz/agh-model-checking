@@ -1,0 +1,71 @@
+MODULE main
+VAR
+    s : {s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12};
+    a : boolean;
+    b : boolean;
+    c : boolean;
+ASSIGN
+    init(s) := {s0};
+    next(s) := case
+        s = s0 : {s1, s2, s3};
+        s = s1 : {s4, s5, s6};
+        s = s2 : {s6, s7};
+        s = s3 : {s7, s8};
+        s = s4 : s0;
+        s = s5 : s10;
+        s = s6 : s11;
+        s = s7 : {s11, s12};
+        s = s8 : {s8, s12};
+        s = s9 : s4;
+        s = s10 : s9;
+        s = s11 : s10;
+        s = s12 : s11;
+    esac;
+    a := case
+        s = s0 : TRUE;
+        s = s1 : TRUE;
+        s = s2 : FALSE;
+        s = s3 : FALSE;
+        s = s4 : TRUE;
+        s = s5 : FALSE;
+        s = s6 : FALSE;
+        s = s7 : TRUE;
+        s = s8 : FALSE;
+        s = s9 : TRUE;
+        s = s10 : TRUE;
+        s = s11 : TRUE;
+        s = s12 : FALSE;
+        TRUE : FALSE;
+    esac;
+    b := case
+        s = s0 : FALSE;
+        s = s1 : FALSE;
+        s = s2 : TRUE;
+        s = s3 : TRUE;
+        s = s4 : TRUE;
+        s = s5 : TRUE;
+        s = s6 : FALSE;
+        s = s7 : FALSE;
+        s = s8 : FALSE;
+        s = s9 : TRUE;
+        s = s10 : FALSE;
+        s = s11 : FALSE;
+        s = s12 : FALSE;
+        TRUE : FALSE;
+    esac;
+    c := case
+        s = s0 : FALSE;
+        s = s1 : TRUE;
+        s = s2 : FALSE;
+        s = s3 : FALSE;
+        s = s4 : FALSE;
+        s = s5 : FALSE;
+        s = s6 : TRUE;
+        s = s7 : TRUE;
+        s = s8 : TRUE;
+        s = s9 : TRUE;
+        s = s10 : FALSE;
+        s = s11 : TRUE;
+        s = s12 : TRUE;
+        TRUE : FALSE;
+    esac;
