@@ -1,0 +1,55 @@
+MODULE main
+VAR
+    s : {s1, s2, s3, s4};
+    b : boolean;
+    g : boolean;
+    r : boolean;
+    y : boolean;
+ASSIGN
+    init(s) := {s1};
+    next(s) := case
+        s = s1 : s3;
+        s = s2 : {s1, s4};
+        s = s3 : s2;
+        s = s4 : s2;
+    esac;
+    b := case
+        s = s1 : FALSE;
+        s = s2 : FALSE;
+        s = s3 : FALSE;
+        s = s4 : TRUE;
+        TRUE : FALSE;
+    esac;
+    g := case
+        s = s1 : FALSE;
+        s = s2 : FALSE;
+        s = s3 : TRUE;
+        s = s4 : FALSE;
+        TRUE : FALSE;
+    esac;
+    r := case
+        s = s1 : TRUE;
+        s = s2 : FALSE;
+        s = s3 : FALSE;
+        s = s4 : FALSE;
+        TRUE : FALSE;
+    esac;
+    y := case
+        s = s1 : FALSE;
+        s = s2 : TRUE;
+        s = s3 : FALSE;
+        s = s4 : FALSE;
+        TRUE : FALSE;
+    esac;
+    CTLSPEC AF y
+    CTLSPEC AG y
+    CTLSPEC AG(AF y)
+    CTLSPEC AF g
+    CTLSPEC EF g
+    CTLSPEC EG g
+    CTLSPEC EG !g
+    CTLSPEC A[b U !b]
+    CTLSPEC E[b U !b]
+    CTLSPEC A[!b U (EF b)]
+    CTLSPEC A[g U (A[y U r])]
+    CTLSPEC A[!b U b]
