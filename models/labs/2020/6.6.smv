@@ -1,0 +1,28 @@
+MODULE main
+VAR
+    s : {s0, s1, s2, s3, s4};
+    a : boolean;
+    b : boolean;
+ASSIGN
+    init(s) := {s0};
+    next(s) := case
+        s = s0 : {s1, s4};
+        s = s1 : s2;
+        s = s2 : s3;
+        s = s3 : {s0, s3};
+        s = s4 : s4;
+    esac;
+    a := case
+        s = s1 : TRUE;
+        s = s2 : TRUE;
+        TRUE : FALSE;
+    esac;
+    b := case
+        s = s2 : TRUE;
+        s = s3 : TRUE;
+        s = s4 : TRUE;
+        TRUE : FALSE;
+    esac;
+    CTLSPEC A[a BU 0..1 b] | EX(ABG 0..2 b)
+    CTLSPEC ABG 0..1 (A[a BU 0..1 b])
+    CTLSPEC AG(EBF 0..2 a)
