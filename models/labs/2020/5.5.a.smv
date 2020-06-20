@@ -26,5 +26,8 @@ ASSIGN
         s = s3 : FALSE;
         TRUE : FALSE;
     esac;
+    c := case
+        TRUE : FALSE;
+    esac;
     CTLSPEC AX(E[a U (b | c)])
     LTLSPEC X(a U (b | c))
