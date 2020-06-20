@@ -1,4 +1,4 @@
-read_model -i models/labs/2020/6.5.a.smv
+read_model -i models/labs/2020/6.5.b.smv
 flatten_hierarchy
 encode_variables
 build_model -f -m Threshold
