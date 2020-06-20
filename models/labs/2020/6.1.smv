@@ -1,0 +1,40 @@
+MODULE main
+VAR
+    s : {s1, s2, s3, s4, s5, s6};
+    a : boolean;
+    b : boolean;
+    c : boolean;
+ASSIGN
+    init(s) := {s1};
+    next(s) := case
+        s = s1 : {s2, s6};
+        s = s2 : s3;
+        s = s3 : {s1, s4};
+        s = s4 : {s1, s5};
+        s = s5 : {s5, s6};
+        s = s6 : {s4, s6};
+    esac;
+    a := case
+        s = s2 : TRUE;
+        s = s3 : TRUE;
+        TRUE : FALSE;
+    esac;
+    b := case
+        s = s2 : TRUE;
+        s = s3 : TRUE;
+        s = s4 : TRUE;
+        s = s6 : TRUE;
+        TRUE : FALSE;
+    esac;
+    c := case
+        s = s1 : TRUE;
+        s = s4 : TRUE;
+        s = s5 : TRUE;
+        TRUE : FALSE;
+    esac;
+    CTLSPEC AX(ABG 1..2 !a)
+    CTLSPEC ABF 0..3 (EG c)
+    CTLSPEC A[(b | c) BU 0..4 (b & c)]
+    CTLSPEC E[(b | c) BU 3..3 (b & c)]
+    CTLSPEC EBF 2..3 (AX a)
+    CTLSPEC EBF 5..5 (AX a)
