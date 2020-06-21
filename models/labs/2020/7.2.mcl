@@ -1,0 +1,3 @@
+(*<"a">(<"b"> true and <"c"> true)*)
+(*["a"]["b"](<"d"> true and ["d"]<"e"> true)*)
+(*<"a"><"c"><"d"> true*)
