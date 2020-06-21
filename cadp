@@ -1,0 +1,14 @@
+#!/bin/bash
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd $SCRIPT_DIR
+
+MODEL_PATH=$1
+MCL_PATH=${MODEL_PATH/.aut/.mcl}
+FORMULA=`cat $MCL_PATH | grep -v "(\*"`
+
+echo "model: $MODEL_PATH, formula: $FORMULA"
+
+bcg_io $MODEL_PATH /tmp/model.bcg > /dev/null
+bcg_io /tmp/model.bcg /tmp/model.dot > /dev/null
+bcg_open /tmp/model.bcg evaluator $MCL_PATH | grep -v "bcg_open"

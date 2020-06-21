@@ -5,6 +5,7 @@ cd $SCRIPT_DIR
 
 while true
 do
-    ./nuxmv -load nuxmv_script
+    ./cadp $1
+    printf "\n\n\n"
     sleep 0.5 >/dev/null 2>&1
 done
