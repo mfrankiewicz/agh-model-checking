@@ -5,6 +5,6 @@ cd $SCRIPT_DIR
 
 while true
 do
-    ./run_nuxmv -load nuxmv_script
+    ./nuxmv -load nuxmv_script
     time sleep 0.5
 done
