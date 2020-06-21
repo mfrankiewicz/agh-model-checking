@@ -1,0 +1,743 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_cc
+#   Auteurs             :       Hubert GARAVEL et Marie VIDAL
+#   Version             :       1.128
+#   Date                :       2018/10/11 10:53:47
+##############################################################################
+
+# commme cette commande est appelee depuis d'autres scripts (comme bcg_info,
+# par exemple) qui font "set -e", il faut s'assurer que toutes les commandes
+# executes renvoient un code d'erreur 0 ; il faut notamment surveiller les
+# appels a "grep" dans le cas ou la chaine recherchee n'est pas trouvee
+# (ce probleme ne se pose pas si l'appel a grep intervient en partie gauche
+# d'un pipe)
+
+# ----------------------------------------------------------------------------
+
+LINK_EDIT_COMMAND () {
+	# recherche dans la liste "$@" la presence d'options -c ou -E qui
+	# indiquent que le compilateur n'est pas invoque pour faire une edition
+	# de liens
+	for OPTION in "$@"
+	do
+		if test "@$OPTION" = "@-c" -o "@$OPTION" = "@-E"
+		then
+			# pas d'edition de liens
+			echo 0
+			return
+		fi
+	done
+	# edition de liens
+	echo 1
+}
+
+# ----------------------------------------------------------------------------
+
+COMMAND=`basename "$0"`
+ 
+DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+# ----------------------------------------------------------------------------
+
+# normalisation de $CADP_CC : on expanse les tabulations en espaces et on 
+# elimine les espaces en debut de chaine $CADP_CC
+
+CADP_CC=`echo $CADP_CC | expand | sed -e 's/^[ ]*//'` 
+
+# ----------------------------------------------------------------------------
+
+# calcul des variables $CADP_COMPILER et $CADP_CFLAGS en fonction de $CADP_CC
+
+ACTUAL_CADP_COMPILER=""
+
+if [ "$CADP_CC" != "" ]
+then
+	# l'utilisateur a positionne $CADP_CC lui-meme
+
+	# $CADP_COMPILER est le premier mot de $CADP_CC
+	CADP_COMPILER=`echo $CADP_CC | sed -e 's/[ ].*//'`
+
+	# $CADP_FLAGS est la suite des mots de $CADP_CC sauf le premier 
+	CADP_FLAGS=`echo $CADP_CC | sed -e 's/^[^ ]*//'`
+
+	case "$CADP_COMPILER" in
+		*purify | *quantify )
+			# traitement des logiciels Purify et Quantify, qui
+			# sont appeles en donnant a $CADP_CC une valeur de la
+			# forme 
+			#    purify [-purifyoption ...] cc ...
+			# ou
+			#    quantify [-quantifyoption ...] cc ...
+
+			# pour l'instant, on ne prend pas en compte les options
+			# de Purify ou Quantify, qui pourront etre passees par
+			# les variables d'environnement $PURIFYOPTIONS,
+			# $QUANTIFYOPTIONS ou $PUREOPTIONS
+
+			# on extrait de $CADP_FLAGS le nom du compilateur,
+			# qui est le premier parametre de $CADP_FLAGS ; on
+			# doit le retirer de $CADP_FLAGS et le concatener a
+			# la droite de $CADP_COMPILER
+
+			ACTUAL_CADP_COMPILER=`echo $CADP_FLAGS | sed -e 's/[ ].*//'`
+			CADP_COMPILER="$CADP_COMPILER $ACTUAL_CADP_COMPILER"
+			CADP_FLAGS=`echo $CADP_FLAGS | sed -e 's/^[^ ]*//'`
+			;;
+	esac
+
+	# on separe $CADP_FLAGS en deux listes : $CADP_CFLAGS qui contient
+	# les options qui doivent etre placees avant le fichier a compiler
+	# et $CADP_LDFLAGS qui contient les options de la forme -lxxx ou
+	# -Lxxx qui doivent imperativement etre placees apres le fichier a
+	# compiler ; $CADP_CFLAGS et $CADP_LDFLAGS seront utilisees plus
+	# bas, lors de l'invocation du compilateur $CADP_COMPILER
+
+	CADP_CFLAGS=""
+	CADP_LDFLAGS=""
+	for CADP_CC_OPT in $CADP_FLAGS
+	do
+		case "$CADP_CC_OPT" in
+			-[lL]* )
+				CADP_LDFLAGS="$CADP_LDFLAGS $CADP_CC_OPT"
+				;;
+			* )
+				CADP_CFLAGS="$CADP_CFLAGS $CADP_CC_OPT"
+				;;
+		esac
+	done
+else
+	# l'utilisateur n'a pas positionne $CADP_CC lui-meme : on choisit
+	# la valeur de $CADP_COMPILER selon l'architecture et on initialise
+	# $CADP_CFLAGS et $LDFLAGS a vide
+
+	CADP_CFLAGS=""
+	CADP_LDFLAGS=""
+
+	case $DETAILED_ARCH in
+		sun3 | sun4 )
+			CADP_COMPILER="/bin/cc"
+			;;
+
+		sun5 | sun64 | sol86 | sol64 )
+			# on complete le $PATH de maniere plausible avec la
+			# localisation usuelle du compilateur C de Sun et/ou
+			# du compilateur GCC 
+			PATH="$PATH:/opt/SUNWspro/bin:/usr/bin:/usr/local/bin:/usr/gcc/bin:/opt/gnu/bin"
+			export PATH
+			# valeur par defaut
+			CADP_COMPILER="cc"
+			# recherche d'un compilateur disponible
+			for N in cc gcc
+			do
+				WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+				if [ "$WHICH_N" != "$N" ]
+				then
+					# cadp_which a trouve' le compilateur
+					# et renvoye' le chemin d'acces complet
+					CADP_COMPILER="$N"
+					break
+				fi	
+			done
+			;;
+
+		iX86 | iX86-64 | x64 | ia64 )
+			CADP_COMPILER="/usr/bin/gcc"
+			;;
+
+		win32-cygnus | win64-cygnus )
+			if [ -x /bin/i686-pc-mingw32-gcc ]
+			then
+				# cas d'une installation Cygwin recente
+				# (apres septembre 2013) : on utilise de
+				# preference le compilateur croise du
+				# paquetage gcc-mingw (c'est un Gcc 4.*)
+				CADP_COMPILER="/bin/i686-pc-mingw32-gcc"
+			elif [ -x /usr/bin/i686-w64-mingw32-gcc ]
+			then
+				# cas d'une installation Cygwin 64 bits
+				# possedant un compilateur Gcc qui produit
+				# du code 32 bits (utiliser /usr/bin/...
+				# et non pas /bin/...)
+				CADP_COMPILER="/usr/bin/i686-w64-mingw32-gcc"
+			elif [ -x /bin/gcc-3 ]
+			then
+				# cas d'une installation Cygwin ancienne
+				# (avant septembre 2013) : plutot que de
+				# demander a l'utilisateur de mettre a jour
+				# Cygwin, on utilise l'ancienne version de
+				# Gcc 3.* avec l'option -mno-cygwin ; cette
+				# option a ete supprimee de Gcc 4.* - voir
+				# http://cygwin.com/ml/cygwin/2009-10/msg00061.html
+				# et le compilateur /bin/gcc-3 a ensuite ete
+				# supprime en juillet 2013 - voir 
+				# http://cygwin.com/ml/cygwin/2013-07/msg00016.html
+				CADP_COMPILER="/bin/gcc-3"
+				# L'option -mno-cygwin devra etre ajoutee
+			else
+				# ici, soit on a une installation Cygwin tres
+				# ancienne (avant l'ajout de /bin/gcc-3), soit
+				# on a une installation recente dans laquelle
+				# l'utilisateur n'a pas installe le paquetage
+				# gcc-mingw. Il n'y a pas de bonne solution.
+				# On va essayer /bin/gcc mais il y a de fortes
+				# chances que cela echoue car /bin/gcc repose
+				# sur la DLL Cygwin et c'est desormais un Gcc
+				# 4.* qui ne possede plus l'option -mno-cygwin
+				CADP_COMPILER="/bin/gcc"
+				# L'option -mno-cygwin sera ajoutee
+			fi
+			;;
+
+		win32-msys )
+			CADP_COMPILER="/c/MinGW/bin/gcc"
+			# ne pas utiliser le compilateur /usr/bin/gcc car il
+			# n'est pas systematiquement installe et qu'il s'agit
+			# d'une ancienne version 3.* trop specifique a MSYS
+			;;
+
+		macOS )
+			CADP_COMPILER="/usr/bin/gcc"
+			# il existe aussi /usr/bin/cc qui est un lien vers gcc
+			;;
+
+		mac86 )
+			CADP_COMPILER="/usr/bin/gcc"
+			# il existe aussi /usr/bin/cc qui est un lien symbolique
+			# - Mac OS X 10.5, cc -> gcc (4.0)
+			# - Mac OS X 10.6, cc -> gcc (4.2)
+			# - Mac OS X 10.8 + Xcode 5.0.1, cc -> clang (500.2.79)
+			# - Mac OS X 10.9 + Xcode 5.0.1, cc -> clang (500.2.79)
+			;;
+
+		mac64 )
+			CADP_COMPILER="/usr/bin/cc"
+			;;
+
+		* )
+			echo "$COMMAND: unknown detailed architecture $DETAILED_ARCH"
+			exit 1 ;;
+	esac
+fi
+
+# ----------------------------------------------------------------------------
+
+# calcul des variables $ACTUAL_CADP_COMPILER et $DETAILED_COMPILER
+
+if [ "$ACTUAL_CADP_COMPILER" = "" ]
+then
+	# cas ordinaire (autre que purify, quantify, etc.)
+	ACTUAL_CADP_COMPILER="$CADP_COMPILER"
+fi
+
+DETAILED_COMPILER=`"$CADP"/src/com/cadp_compiler "$ACTUAL_CADP_COMPILER"`
+
+# ----------------------------------------------------------------------------
+
+# traitement de l'option -default
+
+if [ "$1" = "-default" ]
+then
+	eval "'$CADP'"/src/com/cadp_which "'$CADP_COMPILER'"
+	exit 0
+fi
+
+# ----------------------------------------------------------------------------
+
+# traitement de l'option -datation
+
+if [ "$1" = "-datation" ]
+then
+	# L'option "-datation" est utilisee par caesar et caesar.adt 
+	shift
+
+	# on positionne la variable $DEPEND_CFLAGS pour utiliser les options
+	# -E et -H du compilateur C
+
+	case $DETAILED_ARCH in
+		win32-cygnus | win64-cygnus )
+			case "$DETAILED_COMPILER" in
+				icc-* )
+					# conformement au manuel d'icc version Windows
+					DEPEND_CFLAGS="/E /QH"
+					;;
+				* )
+					DEPEND_CFLAGS="-E -H"
+					;;
+			esac
+			;;
+		macOS | mac86 | mac64 ) 
+ 			# une option supplementaire semble necessaire
+			DEPEND_CFLAGS="-E -H -no-cpp-precomp"
+			;;
+		* )
+			DEPEND_CFLAGS="-E -H"
+			;;
+	esac
+
+	# on appelle le compilateur avec $DEPEND_CFLAGS pour connaitre les
+	# dependances du fichier d'entree
+
+	TEMPORARY=`"$CADP"/src/com/cadp_temporary $COMMAND`
+	"$CADP_COMPILER" $CADP_CFLAGS $DEPEND_CFLAGS "$@" 1> /dev/null 2> "$TEMPORARY"
+
+	# le resultat contenu dans $TEMPORARY peut varier selon le compilateur
+	# ou la version du compilateur utilisee.
+	# 
+	# - avec le compilateur C de Sun et GCC 2.x les lignes ont la forme :
+	#    ./my_include.h
+	#    /usr/include/stdio.h
+	#           /usr/include/iso/stdio_iso.h
+	#	           /usr/include/sys/feature_tests.h
+	#
+	# - a partir de GCC 3.x, les lignes ont la forme :
+	#    . /usr/include/stdio.h
+	#    .. /usr/include/features.h
+	#    ... /usr/include/sys/cdefs.h
+	#    Multiple include guards may be useful for:
+	#    /usr/include/bits/stdio_lim.h
+	#    /usr/include/bits/sys_errlist.h
+	#  (note: le message "Multiple include..." peut apparaitre en diverses
+	#  langues selon la valeur de la variable d'environnement $LC_ALL)
+	#
+	# - avec ICC les lignes sont de la forme :
+	# /usr/include/stdio.h
+	#  /usr/include/features.h
+	#   /usr/include/sys/cdefs.h
+	#   /usr/include/gnu/stubs.h
+	#  /usr/local/intel_cc_80/include/stddef.h
+
+	# on detecte la presence eventuelle de lignes au format GCC 3.x
+
+	GCC3_LIKE_OUTPUT=`grep -c '^[.][.]*[ ][^ ]' "$TEMPORARY" || true`
+	(
+		if [ "$GCC3_LIKE_OUTPUT" -eq 0 ]
+		then
+			# aucune ligne au format GCC 3.x
+
+			cat "$TEMPORARY"
+		else
+			# presence de lignes au format GCC 3.x
+			# - on elimine les series de points en debut de ligne 
+			# - on supprime les lignes a partir de "Multiple include..."
+
+			grep "^[.]" "$TEMPORARY" | sed -e 's/^[.][.]*[ ]//'
+		fi
+	) |
+	# sous win32, on convertit tous les chemins d'acces Unix en chemins
+	# Windows ; en effet, les binaires de CADP sont des programmes Win32
+	# standards qui ne reconnaissent donc pas les points de montage
+	# propres a Cygwin ou Mingwin : ils risquent de ne pas trouver les
+	# fichiers correspondants, ce qui force la recompilation pour cause de
+	# dependance inexistante ; pour les autres architectures que win32,
+	# la commande ci-dessous n'a aucun effet (elle se comporte comme "cat")
+	"$CADP"/src/com/cadp_path -winpath -
+        
+	rm -f "$TEMPORARY"
+	exit 0
+fi
+
+# ----------------------------------------------------------------------------
+
+# detection et traitement des appels recursifs a cadp_cc : il faut empecher
+# une recursion infinie qui pourrait se produire dans le cas ou l'utilisateur
+# ait positionne $CADP_CC a $CADP/src/com/cadp_cc ; la recursion est detectee
+# par une variable d'environnement globale $CADP_CC_RECURSION
+
+if [ "$CADP_CC_RECURSION" = "" ]
+then
+	CADP_CC_RECURSION="yes"
+	export CADP_CC_RECURSION
+else
+        # on remet $CADP_CC a "" pour que, dans le cas ou l'utilisateur a 
+	# positionne $CADP_CC a $CADP/src/com/cadp_cc (ce qui implique que
+	# $CADP_COMPILER soit egal a $CADP/src/com/cadp_cc), lors du prochain
+	# appel a cadp_cc, la variable $CADP_COMPILER soit initialisee a "",
+	# ce qui implique qu'elle recevra ensuite le pathname d'un "vrai"
+	# compilateur C
+
+        CADP_CC=""
+        export CADP_CC
+
+	# on appelle $CADP_COMPILER sans lui rajouter aucun parametre de type
+	# CFLAGS ou LDFLAGS, car ces parametres ont ete deja inclus dans "$@"
+	# au moment de l'appel precedent a cadp_cc  
+
+	"$CADP_COMPILER" "$@"
+	exit $?
+fi
+
+# ----------------------------------------------------------------------------
+
+# enrichissement de $CADP_LDFLAGS pour les architectures iX86 et iX86-64
+
+case "$DETAILED_ARCH" in
+	iX86 | iX86-64 )
+		case "$DETAILED_COMPILER" in
+			cc-* )
+			# traitement du cas particulier du compilateur
+			# C de Sun qui, lorsqu'il fait l'edition de
+			# liens sur des binaires iX86 produits par gcc,
+			# necessite d'ajouter libgcc.a pour eviter
+			# d'avoir des messages d'erreur de la forme :
+			#    undefined reference to `__umoddi3'
+			#    undefined reference to `__udivdi3'
+			#
+			# Note : la position de libgcc.a varie selon
+			# les distributions Linux considerees
+			#
+			# Note : on ne doit ajouter libgcc.a qu'avec
+			# le compilateur C de Sun, qui n'est pas le
+			# choix par defaut sur iX86 ; il est donc
+			# inutile de le faire si $CADP_CC vaut ""
+			# puisque, dans ce cas, gcc sera utilise'
+			#
+			# Note : la commande ci-dessous existe aussi
+			# dans "tst" et devra etre mise a jour en meme
+			# temps que le present fichier
+
+			LIBGCC=`ls -r /usr/lib/gcc/i?86-*-*/*.*.*/libgcc.a /usr/lib/gcc-lib/*-redhat-linux/*.*/libgcc.a 2>/dev/null | head -n1`
+
+			if [ "$LIBGCC" != "" ]
+			then
+				CADP_LDFLAGS="$CADP_LDFLAGS $LIBGCC"
+			fi
+			;;
+		esac
+		;;
+
+	x64 )
+		# detection des versions de glibc qui sont < 2.7 et qui ne
+		# contiennent pas les deux fonctions __isoc99_fscanf() et
+		# __isoc99_sscanf() appelees dans les binaires x64 de CADP
+		# produits a partir d'avril 2012 (CADP 2010-j)
+		if test `LINK_EDIT_COMMAND "$@"` = 1
+		then
+			# determination de la version de glibc selon la methode
+			# numero 1 de "tst" car elle semble suffire
+			GLIBC_VERSION=`(echo /lib/libc-*.so 2>/dev/null || echo "") | sed -e 's+/lib/libc-++g' | sed -e 's+\.so++g'`
+			case "$GLIBC_VERSION" in
+				2.[1-6] | 2.[1-6].* )
+					# on est sur une machine qui utilise
+					# une ancienne version < 2.7 de glibc :
+					# on effectue l'edition de liens avec
+					# une bibliotheque de compatibilite
+ 					CADP_LDFLAGS="$CADP_LDFLAGS -L$CADP/src/linux/bin.x64 -lcompat-2.7"
+					;;
+			esac
+		fi
+		;;
+esac
+
+# ----------------------------------------------------------------------------
+
+case "$DETAILED_COMPILER" in
+	cc-5.12* | cc-5.13* )
+		if [ "$DETAILED_ARCH" = sol86 ]
+		then
+			# on ajoute une option pour contourner un bug apparu
+			# dans les versions recentes du compilateur C de
+			# Solaris qui, par defaut, utilisent desormais
+			# -xarch=sse ou -xarch=sse2 et peuvent prendre
+			# plusieurs heures de compilation ; le probleme
+			# existe aussi en mode 64-bits (architecture sol64)
+			# et y compris avec cc-5.11 mais, dans tous ces cas,
+			# sans aucune solution malheureusement
+			CADP_CFLAGS="$CADP_CFLAGS -xarch=pentium_pro"
+		fi
+		;;
+	icc-* )
+		# on ajoute l'option -vec_report qui permet de ne pas afficher
+		# les remarques du compilateur icc concernant la vectorisation
+		CADP_CFLAGS="$CADP_CFLAGS -vec_report0"
+		;;
+	gcc-* )
+		# on ajoute les options -Wall et -Wextra pour afficher presque
+		# tous les avertissements de gcc
+		CADP_CFLAGS="$CADP_CFLAGS -Wall -Wextra"
+		;;
+esac
+
+# ----------------------------------------------------------------------------
+
+case "$DETAILED_COMPILER" in
+	gcc-[012345].* )
+		# version de Gcc inferieure ou egale a 5 : on ne fait rien
+		# note: certaines versions de Gcc 4 pour Gentoo avaient une
+		# option --enable-esp qui semblait prefigurer la nouvelle
+		# option --enable-default-pie, mais qui a disparu depuis 
+		;;
+	gcc-* )
+		# a partir de la version 6.x, gcc peut etre configure pour
+		# generer du code PIE par defaut, ce qui ne fonctionne pas
+		# avec les fichiers *.a presents dans la distribution CADP,
+		# auquel cas il faut desactiver cette fonctionalite
+		RESULT=`$ACTUAL_CADP_COMPILER -v 2>&1 | ( grep '\-\-enable-default-pie' 2> /dev/null || true )`
+		if [ "$RESULT" != "" ]
+		then
+			CADP_CFLAGS="$CADP_CFLAGS -no-pie"
+			# note: -fno-pie est acceptee mais semble inoperante
+		fi
+		;;
+esac
+
+# ----------------------------------------------------------------------------
+
+# lancement de la compilation proprement dite
+
+case $DETAILED_ARCH in
+	sun3 | sun4 )
+		"$CADP_COMPILER" $CADP_CFLAGS "$@" $CADP_LDFLAGS
+		;;
+	sun5 | sol86 )
+		unset MALLOC_DEBUG
+		# on desactive la variable $MALLOC_DEBUG qui peut faire
+		# echouer la compilation si elle met en evidence des erreurs
+		# de gestion memoire dans le compilateur (par exemple,
+		# "cc: Fatal error in /opt/solstudio12.2/prod/bin/acomp")
+
+		"$CADP_COMPILER" $CADP_CFLAGS -D_FILE_OFFSET_BITS=64 "$@" $CADP_LDFLAGS
+		;;
+
+	sun64 )
+		unset MALLOC_DEBUG
+		# on desactive la variable $MALLOC_DEBUG qui peut faire
+		# echouer la compilation si elle met en evidence des erreurs
+		# de gestion memoire dans le compilateur (par exemple,
+		# "cc: Fatal error in /opt/solstudio12.2/prod/bin/acomp")
+
+		case "$DETAILED_COMPILER" in
+			gcc-* )
+				"$CADP_COMPILER" -m64 $CADP_CFLAGS "$@" $CADP_LDFLAGS
+				;;
+			* )
+				"$CADP_COMPILER" -xarch=v9 $CADP_CFLAGS "$@" $CADP_LDFLAGS
+				;;
+		esac
+		;;
+
+	sol64 )
+		unset MALLOC_DEBUG
+		# on desactive la variable $MALLOC_DEBUG qui peut faire
+		# echouer la compilation si elle met en evidence des erreurs
+		# de gestion memoire dans le compilateur (par exemple,
+		# "cc: Fatal error in /opt/solstudio12.2/prod/bin/acomp")
+
+		"$CADP_COMPILER" -m64 $CADP_CFLAGS "$@" $CADP_LDFLAGS
+		;;
+
+	iX86 )
+		# -D_POSIX_C_SOURCE=200112L : pour fseeko() et ftello()
+		# -D_POSIX_C_SOURCE=200809L : pour strsignal()
+		"$CADP_COMPILER" $CADP_CFLAGS -D_POSIX_C_SOURCE=200809L -D_FILE_OFFSET_BITS=64 "$@" $CADP_LDFLAGS
+		;;
+
+	iX86-64 )
+		# traitement des processeurs AMD64 et EM64T en mode 32 bits
+		case "$DETAILED_COMPILER" in
+			icc-* )
+				# on n'a pas d'option a donner a icc pour compiler en 
+				# 32 bits : le choix est fait au moment de l'installation
+				# du compilateur
+				"$CADP_COMPILER" $CADP_CFLAGS -D_FILE_OFFSET_BITS=64 "$@" $CADP_LDFLAGS
+				;;
+			* )
+				# -D_POSIX_C_SOURCE=200112L : pour fseeko() et ftello()
+				# -D_POSIX_C_SOURCE=200809L : pour strsignal()
+				"$CADP_COMPILER" -m32 $CADP_CFLAGS -D_POSIX_C_SOURCE=200809L -D_FILE_OFFSET_BITS=64 "$@" $CADP_LDFLAGS
+				;;
+		esac
+		;;
+
+	x64 )
+		case "$DETAILED_COMPILER" in
+			gcc-4.* )
+				# traitement de gcc version 4.x dont l'optimi-
+				# sation SRA (scalar replacement of aggregates)
+				# peut poser probleme pour les affectations de
+				# structures dans le code C produit par Caesar
+				# et Caesar.adt si $CADP_CC contient une option
+				# -O ou -O2 specifiee par l'utilisateur ; on
+				# ajoute "-fno-tree-sra" pour desactiver
+				# cette optimisation (uniquement sur x64)
+				#
+				# Note : on ne teste pas vraiment si une option
+				# d'optimisation (-O, -O2, etc.) est presente,
+				# car gcc en comporte trop, avec des syntaxes
+				# differentes ; cependant, si $CADP_CC vaut
+				# "", on est certain que l'utilisateur n'a pas
+				# demande' d'optimisation et, dans ce cas, on
+				# evite de rajouter -fno-tree-sra
+
+				CADP_CFLAGS="$CADP_CFLAGS -fno-tree-sra"
+				;;
+		esac
+
+		# -D_POSIX_C_SOURCE=200112L : pour fseeko() et ftello()
+		# -D_POSIX_C_SOURCE=200809L : pour strsignal()
+		"$CADP_COMPILER" $CADP_CFLAGS -D_POSIX_C_SOURCE=200809L "$@" $CADP_LDFLAGS
+		;;
+
+	ia64 )
+		# -D_POSIX_C_SOURCE=200112L : pour fseeko() et ftello()
+		# -D_POSIX_C_SOURCE=200809L : pour strsignal()
+		"$CADP_COMPILER" $CADP_CFLAGS -D_POSIX_C_SOURCE=200809L "$@" $CADP_LDFLAGS
+		;;
+
+	macOS )
+		unset MallocScribble
+
+		# il est prudent de desactiver $MallocScribble avant de lancer
+		# le compilateur gcc sinon on risque une erreur bizarre avec
+		# Xcode 3.1: "section difference divide by two expression,
+		# "LC13" minus "L00000000022$pb" divide by 2 will not produce
+		# an assembly time constant" - Mon Oct 27 17:52:02 CET 2008
+
+		"$CADP_COMPILER" $CADP_CFLAGS -Wno-long-double -multiply_defined suppress "$@" $CADP_LDFLAGS
+
+		# on doit ajouter "-Wno-long-double" pour eviter les messages
+		# d'avertissement emis par Gcc lorsqu'il compile les fichiers
+		# systemes fournis avec MacOS:
+		#    warning: use of `long double' type; its size may change
+		#    in a future release; ... (Long double usage is reported
+		#    only once for each file.; ... To disable this warning,
+		#    use -Wno-long-double.)
+
+		# on doit ajouter "-multiply_defined suppress" afin d'eviter
+		# des messages survenant lors de l'utilisation de la biblio-
+		# theque libgc.a qui redefinit des fonctions comme malloc(),
+		# free(), etc. deja presentes dans la bibliotheque systeme de
+		# MacOS. Cette option evite des messages de la forme :
+		#    ld: warning multiple definitions of symbol _malloc
+		#    .../libgc.a(malloc.o) definition of _malloc in section
+		#    (__TEXT,__text)
+		#    /usr/lib/libSystem.dylib(malloc.So) definition of _malloc
+		;;
+
+	mac86 | mac64 )
+		case "$DETAILED_COMPILER" in
+			gcc-3.* | gcc-4.0.* )
+				# il faut mettre l'option -Wno-long-double
+				# qui permet d'eviter des warnings
+
+				CADP_CFLAGS="$CADP_CFLAGS -Wno-long-double -multiply_defined suppress"
+				;;
+
+			gcc-4.1.* | gcc-4.2.* | gcc-4.* )
+				# l'option -Wno-long-double n'existe plus dans
+				# les versions recentes de gcc ; de nouveaux
+				# warnings apparaissent pour les appels a
+				# printf() dont le premier argument n'est pas
+				# une chaine constante, mais une expression :
+				# on supprime ces warnings avec -Wno-format
+
+				# pour les memes raisons que ci-dessus, il est
+				# indispensable de rajouter -fno-tree-sra sinon
+				# Caesar produira des LTS trop gros
+
+				CADP_CFLAGS="$CADP_CFLAGS -Wno-format -fno-tree-sra -multiply_defined suppress"
+				;;
+
+			clang-* )
+				CADP_CFLAGS="$CADP_CFLAGS -Wno-format-nonliteral"
+				;;
+		esac
+
+		unset MallocScribble
+
+		# il est prudent de desactiver $MallocScribble avant de lancer
+		# le compilateur gcc sinon on risque une erreur bizarre avec
+		# Xcode 3.1: "section difference divide by two expression,
+		# "LC13" minus "L00000000022$pb" divide by 2 will not produce
+		# an assembly time constant" - Mon Oct 27 17:52:02 CET 2008
+
+		case $DETAILED_ARCH in
+			mac86 )
+				# on ajoute -m32 pour produire du code 32 bits
+				"$CADP_COMPILER" $CADP_CFLAGS -m32 "$@" $CADP_LDFLAGS
+				;;
+			mac64 )
+				# on ajoute -m64 pour produire du code 64 bits
+				"$CADP_COMPILER" $CADP_CFLAGS -m64 "$@" $CADP_LDFLAGS
+				;;
+		esac
+		;;
+
+	win32-cygnus | win64-cygnus | win32-msys )
+
+		# quelques traitements specifiques a Cygwin
+		if [ "$DETAILED_ARCH" != win32-msys ]
+		then
+		    case "$DETAILED_COMPILER" in
+			gcc-2.* | gcc-3.* )
+				# on est sur une vieille version de Cygwin ;
+				# il faut mettre l'option -mno-cygwin
+				CADP_CFLAGS="$CADP_CFLAGS -mno-cygwin"
+				;;
+			* )
+				# on ne met plus l'option -mno-cygwin, car
+				# soit on est dans le cas win32-cygnus ou
+				# win64-cygnus et le compilateur est recent
+				# (par exemple, on a /bin/i686-pc-mingw32-gcc,
+				# version 4.*), soit on est dans le cas
+				# win32-msys avec un compilateur prevu pour
+				# Mingw (par exemple /mingw/bin/gcc, version
+				# 4.*)
+				;;
+		    esac
+		    case "$DETAILED_COMPILER" in
+			gcc-4.* )
+				# certaines versions (GCC 4.7.3) emettent
+				# des warnings pour les chaines format
+				# contenant "%llu" (cf. X_NATURAL.h et
+				# X_INTEGER.h) ; on supprime ces warnings ;
+				# mettre "-std=c99" resoudrait ce probleme
+				# mais en creerait d'autres avec strcasecmp()
+				CADP_CFLAGS="$CADP_CFLAGS -Wno-format"
+				;;
+		    esac
+		fi
+
+		CADP_LDFLAGS_1="-L$CADP/bin.win32"
+ 
+		# La variable $CADP_LDFLAGS_1 sert a aller chercher la 
+		# bibliotheque libm.a dans le repertoire $CADP/bin.win32 ; 
+		# sinon, on irait la chercher dans /lib/libm.a qui n'est 
+		# autre qu'un lien symbolique vers libcygwin.a, ce qui 
+		# occasionnerait des erreurs a l'execution.
+ 
+		CADP_LDFLAGS_2="-lmingw32 -lwsock32 -lm"
+		# -lwsock32 est utilisee uniquement pour avoir htonl()
+		# -lm (dans CADP) fournit popen(), pclose(), system(), etc.
+
+		if test `LINK_EDIT_COMMAND "$@"` = 0
+		then
+			# Ces flags doivent etre annules si on n'effectue pas
+			# d'edition de liens, (c'est-a-dire si le compilateur 
+			# C est appele' avec les options -c ou -E) pour eviter
+			# un message d'avertissement emis par le compilateur
+			# GCC ("cc: -lwsock32: linker input file unused since
+			# linking not done")
+			CADP_LDFLAGS_1=""
+			CADP_LDFLAGS_2=""
+		fi
+
+		# on met $CADP_LDFLAGS_1 avant $CADP_CFLAGS pour garantir que
+		# libm.a soit recherche' dans $CADP/bin.win32, independamment
+		# des options -L que l'utilisateur pourrait positionner dans 
+		# $CADP_CFLAGS.
+
+		"$CADP_COMPILER" $CADP_LDFLAGS_1 $CADP_CFLAGS "$@" $CADP_LDFLAGS $CADP_LDFLAGS_2
+		;;
+
+esac
+

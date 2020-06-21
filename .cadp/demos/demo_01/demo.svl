@@ -1,0 +1,373 @@
+
+(* 
+ * Step 1:
+ * -------
+ * The LOTOS specification bitalt.lotos is compiled using CAESAR. This 
+ * generates a file named "bitalt.bcg" containing the corresponding
+ * labelled transition system.
+ *)
+
+"bitalt.bcg" = generation of "bitalt.lotos";
+
+(*
+ * Note that graphs in the BCG format can be displayed using all the tools 
+ * available for this format, e.g.:
+ *	bcg_info bitalt.bcg
+ *	bcg_draw bitalt.bcg
+ *	bcg_edit bitalt.bcg
+ * and so on.
+ *)
+
+(* ========================================================================= *)
+
+(*
+ * Step 2: 
+ * -------
+ * "bitalt.bcg" is reduced modulo strong equivalence. This produces an LTS
+ * in the BCG format, namely "bitalt_strong.bcg"
+ *)
+
+"bitalt_strong.bcg" = strong reduction of "bitalt.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 3:
+ * -------
+ * The specification is compared with a simpler one, given in file
+ * "simple.lotos". To this aim, "simple.lotos" is first generated in the BCG 
+ * format. Then the comparison is done on-the-fly both modulo observational
+ * equivalence and modulo safety equivalence
+ *)
+
+"simple.bcg" = generation of "simple.lotos";
+
+"diag_bitalt_observational.seq" = observational comparison
+	"bitalt.lotos" == "simple.bcg";
+
+"diag_bitalt_safety.seq" = safety comparison
+	"bitalt.lotos" == "simple.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 4:
+ * -------
+ * Satisfaction of several correctness properties characterizing the proper
+ * behaviour of the protocol. Each property is verified in 3 different ways:
+ * 1) using BCG_OPEN and EVALUATOR 3 to check an MCL V3 formula
+ * 2) on-the-fly using OPEN/CAESAR and EVALUATOR 4 to check an MCL V4 formula
+ * 3) using XTL to verify an XTL program
+ *)
+
+% DEFAULT_MCL_LIBRARIES="standard.mcl"
+% DEFAULT_XTL_LIBRARIES="actl.xtl"
+
+-------------------------------------------------------------------------------
+
+property P1
+    "Initially, a PUT action will be eventually reached"
+    (*
+     * This property should be false because of the livelocks (tau-circuits)
+     * present in the LOTOS specification
+     *)
+is
+    "bitalt.bcg" |= with evaluator3
+        INEVITABLE ("PUT");
+    expected FALSE;
+
+    "bitalt.lotos" |= with evaluator4
+        INEVITABLE (PUT);
+    expected FALSE;
+
+    "bitalt.bcg" |= with xtl
+        PRINT_FORMULA (INIT implies AU_A_B (true, true, EVAL_A (PUT), true));
+    expected FALSE
+end property
+
+-------------------------------------------------------------------------------
+
+property P2
+    "Initially, a PUT action will be fairly reached"
+is
+    "bitalt.bcg" |= with evaluator3
+        [ (not "PUT")* ] SOME (true* . "PUT");
+    expected TRUE;
+
+    "bitalt.lotos" |= with evaluator4
+        [ (not PUT)* ] SOME (true* . PUT);
+    expected TRUE;
+
+    "bitalt.bcg" |= with xtl
+        let PUT : labelset = EVAL_A (PUT)
+        in
+            PRINT_FORMULA (AG_A (not (PUT), EF (Dia (PUT, true))))
+        end_let;
+     expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property P3
+    "Initially, no GET action can be reached before a PUT"
+is
+    "bitalt.bcg" |= with evaluator3
+        NOT_1_BEFORE_2 ("GET", "PUT");
+    expected TRUE;
+
+    "bitalt.lotos" |= with evaluator4
+        NOT_1_BEFORE_2 (GET, PUT);
+    expected TRUE;
+
+    "bitalt.bcg" |= with xtl
+        PRINT_FORMULA (
+            INIT implies AG_A (not (EVAL_A (PUT)), Box (EVAL_A (GET), false))
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property P4
+    "Between two consecutive PUT actions, there is a GET"
+is
+    "bitalt.bcg" |= with evaluator3
+        NEVER (true* . "PUT" . (not "GET")* . "PUT");
+    expected TRUE;
+
+    "bitalt.lotos" |= with evaluator4
+        NEVER (true* . PUT . (not GET)* . PUT);
+    expected TRUE;
+
+    "bitalt.bcg" |= with xtl
+        let PUT : labelset = EVAL_A (PUT),
+            GET : labelset = EVAL_A (GET)
+        in
+            PRINT_FORMULA (AG (Box (PUT, AG_A (not (GET), Box (PUT, false)))))
+        end_let;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property P5
+    "Between two consecutive GET actions, there is a PUT"
+is
+    "bitalt.bcg" |= with evaluator3
+        NEVER (true* . "GET" . (not "PUT")* . "GET");
+    expected TRUE;
+
+    "bitalt.lotos" |= with evaluator4
+        NEVER (true* . GET . (not PUT)* . GET);
+    expected TRUE;
+
+    "bitalt.bcg" |= with xtl
+        let PUT : labelset = EVAL_A (PUT),
+            GET : labelset = EVAL_A (GET)
+        in
+            PRINT_FORMULA (AG (Box (GET, AG_A (not (PUT), Box (GET, false)))))
+        end_let;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property P6
+    "After a PUT action, a GET is eventually reachable"
+    (*
+     * This property should be false because of the livelocks (tau-circuits)
+     * present in the LOTOS specification
+     *)
+is
+    "bitalt.bcg" |= with evaluator3
+        AFTER_1_INEVITABLE_2 ("PUT", "GET");
+    expected FALSE;
+
+    "bitalt.lotos" |= with evaluator4
+        AFTER_1_INEVITABLE_2 (PUT, GET);
+    expected FALSE;
+
+    "bitalt.bcg" |= with xtl
+        PRINT_FORMULA (
+            AG (Box (EVAL_A (PUT), AU_A_B (true, true, EVAL_A (GET), true)))
+        );
+    expected FALSE
+end property
+
+-------------------------------------------------------------------------------
+
+property P7
+    "After a PUT action, a GET is fairly reachable"
+is
+    "bitalt.bcg" |= with evaluator3
+        [ true* . "PUT" . (not "GET")* ] SOME (true* . "GET");
+    expected TRUE;
+
+    "bitalt.lotos" |= with evaluator4
+        [ true* . PUT . (not GET)* ] SOME (true* . GET);
+    expected TRUE;
+
+    "bitalt.bcg" |= with xtl
+        let PUT : labelset = EVAL_A (PUT),
+            GET : labelset = EVAL_A (GET)
+        in
+            PRINT_FORMULA (
+                AG (Box (PUT, AG_A (not (GET), EF (Dia (GET, true)))))
+            )
+        end_let;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property P8
+    "From the initial state, there is a strict alternation between PUT and"
+    "GET actions, starting with a PUT. Moreover, after every PUT (resp. GET)"
+    "action, a GET (resp. PUT) is always potentially reachable. This formula"
+    "expresses in a condensed way the 7 previous properties"
+is
+    -- dataless formula
+    "bitalt.bcg" |= with evaluator3
+        nu ExpectPUT . (
+            SOME (true* . "PUT")
+            and
+            [ "PUT" ] nu ExpectGET . (
+                SOME (true* . "GET")
+                and
+                NEVER ("PUT")
+                and
+                [ "GET" ] ExpectPUT
+                and
+                [ "i" ] ExpectGET
+            )
+            and
+            NEVER ("GET")
+            and
+            [ "i" ] ExpectPUT
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "bitalt.lotos" |= with evaluator4
+        nu Expect (put_or_get:bool := true) . (
+            <true* . if put_or_get then PUT else GET end if> true
+            and
+            [ PUT ] (put_or_get and Expect (not put_or_get))
+            and
+            [ GET ] (not put_or_get and Expect (not put_or_get))
+            and
+            [ tau ] Expect (put_or_get)
+        );
+    expected TRUE;
+
+    "bitalt.bcg" |= with xtl
+        let PUT : labelset = EVAL_A (PUT),
+            GET : labelset = EVAL_A (GET)
+        in
+            PRINT_FORMULA (
+                (* starting from the initial state *)
+                INIT implies
+                gfp_2 (
+                    (* an emission is expected *)
+                    EXPECT_PUT,
+                        (* it is possible to reach an emission *)
+                        EF (Dia (PUT, true))
+                        and
+                        (* after an emission, a reception is expected *)
+                        Box (PUT, EXPECT_GET)
+                        and
+                        (* no reception is allowed *)
+                        Box (GET, false)
+                        and
+                        (* invisible actions are ignored *)
+                        Box (TAU, EXPECT_PUT),
+                    EXPECT_GET,
+                        (* it is possible to reach a reception *)
+                        EF (Dia (GET, true))
+                        and
+                        (* no emission is allowed *)
+                        Box (PUT, false)
+                        and
+                        (*
+                         * after a reception, another emission is
+                         * expected
+                         *)
+                        Box (GET, EXPECT_PUT)
+                        and
+                        (* invisible actions are ignored *)
+                        Box (TAU, EXPECT_GET)
+                )
+            )
+        end_let;
+    expected TRUE
+end property
+
+(* ========================================================================= *)
+
+(*
+ * Step 5: 
+ * -------
+ * The TGV tool is used to generate (on-the-fly) test cases "test1.bcg" and 
+ * "test2.bcg", corresponding to test purposes "bitalt_tp1.aut" and 
+ * "bitalt_tp2.aut", respectively. Test purpose "bitalt_tp1.aut" specifies 
+ * tests corresponding to the sequence "a PUT and then a GET". Test purpose
+ * "bitalt_tp2.aut" specifies tests corresponding to the sequence "after a
+ * PUT, the system can send another PUT".
+ *)
+
+% echo ""
+% lotos.open bitalt.lotos tgv -output test1.bcg -io bitalt.io bitalt_tp1.aut
+% lotos.open bitalt.lotos tgv -output test2.bcg -io bitalt.io bitalt_tp2.aut
+
+(*
+ * The resulting test cases can be displayed, for instance as follows:
+ *	bcg_edit test1.bcg
+ *	bcg_edit test2.bcg
+ *)
+
+(* ========================================================================= *)
+
+(*
+ * Step 6:
+ * -------
+ * The SVL tool can also be used to perform compositional reduction of 
+ * "bitalt.lotos" and compare the resulting composition expression on-the-fly
+ * with the LTS of the system generated above non-compositionally.
+ *)
+
+% DEFAULT_PROCESS_FILE="bitalt.lotos"
+
+"diag.seq" = strong comparison 
+   leaf strong reduction of 
+      hide SDT0, SDT1, RDT0, RDT1, RDTe, RACK0, RACK1, SACK0, SACK1, SACKe in
+         (
+            (
+               TRANSMITTER
+               |||
+               RECEIVER
+            )
+            |[SDT0, SDT1, RDT0, RDT1, RDTe, RACK0, RACK1, SACK0, SACK1, SACKe]|
+            (
+               MEDIUM1
+               |||
+               MEDIUM2
+            )
+         )
+   ==
+   "bitalt_strong.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 7:
+ * -------
+ * The generated binary file "tgv" produced during the verification is 
+ * removed immediately. Files "test1.bcg" and "test2.bcg" will be removed
+ * by SVL when invoked with option -clean.
+ *)
+% $CADP/src/com/cadp_rm tgv
+% SVL_RECORD_FOR_CLEAN "test1.bcg"
+% SVL_RECORD_FOR_CLEAN "test2.bcg"
+
+(* ========================================================================= *)
+

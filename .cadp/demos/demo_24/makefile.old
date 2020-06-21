@@ -1,0 +1,179 @@
+#! /bin/make
+
+CAESAR		= caesar -verbose -warning -gc -more '/bin/cat'
+CAESAR_ADT	= caesar.adt -verbose -warning -more '/bin/cat'
+OMIN		= aldebaran -omin -std
+LOTOS_OPEN	= lotos.open -verbose -warning -gc
+BCG_OPEN	= bcg_open
+
+default: help
+
+help:
+	# Use this makefile to apply CADP tools to the CO4 specification.
+	# Useful targets are:
+	#   <scenario> - all results for scenario <scenario>,
+	#     which is any of:
+	# $(CO4_RESULTS)
+	#
+	#   <draw> - produce graph picture <draw>, which is any of:
+	# $(CO4_DRAWS)
+	#
+	#   results - results for all scenarios.
+	#   draws - all graph pictures.
+	#   lotos - generate all LOTOS specs
+	#   all - everything.
+	#   showresults - display all results on tty.
+	#   cleanresults - delete result files.
+	#   clean - delete generated files 
+
+################################################################
+
+CO4_LIBS	= CO4_DATATYPES.lib CO4_PROCESSES.lib
+
+co4-%.bcg: co4-%.lotos $(CO4_LIBS)
+	$(CAESAR_ADT) $<
+	$(CAESAR) $<
+
+co4-%.xsimulator: co4-%.lotos $(CO4_LIBS)
+	$(LOTOS_OPEN) $< xsimulator
+
+%_omin.bcg: %.bcg
+	$(OMIN) -output $@ $<
+
+################################################################
+# Validation work
+################################################################
+
+CO4_CASES = \
+  co4-1-1 co4-1-2\
+  co4-1a-1 co4-1a-2 co4-1a-3 \
+  co4-2-1 co4-2a-1\
+  co4-3-1\
+  co4-4-1\
+  co4-5-1\
+  co4-6-1
+
+CO4_RESULTS = $(CO4_CASES:%=%.result)
+CO4_LOTOS = $(CO4_CASES:%=%.lotos)
+
+CO4_DRAWS = co4-1-1_draw.ps co4-1a-1_draw.ps
+
+co4-1-1.result: co4-1-1.bcg co4-1-1_omin.bcg signotin.seq
+	rm -f $@
+	aldebaran -info co4-1-1.bcg >> $@
+	aldebaran -info co4-1-1_omin.bcg >> $@
+	for seqno in 1 2 3 4 5 ;\
+	do	$(BCG_OPEN) co4-1-1_omin.bcg exhibitor -bfs -seqno $$seqno < signotin.seq >> $@ ;\
+	done
+
+co4-1-1_draw.ps: co4-1-1_omin.bcg short.rename
+	aldebaran -rename short.rename -sort -output co4-1-1_draw.bcg co4-1-1_omin.bcg
+	bcg_draw -ps co4-1-1_draw.bcg
+
+co4-1-2.result: co4-1-2.bcg co4-1-2_omin.bcg inconsistent.seq
+	rm -f $@
+	aldebaran -info co4-1-2.bcg >> $@
+	aldebaran -info co4-1-2_omin.bcg >> $@
+	$(BCG_OPEN) co4-1-2_omin.bcg exhibitor -bfs -seqno 1 < inconsistent.seq >> $@
+
+co4-1-3.result: co4-1-3.bcg co4-1-3_omin.bcg
+	rm -f $@
+	aldebaran -info co4-1-3.bcg >> $@
+	aldebaran -info co4-1-3_omin.bcg >> $@
+
+co4-1a-1.result: co4-1a-1.bcg co4-1a-1_omin.bcg dead.seq
+	rm -f $@
+	aldebaran -info co4-1a-1.bcg >> $@
+	aldebaran -info co4-1a-1_omin.bcg >> $@
+	$(BCG_OPEN) co4-1a-1.bcg exhibitor -dfs -all -seqno 1 < dead.seq >> $@
+
+co4-1a-2.result: co4-1a-2.bcg co4-1a-2_omin.bcg
+	rm -f $@
+	aldebaran -info co4-1a-2.bcg >> $@
+	aldebaran -info co4-1a-2_omin.bcg >> $@
+
+co4-1a-3.result: co4-1a-3.bcg co4-1a-3_omin.bcg
+	rm -f $@
+	aldebaran -info co4-1a-3.bcg >> $@
+	aldebaran -info co4-1a-3_omin.bcg >> $@
+
+co4-1a-1_draw.ps: co4-1a-1_omin.bcg short.rename
+	aldebaran -rename short.rename -sort -output co4-1a-1_draw.bcg co4-1a-1_omin.bcg
+	bcg_draw -ps co4-1a-1_draw.bcg
+
+co4-2-1.result: co4-2-1.bcg co4-2-1_omin.bcg signotin.seq
+	rm -f $@
+	aldebaran -info co4-2-1.bcg >> $@
+	aldebaran -info co4-2-1_omin.bcg >> $@
+	for seqno in 1 2 3 4 5 ;\
+	do	$(BCG_OPEN) co4-2-1_omin.bcg exhibitor -bfs -seqno $$seqno < signotin.seq >> $@ ;\
+	done
+
+co4-2a-1.result: co4-2a-1.bcg
+	rm -f $@
+	aldebaran -info co4-2a-1.bcg >> $@
+
+co4-3-1.result: co4-3-1.bcg co4-3-1_omin.bcg signotin.seq
+	rm -f $@
+	aldebaran -info co4-3-1.bcg >> $@
+	aldebaran -info co4-3-1_omin.bcg >> $@
+	for seqno in 1 2 3 4 5 ;\
+	do	$(BCG_OPEN) co4-3-1_omin.bcg exhibitor -bfs -seqno $$seqno < signotin.seq >> $@ ;\
+	done
+
+co4-4-1.result: co4-4-1.lotos scenario-4-1.seq
+	rm -f $@
+	# pre-compile exhibitor to obtain significant timings in later calls
+	$(LOTOS_OPEN) co4-4-1.lotos exhibitor < /dev/null
+	$(LOTOS_OPEN) co4-4-1.lotos exhibitor -dfs -first -seqno 1 < scenario-4-1.seq >> $@
+	# the next line was commented out to avoid excessive execution time
+	# $(LOTOS_OPEN) co4-4-1.lotos terminator -first 0 2000000
+
+co4-5-1.result: co4-5-1.bcg co4-5-1_omin.bcg signotin.seq unsafe.seq
+	rm -f $@
+	aldebaran -info co4-5-1.bcg >> $@
+	aldebaran -info co4-5-1_omin.bcg >> $@
+	for seqno in 1 2 3 4 5 ;\
+	do	$(BCG_OPEN) co4-5-1_omin.bcg exhibitor -bfs -seqno $$seqno < signotin.seq >> $@ ;\
+	done
+	for seqno in 1 2 3 ;\
+	do	$(BCG_OPEN) co4-5-1_omin.bcg exhibitor -bfs -seqno $$seqno < unsafe.seq >> $@ ;\
+	done
+
+co4-5-2.result: co4-5-2.bcg co4-5-2_omin.bcg signotin.seq unsafe.seq
+	rm -f $@
+	aldebaran -info co4-5-2.bcg >> $@
+	aldebaran -info co4-5-2_omin.bcg >> $@
+	for seqno in 1 2 3 4 5 ;\
+	do	$(BCG_OPEN) co4-5-2_omin.bcg exhibitor -bfs -seqno $$seqno < signotin.seq >> $@ ;\
+	done
+	for seqno in 1 2 3 ;\
+	do	$(BCG_OPEN) co4-5-2_omin.bcg exhibitor -bfs -seqno $$seqno < unsafe.seq >> $@ ;\
+	done
+
+co4-6-1.result: co4-6-1.bcg co4-6-1_omin.bcg dead.seq twogroups.seq
+	rm -f $@
+	aldebaran -info co4-6-1.bcg >> $@
+	aldebaran -info co4-6-1_omin.bcg >> $@
+	$(BCG_OPEN) co4-6-1_omin.bcg exhibitor -bfs -seqno 1 < dead.seq >> $@
+	$(BCG_OPEN) co4-6-1_omin.bcg exhibitor -bfs -seqno 1 < twogroups.seq >> $@
+
+################################################################
+# global housecleaning rules
+################################################################
+
+results: $(CO4_RESULTS)
+
+draws: $(CO4_DRAWS)
+
+all: results draws
+
+showresults: results
+	more $(CO4_RESULTS)
+
+cleanresults:
+	rm -f co4-*.result
+
+clean: cleanresults
+	rm -f *.h *.x *err *.bcg *@1.o *.aut 
+

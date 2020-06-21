@@ -1,0 +1,32 @@
+
+(*****************************************************************************
+ * Requirement 16
+ * If B-subscriber has ringsignal activated and B performs offhook while A
+ * remains onhooked then
+ *        There should be a possibility of A's ring tone being deactivated.
+ *        There should be a possibility of B's ring signal being deactivated.
+ *        If A's ring tone is deactivated, there should be a possibility of A's
+ *        speech connection being activated.
+ *        If B's ring signal is deactivated, there should be a possibility of
+ *        B's speech connection being activated.
+ *****************************************************************************)
+
+[
+    true* .
+    "S !1 !ONH" .
+    (not "S !1 !OFFH !ASUBSC")* .
+    "S !2 !RINGS !ON" .
+    (not "S !1 !OFFH !ASUBSC")* .
+    "S !2 !OFFH !BSUBSC"
+] (
+    < true* . "S !1 !RINGT !OFF" > true
+    and
+    < true* . "S !2 !RINGS !OFF" > true
+    and
+    [ (not "S !1 !OFFH !ASUBSC")* . "S !1 !RINGT !OFF" ]
+        < true* . "S !1 !SPEECHCONN !ON" > true
+    and
+    [ (not "S !1 !OFFH !ASUBSC")* . "S !2 !RINGS !OFF" ]
+        < true* . "S !2 !SPEECHCONN !ON" > true
+)
+

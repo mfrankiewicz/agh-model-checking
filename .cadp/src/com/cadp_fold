@@ -1,0 +1,53 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_fold
+#   Auteur              :       Hubert GARAVEL
+#   Version             :       1.4
+#   Date                :       2014/01/14 16:01:30
+##############################################################################
+
+ARCH=`"$CADP"/com/arch`
+
+case $ARCH in
+	sun5 | sun64 | sol86 | sol64 )
+		# sur Solaris, il vaut mieux utiliser la commande "fold" de
+		# GNU/coreutils, car /bin/fold (version du 23 janvier 2005)
+		# a un bug et coupe parfois une ligne au milieu d'un mot
+		if [ -x /usr/gnu/bin/fold ]
+		then
+			# cette commande existe sous Solaris 11 seulement
+			FOLD=/usr/gnu/bin/fold
+		elif [ -x /opt/sfw/bin/fold ]
+		then
+			FOLD=/opt/sfw/bin/fold
+		elif [ -x /opt/csw/gnu/fold ]
+		then
+			FOLD=/opt/csw/gnu/fold
+		else
+			FOLD=/bin/fold
+		fi
+		;;
+	* )
+		FOLD=fold
+		;;
+esac
+
+if [ "$1" = "-default" ]
+then
+	"$CADP"/src/com/cadp_which "$FOLD"
+	exit 0
+fi
+
+# cadp_fold s'utilise comme un tube de stdin vers stdout
+
+$FOLD -b -s -w 2500
+

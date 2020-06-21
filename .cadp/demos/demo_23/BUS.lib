@@ -1,0 +1,189 @@
+   
+(* ------------------------------------------------------------------------- *)
+
+   process BusIdle [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                   (n: Nat, t: BoolTABLE)
+                   : noexit
+   :=
+   (PAreq ?id: Nat ?astat: PHY_AREQ [id lt n];
+       DecideIdle [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                  (n, t, id, astat)
+   []
+   [not (zero(t))] ->
+       arbresgap;
+          BusIdle [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                  (n, init (n))
+   )
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process DecideIdle [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                   (n: Nat, t: BoolTABLE, id: Nat, astat: PHY_AREQ)
+                   : noexit
+:=
+   ([get (id, t) eq false] ->
+        PAcon !id !won;
+           BusBusy [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                   (n, invert (id, t), init (n), init (n), id)
+    []
+    [get (id, t) eq true] ->
+         PAcon !id !lost;
+            BusIdle [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                    (n, t)
+    )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process BusBusy [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                (n: Nat, t: BoolTABLE, next: BoolTABLE, destfault: BoolTABLE, busy: Nat)
+                : noexit
+:=
+   [busy lt n] ->
+      PCind !busy;
+         PDreq !busy ?p: SIGNAL;
+         Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                    (n, t, next, destfault, busy, p, 0)
+   []
+   [not (busy lt n)] ->
+       ([zero (next)] -> 
+            SubactionGap [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                         (n, t, 0)
+       []
+       [not (zero (next))] -> 
+            Resolve [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                    (n, t, next, 0)
+      )
+   []
+   PAreq ?j: Nat !fair [j lt n];
+      PAcon !j !lost;
+      BusBusy  [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+               (n, t, next, destfault, busy)
+   []
+   PAreq ?j: Nat !immediate [not (get (j, next)) and (j lt n)];
+      BusBusy [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+              (n, t, invert (j, next), destfault, busy)
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process SubactionGap [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                     (n: Nat, t: BoolTABLE, j: Nat)
+                     : noexit
+:=
+   [j eq n] ->
+      BusIdle [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+              (n, t)
+   []
+   [j ne n] ->
+      PDind !j !subactgap;
+         SubactionGap [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                     (n, t, succ (j))
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Resolve [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                (n: Nat, t: BoolTABLE, next: BoolTABLE, j: Nat)
+                : noexit
+:=
+   ([j lt n] ->
+      ([get (j, next) eq true] ->
+         PAcon !j !won;
+            PCind !j;
+            Resolve [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                    (n, t, next, succ (j))
+       []
+       [get (j, next) eq false] ->
+         Resolve [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                 (n, t, next, succ (j))
+      )
+    []
+    [not (j lt n)] ->
+      Resolve2 [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+               (n, t, next)
+   )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Resolve2 [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                 (n: Nat, t: BoolTABLE, next: BoolTABLE)
+                 : noexit
+:=
+   [more (next)] ->
+      PDreq ?j: Nat !End [get (j, next) and (j lt n)];
+         Resolve2 [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                  (n, t, invert (j, next))
+   []
+   [not (more (next))] ->
+      PDreq ?j: Nat ?p: SIGNAL [j lt n];
+         ([eq (p, End)] ->
+            SubactionGap [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                         (n, t, 0)
+          []
+          [not (eq (p, End))] ->
+            Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                       (n, t, init (n), init (n), j, p, 0)
+         )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                   (n: Nat, t, next, destfault: BoolTABLE, busy: Nat, p: SIGNAL, j: Nat)
+                   : noexit
+:=
+   [j lt n] ->
+      ([j ne busy] ->
+         ([not (is_header (p)) or not (get (j, destfault))] ->
+            PDind !j !p;
+               Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                          (n, t, next, destfault, busy, p, succ (j))
+          []
+          [is_dest (p)] ->
+            (choice dest: Nat []
+               PDind !j !sig (destsig (dest));
+                  Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                             (n, t, next, invert (j, destfault), busy, p, succ (j)))
+          []
+          [is_header (p) or (is_data (p) or is_ack (p))] ->
+             PDind !j !corrupt (p);
+                Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                           (n, t, next, destfault, busy, p, succ (j))
+          []
+          [is_header (p) or (is_data (p) or is_ack (p))] ->
+            losesignal;
+               Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                          (n, t, next, destfault, busy, p, succ (j))
+          []
+          [is_data (p)] ->
+            PDind !j !p;
+               PDind !j !Dummy;
+               Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                          (n, t, next, destfault, busy, p, succ (j))
+          []
+          PAreq !j !immediate [not (get (j, next))];
+            Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                       (n, t, invert (j, next), destfault, busy, p, j)
+         )                
+    []
+    [j eq busy] ->
+         Distribute [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal]
+                    (n, t, next, destfault, busy, p, succ (j))
+   )
+   []
+   [not (j lt n)] ->
+      ([eq (p, End)] ->
+         BusBusy [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                 (n, t, next, destfault, n)
+       []
+       [not (eq (p, End))] ->
+         BusBusy [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] 
+                 (n, t, next, destfault, busy)
+      )   
+endproc
+
+(* ------------------------------------------------------------------------- *)
+

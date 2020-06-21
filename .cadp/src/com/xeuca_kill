@@ -1,0 +1,89 @@
+#!/bin/sh
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeuca_kill
+#   Auteurs             :       Remi Herilier et Hubert Garavel
+#   Version             :       1.15
+#   Date                :       2018/10/11 10:45:19
+##############################################################################
+
+# Ce script sert a tuer un processus ainsi que ses processus descendants
+
+COMMAND=`basename $0`
+
+case $# in 
+	1 ) # cas d'un appel de la forme : cadp_kill pid
+	    SIGNAL=""
+	    PID="$1"
+	    ;;
+	2 ) # cas d'un appel de la forme : cadp_kill -signal pid
+	    SIGNAL="$1"
+	    PID="$2"
+	    ;;
+	* )	
+	    echo "$COMMAND: one or two arguments expected (signal and pid)"
+	    exit 1
+esac
+
+PID_FILE=`"$CADP"/src/com/cadp_temporary $COMMAND`
+# ce fichier contient une liste de couples (ppid, pid)
+# il y a un couple par ligne et les deux nombres sont separes par un espace
+
+#-----------------------------------------------------------------------------
+
+DESCENDANTS () {
+	# cette fonction prend en parametre $1 un numero de processus ; elle
+	# calcule recursivement et renvoie sur stdout la liste des numeros
+	# des processus qui descendent du processus specifie par $1
+
+	cat $PID_FILE |
+	grep "^$1 " |
+	while read LINE
+	do
+		DESCENDANTS `echo $LINE | cut -d' ' -f 2`
+        done
+	echo $1
+}
+
+#-----------------------------------------------------------------------------
+
+# Selon qu'on est sous Windows/Cygwin ou pas, il faut deux versions de la
+# fonction do_kill.
+
+ARCH=`"$CADP"/com/arch`
+
+case "$ARCH" in
+	win32 )
+		# La commande ``ps'' de l'environnement Cygwin ne supporte pas
+		# les options ``-A'' et ``-o'' ; on utilise ``awk'' pour
+		# permuter les champs pid et ppid 
+		ps -a | awk '{print $2, $1}' > $PID_FILE
+		;;
+	* )
+		# Note 1 : Solaris a plusieurs programmes ``ps'' qui 
+		# n'acceptent pas la meme syntaxe. Celui a utiliser est
+		# ``/bin/ps''
+		# Note 2 : on effectue un appel a ``awk'' pour mettre les
+		# resultats dans le meme format que sous Windows en supprimant
+		# les espaces redondants introduits par ``ps''
+		/bin/ps -a -A -o ppid,pid | awk '{print $1, $2}' > $PID_FILE
+		;;
+esac
+
+PID_LIST=`DESCENDANTS $PID`
+
+rm -f $PID_FILE
+
+kill $SIGNAL $PID_LIST > /dev/null 2>&1
+
+# indispensable sous Windows
+
+exit 0

@@ -1,0 +1,6 @@
+macro FILE_SIZE_A () = 2 of Nat end_macro
+macro FILE_SIZE_B () = 2 of Nat end_macro
+macro MAX_RETRIES_A () = 2 of Nat end_macro
+macro MAX_RETRIES_B () = 4 of Nat end_macro
+macro MIN_RETRIES_AB () = 2 of Nat end_macro
+

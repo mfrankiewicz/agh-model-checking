@@ -1,0 +1,229 @@
+
+(*
+ * This SVL script performs the following activities:
+ * - generation of the LTS corresponding to "peterson.lnt" and minimization
+ *   modulo strong bisimulation of the resulting LTS; this results in an LTS
+ *   file named "peterson.bcg"
+ * - verification on "peterson.bcg" of temporal-logic formulas using the XTL,
+ *   EVALUATOR 3, and EVALUATOR 4 model checkers
+ * - verification that both LTSs for the LOTOS and LNT versions are strongly
+ *   bisimilar
+ *)
+
+"peterson.bcg" = strong reduction of generation of "peterson.lnt";
+
+-------------------------------------------------------------------------------
+
+% DEFAULT_XTL_LIBRARIES="ltac.xtl"
+% DEFAULT_MCL_LIBRARIES="macros.mcl"
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_1
+    "Deadlock freedom"
+is
+    "peterson.bcg" |= with xtl
+        PRINT_FORMULA (not (DEADLOCK));
+    expected TRUE;
+
+    "peterson.bcg" |= with evaluator3
+	[ true* ] < true > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_2
+    "Livelock (tau-circuit) freedom"
+is
+    "peterson.bcg" |= with xtl
+        PRINT_FORMULA (not (LIVELOCK));
+    expected TRUE;
+
+    "peterson.bcg" |= with evaluator3
+	macro TAU () = "i" end_macro
+	not < TAU > @;
+    expected TRUE;
+
+    "peterson.bcg" |= with evaluator4
+	not < tau > @;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_3
+    "Mutual exclusion. After Pi has entered its critical section CSi, it is"
+    "not possible that Pj enters its critical section CSj until Pi has"
+    "released CSi"
+is
+    "peterson.bcg" |= with xtl
+	let
+            (* Critical sections *)
+            CS0      : labelset = EVAL_A (CS0),
+            CS1      : labelset = EVAL_A (CS1),
+            (* Release the critical sections *)
+            REL0     : labelset = EVAL_A (F0 !"WRITE" !false),
+            REL1     : labelset = EVAL_A (F1 !"WRITE" !false)
+        in
+            PRINT_FORMULA (
+                NOT_TO_UNLESS (CS0, CS1, REL0)
+                and
+                NOT_TO_UNLESS (CS1, CS0, REL1)
+            )
+        end_let;
+    expected TRUE;
+
+    "peterson.bcg" |= with evaluator3
+	[ true* . ((CS0 . (not REL0)* . CS1) | (CS1 . (not REL1)* . CS0)) ]
+	    false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_4
+    "Liveness of each process. From any state and for every action \"a\" of"
+    "P0 or P1, it is possible to reach a state where \"a\" is enabled"
+is
+    "peterson.bcg" |= with xtl
+        let
+            (* Non critical sections *)
+            NCS0     : labelset = EVAL_A (NCS0),
+            NCS1     : labelset = EVAL_A (NCS1),
+            (* Critical sections *)
+            CS0      : labelset = EVAL_A (CS0),
+            CS1      : labelset = EVAL_A (CS1),
+            (* Request access to the critical sections *)
+            REQ0     : labelset = EVAL_A (F0 !"WRITE" !true),
+            REQ1     : labelset = EVAL_A (F1 !"WRITE" !true),
+            (* Release the critical sections *)
+            REL0     : labelset = EVAL_A (F0 !"WRITE" !false),
+            REL1     : labelset = EVAL_A (F1 !"WRITE" !false),
+            (* Write the TURN variable *)
+            TURN_W_0 : labelset = EVAL_A (T !"WRITE" !0),
+            TURN_W_1 : labelset = EVAL_A (T !"WRITE" !1),
+            (* Read the variables *)
+            F0_R     : labelset = EVAL_A (F0 !"READ" _),
+            F1_R     : labelset = EVAL_A (F1 !"READ" _),
+            TURN_R   : labelset = EVAL_A (T !"READ" _)
+        in
+            PRINT_FORMULA (
+                POT (ENABLE (NCS0))     and	(* actions done by process 0 *)
+                POT (ENABLE (CS0))      and
+                POT (ENABLE (TURN_W_0)) and
+                POT (ENABLE (REQ0))     and
+                POT (ENABLE (REL0))     and
+                POT (ENABLE (F1_R))
+                and
+                POT (ENABLE (NCS1))     and	(* actions done by process 1 *)
+                POT (ENABLE (CS1))      and
+                POT (ENABLE (TURN_W_1)) and
+                POT (ENABLE (REQ1))     and
+                POT (ENABLE (REL1))     and
+                POT (ENABLE (F0_R)) 
+                and
+                POT (ENABLE (TURN_R))	(* action done by both processes *)
+            )
+        end_let;
+    expected TRUE;
+
+    "peterson.bcg" |= with evaluator3
+	[ true* ] (
+	    (* actions performed by process 0 *)
+	    < true* . NCS0 > true	and
+	    < true* . CS0 > true	and
+	    < true* . TURN_W_0 > true	and
+	    < true* . REQ0 > true	and
+	    < true* . REL0 > true	and
+	    < true* . F1_R > true	and
+
+	    (* actions performed by process 1 *)
+	    < true* . NCS1 > true	and
+	    < true* . CS1 > true	and
+	    < true* . TURN_W_1 > true	and
+	    < true* . REQ1 > true	and
+	    < true* . REL1 > true	and
+	    < true* . F0_R > true	and
+
+	    (* actions performed by the 2 processes *)
+	    < true* . TURN_R > true
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_5
+    "Reachability of Pi's critical section if Pj does not request the access."
+    "After Pi has requested the CSi and after Pj has released CSj, all paths"
+    "lead either to a request of Pj (REQj) or to an access of Pi (CSi)."
+is
+    "peterson.bcg" |= with xtl
+        let
+            (* Critical sections *)
+            CS0      : labelset = EVAL_A (CS0),
+            CS1      : labelset = EVAL_A (CS1),
+            (* Request access to the critical sections *)
+            REQ0     : labelset = EVAL_A (F0 !"WRITE" !true),
+            REQ1     : labelset = EVAL_A (F1 !"WRITE" !true),
+            (* Release the critical sections *)
+            REL0     : labelset = EVAL_A (F0 !"WRITE" !false),
+            REL1     : labelset = EVAL_A (F1 !"WRITE" !false)
+        in
+            PRINT_FORMULA (
+                Box (REQ0, ALL (Box (REL1, INEV (REQ1 or CS0))))
+                and
+                Box (REQ1, ALL (Box (REL0, INEV (REQ0 or CS1))))
+            )
+        end_let;
+    expected TRUE;
+
+    "peterson.bcg" |= with evaluator3
+	[ true* ] (
+	    [ REQ0 . true* . REL1 ]
+		mu X . (< true > true and [ not (REQ1 or CS0) ] X)
+	    and
+	    [ REQ1 . true* . REL0 ]
+		mu X . (< true > true and [ not (REQ0 or CS1) ] X)
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_6
+    "Reachability of both critical sections under fair scheduling of actions"
+is
+    "peterson.bcg" |= with xtl
+        let
+            (* Critical sections *)
+            CS0      : labelset = EVAL_A (CS0),
+            CS1      : labelset = EVAL_A (CS1)
+        in
+            PRINT_FORMULA (FAIR (CS0) and FAIR (CS1))
+        end_let;
+    expected TRUE;
+
+    "peterson.bcg" |= with evaluator3
+	[ true* ] (
+	    [ (not CS0)* ] < (not CS0)* . CS0 > true
+	    and
+	    [ (not CS1)* ] < (not CS1)* . CS1 > true
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+-- Checking that the LOTOS and LNT specifications are equivalent
+
+% (cd LOTOS ; echo "" ; svl)
+"diag.bcg" = strong comparison "LOTOS/peterson.bcg" == "peterson.bcg";
+
+-- Cleaning up
+
+% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"
+
+-------------------------------------------------------------------------------
+

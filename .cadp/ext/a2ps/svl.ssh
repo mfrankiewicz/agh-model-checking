@@ -1,0 +1,132 @@
+# This file is a customization file for a2ps
+# Style sheet for SVL
+# $Id#
+
+style SVL is
+
+written by "Syntax Editor Configuration Tool <cadp@inria.fr>"
+version is 1.8
+
+documentation is
+ "This style is designed to fontify the SVL language"
+end documentation
+
+alphabets are
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+
+case sensitive
+
+keywords in Keyword_strong are
+   abstraction,
+   all,
+   bag,
+   branching,
+   but,
+   chaos,
+   check,
+   comparison,
+   cut,
+   deadlock,
+   divbranching,
+   "end",
+   expected,
+   fifo,
+   gate,
+   generation,
+   hide,
+   "in",
+   "is",
+   label,
+   labels,
+   leaf,
+   livelock,
+   multiple,
+   node,
+   observational,
+   of,
+   par,
+   partial,
+   prio,
+   probabilistic,
+   property,
+   reduction,
+   refined,
+   rename,
+   result,
+   root,
+   safety,
+   single,
+   smart,
+   stochastic,
+   stop,
+   strong,
+   sync,
+   tau-compression,
+   tau-confluence,
+   tau-divergence,
+   tau*.a,
+   total,
+   trace,
+   user,
+   using,
+   verify,
+   weak,
+   with
+end keywords
+
+keywords in Keyword are
+   acyclic,
+   bdd,
+   bfs,
+   dfs,
+   fly,
+   std,
+   FALSE,
+   TRUE,
+   aldebaran,
+   bcg_min,
+   bcg_cmp,
+   bisimulator,
+   evaluator,
+   evaluator3,
+   evaluator4,
+   exhibitor,
+   fc2tools,
+   reductor,
+   xtl
+end keywords
+
+operators in Keyword_strong are
+   [,
+   ],
+   {,
+   },
+   >,
+   =,
+   :,
+   #,
+   ?,
+   == \equiv,
+   >= \geq,
+   <= \leq,
+   |=,
+   -> \rightarrow,
+   ||,
+   |[,
+   ]|,
+   -||,
+   -|[,
+   |||,
+   -|||
+end operators
+
+sequences are
+   "(*" Comment "*)",
+   "--" Comment,
+   C-char,
+   C-string,
+   "%" Plain Label
+end sequences
+
+end style
+

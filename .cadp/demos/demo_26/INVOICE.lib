@@ -1,0 +1,58 @@
+ (*============================================================================
+ "INVOICE.lib"
+         The process library for the data-oriented description; adapted from the
+         Kenneth J. Turner description to support each case described by
+         Mihaela Sighireanu
+ *============================================================================*)
+ 
+(*-----------------------------------------------------------------------------
+ Invoice process parameterized by M_p, M_r, M_a
+ *----------------------------------------------------------------------------*)
+  process Invoice_p_r_a [Request, Cancel, Deposit] 
+    (M_p:Product, M_r:Reference, M_a:Amount, ords:Orders, stks:Stocks) : noexit :=
+   (
+      Request ?ref:Reference ?prd:Product ?amt:Amount
+       [(ref le M_r) and (prd le M_p) and (amt le M_a) and
+	(StatOrder(ref, ords) eq None) and (amt gt 0)];
+      exit (AddOrder(MkOrder(ref, prd, amt, Pending), ords), stks)
+    []
+      Cancel ?ref:Reference [(ref le M_r) and (StatOrder(ref, ords) eq Pending)];
+      exit (RemOrder(MkOrder(ref, 0, 0, Pending), ords), stks)
+    []
+      Deposit ?prd:Product ?amt:Amount [(prd le M_p) and (amt le M_a) and (amt gt 0)];
+      exit (ords, AddStock(MkStock(prd, amt), stks))
+    )
+  >>
+    accept newords:Orders, newstks:Stocks in
+      Invoice_p_r_a [Request, Cancel, Deposit]
+       (M_p, M_r, M_a, UpdateOrders(newords, newstks), UpdateStocks(newords, newstks))
+  endproc (* Invoice_p_r_a *)
+
+(*-----------------------------------------------------------------------------
+ Invoice process parameterized by M_p, M_r, M_a
+ and modfied to have safety equivalence with the process-oriented description
+ *----------------------------------------------------------------------------*)
+
+  process Invoice_safety_p_r_a [Request, Cancel, Deposit] 
+    (M_p:Product, M_r:Reference, M_a:Amount, ords:Orders, stks:Stocks) : noexit :=
+   (
+      Request ?ref:Reference ?prd:Product ?amt:Amount
+       [(ref le M_r) and (prd le M_p) and (amt le M_a) and
+	(StatOrder(ref, ords) eq None) and (amt gt 0)];
+      exit (AddOrder(MkOrder(ref, prd, amt, Pending), ords), stks)
+    []
+      Cancel ?ref:Reference [(ref le M_r) and (StatOrder(ref, ords) eq Pending)];
+      exit (RemOrder(MkOrder(ref, 0, 0, Pending), ords), stks)
+    []
+      Deposit ?prd:Product ?amt:Amount [(prd le M_p) and (amt le M_a) and (amt gt 0)];
+      exit (ords, AddStock(MkStock(prd, amt), stks))
+    []
+      exit (UpdateOrders(ords, stks), UpdateStocks(ords, stks))
+    )
+  >>
+    accept newords:Orders, newstks:Stocks in
+      Invoice_safety_p_r_a [Request, Cancel, Deposit]
+       (M_p, M_r, M_a, newords, newstks)
+  endproc (* Invoice_safety_p_r_a *)
+
+

@@ -1,0 +1,198 @@
+(*---------------------------------------------------------------------------*
+ * This script checks the randomized consensus protocol for 3 processes,     *
+ * 1 potentially faulty process, and NB_ROUNDS rounds.                       *
+ *                                                                           *
+ * In a first step, the LTS modeling one round of the consensus is generated *
+ * compositionally, the system being decomposed in terms of processes and    *
+ * (asynchronous) communications between processes.                          *
+ *                                                                           *
+ * In a second step, the LTS modeling two rounds of the consensus is         *
+ * generated following the same method.                                      *
+ *                                                                           *
+ * Then, it is checked that the LTS modeling two rounds of the consensus can *
+ * be obtained much more efficiently by composing two instances of the LTS   *
+ * modeling one round, the labels of one being appropriately renamed. This   *
+ * shows that the consensus protocol is compositional in terms of rounds.    *
+ *                                                                           *
+ * Then, using round compositionality, the LTS modeling NB_ROUNDS rounds is  *
+ * generated.                                                                *
+ *---------------------------------------------------------------------------*)
+
+% DEFAULT_PROCESS_FILE="CONSENSUS.lotos"
+% NB_ROUNDS=10
+
+(*---------------------------------------------------------------------------*
+ * Function GENERATE_ROUNDS generates an LTS modeling the consensus          *
+ * protocol for 3 processes, 1 potential faulty process, and $1 rounds.      *
+ *---------------------------------------------------------------------------*)
+
+% GENERATE_ROUNDS () {
+
+%   N="$1"
+
+    "$2.bcg" = generation of leaf strong reduction of 
+        total rename    (* rename LOTOS gates with offers into gates *)
+            "SEND !\(.*\) !\(.*\) !\(.*\) !\(.*\) !\(.*\)" ->
+                "SEND_\1_\2_\3_\4_\5",
+            "RECV !\(.*\) !\(.*\) !\(.*\) !\(.*\) !\(.*\)" ->
+                "RECV_\1_\2_\3_\4_\5",
+            "OUTPUT !\(.*\) \(!.*\) \(!.*\)" -> "OUTPUT_\1 \2 \3",
+            "DEC !\(.*\) \(!.*\)" -> "DEC \2"
+        in
+            INPUT_VALUES [SEND, RECV, DEC, INPUT, OUTPUT] (3, 1, 1, 1, "$N")
+            |||
+            INPUT_VALUES [SEND, RECV, DEC, INPUT, OUTPUT] (3, 1, 2, 1, "$N")
+            |||
+            INPUT_VALUES [SEND, RECV, DEC, INPUT, OUTPUT] (3, 1, 3, 1, "$N");
+
+(* We incorporate communication media, iterating on pairs of distinct        *
+ * processes (I, J) where J < I, and on rounds K.                            *)
+
+%   for I in 1 2 3
+%   do
+%     J=1
+%     while [ $J -lt $I ]
+%     do
+%       K=1
+%       while [ $K -le $1 ]
+%       do
+
+(* We generate a medium with 5 places modeling messages exchanged between    *
+ * processes I and J during round K (these messages are enumerated in file   *
+ * labels-$J-$I-$K). We then check that it is large enough, by using         *
+ * projection (to extract the part of the medium that was indeed useful)     *
+ * and a temporal logic formula.                                             *)
+
+%         LABELS=`cat labels-$J-$I-$K | xargs`
+%         printf "\n-- Creating medium.bcg to handle communications between processes"
+%         printf "\n-- number $J and $I at round $K and verifying that it is large enough\n"
+
+          "medium.bcg" = bag 5 with {$LABELS};
+
+          "tmp.bcg" = generation of
+                "$2.bcg" |[ {$LABELS} ]| "medium.bcg";
+
+          "projection.bcg" = "medium.bcg" -|[ {$LABELS} ]|
+                             (branching reduction of
+                              hide all but {$LABELS} in "tmp.bcg");
+
+          (* Check using temporal logic formulas that the media are large
+           * enough to handle all messages; one actually checks that 5
+           * consecutive emissions cannot be made on the media restricted
+           * using semi-composition *)
+
+          property MEDIUM_OK is
+          -- version 1: dataless formula
+          "projection.bcg" |= with evaluator3 
+              ['SEND.*' . 'SEND.*' . 'SEND.*' . 'SEND.*' . 'SEND.*'] false;
+          expected TRUE;
+
+          -- version 2: value-passing formula
+          "projection.bcg" |= with evaluator4
+              [ 'SEND.*' { 5 } ] false;
+          expected TRUE
+          end property;
+
+          (* LABELS are no longer needed in result $2.bcg. Hide and continue *)
+
+          "$2.bcg" = branching reduction of 
+                hide {$LABELS} in "tmp.bcg";
+
+%         K=`expr $K + 1`
+%       done
+%       J=`expr $J + 1`
+%     done
+%   done
+
+% }
+
+(*---------------------------------------------------------------------------*
+ * Function COMPOSE_ROUNDS generates the LTS modeling the execution of $1    *
+ * rounds of the protocol, by composing rounds. The LTS of one round is      *
+ * given in BCG file $2.bcg, and result is stored in file $3.bcg.            *
+ *---------------------------------------------------------------------------*)
+
+% COMPOSE_ROUNDS () {
+
+    "$3.bcg" = "$2.bcg";
+
+%   ROUND=2
+%   while [ $ROUND -le $1 ]
+%   do
+%     printf "\nRound $ROUND\n"
+%     PREV_ROUND=`expr $ROUND - 1`
+
+      "$3.bcg" = strong reduction of
+            "$3.bcg" 
+            |[ "OUTPUT_${PREV_ROUND}" ]|
+            rename
+              "INPUT" -> "OUTPUT_${PREV_ROUND}",
+              "OUTPUT_1" -> "OUTPUT_$ROUND"
+            in "$2.bcg";
+
+%     ROUND=`expr $ROUND + 1`
+%   done
+
+% }
+
+(*---------------------------------------------------------------------------*
+ * This is where the script execution starts.                                *
+ *---------------------------------------------------------------------------*)
+
+% printf "\n----------------------------------------------------------------"
+% printf "\nCompositional generation of the first round of the protocol for"
+% printf "\n3 processes using a decomposition into processes and media"
+% printf "\n----------------------------------------------------------------\n"
+
+% GENERATE_ROUNDS 1 "1round"
+
+% printf "\n----------------------------------------------------------------"
+% printf "\nGeneration of the LTS modeling 2 rounds for 3 processes using"
+% printf "\nthe same method as that used to generate the LTS of one round"
+% printf "\n(no decomposition into rounds). This may take much longer"
+% printf "\n----------------------------------------------------------------\n"
+
+% GENERATE_ROUNDS 2 "2rounds"
+
+% printf "\n----------------------------------------------------------------"
+% printf "\nComputation of the LTS of round 2 from that of round 1"
+% printf "\n----------------------------------------------------------------\n"
+
+% COMPOSE_ROUNDS 2 "1round" "2rounds-compositional"
+
+% printf "\n----------------------------------------------------------------"
+% printf "\nBranching equivalence checking of LTSs obtained by each method"
+% printf "\n----------------------------------------------------------------\n"
+
+"diag.bcg" = branching comparison
+      "2rounds.bcg" == "2rounds-compositional.bcg";
+
+% printf "\n----------------------------------------------------------------"
+% printf "\nGeneration of LTS modeling $NB_ROUNDS rounds for 3 processes"
+% printf "\nusing the second method (round compositionality)"
+% printf "\n----------------------------------------------------------------\n"
+
+% COMPOSE_ROUNDS $NB_ROUNDS "1round" "${NB_ROUNDS}rounds"
+
+% printf "\n----------------------------------------------------------------"
+% printf "\nVerifying that if a process decides one value, it is not"
+% printf "\npossible for another process to decide a different value"
+% printf "\n----------------------------------------------------------------\n"
+
+property DECISION is
+     -- version 1: dataless property
+     "${NB_ROUNDS}rounds.bcg" |= with evaluator3
+         [true* .
+             (("DEC !FALSE" . true* . "DEC !TRUE")
+              |
+              ("DEC !TRUE" . true* . "DEC !FALSE"))
+         ] false;
+     expected TRUE;
+
+     -- version 2: value-passing property
+     "${NB_ROUNDS}rounds.bcg" |= with evaluator4
+         (* The occurrence of two different decisions is forbidden. *)
+         [ true* . { DEC ?b1:bool } . true* . { DEC ?b2:bool } ] (b1 = b2);
+     expected TRUE
+end property
+

@@ -1,0 +1,118 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_ln
+#   Auteurs             :       Wendelin Serwe et Hubert Garavel
+#   Version             :       1.11
+#   Date                :       2017/12/20 18:04:45
+##############################################################################
+
+COMMAND=`basename "$0"`
+ 
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	CADP=$CADP_INSTALLATOR
+	# do not export $CADP here
+fi
+
+DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+# -----------------------------------------------------------------------------
+
+# verifications preliminaires
+
+if [ $# -ne 2 ]
+then
+	echo "$COMMAND: two arguments expected"
+	exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+if [ "$1" = "-check" ]
+then
+	TARGET="$2"
+	# on teste si l'on a le droit de creer un lien dans $TARGET et on
+	# renvoie 0 si et seulement si c'est possible
+	case $DETAILED_ARCH in
+		win32-msys )
+			# ne pas tenter d'executer "ln -s / $TARGET/link" car
+			# la commande "ln" de MSYS declenche une copie 
+			# recursive de / dans $TARGET/link ; donc on renvoie
+			# un resultat 0 par defaut sans rien tester puisque
+			# "ln" va s'executer en faisant une copie recursive
+			echo 0
+			exit 0
+			;;
+		* )
+			ln -s / $TARGET/link 2> /dev/null
+			RESULT=$?
+			echo $RESULT
+			rm -f $TARGET/link
+			exit 0
+			;;
+	esac
+fi
+
+# -----------------------------------------------------------------------------
+
+SOURCE="$1"
+TARGET="$2"
+
+# phase (1) : on regarde si $SOURCE existe
+
+if [ ! -f "$SOURCE" ]
+then
+	echo "$COMMAND: source file \"$SOURCE\" does not exist"
+	exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase (2) : on regarde si $TARGET n'existe pas
+
+if [ -f "$TARGET" ]
+then
+	echo "$COMMAND: target file \"$TARGET\" already exists"
+	exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase (3) : creation du lien symbolique
+
+case $DETAILED_ARCH in
+	sun3 | sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | iX86-64 | x64 | ia64 | macOS | mac86 | mac64 )
+		ln -s "$SOURCE" "$TARGET"
+		;;
+
+	win32-cygnus | win64-cygnus )
+		# Sous Windows/Cygwin, les liens symboliques de Cygwin ne
+		# sont pas reconnus par les applications Win32 "pures" ;
+		# on utilise donc "cp" au lieu de "ln"
+		cp "$SOURCE" "$TARGET"
+		;;
+
+	win32-msys )
+		# Sous Windows/Mingw, la commande "ln" effectue en fait une
+		# copie (comme "cp") sans creer de vrai lien symbolique ;
+		# la commande "ln" de Gnuwin32 cree un fichier ".lnk" ; les
+		# versions recentes de Windows ont une commande "mklink" ;
+		# pour CADP, on se contente d'utiliser "cp" au lieu de "ln"
+		cp "$SOURCE" "$TARGET"
+		;;
+
+	* )
+		echo "$COMMAND: unknown detailed architecture $DETAILED_ARCH"
+		exit 1 ;;
+esac
+

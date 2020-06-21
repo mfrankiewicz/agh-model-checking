@@ -1,0 +1,148 @@
+(*============================================================================
+ "DATAD.lib"
+         The data library for the data-oriented description; adapted from the
+         Kenneth J. Turner description to CAESAR.ADT compiler by 
+         Mihaela Sighireanu
+ *============================================================================*)
+
+  type Natural is NaturalNumber
+    opns _ - _ : Nat, Nat -> Nat
+    eqns
+      forall n1,n2:Nat
+        ofsort Nat
+	  0 - n2 = 0;
+	  n1 - 0 = n1;
+	  Succ(n1) - Succ(n2) = n1 - n2;
+  endtype (* Natural *)
+  
+  type Reference is Natural renamedby
+    sortnames Reference for Nat
+  endtype (* Reference *)
+  
+  type Product is Natural renamedby
+    sortnames Product for Nat
+  endtype (* Product *)
+  
+  type Amount is Natural renamedby
+    sortnames Amount for Nat
+  endtype (* Amount *)
+  
+  type Status is Boolean
+    sorts Status
+    opns
+      None (*! constructor *), 
+      Pending (*! constructor *), 
+      Invoiced (*! constructor *) : -> Status
+      _ eq _ : Status, Status -> Bool
+    eqns forall sta1,sta2:Status
+      ofsort Bool
+        sta1 = sta2 =>
+	  sta1 eq sta2 = true;
+        (* otherwise *)
+        sta1 eq sta2 = false;
+  endtype (* Status *)
+  
+  type Order is Reference, Product, Amount, Status
+    sorts Order
+    opns MkOrder (*! constructor *) : Reference, Product, Amount, Status -> Order
+  endtype (* Order *)
+  
+  type Stock is Product, Amount
+    sorts Stock
+    opns MkStock (*! constructor *) : Product, Amount -> Stock
+  endtype (* Stock *)
+
+  type Orders is Order, Status
+    sorts Orders
+    opns
+      NoOrders (*! constructor *) : -> Orders
+      AddOrder (*! constructor *) : Order, Orders -> Orders
+      RemOrder : Order, Orders -> Orders
+      StatOrder : Reference, Orders -> Status
+    eqns
+      forall ref1,ref2:Reference, prd1,prd2:Product, amt1,amt2:Amount, 
+       sta1,sta2:Status, ords:Orders
+        ofsort Status
+	  StatOrder(ref1, NoOrders) = None;
+	  ref1 eq ref2 =>
+	    StatOrder(ref1, AddOrder(MkOrder(ref2, prd2, amt2, sta2), ords)) =
+	      sta2;
+	  ref1 ne ref2 =>
+	    StatOrder(ref1, AddOrder(MkOrder(ref2, prd2, amt2, sta2), ords)) =
+	      StatOrder(ref1, ords);
+        ofsort Orders
+	  RemOrder(MkOrder(ref1, prd1, amt1, sta1), NoOrders) = NoOrders;
+	  ref1 eq ref2 =>
+	    RemOrder(MkOrder(ref1, prd1, amt1, sta1), 
+	     AddOrder(MkOrder(ref2, prd2, amt2, sta2), ords)) = ords;
+	  ref1 ne ref2 =>
+	    RemOrder(MkOrder(ref1, prd1, amt1, sta1), 
+	     AddOrder(MkOrder(ref2, prd2, amt2, sta2), ords)) =
+	       AddOrder(MkOrder(ref2, prd2, amt2, sta2), 
+	        RemOrder(MkOrder(ref1, prd1, amt1, sta1), ords));
+  endtype (* Orders *)
+  
+  type Stocks is Stock
+    sorts Stocks
+    opns
+      NoStocks (*! constructor *) : -> Stocks
+      AddStock0 (*! constructor *) : Stock, Stocks -> Stocks
+      AddStock : Stock, Stocks -> Stocks
+      RemStock : Stock, Stocks -> Stocks
+      InStock : Product, Stocks -> Bool
+      StockOf : Product, Stocks -> Amount
+    eqns
+      forall prd1,prd2:Product, amt1,amt2:Amount, stks:Stocks
+        ofsort Bool
+	  InStock(prd1, NoStocks) = false;
+	  InStock(prd1, AddStock0(MkStock(prd2, amt2), stks)) =
+	    (prd1 eq prd2) or InStock(prd1, stks);
+        ofsort Stocks
+	  AddStock(MkStock(prd1, amt1), NoStocks) = AddStock0 (MkStock(prd1, amt1), NoStocks);
+	  prd1 eq prd2 =>
+	    AddStock(MkStock(prd1, amt1), AddStock0(MkStock(prd2, amt2), stks)) =
+	      AddStock0(MkStock(prd1, amt2 + amt1), stks);
+	  (prd1 ne prd2) =>
+	    AddStock(MkStock(prd1, amt1), AddStock0(MkStock(prd2, amt2), stks)) =
+	      AddStock0(MkStock(prd2, amt2), AddStock(MkStock(prd1, amt1), stks));
+            
+	  RemStock(MkStock(prd1, amt1), NoStocks) = NoStocks;
+	  prd1 eq prd2 =>
+	    RemStock(MkStock(prd1, amt1), AddStock0(MkStock(prd2, amt2), stks)) =
+	      AddStock0(MkStock(prd1, amt2 - amt1), stks);
+	  prd1 ne prd2 =>
+	    RemStock(MkStock(prd1, amt1), AddStock0(MkStock(prd2, amt2), stks)) =
+	      AddStock0(MkStock(prd2, amt2), RemStock(MkStock(prd1, amt1), stks));
+        ofsort Amount
+	  StockOf(prd1, NoStocks) = 0;
+	  prd1 eq prd2 =>
+	    StockOf(prd1, AddStock0(MkStock(prd2, amt2), stks)) = amt2;
+	  prd1 ne prd2 =>
+	    StockOf(prd1, AddStock0(MkStock(prd2, amt2), stks)) = StockOf(prd1, stks);
+  endtype (* Stocks *)
+
+  type Updates is Orders, Stocks
+    opns
+      UpdateOrders : Orders, Stocks -> Orders
+      UpdateStocks : Orders, Stocks -> Stocks
+    eqns
+      forall ref:Reference, prd:Product, amt:Amount, sta:Status, ords:Orders, stks:Stocks
+        ofsort Orders
+	  UpdateOrders(NoOrders, stks) = NoOrders;
+	  (sta eq Pending) and (StockOf(prd, stks) ge amt) =>
+	    UpdateOrders(AddOrder(MkOrder(ref, prd, amt, sta), ords), stks) =
+	      AddOrder(MkOrder(ref, prd, amt, Invoiced), 
+	       UpdateOrders(ords, RemStock(MkStock(prd, amt), stks)));
+	  (sta eq Invoiced) or (StockOf(prd, stks) lt amt) =>
+	    UpdateOrders(AddOrder(MkOrder(ref, prd, amt, sta), ords), stks) =
+	      AddOrder(MkOrder(ref, prd, amt, sta), 
+	       UpdateOrders(ords, stks));
+        ofsort Stocks
+	  UpdateStocks(NoOrders, stks) = stks;
+	  (sta eq Pending) and (StockOf(prd, stks) ge amt) =>
+	    UpdateStocks(AddOrder(MkOrder(ref, prd, amt, sta), ords), stks) =
+	      UpdateStocks(ords, RemStock(MkStock(prd, amt), stks));
+	  (sta eq Invoiced) or (StockOf(prd, stks) lt amt) =>
+	    UpdateStocks(AddOrder(MkOrder(ref, prd, amt, sta), ords), stks) =
+	      UpdateStocks(ords, stks);
+  endtype (* Updates *)

@@ -1,0 +1,318 @@
+(******************************************************************************
+ *        Dynamic Reconfiguration Protocol for Agent-Based Applications
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module       :       SPEC.lnt
+ *   Authors      :       H. Garavel and N. de Palma
+ *   Version      :       1.2
+ *   Date         :       2014/12/10 17:35:47
+ *****************************************************************************)
+
+module SPEC (DATA) is
+
+(*****************************************************************************
+ *
+ * Channel types
+ *
+ *****************************************************************************)
+
+channel Messages is
+   (
+      A1 : Addr, -- address of the receiver agent
+      A2 : Addr, -- address of the sender agent
+      D  : Cmd,  -- reconfiguration command
+      A3 : Addr, -- first agent address sent, or dummy
+      A4 : Addr  -- second agent address sent, or dummy
+   )
+end channel
+
+(*****************************************************************************
+ *
+ * Architecture of the protocol
+ *
+ *****************************************************************************)
+
+process MAIN [INBUS, OUTBUS:Messages] is
+   par INBUS, OUTBUS in
+      par
+         Agent [INBUS, OUTBUS] (agent1@site1)
+      ||
+         Agent [INBUS, OUTBUS] (agent2@site1)
+      ||
+         Configurator [INBUS, OUTBUS] (agent1@site1 + (agent2@site1 + {}))
+      end par
+   ||
+      Bus [INBUS, OUTBUS]
+   end par
+end process
+
+(*****************************************************************************
+ *
+ * Configurator agent
+ *
+ *****************************************************************************)
+
+process Configurator [SEND, RECV:Messages] (in var R:AddrSet) is
+   -- R is a pool of agents that have not yet been added or that have been
+   -- deleted (this is a way to emulate the dynamic creation of processes)
+   var C:Config, A, A1, A2, A3:Addr, S:SiteId in
+      C := nil;
+      loop
+         select
+            -- ADD: add a new agent to the application
+            A := any Addr where (A notin C) and (A isin R);
+            SEND (A, confaddr, ADD, dummy, dummy);
+            RECV (confaddr, A, ACK, dummy, dummy);
+            C := insert (A & {}, C);
+            R := remove (A, R)
+         []
+            -- DELETE: delete an agent from the application
+            A := any Addr where A isin C;
+            Passivate [SEND, RECV] (cps (A, C));
+            SEND (A, confaddr, DELETE, dummy, dummy);
+            RECV (confaddr, A, ACK, dummy, dummy);
+            Activate [SEND, RECV] (A, A, cps (A, C));
+            C := delete (A, C);
+            R := insert (A, R)
+         []
+            --- BIND: add a new output channel to an agent
+            A2 := any Addr where A2 isin C;
+            A3 := any Addr where (A3 isin C) and (A2 ne A3) and not (A3 isin getchan (A2, C)); -- forbid self-referencing channels 
+            SEND (A2, confaddr, BIND, A3, dummy);
+            RECV (confaddr, A2, ACK, dummy, dummy);
+            SEND (A3, A2, SERVICE, dummy, dummy);
+            C := addchan (A2, A3, C)
+         []
+            -- REBIND: change an existing communication channel
+            A := any Addr where A isin C;
+            A2 := any Addr where (A2 isin C) and (A2 notin getchan (A, C)) and (A ne A2); -- forbid self-referencing channels
+            A1 := any Addr where A1 isin getchan (A, C);
+            SEND (A, confaddr, PASSIVATE, dummy, dummy);
+            RECV (confaddr, A, ACK, dummy, dummy);
+            SEND (A1, confaddr, FLUSH, dummy, dummy);
+            RECV (confaddr, A1, ACK, dummy, dummy);
+            SEND (A, confaddr, REBIND, A1, A2);
+            RECV (confaddr, A, ACK, dummy, dummy);
+            C := setchan (A, A1, A2, C)
+         []
+            -- MOVE: move an agent to another site
+            A := any Addr where A isin C;
+            S := any SiteId;
+            A2 := newaddr (S, C);
+            if A2 ne confaddr then
+               -- new valid address
+               Passivate [SEND, RECV] (cps (A, C));
+               SEND (A, confaddr, MOVE, A2, dummy);
+               RECV (confaddr, A2, ACK, dummy, dummy);
+               Activate [SEND, RECV] (A, A2, cps (A, C));
+               C := setaddr (A, A2, setchan (cps (A, C), A, A2, C))
+            end if
+         end select
+      end loop
+   end var
+end process
+
+(*****************************************************************************
+ *
+ * Auxiliary process for making passive a set of agents
+ *
+ *****************************************************************************)
+
+process Passivate [SEND, RECV:Messages] (in var CPS:AddrSet) is
+   while card (CPS) > 0 loop
+      var A:Addr in
+         A := pick (CPS);
+         SEND (A, confaddr, PASSIVATE, dummy, dummy);
+         RECV (confaddr, A, ACK, dummy, dummy);
+         CPS := remove (A, CPS)
+      end var
+   end loop;
+   i -- to reproduce exactly the ">>" operator in the LOTOS source code
+end process
+
+(*****************************************************************************
+ *
+ * Auxiliary process for making active a set of agents
+ *
+ *****************************************************************************)
+
+process Activate [SEND, RECV:Messages] (A1, A2:Addr, in var CPS:AddrSet) is
+   while card (CPS) > 0 loop
+      var A:Addr in
+         A := pick (CPS);
+         SEND (A, confaddr, ACTIVATE, A1, A2);
+         RECV (confaddr, A, ACK, dummy, dummy);
+         CPS := remove (A, CPS)
+      end var
+   end loop;
+   i -- to reproduce exactly the ">>" operator in the LOTOS source code
+end process
+
+(*****************************************************************************
+ *
+ * Application agent
+ *
+ *****************************************************************************)
+
+process Agent [SEND, RECV:Messages] (in var A:Addr) is
+   var S:State, R:AddrSet, B:Bool,
+       A1, A2, A3:Addr
+   in
+      S := DEAD;
+      R := {} of AddrSet;
+      B := false;
+      loop
+         case S in
+            DEAD ->
+               RECV (A, confaddr, ADD, dummy, dummy);
+               SEND (confaddr, A, ACK, dummy, dummy);
+               S := ACTIVE;
+               R := {};
+               B := false
+          | ACTIVE ->
+               select
+                  -- receive an application event
+                  RECV (A, ?A1, SERVICE, dummy, dummy) where (A ne A1);
+                  select
+                     if not (empty (R)) then
+                        A2 := any Addr where A2 isin R;
+                        -- react to the event
+                        SEND (A2, A, SERVICE, dummy, dummy)
+                     end if
+                  []
+                     null -- silently ignore the event
+                  end select 
+               []
+                  RECV (A, confaddr, BIND, ?A2, dummy) where (A ne A2) and (R eq {});
+                  SEND (confaddr, A, ACK, dummy, dummy);
+                  R := insert (A2, R)
+               []
+                  RECV (A, confaddr, PASSIVATE, dummy, dummy);
+                  SEND (confaddr, A, ACK, dummy, dummy);
+                  S := PASSIVE
+               []
+                  RECV (A, confaddr, MOVE, ?A2, dummy);
+                  SEND (confaddr, A2, ACK, dummy, dummy);
+                  A := A2
+               []
+                  RECV (A, confaddr, FLUSH, dummy, dummy);
+                  SEND (confaddr, A, ACK, dummy, dummy)
+               []
+                  RECV (A, confaddr, DELETE, dummy, dummy);
+                  SEND (confaddr, A, ACK, dummy, dummy);
+                  S := DEAD
+               end select
+          | PASSIVE ->
+		select
+                   -- receive and store an application event
+                   RECV (A, ?A1, SERVICE, dummy, dummy) where (A ne A1);
+                   B := true
+                []
+                   RECV (A, confaddr, ACTIVATE, ?A1, ?A2) where (A ne A2) and (A1 eq A2);
+                   -- agent A1 has been deleted
+                   if B then
+                      select
+                         A3 := any Addr where A3 isin remove (A1, R);
+                         -- react to the event received when the agent was passive
+                         SEND (A3, A, SERVICE, dummy, dummy);
+                         SEND (confaddr, A, ACK, dummy, dummy);
+                         S := ACTIVE;
+                         R := remove (A1, R);
+                         B := false
+                      []
+                         -- silently ignore the event
+                         SEND (confaddr, A, ACK, dummy, dummy);
+                         S := ACTIVE;
+                         R := remove (A1, R);
+                         B := false
+                      end select
+                   else
+                      SEND (confaddr, A, ACK, dummy, dummy);
+                      S := ACTIVE;
+                      R := remove (A1, R);
+                      B := false
+                   end if
+                []
+                   RECV (A, confaddr, ACTIVATE, ?A1, ?A2) where (A ne A2) and (A1 ne A2);
+                   if B and not (empty (R)) then
+                      select
+                         A3 := any Addr where A3 isin replace (A1, A2, R);
+                         -- react to the event received when the agent was passive
+                         SEND (A3, A, SERVICE, dummy, dummy);
+                         SEND (confaddr, A, ACK, dummy, dummy);
+                         S := ACTIVE;
+                         R := replace (A1, A2, R);
+                         B := false
+                      []
+                         -- silently ignore the event
+                         SEND (confaddr, A, ACK, dummy, dummy);
+                         S := ACTIVE;
+                         R := replace (A1, A2, R);
+                         B := false
+                      end select
+                   else
+                      SEND (confaddr, A, ACK, dummy, dummy);
+                      S := ACTIVE;
+                      R := replace (A1, A2, R);
+                      B := false
+                   end if
+                []
+                   RECV (A, confaddr, REBIND, ?A1, ?A2) where A ne A2;
+                   if B and not (empty (R)) then
+                      select
+                         A3 := any Addr where A3 isin replace (A1, A2, R);
+                         -- react to the event received when the agent was passive
+                         SEND (A3, A, SERVICE, dummy, dummy);
+                         SEND (confaddr, A, ACK, dummy, dummy);
+                         S := ACTIVE;
+                         R := replace (A1, A2, R);
+                         B := false
+                      []
+                         -- silently ignore the event
+                         SEND (confaddr, A, ACK, dummy, dummy);
+                         S := ACTIVE;
+                         R := replace (A1, A2, R);
+                         B := false
+                      end select
+                   else
+                      SEND (confaddr, A, ACK, dummy, dummy);
+                      S := ACTIVE;
+                      R := replace (A1, A2, R);
+                      B := false
+                   end if
+                end select
+         end case   
+      end loop   
+   end var
+end process
+
+(*****************************************************************************
+ *
+ * Software bus (communication medium)
+ *
+ *****************************************************************************)
+
+process Bus [INBUS, OUTBUS:Messages] is
+   var B:Buffer, M:Msg, R:Addr, S:Addr, D:Cmd, A1:Addr, A2:Addr in
+      B := {};
+      loop
+         select
+            INBUS (?R, ?S, ?D, ?A1, ?A2);
+            B := B + Message (R, S, D, A1, A2)
+         []
+            only if not (empty (B)) then
+               M := head (B);
+               B := tail (B);
+               OUTBUS (getrcv (M), getsnd (M), getcmd (M), getad1 (M), getad2 (M))
+            end if
+         end select
+      end loop
+    end var
+end process
+
+end module
+

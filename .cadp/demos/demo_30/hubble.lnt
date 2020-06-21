@@ -1,0 +1,113 @@
+(******************************************************************************
+ *        THE HUBBLE SPACE TELESCOPE
+ *-----------------------------------------------------------------------------
+ *   Module       :       hubble.lnt
+ *   Authors      :       W. Serwe and H. Garavel
+ *   Version      :       1.5
+ *   Date         :       2016/10/04 12:00:02
+ *****************************************************************************)
+
+module HUBBLE is
+
+-------------------------------------------------------------------------------
+
+-- The Hubble space telescope
+--         specified in LOTOS,
+--         transformed into an Interactive Markov Chain
+--         reduced to a Continuous Time Markov Chain, and
+--         analysed at various time points (see demo.svl)
+--
+-- Based on a specification sketched in
+--
+--    H. Hermanns. Construction and Verification of Performance and
+--     Reliability Models. Bulletin of the EATCS 74:135-154, 2001.
+--
+-- H. Garavel simplified the LOTOS code.
+--
+-- H. Garavel and W. Serwe translated it into LNT.
+
+-------------------------------------------------------------------------------
+
+channel DELAY is
+   ()
+end channel
+
+-- channel DELAY will be used to express stochastic delays, while the
+-- predefined channel NONE is used to express pure synchronization
+
+-------------------------------------------------------------------------------
+
+process MAIN [LAMBDA, MU, NU: DELAY] is
+   hide FAIL: NONE in
+      loop 
+         par FAIL in
+            CONTROLLER [FAIL, MU, NU]
+         ||
+            par
+               GYRO [FAIL, LAMBDA]
+            ||
+               GYRO [FAIL, LAMBDA]
+            ||
+               GYRO [FAIL, LAMBDA]
+            ||
+               GYRO [FAIL, LAMBDA]
+            ||
+               GYRO [FAIL, LAMBDA]
+            ||
+               GYRO [FAIL, LAMBDA]
+            end par
+         end par;
+         -- System reset after rescue by the space mission
+         i 
+         -- This internal transition "i" was just added to preserve strong
+         -- bisimulation with the original LOTOS specification (operator ">>").
+      end loop
+   end hide
+end process
+
+-------------------------------------------------------------------------------
+
+process GYRO [FAIL: NONE, LAMBDA: DELAY] is
+   disrupt
+      LAMBDA;
+      FAIL;
+      stop
+   by
+      null
+   end disrupt
+end process
+
+-------------------------------------------------------------------------------
+
+process CONTROLLER [FAIL: NONE, MU, NU: DELAY] is
+   var C: NAT, SLEEP: BOOL in
+      -- Initially, there are 6 functioning gyros and sleep mode is off
+      C := 6;
+      SLEEP := false;
+      loop L in
+         select
+            FAIL; -- Ah, a gyro failed. Let's count down.
+            C := C - 1
+         []
+            only if ((C < 3) and not (SLEEP)) then
+               MU; -- Hubble starts tumbling. Time to turn on the sleep mode.
+               SLEEP := true
+            end if
+         []
+            only if (SLEEP) then
+               NU; -- Sleep mode is on. Waiting for rescue by the space mission
+               break L
+            end if
+         []
+            only if (C == 0) then
+               i; -- No gyros left. Crash!
+               stop
+            end if
+         end select
+      end loop
+   end var 
+end process
+
+-------------------------------------------------------------------------------
+
+end module

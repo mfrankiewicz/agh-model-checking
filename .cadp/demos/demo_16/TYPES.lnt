@@ -1,0 +1,61 @@
+module TYPES is
+
+-------------------------------------------------------------------------------
+
+type Data is
+    range 0 .. 4 of Nat
+    with ">"
+end type
+
+-------------------------------------------------------------------------------
+
+type Msg is
+    list of Data
+    with "head", "tail", "length"
+end type
+
+function cons_msg (in var D : Data) : Msg is
+    var M : Msg in
+        M := nil;
+        while D > (0 of Data) loop
+           M := cons (D, M);
+           D := Data (Nat (D) - 1)
+        end loop;
+        return M
+    end var
+end function
+
+-------------------------------------------------------------------------------
+
+type Ind is
+    I_FST, I_INC, I_OK, I_NOK, I_DK
+end type
+
+function confirm (M : Msg) : Ind is
+    if length (M) == 1 then
+        return I_DK
+    else
+        return I_NOK
+    end if
+end function
+
+function indication (Left, Right : Bool) : Ind is
+    if Right then
+        return I_OK
+    elsif Left then
+        return I_FST
+    else
+        return I_INC
+    end if
+end function
+
+-------------------------------------------------------------------------------
+
+type Signal is
+    START, RESET, TIMEOUT, S_READY, R_READY
+end type
+
+-------------------------------------------------------------------------------
+
+end module
+

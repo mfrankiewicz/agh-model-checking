@@ -1,0 +1,44 @@
+# This file is a customization file for a2ps
+# Style sheet for NUPN
+# $Id#
+
+style NUPN is
+
+written by "Syntax Editor Configuration Tool <cadp@inria.fr>"
+version is 1.3
+
+documentation is
+ "This style is designed to fontify the NUPN language"
+end documentation
+
+alphabets are
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_!"
+
+case sensitive
+
+keywords in Keyword_strong are
+   initial,
+   labels,
+   place,
+   places,
+   root,
+   transitions,
+   unit,
+   units,
+   !creator,
+   !multiple_arcs,
+   !multiple_initial_tokens,
+   !unit_safe
+end keywords
+
+operators in Keyword_strong are
+   #,
+   ...
+end operators
+
+sequences are
+
+end sequences
+
+end style
+

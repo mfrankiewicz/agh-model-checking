@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GtkSourceView version 3 definitions for the EXP language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 2.6:EXP+1.17:SECT -->
+<language id="exp" _name="EXP" version="2.0" _section="Sources">
+
+   <metadata>
+      <property name="mimetypes">text/x-exp</property>
+      <property name="globs">*.exp</property>
+      <property name="line-comment-start">--</property>
+      <property name="block-comment-start">(*</property>
+      <property name="block-comment-end">*)</property>
+   </metadata>
+
+   <styles>
+      <style id="comment"  _name="Comment"       map-to="def:comment"/>
+      <style id="string"   _name="String"        map-to="def:string"/>
+      <style id="keyword"  _name="Keyword"       map-to="def:keyword"/>
+      <style id="type"     _name="Data Type"     map-to="def:type"/>
+      <style id="function" _name="Function"      map-to="def:builtin"/>
+      <style id="operator" _name="Operator"      map-to="def:operator"/>
+   </styles>
+
+   <default-regex-options case-sensitive="false"/>
+
+   <definitions>
+      <context id="line-comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+         <start>--</start>
+      </context>
+
+      <context id="block-comment" style-ref="comment" class="comment" class-disabled="no-spell-check">
+         <start>\(\*</start>
+         <end>\*\)</end>
+         <include>
+            <context ref="block-comment"/>
+         </include>
+      </context>
+
+      <context id="single-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>'</start>
+         <end>'</end>
+      </context>
+
+      <context id="double-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>"</start>
+         <end>"</end>
+      </context>
+
+      <context id="keyword" style-ref="keyword">
+         <keyword>all</keyword>
+         <keyword>any</keyword>
+         <keyword>behavior</keyword>
+         <keyword>behaviour</keyword>
+         <keyword>but</keyword>
+         <keyword>comm</keyword>
+         <keyword>cut</keyword>
+         <keyword>end</keyword>
+         <keyword>gate</keyword>
+         <keyword>hide</keyword>
+         <keyword>in</keyword>
+         <keyword>par</keyword>
+         <keyword>prio</keyword>
+         <keyword>rename</keyword>
+         <keyword>using</keyword>
+      </context>
+
+      <context id="type" style-ref="type">
+         <keyword>ccs</keyword>
+         <keyword>csp</keyword>
+         <keyword>elotos</keyword>
+         <keyword>lotos</keyword>
+         <keyword>mcrl</keyword>
+      </context>
+
+      <context id="function" style-ref="function">
+         <keyword>label</keyword>
+         <keyword>multiple</keyword>
+         <keyword>partial</keyword>
+         <keyword>single</keyword>
+         <keyword>total</keyword>
+      </context>
+
+      <context id="operator" style-ref="operator">
+         <match extended="true">
+            \[ | \] | { | } | &gt; | = | \| | / | \* | # | _ | -&gt;
+         </match>
+      </context>
+
+      <context id="exp" class="no-spell-check">
+         <include>
+            <context ref="line-comment"/>
+            <context ref="block-comment"/>
+            <context ref="single-quoted-string"/>
+            <context ref="double-quoted-string"/>
+            <context ref="keyword"/>
+            <context ref="type"/>
+            <context ref="function"/>
+            <context ref="operator"/>
+         </include>
+      </context>
+
+   </definitions>
+</language>

@@ -1,0 +1,8 @@
+(*****************************************************************************
+ * The LOTOS specification "pots.lotos" is compiled using the CAESAR.ADT and *
+ * CAESAR compilers and then reduced modulo strong equivalence using the     *
+ * BCG_MIN tool. This generates a graph called "pots.bcg".                   *
+ *****************************************************************************)
+
+"pots.bcg" = strong reduction of generation of "pots.lotos";
+

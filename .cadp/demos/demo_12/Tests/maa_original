@@ -1,0 +1,618 @@
+(*
+ * This LOTOS description is taken from Appendix A of the following report:
+ * 
+ * Harold B. Munster, "LOTOS Specification of the MAA Standard, with an 
+ * Evaluation of LOTOS", NPL Report DITC 191/91, National Physical Laboratory
+ * (Teddington, Middlesex, UK), September 1991.
+ *
+ * This description also integrates the extra lines mentioned in section 3.4 
+ * of the report (page 30) to obtain a valid LOTOS specification.
+ * 
+ *)
+
+specification MAA: noexit
+
+library
+
+    NonEmptyString, BitNatRepr, Octet, DecNatRepr
+
+endlib
+
+
+
+type BlockFunctions is
+
+    BitNatRepr
+
+    sorts Block
+
+    opns
+
+        _xor_:                  Bit, Bit -> Bit
+        2:                      -> Nat
+
+        Block:
+                                  Bit, Bit, Bit, Bit, Bit, Bit, Bit, Bit,
+                                  Bit, Bit, Bit, Bit, Bit, Bit, Bit, Bit,
+                                  Bit, Bit, Bit, Bit, Bit, Bit, Bit, Bit,
+                                  Bit, Bit, Bit, Bit, Bit, Bit, Bit, Bit
+                                ->
+                                  Block
+        _eq_, _ne_:             Block, Block -> Bool
+        BitString:              Block -> BitString
+        NatNum:                 Block -> Nat
+
+        _+_:                    Bit, Block -> BitString
+        _++_:                   Block, Block -> BitString
+
+        CYC:                    Block -> Block
+        XOR:                    Block, Block -> Block
+        FIX1, FIX2:             Block -> Block
+        ADD, MUL1, MUL2, MUL2A: Block, Block -> Block
+
+    eqns
+
+        forall
+            x1,  x2,  x3,  x4,  x5,  x6,  x7,  x8,
+            x9,  x10, x11, x12, x13, x14, x15, x16,
+            x17, x18, x19, x20, x21, x22, x23, x24,
+            x25, x26, x27, x28, x29, x30, x31, x32,
+            y1,  y2,  y3,  y4,  y5,  y6,  y7,  y8,
+            y9,  y10, y11, y12, y13, y14, y15, y16,
+            y17, y18, y19, y20, y21, y22, y23, y24,
+            y25, y26, y27, y28, y29, y30, y31, y32: Bit
+
+        ofsort Bit
+
+            0 xor 0 = 0;
+            0 xor 1 = 1;
+            1 xor 0 = 1;
+            1 xor 1 = 0;
+
+        ofsort Nat
+
+            2 = Succ(NatNum(1));
+
+        ofsort BitString
+
+            BitString
+              (
+                Block
+                  (
+                    x1,  x2,  x3,  x4,  x5,  x6,  x7,  x8,
+                    x9,  x10, x11, x12, x13, x14, x15, x16,
+                    x17, x18, x19, x20, x21, x22, x23, x24,
+                    x25, x26, x27, x28, x29, x30, x31, x32
+                  )
+              )
+              =
+                Bit(x1) + x2 + x3 + x4 + x5 + x6  + x7  + x8  +
+                x9  + x10 + x11 + x12 + x13 + x14 + x15 + x16 +
+                x17 + x18 + x19 + x20 + x21 + x22 + x23 + x24 +
+                x25 + x26 + x27 + x28 + x29 + x30 + x31 + x32;
+
+        ofsort Bool
+
+            forall X, Y: Block
+
+            X eq Y = BitString(X) eq BitString(Y);
+
+            X ne Y = BitString(X) ne BitString(Y);
+
+        ofsort Nat
+
+            forall X: Block
+
+            NatNum(X) = NatNum(BitString(X));
+
+        ofsort BitString
+
+            forall X, Y: Block, b: Bit
+
+            b + X = b + BitString(X);
+
+            X ++ Y = BitString(X) ++ BitString(Y);
+
+        ofsort Block
+
+            CYC
+              (
+                Block
+                  (
+                    x1,  x2,  x3,  x4,  x5,  x6,  x7,  x8,
+                    x9,  x10, x11, x12, x13, x14, x15, x16,
+                    x17, x18, x19, x20, x21, x22, x23, x24,
+                    x25, x26, x27, x28, x29, x30, x31, x32
+                  )
+              )
+              =
+                Block
+                  (
+                    x2,  x3,  x4,  x5,  x6,  x7,  x8,  x9,
+                    x10, x11, x12, x13, x14, x15, x16, x17,
+                    x18, x19, x20, x21, x22, x23, x24, x25,
+                    x26, x27, x28, x29, x30, x31, x32, x1
+                  );
+
+            XOR
+              (
+                Block
+                  (
+                    x1,  x2,  x3,  x4,  x5,  x6,  x7,  x8,
+                    x9,  x10, x11, x12, x13, x14, x15, x16,
+                    x17, x18, x19, x20, x21, x22, x23, x24,
+                    x25, x26, x27, x28, x29, x30, x31, x32
+                  ),
+                Block
+                  (
+                    y1,  y2,  y3,  y4,  y5,  y6,  y7,  y8,
+                    y9,  y10, y11, y12, y13, y14, y15, y16,
+                    y17, y18, y19, y20, y21, y22, y23, y24,
+                    y25, y26, y27, y28, y29, y30, y31, y32
+                  )
+              )
+              =
+                Block
+                  (
+                    x1  xor y1,  x2  xor y2,  x3  xor y3,  x4  xor y4,
+                    x5  xor y5,  x6  xor y6,  x7  xor y7,  x8  xor y8,
+                    x9  xor y9,  x10 xor y10, x11 xor y11, x12 xor y12,
+                    x13 xor y13, x14 xor y14, x15 xor y15, x16 xor y16,
+                    x17 xor y17, x18 xor y18, x19 xor y19, x20 xor y20,
+                    x21 xor y21, x22 xor y22, x23 xor y23, x24 xor y24,
+                    x25 xor y25, x26 xor y26, x27 xor y27, x28 xor y28,
+                    x29 xor y29, x30 xor y30, x31 xor y31, x32 xor y32
+                  );
+
+            FIX1
+              (
+                Block
+                  (
+                    x1,  x2,  x3,  x4,  x5,  x6,  x7,  x8,
+                    x9,  x10, x11, x12, x13, x14, x15, x16,
+                    x17, x18, x19, x20, x21, x22, x23, x24,
+                    x25, x26, x27, x28, x29, x30, x31, x32
+                  )
+              )
+              =
+                Block
+                  (
+                    x1,  0,   x3,  x4,  x5,  x6,  1,   x8,
+                    x9,  x10, x11, 0,   x13, 1,   x15, x16,
+                    0,   x18, x19, x20, 1,   x22, x23, x24,
+                    x25, x26, 0,   x28, x29, x30, x31, 1
+                  );
+
+            FIX2
+              (
+                Block
+                  (
+                    x1,  x2,  x3,  x4,  x5,  x6,  x7,  x8,
+                    x9,  x10, x11, x12, x13, x14, x15, x16,
+                    x17, x18, x19, x20, x21, x22, x23, x24,
+                    x25, x26, x27, x28, x29, x30, x31, x32
+                  )
+              )
+              =
+                Block
+                  (
+                    0,   x2,  x3,  x4,  x5,  x6,  0,   x8,
+                    1,   x10, x11, x12, x13, x14, x15, 0,
+                    x17, 1,   x19, x20, x21, 0,   x23, x24,
+                    x25, x26, 1,   x28, x29, x30, x31, 1
+                  );
+
+        ofsort Block
+
+            forall X, Y, U, L, S, P, D: Block, C, E: Bit
+
+                NatNum(X) + NatNum(Y) = NatNum(C + S)
+              =>
+            ADD(X, Y) = S;
+
+                NatNum(X) * NatNum(Y) = NatNum(U ++ L),
+                NatNum(U) + NatNum(L) = NatNum(C + S),
+                NatNum(S) + NatNum(C) = NatNum(P)
+              =>
+            MUL1(X, Y) = P;
+
+                NatNum(X) * NatNum(Y)                   = NatNum(U ++ L),
+                2 * NatNum(U)                           = NatNum(E + D),
+                NatNum(D) + (2 * NatNum(E)) + NatNum(L) = NatNum(C + S),
+                NatNum(S) + (2 * NatNum(C))             = NatNum(P)
+              =>
+            MUL2(X, Y) = P;
+
+                NatNum(X) * NatNum(Y)       = NatNum(U ++ L),
+                2 * NatNum(U)               = NatNum(E + D),
+                NatNum(D) + NatNum(L)       = NatNum(C + S),
+                NatNum(S) + (2 * NatNum(C)) = NatNum(P)
+              =>
+            MUL2A(X, Y) = P;
+
+endtype
+
+
+
+type ConditioningFunctions is
+
+    BlockFunctions, Octet, BitNatRepr
+
+    sorts Pair
+
+    opns
+
+        Pair:                   Block, Block -> Pair
+
+        _xor_:                  Octet, Octet -> Octet
+        BitString:              Octet -> BitString
+        NatNum:                 Octet -> Nat
+
+        NeedAdjust:             Octet -> Bool
+        AdjustCode:             Octet -> Bit
+        Adjust:                 Octet, Octet -> Octet
+
+        BYT:                    Pair -> Pair
+        PAT:                    Pair -> Octet
+
+    eqns
+
+        ofsort Octet
+
+            forall
+                x1, x2, x3, x4, x5, x6, x7, x8,
+                y1, y2, y3, y4, y5, y6, y7, y8: Bit
+
+            Octet(x1, x2, x3, x4, x5, x6, x7, x8) xor
+            Octet(y1, y2, y3, y4, y5, y6, y7, y8)
+              =
+                Octet
+                  (
+                    x1 xor y1, x2 xor y2, x3 xor y3, x4 xor y4,
+                    x5 xor y5, x6 xor y6, x7 xor y7, x8 xor y8
+                  );
+
+        ofsort BitString
+
+            forall b1, b2, b3, b4, b5, b6, b7, b8: Bit
+
+            BitString(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) =
+                Bit(b1) + b2 + b3 + b4 + b5 + b6 + b7 + b8;
+
+        ofsort Nat
+
+            forall B: Octet
+
+            NatNum(B) = NatNum(BitString(B));
+
+        ofsort Bool
+
+            forall B: Octet
+
+            NeedAdjust(B) =
+                (B eq Octet(0, 0, 0, 0, 0, 0, 0, 0)) or
+                (B eq Octet(1, 1, 1, 1, 1, 1, 1, 1));
+
+        ofsort Bit
+
+            forall B: Octet
+
+            NeedAdjust(B) =>      AdjustCode(B) = 1;
+            not(NeedAdjust(B)) => AdjustCode(B) = 0;
+
+        ofsort Octet
+
+            forall B, P: Octet
+
+            NeedAdjust(B) =>      Adjust(B, P) = B xor P;
+            not(NeedAdjust(B)) => Adjust(B, P) = B;
+
+        ofsort Octet
+
+            forall X, Y: Block, B1, B2, B3, B4, B5, B6, B7, B8: Octet
+
+                BitString(X) =
+                    BitString(B1) ++ BitString(B2) ++
+                    BitString(B3) ++ BitString(B4),
+                BitString(Y) =
+                    BitString(B5) ++ BitString(B6) ++
+                    BitString(B7) ++ BitString(B8)
+              =>
+            PAT(Pair(X, Y)) =
+                Octet
+                  (
+                    AdjustCode(B1), AdjustCode(B2),
+                    AdjustCode(B3), AdjustCode(B4),
+                    AdjustCode(B5), AdjustCode(B6),
+                    AdjustCode(B7), AdjustCode(B8)
+                  );
+
+        ofsort Pair
+
+            forall
+                X, Y, Xc, Yc: Block,
+                B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                Bc1, Bc2, Bc3, Bc4, Bc5, Bc6, Bc7, Bc8: Octet,
+                p1,  p2,  p3,  p4,  p5,  p6,  p7,  p8: Bit
+
+                BitString(X) =
+                    BitString(B1) ++ BitString(B2) ++
+                    BitString(B3) ++ BitString(B4),
+                BitString(Y) =
+                    BitString(B5) ++ BitString(B6) ++
+                    BitString(B7) ++ BitString(B8),
+                PAT(Pair(X, Y)) = Octet(p1, p2, p3, p4, p5, p6, p7, p8),
+                Adjust(B1, Octet(0,  0,  0,  0,  0,  0,  0,  p1)) = Bc1,
+                Adjust(B2, Octet(0,  0,  0,  0,  0,  0,  p1, p2)) = Bc2,
+                Adjust(B3, Octet(0,  0,  0,  0,  0,  p1, p2, p3)) = Bc3,
+                Adjust(B4, Octet(0,  0,  0,  0,  p1, p2, p3, p4)) = Bc4,
+                Adjust(B5, Octet(0,  0,  0,  p1, p2, p3, p4, p5)) = Bc5,
+                Adjust(B6, Octet(0,  0,  p1, p2, p3, p4, p5, p6)) = Bc6,
+                Adjust(B7, Octet(0,  p1, p2, p3, p4 ,p5, p6, p7)) = Bc7,
+                Adjust(B8, Octet(p1, p2, p3, p4, p5, p6, p7, p8)) = Bc8,
+                BitString(Xc) =
+                    BitString(Bc1) ++ BitString(Bc2) ++
+                    BitString(Bc3) ++ BitString(Bc4),
+                BitString(Yc) =
+                    BitString(Bc5) ++ BitString(Bc6) ++
+                    BitString(Bc7) ++ BitString(Bc8)
+              =>
+            BYT(Pair(X, Y)) = Pair(Xc, Yc);
+
+endtype
+
+
+
+type Message is
+
+    NonEmptyString actualizedby BlockFunctions using
+
+        sortnames
+            Bool for FBool
+            Block for Element
+            Message for NonEmptyString
+
+        opnnames
+            Message for String
+
+endtype
+
+
+
+type BasicMAA is
+
+    BlockFunctions, ConditioningFunctions, Message
+
+    sorts TwoPairs, ThreePairs
+
+    opns
+
+        TwoPairs:               Pair, Pair -> TwoPairs
+        ThreePairs:             Pair, Pair, Pair -> ThreePairs
+
+        Prelude:                Pair -> ThreePairs
+        MainLoopCore:           Pair, Block, Block -> Pair
+        MainLoop:               TwoPairs, Block -> TwoPairs
+        MainLoopRepeated:       TwoPairs, Message -> TwoPairs
+        Coda:                   TwoPairs, Pair -> Block
+
+        MAA:                    Pair, Message -> Block
+
+    eqns
+
+        ofsort ThreePairs
+
+            forall
+                Key: Pair,
+                P: Octet,
+                Jc, Kc, Q,
+                J1_2, J1_4, J1_6, J1_8, J2_2, J2_4, J2_6, J2_8,
+                K1_2, K1_4, K1_5, K1_7, K1_9, K2_2, K2_4, K2_5, K2_7, K2_9,
+                H4, H5, H6, H7, H8, H9: Block
+
+                BYT(Key) = Pair(Jc, Kc),
+                PAT(Key) = P,
+                (NatNum(1) + NatNum(P)) * (NatNum(1) + NatNum(P)) =
+NatNum(Q),
+                MUL1(Jc, Jc)     = J1_2,
+                MUL1(J1_2, J1_2) = J1_4,
+                MUL1(J1_2, J1_4) = J1_6,
+                MUL1(J1_2, J1_6) = J1_8,
+                MUL2(Jc, Jc)     = J2_2,
+                MUL2(J2_2, J2_2) = J2_4,
+                MUL2(J2_2, J2_4) = J2_6,
+                MUL2(J2_2, J2_6) = J2_8,
+                XOR(J1_4, J2_4) = H4,
+                XOR(J1_6, J2_6) = H6,
+                XOR(J1_8, J2_8) = H8,
+                MUL1(Kc, Kc)     = K1_2,
+                MUL1(K1_2, K1_2) = K1_4,
+                MUL1(Kc, K1_4)   = K1_5,
+                MUL1(K1_2, K1_5) = K1_7,
+                MUL1(K1_2, K1_7) = K1_9,
+                MUL2(Kc, Kc)     = K2_2,
+                MUL2(K2_2, K2_2) = K2_4,
+                MUL2(Kc, K2_4)   = K2_5,
+                MUL2(K2_2, K2_5) = K2_7,
+                MUL2(K2_2, K2_7) = K2_9,
+                MUL2(XOR(K1_5, K2_5), Q) = H5,
+                XOR(K1_7, K2_7)          = H7,
+                XOR(K1_9, K2_9)          = H9
+              =>
+            Prelude(Key) =
+                ThreePairs
+                  (
+                    BYT(Pair(H4, H5)),
+                    BYT(Pair(H6, H7)),
+                    BYT(Pair(H8, H9))
+                  );
+
+        ofsort Pair
+
+            forall X, Y, Xa, Ya, Xb, Yb, M, E, F, G: Block
+
+                XOR(X, M) = Xa,
+                XOR(Y, M) = Ya,
+                FIX1(ADD(Ya, E)) = F,
+                FIX2(ADD(Xa, E)) = G,
+                MUL1(Xa, F)  = Xb,
+                MUL2A(Ya, G) = Yb
+              =>
+            MainLoopCore(Pair(X, Y), M, E) = Pair(Xb, Yb);
+
+        ofsort TwoPairs
+
+            forall XY, VW, XYn, VWn: Pair, M, V, W, Vn: Block
+
+                VW = Pair(V, W),
+                CYC(V) = Vn,
+                VWn = Pair(Vn, W),
+                MainLoopCore(XY, M, XOR(Vn, W)) = XYn
+              =>
+            MainLoop(TwoPairs(XY, VW), M) = TwoPairs(XYn, VWn);
+
+        ofsort TwoPairs
+
+            forall XYVW, XYVWa: TwoPairs, M: Block, MM: Message
+
+            MainLoopRepeated(XYVW, Message(M)) = MainLoop(XYVW, M);
+                MainLoop(XYVW, M) = XYVWa
+              =>
+            MainLoopRepeated(XYVW, M + MM) = MainLoopRepeated(XYVWa, MM);
+
+        ofsort Block
+
+            forall XYVW, XYVWa, XYVWb: TwoPairs, S, T, Xb, Yb: Block, VWb:
+Pair
+
+                MainLoop(XYVW, S) = XYVWa,
+                MainLoop(XYVWa, T) = XYVWb,
+                XYVWb = TwoPairs(Pair(Xb, Yb), VWb)
+              =>
+            Coda(XYVW, Pair(S, T)) = XOR(Xb, Yb);
+
+        ofsort Block
+
+            forall Key, XY, VW, ST: Pair, MM: Message, XYVWn: TwoPairs, Z:
+Block
+
+                Prelude(Key) = ThreePairs(XY, VW, ST),
+                MainLoopRepeated(TwoPairs(XY, VW), MM) = XYVWn,
+                Coda(XYVWn, ST) = Z
+              =>
+            MAA(Key, MM) = Z;
+
+endtype
+
+
+
+type SegmentedMessage is
+
+    NonEmptyString actualizedby Message using
+
+        sortnames
+            Bool for FBool
+            Message for Element
+            SegmentedMessage for NonEmptyString
+
+        opnnames
+            Segment for String
+
+endtype
+
+
+
+type AppliedMAA is
+
+    BasicMAA, SegmentedMessage, DecNatRepr
+
+    sorts AcceptableMessage
+
+    opns
+
+        256, 1000000:           -> Nat
+
+        Flatten:                SegmentedMessage -> Message
+        Normal:                 SegmentedMessage -> Bool
+        MAC:                    Pair, SegmentedMessage -> Block
+
+        MAC:                    Pair, Message -> Block
+
+        Restrict:               Message -> AcceptableMessage
+        Contents:               AcceptableMessage -> Message
+
+        Authenticator:          Pair, AcceptableMessage -> Block
+
+    eqns
+
+        ofsort Nat
+
+            256 = NatNum(Dec(2) + 5 + 6);
+
+            1000000 = NatNum(Dec(1) + 0 + 0 + 0 + 0 + 0 + 0);
+
+        ofsort Message
+
+            forall S: Message, SS: SegmentedMessage
+
+            Flatten(Segment(S)) = S;
+            Flatten(S + SS)     = S ++ Flatten(SS);
+
+        ofsort Bool
+
+            forall S: Message, SS: SegmentedMessage
+
+            Normal(Segment(S)) = Length(S) le 256;
+            Normal(S + SS)     = (Length(S) eq 256) and Normal(SS);
+
+        ofsort Block
+
+            forall Key: Pair, S: Message, SS: SegmentedMessage
+
+            MAC(Key, Segment(S)) = MAA(Key, S);
+            MAC(Key, SS + S)     = MAA(Key, MAC(Key, SS) + S);
+
+        ofsort Block
+
+            forall Key: Pair, MM: Message, SS: SegmentedMessage
+
+                MM = Flatten(SS),
+                Normal(SS)
+              =>
+            MAC(Key, MM) = MAC(Key, SS);
+
+        ofsort AcceptableMessage
+
+            forall MM: Message, Zero: Block
+
+                Length(MM) gt 1000000,
+                NatNum(Zero) = 0 of Nat
+              =>
+            Restrict(MM) = Restrict(Message(Zero));
+
+        ofsort Message
+
+            forall MM: Message
+
+                Length(MM) le 1000000
+              =>
+            Contents(Restrict(MM)) = MM;
+
+        ofsort Block
+
+            forall Key: Pair, X: AcceptableMessage
+
+            Authenticator(Key, X) = MAC(Key, Contents(X));
+
+endtype
+
+
+
+behaviour
+
+    stop
+
+
+
+endspec
+

@@ -1,0 +1,19 @@
+(* ========================================================================= *)
+(* Maximum number of nodes connected to the BUS *)
+
+def N () : natural = 3 end_def
+
+(* ========================================================================= *)
+(* Basic predicates over actions *)
+
+(* Parameterized predicates *)
+
+macro LDreq_all (id)       = EVAL_A (LDREQ !id ...)          end_macro
+macro PAreq_immediate (id) = EVAL_A (PAREQ !id !"IMMEDIATE") end_macro
+macro PAreq_fair (id)      = EVAL_A (PAREQ !id !"FAIR")      end_macro
+macro PDind_sgap (id)      = EVAL_A (PDIND !id !"SUBACTGAP") end_macro
+macro LDcon_all (id)       = EVAL_A (LDCON !id ...)          end_macro
+macro PAcon_won (id)       = EVAL_A (PACON !id !"WON")       end_macro
+
+(* ========================================================================= *)
+

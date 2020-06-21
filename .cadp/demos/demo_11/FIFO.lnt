@@ -1,0 +1,55 @@
+module FIFO (TYPES) is
+
+-------------------------------------------------------------------------------
+
+type Fifo is
+   -- this Fifo is actually a one-place queue
+   {},
+   Cons (j: Host_Job)
+   with "==", "!="
+end type
+
+-------------------------------------------------------------------------------
+
+function is_empty (f: Fifo) : Bool is
+   return (f == {})
+end function
+
+-------------------------------------------------------------------------------
+
+function head (f: Fifo) : Host_Job is
+   require f != {};
+   case f in
+   var j:Host_Job in
+      Cons (j) -> return j
+    | {} -> raise UNEXPECTED
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function free_space (f: Fifo) : Bool is
+   return (f == {})
+end function
+
+-------------------------------------------------------------------------------
+
+function enqueue (f: Fifo, j: Host_Job) : Fifo is
+   case f in
+      {} -> return Cons (j)
+    | Cons (any Host_Job) -> return f -- to avoid a warning from lnt2lotos
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function dequeue (f: Fifo) : Fifo is
+   require f != {};
+   use f;
+   return {}
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

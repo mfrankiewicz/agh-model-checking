@@ -1,0 +1,4 @@
+
+(* generating the LTS *)
+"lts.bcg" = generation of "hubble.lotos";
+

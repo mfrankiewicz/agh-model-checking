@@ -1,0 +1,998 @@
+(****************************************************************
+  Compiled from @(#)cfs.nw	4.4 - 98/02/19
+  Charles Pecheur, INRIA Rhone-Alpes
+****************************************************************)
+
+specification CfsSystem [cfsreq,cfsans,send,rcv,read,write] : noexit
+
+  
+  
+
+
+  
+
+type SiteType is Boolean 
+sorts Site
+opns  site1(*! constructor *),
+  site2(*! constructor *),
+  site3(*! constructor *): -> Site
+  First , Last : -> Site
+  Succ , Pred : Site -> Site
+  _eq_ , _ne_ : Site , Site -> Bool 
+  is_site1 , is_site2 , is_site3 : Site -> Bool 
+eqns forall 
+   x , y : Site
+ofsort Site
+  First = site1 ; 
+  Last = site3 ; 
+  Succ ( site1 ) = site2 ;
+  Succ ( site2 ) = site3 ;
+  Pred ( site2 ) = site1 ;
+  Pred ( site3 ) = site2 ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_site1 ( x ) = x eq site1 ; 
+  Is_site2 ( x ) = x eq site2 ; 
+  Is_site3 ( x ) = x eq site3 ; 
+endtype
+
+
+
+  
+
+type ValType is Boolean 
+sorts Val
+opns  val1(*! constructor *),
+  val2(*! constructor *): -> Val
+  First , Last : -> Val
+  Succ , Pred : Val -> Val
+  _eq_ , _ne_ : Val , Val -> Bool 
+  is_val1 , is_val2 : Val -> Bool 
+eqns forall 
+   x , y : Val
+ofsort Val
+  First = val1 ; 
+  Last = val2 ; 
+  Succ ( val1 ) = val2 ;
+  Pred ( val2 ) = val1 ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_val1 ( x ) = x eq val1 ; 
+  Is_val2 ( x ) = x eq val2 ; 
+endtype
+
+
+
+  
+
+type CfsCallType is Boolean 
+sorts CfsCall
+opns  read(*! constructor *),
+  beginwrite(*! constructor *),
+  endwrite(*! constructor *): -> CfsCall
+  First , Last : -> CfsCall
+  Succ , Pred : CfsCall -> CfsCall
+  _eq_ , _ne_ : CfsCall , CfsCall -> Bool 
+  is_read , is_beginwrite , is_endwrite : CfsCall -> Bool 
+eqns forall 
+   x , y : CfsCall
+ofsort CfsCall
+  First = read ; 
+  Last = endwrite ; 
+  Succ ( read ) = beginwrite ;
+  Succ ( beginwrite ) = endwrite ;
+  Pred ( beginwrite ) = read ;
+  Pred ( endwrite ) = beginwrite ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_read ( x ) = x eq read ; 
+  Is_beginwrite ( x ) = x eq beginwrite ; 
+  Is_endwrite ( x ) = x eq endwrite ; 
+endtype
+
+
+
+  
+
+type MessageType is Boolean 
+sorts Message
+opns  readrq(*! constructor *),
+  readok(*! constructor *),
+  writerq(*! constructor *),
+  writeok(*! constructor *),
+  invalidate(*! constructor *),
+  firstmaster(*! constructor *): -> Message
+  First , Last : -> Message
+  Succ , Pred : Message -> Message
+  _eq_ , _ne_ : Message , Message -> Bool 
+  is_readrq , is_readok , is_writerq , is_writeok , is_invalidate , is_firstmaster : Message -> Bool 
+eqns forall 
+   x , y : Message
+ofsort Message
+  First = readrq ; 
+  Last = firstmaster ; 
+  Succ ( readrq ) = readok ;
+  Succ ( readok ) = writerq ;
+  Succ ( writerq ) = writeok ;
+  Succ ( writeok ) = invalidate ;
+  Succ ( invalidate ) = firstmaster ;
+  Pred ( readok ) = readrq ;
+  Pred ( writerq ) = readok ;
+  Pred ( writeok ) = writerq ;
+  Pred ( invalidate ) = writeok ;
+  Pred ( firstmaster ) = invalidate ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_readrq ( x ) = x eq readrq ; 
+  Is_readok ( x ) = x eq readok ; 
+  Is_writerq ( x ) = x eq writerq ; 
+  Is_writeok ( x ) = x eq writeok ; 
+  Is_invalidate ( x ) = x eq invalidate ; 
+  Is_firstmaster ( x ) = x eq firstmaster ; 
+endtype
+
+
+
+  
+
+type StateType is Boolean 
+sorts State
+opns  master(*! constructor *),
+  writing(*! constructor *),
+  invalid(*! constructor *),
+  valid(*! constructor *),
+  waitread(*! constructor *),
+  waitwrite(*! constructor *),
+  flushrqs(*! constructor *),
+  forwardrqs(*! constructor *),
+  invalwriting(*! constructor *),
+  invalinvalid(*! constructor *): -> State
+  First , Last : -> State
+  Succ , Pred : State -> State
+  _eq_ , _ne_ : State , State -> Bool 
+  is_master , is_writing , is_invalid , is_valid , is_waitread , is_waitwrite , is_flushrqs , is_forwardrqs , is_invalwriting , is_invalinvalid : State -> Bool 
+eqns forall 
+   x , y : State
+ofsort State
+  First = master ; 
+  Last = invalinvalid ; 
+  Succ ( master ) = writing ;
+  Succ ( writing ) = invalid ;
+  Succ ( invalid ) = valid ;
+  Succ ( valid ) = waitread ;
+  Succ ( waitread ) = waitwrite ;
+  Succ ( waitwrite ) = flushrqs ;
+  Succ ( flushrqs ) = forwardrqs ;
+  Succ ( forwardrqs ) = invalwriting ;
+  Succ ( invalwriting ) = invalinvalid ;
+  Pred ( writing ) = master ;
+  Pred ( invalid ) = writing ;
+  Pred ( valid ) = invalid ;
+  Pred ( waitread ) = valid ;
+  Pred ( waitwrite ) = waitread ;
+  Pred ( flushrqs ) = waitwrite ;
+  Pred ( forwardrqs ) = flushrqs ;
+  Pred ( invalwriting ) = forwardrqs ;
+  Pred ( invalinvalid ) = invalwriting ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_master ( x ) = x eq master ; 
+  Is_writing ( x ) = x eq writing ; 
+  Is_invalid ( x ) = x eq invalid ; 
+  Is_valid ( x ) = x eq valid ; 
+  Is_waitread ( x ) = x eq waitread ; 
+  Is_waitwrite ( x ) = x eq waitwrite ; 
+  Is_flushrqs ( x ) = x eq flushrqs ; 
+  Is_forwardrqs ( x ) = x eq forwardrqs ; 
+  Is_invalwriting ( x ) = x eq invalwriting ; 
+  Is_invalinvalid ( x ) = x eq invalinvalid ; 
+endtype
+
+
+  type		StateOpns is stateType
+  opns		istransient : State -> Bool
+                  ismaster : State -> Bool
+  eqns forall s : State
+  ofsort Bool
+    istransient(flushrqs) = true ;
+    istransient(forwardrqs) = true ;
+    istransient(invalinvalid) = true ;
+    istransient(invalwriting) = true ;
+    istransient(s) = false ;
+
+    ismaster(master) = true ;
+    ismaster(writing) = true ;
+    ismaster(s) = false ;
+  endtype
+
+
+   
+
+type SiteSetType is SiteType , Boolean, NaturalNumber 
+sorts SiteSet
+opns
+  cset (*! constructor *) : bool , bool , bool -> SiteSet
+  {}, {*} : -> SiteSet
+  insert, remove : Site , SiteSet -> SiteSet
+  min, max : SiteSet -> Site
+  butmin, butmax : SiteSet -> SiteSet
+  _isin_, _notin_ : Site , SiteSet -> Bool
+  _union_, _ints_, _minus_ : SiteSet , SiteSet -> SiteSet
+  _eq_, _ne_, _includes_, _issubsetof_ : SiteSet , SiteSet -> Bool
+  card: SiteSet -> Nat
+eqns forall 
+  x, y : SiteSet ,
+  x_1 , x_2 , x_3 , y_1 , y_2 , y_3 : Bool,
+  x_0 : Site
+ofsort SiteSet
+  {} = cset( false , false , false ) ;
+  {*} = cset( true , true , true ) ;
+  x_0 = site1 =>
+    insert( x_0 , cset( x_1 , x_2 , x_3 )) = cset( true , x_2 , x_3 ) ;
+  x_0 = site2 =>
+    insert( x_0 , cset( x_1 , x_2 , x_3 )) = cset( x_1 , true , x_3 ) ;
+  x_0 = site3 =>
+    insert( x_0 , cset( x_1 , x_2 , x_3 )) = cset( x_1 , x_2 , true ) ;
+  x_0 = site1 =>
+    remove( x_0 , cset( x_1 , x_2 , x_3 )) = cset( false , x_2 , x_3 ) ;
+  x_0 = site2 =>
+    remove( x_0 , cset( x_1 , x_2 , x_3 )) = cset( x_1 , false , x_3 ) ;
+  x_0 = site3 =>
+    remove( x_0 , cset( x_1 , x_2 , x_3 )) = cset( x_1 , x_2 , false ) ;
+ofsort Site
+  min(cset( true , x_2 , x_3 )) = site1 ;
+  min(cset( false , true , x_3 )) = site2 ;
+  min(cset( false , false , true )) = site3 ;
+  max(cset( true , false , false )) = site1 ;
+  max(cset( x_1 , true , false )) = site2 ;
+  max(cset( x_1 , x_2 , true )) = site3 ;
+ofsort SiteSet
+  butmin(x) = remove(min(x), x) ;
+  butmax(x) = remove(max(x), x) ;
+ofsort Bool
+  x_0 = site1 =>
+    x_0 isin cset( x_1 , x_2 , x_3 ) = x_1 ;
+  x_0 = site2 =>
+    x_0 isin cset( x_1 , x_2 , x_3 ) = x_2 ;
+  x_0 = site3 =>
+    x_0 isin cset( x_1 , x_2 , x_3 ) = x_3 ;
+  x_0 notin x = not (x_0 isin x);
+ofsort SiteSet
+  cset( x_1 , x_2 , x_3 ) union cset( y_1 , y_2 , y_3 ) = cset( x_1 or y_1 , x_2 or y_2 , x_3 or y_3 ) ;
+  cset( x_1 , x_2 , x_3 ) ints cset( y_1 , y_2 , y_3 ) = cset( x_1 and y_1 , x_2 and y_2 , x_3 and y_3 ) ;
+  cset( x_1 , x_2 , x_3 ) minus cset( y_1 , y_2 , y_3 ) = cset( x_1 and not( y_1 ) , x_2 and not( y_2 ) , x_3 and not( y_3 ) ) ;
+ofsort Bool
+  cset( x_1 , x_2 , x_3 ) issubsetof cset( y_1 , y_2 , y_3 ) = ( x_1 implies y_1 ) and ( x_2 implies y_2 ) and ( x_3 implies y_3 ) ;
+  x includes y = y issubsetof x ;
+  cset( x_1 , x_2 , x_3 ) eq cset( y_1 , y_2 , y_3 ) = ( x_1 eq y_1 ) and ( x_2 eq y_2 ) and ( x_3 eq y_3 ) ;
+  x ne y = not(x eq y) ;
+ofsort Nat  x eq {} =>
+    card(x) = 0 ;
+  x ne {} =>
+    card(x) = succ(card(butmin(x))) ;
+endtype 
+
+
+
+  
+
+type PktType is SiteType , Messagetype , Boolean
+sorts Pkt
+opns 
+  pkt(*! constructor *): Site , Message -> Pkt
+  site : Pkt -> Site
+  msg : Pkt -> Message
+  Set_site : Site , Pkt -> Pkt
+  Set_msg : Message , Pkt -> Pkt
+  _eq_ , _ne_ : Pkt , Pkt -> Bool 
+eqns forall
+   x , y : Pkt ,
+  x_1 , y_1 : Site ,
+  x_2 , y_2 : Message
+ofsort Site
+  site ( pkt ( x_1 , x_2 ) ) = x_1 ; 
+ofsort Message
+  msg ( pkt ( x_1 , x_2 ) ) = x_2 ; 
+ofsort Pkt
+  Set_site ( y_1 , pkt ( x_1 , x_2 ) ) = pkt ( y_1 , x_2 ) ; 
+  Set_msg ( y_2 , pkt ( x_1 , x_2 ) ) = pkt ( x_1 , y_2 ) ; 
+ofsort Bool
+  x_1 eq y_1 ,
+  x_2 eq y_2 =>
+    pkt ( x_1 , x_2 ) eq pkt ( y_1 , y_2 ) = true ;
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+endtype
+
+
+  
+
+type PktListType is PktType , Boolean, NaturalNumber
+   sorts PktList (*! implementedby PKTLIST *)
+   opns
+      <> (*! constructor *) : -> PktList
+      _+_ (*! constructor *) : Pkt , PktList -> PktList
+      String : Pkt -> PktList
+      _+_ : PktList , Pkt -> PktList
+      _+_: Pkt , Pkt -> PktList
+      _++_ : PktList , PktList -> PktList
+      Reverse : PktList -> PktList
+      Length : PktList -> Nat
+      First,Last: PktList -> Pkt
+      ButFirst,ButLast: PktList -> PktList
+      nth: PktList , Nat -> Pkt
+      SubStr: PktList , Nat, Nat -> PktList
+      Remove: Pkt , PktList -> PktList
+      _IsIn_, _NotIn_: Pkt , PktList -> Bool
+      _IsPrefixOf_, _IsSuffixOf_,
+      _Includes_, _IsSubStrOf_: PktList , PktList -> Bool
+      _eq_, 
+      _ne_ : PktList , PktList -> Bool
+   eqns
+      forall x, y : PktList , 
+        x_1, y_1 : Pkt , 
+        x_0, y_0 : Nat,
+        a : Bool
+      ofsort PktList
+         String(x_1) = x_1 + <>;
+         <> + x_1 = x_1 + <>;
+         (x_1 + x) + y_1 = x_1 + (x + y_1);
+         <> ++ x = x;
+         (x_1 + x) ++ y = x_1 + (x ++ y);
+         Reverse (<>) = <>;
+         Reverse (x_1 + x) = Reverse (x) + x_1;
+
+      ofsort Nat
+         Length (<> of PktList ) = 0;
+         Length (x_1 + x) = Succ (Length (x));
+
+      ofsort Bool
+
+         <> of PktList eq <> of PktList = true;
+         <> eq (x_1 + x) = false;
+         (x_1 + x) eq <> = false;
+         x_1 eq y_1 => 
+            (x_1 + x) eq (y_1 + y) = x eq y;
+         x_1 ne y_1 =>
+            (x_1 + x) eq (y_1 + y) = false;
+
+         x ne y = not (x eq y)
+
+ofsort Pkt
+  First (x_1 + x) = x_1 ;
+  Last (x_1 + <>) = x_1 ;
+
+  Last (x_1 + x) = Last (x) ;
+
+  nth (x_1 + x, 0) = x_1 ;
+  nth (x_1 + x, Succ (y_0)) = nth (x, y_0) ;
+ofsort PktList
+  x_1 + y_1 = x_1 + (y_1 + <>) ;
+  ButFirst (x_1 + x) = x ;
+  ButLast (x_1 + <>) = <> ;
+
+  ButLast (x_1 + x) = x_1 + ButLast (x) ;
+
+  SubStr (x, 0, 0) = <> ;
+  SubStr (x_1 + x, 0, Succ(y_0)) = x_1 + SubStr (x, 0, y_0) ;
+  SubStr (x_1 + x, Succ(x_0), y_0) = SubStr (x, x_0, y_0) ;
+  Remove (x_1, <>) = <> ;
+  x_1 eq y_1 =>
+    Remove (x_1, y_1 + x) = Remove(x_1, x) ;
+
+    Remove (x_1, y_1 + x) = y_1 + Remove (x_1, x) ;
+ofsort Bool
+  x_1 IsIn <> = false ;
+  x_1 eq y_1 =>
+    x_1 IsIn (y_1 + x) = true ;
+
+    x_1 IsIn (y_1 + x) = x_1 IsIn x ;
+  x_1 NotIn x = not (x_1 IsIn x) ;
+  <> IsPrefixOf y = true ;
+  (x_1 + x) IsPrefixOf <> = false ;
+  x_1 eq y_1 =>
+    (x_1 + x) IsPrefixOf (y_1 + y) = x IsPrefixOf y ;
+
+    (x_1 + x) IsPrefixOf (y_1 + y) = false ;
+  x IsSuffixOf y = Reverse(x) IsPrefixOf Reverse(y) ;
+  x Includes <> = true ;
+  <> Includes (y_1 + y) = false ;
+  y IsPrefixOf (x_1 + x) =>
+    (x_1 + x) Includes y = true ;
+
+    (x_1 + x) Includes y = x Includes y ;
+  x IsSubStrOf y = y Includes x ;
+
+endtype
+
+
+
+   
+
+type ValArrayType is ValType , SiteType , Boolean, NaturalNumber 
+sorts ValArray
+opns
+  array (*! constructor *) : Val , Val , Val -> ValArray
+  fill : Val -> ValArray
+  set : Site , Val , ValArray -> ValArray
+  get : Site , ValArray -> Val
+  _eq_, _ne_ : ValArray , ValArray -> Bool 
+eqns forall 
+  x, y : ValArray ,
+  x_1 , x_2 , x_3 , y_1 , y_2 , y_3 : Val ,
+  x_0 : Site
+ofsort ValArray
+  fill(x_1) = array( x_1 , x_1 , x_1 ) ;
+  x_0 = site1 =>
+    set( x_0 , y_1 , array( x_1 , x_2 , x_3 )) = array( y_1 , x_2 , x_3 ) ;
+  x_0 = site2 =>
+    set( x_0 , y_2 , array( x_1 , x_2 , x_3 )) = array( x_1 , y_2 , x_3 ) ;
+  x_0 = site3 =>
+    set( x_0 , y_3 , array( x_1 , x_2 , x_3 )) = array( x_1 , x_2 , y_3 ) ;
+ofsort Val
+  x_0 = site1 =>
+    get( x_0 , array( x_1 , x_2 , x_3 )) = x_1 ;
+  x_0 = site2 =>
+    get( x_0 , array( x_1 , x_2 , x_3 )) = x_2 ;
+  x_0 = site3 =>
+    get( x_0 , array( x_1 , x_2 , x_3 )) = x_3 ;
+ofsort Bool 
+  array( x_1 , x_2 , x_3 ) eq array( y_1 , y_2 , y_3 ) =
+    ( x_1 eq y_1 ) and ( x_2 eq y_2 ) and ( x_3 eq y_3 ) ;
+  x ne y = not(x eq y) ;
+endtype 
+
+
+
+  type		ConstantsType is SiteSetType, PktListType, ValArrayType
+  opns		nocopies : -> SiteSet
+  		norqs : -> PktList
+  		init : -> Val
+  		init : -> ValArray
+  eqns
+  ofsort SiteSet
+    nocopies = {} ;
+  ofsort PktList
+    norqs = <> ;
+  ofsort Val
+    init = val1 ;
+  ofsort ValArray
+    init = fill(init of Val) ;
+  endtype
+
+
+
+library
+Boolean,NaturalNumber
+endlib
+
+behaviour
+
+  
+  (
+    GeneralUser [read,write,cfsreq,cfsans] (site1)
+    |||
+    GeneralUser [read,write,cfsreq,cfsans] (site2)
+    |||
+    GeneralUser [read,write,cfsreq,cfsans] (site3) 
+  ) 
+  |[read,write,cfsreq,cfsans]|
+  ( 
+    ( 
+      Initsite [cfsreq,cfsans,send,rcv] (site1)
+      |||
+      Initsite [cfsreq,cfsans,send,rcv] (site2)
+      |||
+      Initsite [cfsreq,cfsans,send,rcv] (site3)
+    ) 
+    |[send,rcv]|
+    ( 
+      ( rcv ?s1:Site !firstmaster ?s2:Site;
+        ( 
+        OutputCell [send,rcv] (site1)
+  	|||
+  	OutputCell [send,rcv] (site2)
+  	|||
+  	OutputCell [send,rcv] (site3)
+        )
+      )
+      |[send]|
+      InitMemory [read,write,send]
+    )
+  )
+
+where
+
+    
+  process Site [cfsreq,cfsans,send,rcv] 
+    ( s : Site, 
+      state : State,
+      copies : SiteSet,
+      rqs : PktList ) 
+    : noexit :=
+
+    ( [(state eq master) or (state eq valid) or (state eq invalid)] ->
+      cfsreq !s !read;
+      ( [state eq master] ->
+        cfsans !s !read;
+        Site [cfsreq,cfsans,send,rcv] (s,master,copies,rqs)
+
+        []
+
+        [state eq valid] ->
+        cfsans !s !read;
+        Site [cfsreq,cfsans,send,rcv] (s,valid,copies,rqs)
+
+        []
+
+        [state eq invalid] ->
+        ( send !s !readrq !s;
+          Site [cfsreq,cfsans,send,rcv] (s,waitread,copies,rqs)
+          []
+          rcv !s !firstmaster !s;
+          cfsans !s !read;
+          Site [cfsreq,cfsans,send,rcv] (s,master,copies,rqs) ) ) )
+
+    []
+
+    ( [(state eq master) or (state eq valid) or (state eq invalid)] ->
+      cfsreq !s !beginwrite;
+      ( [state eq master] ->
+        cfsans !s !beginwrite;
+        Site [cfsreq,cfsans,send,rcv] (s,invalwriting,copies,rqs)
+
+        []
+
+        [state eq valid] ->
+        send !s !writerq !s;
+        Site [cfsreq,cfsans,send,rcv] (s,waitwrite,copies,rqs)
+
+        []
+
+        [state eq invalid] ->
+        ( send !s !writerq !s;
+          Site [cfsreq,cfsans,send,rcv] (s,waitwrite,copies,rqs)
+          []
+          rcv !s !firstmaster !s;
+          cfsans !s !beginwrite;
+          Site [cfsreq,cfsans,send,rcv] (s,writing,copies,rqs) ) ) )
+
+    []
+
+    ( [state eq writing] ->
+      cfsreq !s !endwrite;
+      cfsans !s !endwrite;
+      Site [cfsreq,cfsans,send,rcv] (s,flushrqs,copies,rqs) )
+
+    []
+
+    ( [(state eq master) or (state eq writing)] ->
+      rcv !s !readrq ?s1:Site;
+      ( [state eq master] ->
+        send !s !readok !s1;
+        Site [cfsreq,cfsans,send,rcv] (s,master,insert(s1,copies),rqs)
+
+        []
+
+        [state eq writing] ->
+        Site [cfsreq,cfsans,send,rcv]
+          (s,writing, copies, rqs+pkt(s1,readrq)) ) )
+
+    []
+
+    ( [(state eq master) or (state eq writing)] ->
+      rcv !s !writerq ?s1:Site;
+      ( [state eq master] ->
+        send !s !writeok !s1;
+        Site [cfsreq,cfsans,send,rcv] (s,invalinvalid,copies,rqs)
+
+        []
+
+        [state eq writing] ->
+        Site [cfsreq,cfsans,send,rcv]
+          (s,writing, copies, rqs+pkt(s1,writerq)) ) )
+
+    []
+
+    ( [state eq waitread] ->
+      rcv !s !readok !s;
+      cfsans !s !read;
+      Site [cfsreq,cfsans,send,rcv] (s,valid,copies,rqs) )
+
+    []
+
+    ( [state eq waitwrite] ->
+      rcv !s !writeok !s;
+      cfsans !s !beginwrite;
+      Site [cfsreq,cfsans,send,rcv] (s,writing,copies,rqs) )
+
+    []
+
+    ( [ (state eq valid) or 
+        (state eq master) or 
+        (state eq writing) or 
+        (state eq waitwrite) or
+        (state eq waitread) or
+        (state eq invalid)] ->
+      rcv !s !invalidate !s;
+      ( [state eq valid] ->
+        Site [cfsreq,cfsans,send,rcv] (s,invalid,copies,rqs)
+
+        [] 
+
+        [state ne valid] ->
+        Site [cfsreq,cfsans,send,rcv] (s,state,copies,rqs) ) )
+
+    []
+
+    ( [state eq flushrqs] ->
+      ( [rqs ne norqs] ->
+        ( [msg(first(rqs)) eq readrq] ->
+          send !s !readok !site(first(rqs));
+          Site [cfsreq,cfsans,send,rcv] 
+            (s, flushrqs, insert(site(first(rqs)),copies), butfirst(rqs))
+
+          []
+
+          [msg(first(rqs)) eq writerq] ->
+          send !s !writeok !site(first(rqs));
+          Site [cfsreq,cfsans,send,rcv] (s,forwardrqs,copies,butfirst(rqs)) )
+
+        []
+
+        [rqs eq norqs] ->
+        Site [cfsreq,cfsans,send,rcv] (s,master,copies,rqs) ) )
+
+    []
+
+    ( [state eq forwardrqs] ->
+      ( [copies ne nocopies] ->
+        send !s !invalidate !min(copies);
+        Site [cfsreq,cfsans,send,rcv] (s,forwardrqs,butmin(copies),rqs)
+
+        []
+
+        [copies eq nocopies] ->
+        ( [rqs ne norqs] ->
+          send !s !msg(first(rqs)) !site(first(rqs));
+          Site [cfsreq,cfsans,send,rcv] (s,forwardrqs,copies,butfirst(rqs))
+
+          []
+
+          [rqs eq norqs] -> 
+          Site [cfsreq,cfsans,send,rcv] (s,invalid,copies,rqs) ) ) )
+
+    []
+
+    ( [state eq invalwriting] ->
+      ( [copies ne nocopies] ->
+        send !s !invalidate !min(copies);
+        Site [cfsreq,cfsans,send,rcv] (s,invalwriting,butmin(copies),rqs)
+
+        []
+
+        [copies eq nocopies] -> 
+        Site [cfsreq,cfsans,send,rcv] (s,writing,copies,rqs) ) )
+
+    []
+
+    ( [state eq invalinvalid] ->
+      ( [copies ne nocopies] ->
+        send !s !invalidate !min(copies);
+        Site [cfsreq,cfsans,send,rcv] (s,invalinvalid,butmin(copies),rqs)
+
+        []
+
+        [copies eq nocopies] ->
+        Site [cfsreq,cfsans,send,rcv] (s,invalid,copies,rqs) ) )
+
+  endproc
+
+    
+  process InitSite [cfsreq,cfsans,send,rcv] ( s : Site ) : noexit :=
+
+    Site [cfsreq,cfsans,send,rcv] (s,invalid,nocopies,norqs)
+
+  endproc
+
+    
+  process InitMaster [cfsreq,cfsans,send,rcv] ( s : Site ) : noexit :=
+
+    Site [cfsreq,cfsans,send,rcv] (s,master,nocopies,norqs)
+
+  endproc
+
+
+  process OutputCell [send,rcv] (s : Site) : noexit :=
+
+    send !s ?m:Message ?s1:Site;
+    rcv ?dest:Site !m !s1;
+    OutputCell [send,rcv] (s)
+
+  endproc
+
+
+  process Memory [read,write,ctrl] (mems: ValArray) : noexit :=
+
+    ( choice s:Site []
+      read !s !get(s, mems) ;
+      Memory [read,write,ctrl] (mems) )
+
+    []
+
+    write ?s:Site ?v:Val;
+    Memory [read,write,ctrl] (set(s, v, mems))
+
+    []
+
+    ctrl ?s1:Site ?m:Message ?s2:Site;
+    ( [(m eq readok) or (m eq writeok)] ->
+      Memory [read,write,ctrl] (set(s2, get(s1, mems), mems))
+      []
+      [(m ne readok) and (m ne writeok)] ->
+      Memory [read,write,ctrl] (mems) )
+
+  endproc
+
+  process InitMemory [read,write,send] : noexit :=
+      Memory [read,write,send] (init of ValArray)
+  endproc
+
+
+  process MasterSiteProxy [send,rcv] (s:Site) : noexit :=
+
+    send !s !readrq !s;
+    MasterSiteProxy [send,rcv] (s)
+
+    []
+
+    send !s !writerq !s;
+    MasterSiteProxy [send,rcv] (s)
+
+    []
+
+    rcv !s !readok !s;
+    MasterSiteProxy [send,rcv] (s)
+
+    []
+
+    rcv !s !writeok !s;
+    MasterSiteProxy [send,rcv] (s)
+
+    []
+
+    rcv !s !invalidate !s;
+    MasterSiteProxy [send,rcv] (s)
+
+  endproc
+
+  process SlaveSiteProxy [send,rcv] (s:Site, other:Site) : noexit :=
+
+    rcv !s !readrq !other;
+    ( send !s !readok !other;
+      SlaveSiteProxy [send,rcv] (s,other)
+      []
+      send !s !readrq !other;
+      SlaveSiteProxy [send,rcv] (s,other) )
+
+    []
+
+    rcv !s !writerq !other;
+    ( send !s !writeok !other;
+      SlaveSiteProxy [send,rcv] (s,other)
+      []
+      send !s !writerq !other;
+      SlaveSiteProxy [send,rcv] (s,other) )
+
+    []
+
+    send !s !invalidate !other;
+    SlaveSiteProxy [send,rcv] (s,other)
+
+  endproc
+
+
+  process Site3Proxy [send,rcv] 
+      (s:Site, other1:Site, other2:Site) : noexit :=
+    MasterSiteProxy [send,rcv] (s)
+    |||
+    SlaveSiteProxy [send,rcv] (s,other1)
+    |||
+    SlaveSiteProxy [send,rcv] (s,other2)
+  endproc
+
+
+  process SlaveSendProxy [send] (s:Site) : noexit :=
+
+    send !s !readrq !s;
+    SlaveSendProxy [send] (s)
+
+    []
+
+    send !s !writerq !s;
+    SlaveSendProxy [send] (s)
+
+  endproc
+
+  process MasterSendProxy [send] (s:Site, other:Site) : noexit :=
+
+    send !s !readok !other;
+    MasterSendProxy [send] (s,other)
+
+    []
+
+    send !s !writeok !other;
+    MasterSendProxy [send] (s,other)
+
+    []
+
+    send !s !readrq !other;
+    MasterSendProxy [send] (s,other)
+
+    []
+
+    send !s !writerq !other;
+    MasterSendProxy [send] (s,other)
+
+    []
+
+    send !s !invalidate !other;
+    MasterSendProxy [send] (s,other)
+
+  endproc
+
+
+  process RcvProxy [rcv] (s:Site, other:Site) : noexit :=
+
+    rcv !other !readrq ?z:site;
+    RcvProxy [rcv] (s,other)
+
+    []
+
+    rcv !other !writerq ?z:site;
+    RcvProxy [rcv] (s,other)
+
+    []
+
+    rcv !other !readok !other;
+    RcvProxy [rcv] (s,other)
+
+    []
+
+    rcv !other !writeok !other;
+    RcvProxy [rcv] (s,other)
+
+    []
+
+    rcv !other !readrq !other;
+    RcvProxy [rcv] (s,other)
+
+    []
+
+    rcv !other !writerq !other;
+    RcvProxy [rcv] (s,other)
+
+    []
+
+    rcv !other !invalidate !other;
+    RcvProxy [rcv] (s,other)
+
+  endproc
+
+
+  process Channel2Proxy [send,rcv] 
+    (s:Site, other:Site) : noexit :=
+    SlaveSendProxy [send] (s)
+    |||
+    MasterSendProxy [send] (s,other)
+    |||
+    RcvProxy [rcv] (s,other)
+  endproc
+
+  process Channel3Proxy [send,rcv] 
+    (s:Site, other1:Site, other2:Site) : noexit :=
+    SlaveSendProxy [send] (s)
+    |||
+    MasterSendProxy [send] (s,other1)
+    |||
+    MasterSendProxy [send] (s,other2)
+    |||
+    RcvProxy [rcv] (s,other1)
+    |||
+    RcvProxy [rcv] (s,other2)
+  endproc
+
+
+  process GeneralUser [read,write,cfsreq,cfsans] (s:Site) : noexit :=
+
+    cfsreq !s !read;
+    cfsans !s !read;
+    ReadingUser [read,write,cfsreq,cfsans] (s)
+
+    []
+
+    cfsreq !s !beginwrite;
+    cfsans !s !beginwrite;
+    WritingUser [read,write,cfsreq,cfsans] (s)
+
+  endproc
+
+  process ReadingUser [read,write,cfsreq,cfsans] (s:Site) : noexit :=
+
+    read !s ?v:Val;
+    ReadingUser [read,write,cfsreq,cfsans] (s)
+
+    []
+
+    GeneralUser [read,write,cfsreq,cfsans] (s)
+
+  endproc
+
+  process WritingUser [read,write,cfsreq,cfsans] (s:Site) : noexit :=
+
+    read !s ?v:Val;
+    WritingUser [read,write,cfsreq,cfsans] (s)
+
+    []
+    write !s ?v:Val;
+    WritingUser [read,write,cfsreq,cfsans] (s)
+
+    []
+
+    cfsreq !s !endwrite;
+    cfsans !s !endwrite;
+    GeneralUser [read,write,cfsreq,cfsans] (s)
+
+  endproc
+
+
+  process Site2with13 [cfsreq,cfsans,send,rcv] : noexit :=
+    InitSite [cfsreq,cfsans,send,rcv] (site2)
+    |[send,rcv]|
+    Site3Proxy [send,rcv] (site2,site1,site3)
+  endproc
+
+  process Site3with12 [cfsreq,cfsans,send,rcv] : noexit :=
+    InitSite [cfsreq,cfsans,send,rcv] (site3)
+    |[send,rcv]|
+    Site3Proxy [send,rcv] (site3,site1,site2)
+  endproc
+
+
+  process Master1with23 [cfsreq,cfsans,send,rcv] : noexit :=
+    InitMaster [cfsreq,cfsans,send,rcv] (site1)
+    |[send,rcv]|
+    Site3Proxy [send,rcv] (site1,site2,site3)
+  endproc
+
+
+  process OutputCell1with23 [send,rcv] : noexit :=
+    OutputCell [send,rcv] (site1)
+    |[send,rcv]|
+    Channel3Proxy [send,rcv] (site1,site2,site3)
+  endproc
+
+  process OutputCell2with13 [send,rcv] : noexit :=
+    OutputCell [send,rcv] (site2)
+    |[send,rcv]|
+    Channel3Proxy [send,rcv] (site2,site1,site3)
+  endproc
+
+  process OutputCell3with12 [send,rcv] : noexit :=
+    OutputCell [send,rcv] (site3)
+    |[send,rcv]|
+    Channel3Proxy [send,rcv] (site3,site1,site2)
+  endproc
+
+endspec
+

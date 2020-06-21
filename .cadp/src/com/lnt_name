@@ -1,0 +1,82 @@
+#! /bin/sh
+
+##############################################################################
+#				L N T . O P E N
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module		: lnt_name
+#   Auteurs		: Wendelin SERWE et Hubert GARAVEL
+#   Version		: 1.10
+#   Date		: 2018/12/04 22:11:46
+##############################################################################
+
+COMMAND=`basename $0`
+
+SUFFIX=""
+# la valeur de $SUFFIX pourra etre modifiee par les options -lnt et -sig
+
+case `$CADP/com/arch` in
+	win32 )
+		# sous Windows/Cygwin, le systeme de fichiers ne distingue pas
+		# entre majuscules et minuscules : on force donc l'option -lib
+		OPTION_LIBRARY=1
+		;;
+	* )
+		OPTION_LIBRARY=0
+    		;;
+esac
+
+# -----------------------------------------------------------------------------
+
+while true
+do
+	if [ $# -lt 1 ]
+	then
+		echo "$COMMAND: missing module name argument"
+		exit 1
+	fi
+	case "$1" in
+		-f )
+			SUFFIX=".f"
+			shift
+			;;
+		-t )
+			SUFFIX=".t"
+			shift
+			;;
+		-lib )
+			OPTION_LIBRARY=1
+			SUFFIX=".lib"
+			shift
+			;;
+		-lnt )
+			SUFFIX=".lnt"
+			shift
+			;;
+		-sig )
+			SUFFIX=".sig"
+			shift
+			;;
+		* )
+			break
+			;;
+	esac
+done
+
+# -----------------------------------------------------------------------------
+
+MODULE=`"$CADP"/src/com/cadp_basename "$1" $SUFFIX`
+
+if [ "$OPTION_LIBRARY" = 1 ]
+then
+	# transformation du nom de fichier en majuscules 
+	echo `echo $MODULE | tr '[:lower:]' '[:upper:]'`"$SUFFIX"
+else
+	echo "$MODULE""$SUFFIX"
+fi
+
+# -----------------------------------------------------------------------------

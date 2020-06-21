@@ -1,0 +1,158 @@
+(******************************************************************************
+ *             D A T A    E N C R Y P T I O N    S T A N D A R D
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	DATA_PATH.lib
+ *   Auteur		:	Wendelin SERWE
+ *   Version		:	1.5
+ *   Date		: 	2015/09/04 14:11:08
+ *****************************************************************************)
+
+(* DATA_PATH performs the 16 iterations ciphering DATA with the sub keys read
+ * on gate SUBKEY *)
+
+process DATA_PATH [DATA, OUTPUT, SUBKEY, CTRL_CL, CTRL_CR] : noexit :=
+   hide FIRST_L, FIRST_R, OUTPUT_L, OUTPUT_R in
+      (
+         IP [DATA, FIRST_L, FIRST_R]
+         |[FIRST_L, FIRST_R]|
+         (
+            hide CL_XR, CR_FX, FX_XR, XR_CR, CR_CL in
+               (
+                  CHOOSE_L [CTRL_CL, FIRST_L, CR_CL, CL_XR, OUTPUT_L]
+                  |[CR_CL]|
+                  CHOOSE_R [CTRL_CR, FIRST_R, XR_CR, CR_CL, CR_FX, OUTPUT_R]
+               )
+               |[CL_XR, CR_FX, XR_CR]|
+               CIPHER [SUBKEY, CR_FX, FX_XR]
+               |[FX_XR]|
+               XOR_32 [CL_XR, FX_XR, XR_CR]
+         )
+      )
+      |[OUTPUT_L, OUTPUT_R]|
+      IIP [OUTPUT_L, OUTPUT_R, OUTPUT]
+where
+
+(* ------------------------------------------------------------------------- *)
+(* IP applies the initial permutation IP to the initial 64-bit vector received
+ * on gate DATA and breaks the resulting 64-bit vector into two 32-bit vectors
+ * L and R *)
+
+   process IP [DATA, FIRST_L, FIRST_R] : noexit :=
+      DATA ?I64:BIT64;
+         SPLIT_LR [DATA, FIRST_L, FIRST_R] (IP (I64))
+   where
+      (* the auxiliary process avoids to compute IP (I64) twice *)
+      process SPLIT_LR [DATA, FIRST_L, FIRST_R] (B64 : BIT64) : noexit :=
+         (
+            FIRST_L !1TO32(B64);
+               exit
+            |||
+            FIRST_R !33TO64(B64);
+               exit
+         )
+         >> IP [DATA, FIRST_L, FIRST_R]
+      endproc
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* CHOOSE_L reads a 32-bit vector from INPUT and outputs to OUTPUT, but for the
+ * first iteration, where it reads from FIRST_IN, and the last iteration where
+ * it outputs to LAST_OUT *)
+
+   process CHOOSE_L [CTRL, FIRST_IN, INPUT, OUTPUT, LAST_OUT] : noexit :=
+      CTRL ?CTRL:PHASE;
+         (
+            [CTRL == F] ->
+               FIRST_IN ?L32:BIT32;
+                  OUTPUT !L32;
+                     CHOOSE_L [CTRL, FIRST_IN, INPUT, OUTPUT, LAST_OUT]
+            []
+   	 [CTRL == N] ->
+   	    INPUT ?L32:BIT32;
+                  OUTPUT !L32;
+                     CHOOSE_L [CTRL, FIRST_IN, INPUT, OUTPUT, LAST_OUT]
+   	 []
+   	 [CTRL == L] ->
+               INPUT ?L32:BIT32;
+                  LAST_OUT !L32;
+                     CHOOSE_L [CTRL, FIRST_IN, INPUT, OUTPUT, LAST_OUT]
+         )
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* CHOOSE_R reads a 32-bit vector from INPUT and outputs to OUT1 and OUT2, but
+ * for the first iteration, where it reads from FIRST_IN, and the last one,
+ * where it outputs to LAST_OUT *)
+
+   process CHOOSE_R [CTRL, FIRST_IN, INPUT, OUT1, OUT2, LAST_OUT] : noexit :=
+      CTRL ?CTRL:PHASE;
+         (
+            [CTRL == F] ->
+               FIRST_IN ?R32:BIT32;
+                  OUTPUT_R [CTRL, FIRST_IN, INPUT, OUT1, OUT2, LAST_OUT] (R32)
+            []
+            [CTRL == N] ->
+               INPUT ?R32:BIT32;
+                  OUTPUT_R [CTRL, FIRST_IN, INPUT, OUT1, OUT2, LAST_OUT] (R32)
+            []
+            [CTRL == L] ->
+               INPUT ?R32:BIT32;
+                  LAST_OUT !R32;
+                     CHOOSE_R [CTRL, FIRST_IN, INPUT, OUT1, OUT2, LAST_OUT]
+         )
+   where
+      process OUTPUT_R [CTRL, FIRST_IN, INPUT, OUT1, OUT2, LAST_OUT] 
+                       (R32 : BIT32) : noexit :=
+         OUT1 !R32; 
+            OUT2 !R32;
+               CHOOSE_R [CTRL, FIRST_IN, INPUT, OUT1, OUT2, LAST_OUT]
+         []
+         OUT2 !R32;
+            OUT1 !R32; 
+               CHOOSE_R [CTRL, FIRST_IN, INPUT, OUT1, OUT2, LAST_OUT]
+      endproc
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* XOR_32 reads two 32-bit vectors and outputs their bitwise sum *)
+
+   process XOR_32 [A, B, R] : noexit :=
+      (
+         A ? A32 : BIT32;
+            exit (A32, any BIT32)
+         |||
+         B ? B32 : BIT32;
+            exit (any BIT32, B32)
+      )
+      >> accept A32, B32 : BIT32 in
+      R ! XOR (A32, B32);
+         XOR_32 [A, B, R]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* IIP assembles the two 32-bit vectors computed by the algorithm to the 64
+ * bit vector and applies the inverse initial permutation IIP to compute the
+ * the final result *)
+
+   process IIP [OUTPUT_L, OUTPUT_R, OUTPUT] : noexit :=
+      (
+         OUTPUT_L ?OL:BIT32;
+            exit (OL, any BIT32)
+         |||
+         OUTPUT_R ?OH:BIT32;
+            exit (any BIT32, OH)
+      )
+      >> accept OL, OH : BIT32 in
+      OUTPUT !IIP(MK_64(OH,OL));
+         IIP [OUTPUT_L, OUTPUT_R, OUTPUT]
+   endproc
+
+endproc
+
+(* ------------------------------------------------------------------------- *)
+

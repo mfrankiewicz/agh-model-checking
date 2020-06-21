@@ -1,0 +1,130 @@
+-------------------------------------------------------------------------------
+-- CONTROLLER.lnt -- 1.15 -- 2015/09/11 11:04:16 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module CONTROLLER (CHANNELS) is
+
+-------------------------------------------------------------------------------
+-- CONTROLLER executes five concurrent processes controlling the multiplexers
+-- and the shift register, which are synchronized via a sixth process counting
+-- the iterations
+ 
+process CONTROLLER [CRYPT: CB,
+                    CTRL_CL, CTRL_CR: CP,
+                    CTRL_SHIFT: CS, CTRL_DK, CTRL_CK: CP] is
+   hide CS: CIT in
+      par CS in
+         COUNTER [CS]
+      ||
+         CTRL_MUX_LR [CS, CTRL_CL]
+      ||
+         CTRL_MUX_LR [CS, CTRL_CR]
+      ||
+         CTRL_SHIFT [CRYPT, CS, CTRL_SHIFT]
+      ||
+         CTRL_DMUX_K [CS, CTRL_DK]
+      ||
+         CTRL_MUX_K [CS, CTRL_CK]
+      end par
+   end hide
+end process
+
+-------------------------------------------------------------------------------
+-- COUNTER counts the iterations (modulo 17)
+
+process COUNTER [CS: CIT] is
+   var IT: ITERATION in
+      IT := 0;
+      loop
+	 CS (IT);
+	 IT := ITERATION (((NAT (IT) + 1) mod 17))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- CTRL_MUX_LR generates 1 F, then 15 Ns, and finally 1 L to control the 
+-- multiplexers in the data path
+
+process CTRL_MUX_LR [CS: CIT, CTRL: CP] is
+   var IT: ITERATION in
+      loop
+         CS (?IT);
+	 if IT == (0 of ITERATION) then
+	    CTRL (F)
+	 elsif IT == last then
+	    CTRL (L)
+	 else
+	    CTRL (N)
+	 end if
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- CTRL_SHIFT controls the shift register
+
+process CTRL_SHIFT [CRYPT: CB, CS: CIT, CTRL: CS] is
+   var CRYPT: BOOL, IT: ITERATION in
+      loop
+	 CRYPT (?CRYPT);
+         loop LL in
+            CS (?IT);
+            if IT == last then
+               break LL
+	    elsif CRYPT then
+	       if (IT == (0 of ITERATION)) or (IT == (1 of ITERATION)) or
+	          (IT == (8 of ITERATION)) or (IT == (15 of ITERATION)) then
+		  CTRL (LS1)
+	       else
+		  CTRL (LS2)
+	       end if
+            else
+	       if IT == (0 of ITERATION) then
+		  CTRL (NO)
+	       elsif (IT == (1 of ITERATION)) or (IT == (8 of ITERATION)) or
+	             (IT == (15 of ITERATION)) then
+		  CTRL (RS1)
+	       else
+		  CTRL (RS2)
+	       end if
+            end if
+         end loop
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- CTRL_DMUX_K generates 15 Ns and 1 L to control the doubling multiplexer
+
+process CTRL_DMUX_K [CS: CIT, CTRL: CP] is
+   var IT: ITERATION in
+      loop
+         CS (?IT);
+	 if IT == (15 of ITERATION) then
+	    CTRL (L) 
+	 elsif IT != last then
+	    CTRL (N)
+         end if
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- CTRL_MUX_K generates 1 F and 15 Ns to control the key path multiplexer
+
+process CTRL_MUX_K [CS: CIT, CTRL: CP] is
+   var IT: ITERATION in
+      loop
+         CS (?IT);
+         if IT == (0 of ITERATION) then
+            CTRL (F)
+         elsif IT != last then
+            CTRL (N)
+         end if
+      end loop
+   end var
+end process
+
+end module
+

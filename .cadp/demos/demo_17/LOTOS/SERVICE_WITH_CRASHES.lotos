@@ -1,0 +1,42 @@
+specification SERVICE_CRASH [OPEN, CLOSE, CRASH] : noexit
+
+   library DATA endlib
+
+behaviour
+
+   SERVICE [OPEN, CLOSE, CRASH] (WHOLE_SET)
+
+where
+
+process SERVICE [OPEN, CLOSE, CRASH] (E:ADDR_SET) : noexit :=
+   choice Ai:ADDR []
+      (
+      [Ai isin E] ->
+         (
+         OPEN !Ai;
+            SERVICE_BIS [OPEN, CLOSE, CRASH] (E, Ai)
+         [] 
+         CRASH !Ai;
+            SERVICE [OPEN, CLOSE, CRASH] (E - Ai)
+         )
+      )
+endproc
+
+process SERVICE_BIS [OPEN, CLOSE, CRASH] (E:ADDR_SET, Ai:ADDR) : noexit :=
+   CLOSE !Ai;
+      SERVICE [OPEN, CLOSE, CRASH] (E)
+   [] 
+   CRASH !Ai;
+      SERVICE [OPEN, CLOSE, CRASH] (E - Ai)
+   [] 
+   (
+   choice Aj:ADDR []
+      (
+      [(Aj isin E) and (Aj <> Ai)] ->
+         CRASH !Aj;
+            SERVICE_BIS [OPEN, CLOSE, CRASH] (E - Aj, Ai)
+      )
+   )
+endproc
+
+endspec

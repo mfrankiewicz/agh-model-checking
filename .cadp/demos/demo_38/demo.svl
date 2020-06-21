@@ -1,0 +1,317 @@
+(*
+ * This script demonstrates the compositional verification techniques of CADP
+ * on an LNT specification of the DES (Data Encryption Standard) [DES], an
+ * algorithm designed to encipher and decipher 64-bit blocks of data using
+ * a 64-bit key.
+ *
+ * The script contains two phases: first, the state space is generated
+ * compositionally; second, several properties of the algorithm are analysed.
+ * 
+ * Reference:
+ *       Data Encryption Standard (DES). Federal Information Processing
+ *       Standards 46-3. National Institute of Standards and Technology.
+ *       25 October 1999.
+ *)
+
+-------------------------------------------------------------------------------
+-- Compositional state space generation
+-------------------------------------------------------------------------------
+
+(*
+ * In order to reduce the time and memory requirements for the generation of
+ * the state space and the verification of properties of the specification, the
+ * domain of 64-bit vectors is reduced to a single value, by simply redefining
+ * the data type for bits so as to use a singleton domain.
+ *
+ * Each of the three main components of the DES is generated and minimized
+ * under the constraints of the already computed parts.
+ *)
+
+% DEFAULT_PROCESS_FILE="DES.lnt"
+
+(* creation of BIT.lnt as a copy of BIT_ABSTRACT.lnt *)
+
+% sed -e 's/BIT_ABSTRACT/BIT/' BIT_ABSTRACT.lnt > BIT.lnt
+% SVL_RECORD_FOR_CLEAN "BIT.lnt"
+
+(* generation and minimization of the controller *)
+
+"controller.bcg" = branching reduction of
+	CONTROLLER;
+
+(* generation and minimization of the key_path constrained by the controller *)
+
+"keypath.bcg" = branching reduction of
+	KEY_PATH
+	-|[CTRL_CK, CTRL_SHIFT, CTRL_DK]|
+	"controller.bcg";
+
+(* generation and minimization of the parallel composition of the minimized
+ * controller and the minimized key_path *)
+
+"controller_keypath.bcg" = branching reduction of
+	"keypath.bcg"
+	|[CTRL_CK, CTRL_SHIFT, CTRL_DK]|
+	"controller.bcg";
+
+(* generation and minimization of the data_path, constrained by the parallel
+ * composition of the controller and key_path *)
+
+"data_path.bcg" = branching reduction of
+	DATA_PATH
+	-|[CTRL_CL, CTRL_CR, SUBKEY]|
+	"controller_keypath.bcg";
+
+(* generation and minimization of the complete DES with abstract bits; gate
+ * SUBKEY is left visible for verification purposes *)
+
+"des.bcg" = branching reduction of
+	hide CTRL_CL, CTRL_CR, CTRL_CK, CTRL_SHIFT, CTRL_DK in
+		"data_path.bcg"
+		|[CTRL_CL, CTRL_CR, SUBKEY]|
+		"controller_keypath.bcg";
+
+-------------------------------------------------------------------------------
+-- Verification of properties
+-------------------------------------------------------------------------------
+
+property PROPERTY_1
+	"The DES executes indefinitely, i.e., has no deadlock"
+is
+	deadlock of "des.bcg";
+	expected FALSE;
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_2
+	"The DES can always deliver outputs, and each triplet of inputs is"
+	"eventually followed by an output"
+is
+	"des.bcg" |= with evaluator4
+		library standard.mcl end_library
+		[ true* ] INEVITABLE ( { OUTPUT ... } );
+	expected TRUE;
+
+	"des.bcg" |= with evaluator4
+		library standard.mcl end_library
+		macro SEQUENCE (A, B, C) is
+		   (A) .
+		   not ((A) or (B) or (C))* .
+		   (B) .
+		   not ((A) or (B) or (C))* .
+		   (C)
+		end_macro
+		macro PARALLEL (A, B, C) is
+		   SEQUENCE ((A), (B), (C)) |
+		   SEQUENCE ((A), (C), (B)) |
+		   SEQUENCE ((B), (A), (C)) |
+		   SEQUENCE ((B), (C), (A)) |
+		   SEQUENCE ((C), (A), (B)) |
+		   SEQUENCE ((C), (B), (A))
+		end_macro
+		[ true* . PARALLEL ({CRYPT...}, {DATA...}, {KEY...}) ]
+		INEVITABLE ({OUTPUT...});
+	expected TRUE;
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_3 (A, B, N)
+	"The DES accepts up to $N, but not more, successive transitions \"$A\""
+	"before producing a transition \"$B\""
+is
+	"des.bcg"
+	|= with evaluator4
+		[ true* . ( ($A) . not ( ($A) or ($B) )* ) { $N } . ($A) ]
+		false;
+	expected TRUE;
+
+	"des.bcg"
+	|= with evaluator4
+		< true* . ( ($A) . not ( ($A) or ($B) )* ) { $N - 1 } . ($A) >
+		true;
+	expected TRUE;
+end property
+
+check PROPERTY_3 ("{ CRYPT ... }", "{ OUTPUT ... }", 3);
+check PROPERTY_3 ("{ DATA ... }", "{ OUTPUT ... }", 3);
+check PROPERTY_3 ("{ KEY ... }", "{ OUTPUT ... }", 4);
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_4
+	"The DES correctly synchronises the data and key paths: there are"
+	"16 iterations, each marked by a transition labeled with gate SUBKEY"
+is
+	(*
+	 * The presence of the 16 iterations in "des.bcg" can be verified by
+	 * comparison with an LTS describing the cyclic execution of a CRYPT
+	 * transition followed by sixteen SUBKEY transitions. Because this LTS
+	 * has only two actions ("CRYPT" and "SUBKEY", without offers), in
+	 * "des.bcg, the labels for these two gates have to renamed, all other
+	 * labels have to be hidden, and the comparison has to use a weak
+	 * equivalence (here, branching bisimulation).
+	 *)
+	"des_crypt_subkey.bcg" =
+		branching reduction of
+		total rename "CRYPT.*" -> CRYPT, "SUBKEY.*" -> SUBKEY in
+		hide DATA, OUTPUT, KEY in "des.bcg";
+
+	(* verification by equivalence checking *)
+
+	branching comparison "property_4.lnt" == "des_crypt_subkey.bcg";
+	expected TRUE;
+
+	(* verification by model checking *)
+
+	"des_crypt_subkey.bcg" |= with evaluator4
+		macro SIXTEEN_SUBKEYS_ONE_CRYPT () is
+		   for I : Nat from 1 to 14 do "SUBKEY" end for .
+		   (
+		      ( "SUBKEY" . ( ( "SUBKEY" . "CRYPT" ) |
+		                     ( "CRYPT" . "SUBKEY" ) ) ) |
+		      ( "CRYPT" . "SUBKEY" . "SUBKEY" )
+		   )
+		end_macro
+		( [ true ] nu X . ( ( < SIXTEEN_SUBKEYS_ONE_CRYPT () > true )
+		                    and
+		                    ( [ SIXTEEN_SUBKEYS_ONE_CRYPT () ] X ) ) )
+		and
+		( < CRYPT> true )
+		and
+		( [ not CRYPT ] false );
+	expected TRUE;
+end property
+
+-------------------------------------------------------------------------------
+
+(*
+ * To verify the correct function, a prototype implementation is generated from
+ * the LNT specification "DES.lnt" (with concrete bits) using the EXEC/CAESAR
+ * framework. This prototype is then used to encipher an decipher some sample
+ * blocks, and the results are compared to the official results.
+ *)
+
+% SVL_PRINT_MESSAGE ""
+% SVL_PRINT_MESSAGE "generating DES executable ..."
+
+(* creation of BIT.lnt as a copy of BIT_CONCRETE.lnt *)
+
+% sed -e 's/BIT_CONCRETE/BIT/' BIT_CONCRETE.lnt > BIT.lnt
+
+(* translation from LNT to LOTOS *)
+
+"DES.lotos" = "DES.lnt";
+
+(* translation from LOTOS to C *)
+
+% caesar.adt -silent DES.lotos 2>&1 | tee -a $SVL_LOG_FILE
+% caesar -silent -exec -e7 DES.lotos 2>&1 | tee -a $SVL_LOG_FILE
+
+(* compilation of the generated C code *)
+
+% $CADP/src/com/cadp_cc -I$CADP/incl -DCAESAR_KERNEL_DELAY=0 -DLNT \
+%    DES.c gate_functions.c $CADP/src/exec_caesar/main.c \
+%    -L$CADP/bin.`$CADP/com/arch` -lcaesar_base -lm \
+%    -o des 2>&1 | tee -a $SVL_LOG_FILE
+
+(* cleanup of generated files *)
+
+% SVL_CLEAN_LNT_DEPEND "DES.lnt"
+% SVL_REMOVE "DES.h"
+% SVL_REMOVE "DES.c"
+% SVL_REMOVE "DES.err"
+% SVL_REMOVE "DES.o"
+% SVL_REMOVE "gate_functions.o"
+% SVL_REMOVE "main.o"
+% SVL_RECORD_FOR_CLEAN "des"
+% SVL_RECORD_FOR_CLEAN "input.log"
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_5 (CRYPT, KEY, DATA, OUTPUT)
+	"The DES prototype computes the expected result"
+is
+	% echo "CRYPT !$CRYPT" > input.log
+	% echo "DATA !$DATA" >> input.log
+	% echo "KEY !$KEY" >> input.log
+	% ./des < input.log
+	expected "OUTPUT !$OUTPUT";
+end property
+
+check PROPERTY_5 (1, "8000000000000000", "8000000000000000", "6a7fc86c02379a5e");
+check PROPERTY_5 (0, "8000000000000000", "6a7fc86c02379a5e", "8000000000000000");
+check PROPERTY_5 (1, "133457799bbcdff1", "0123456789abcdef", "85e813540f0ab405");
+check PROPERTY_5 (0, "133457799bbcdff1", "0123456789abcdef", "ee0f7c12e0b09338");
+check PROPERTY_5 (1, "133457799bbcdff1", "ee0f7c12e0b09338", "0123456789abcdef");
+check PROPERTY_5 (0, "133457799bbcdff1", "85e813540f0ab405", "0123456789abcdef");
+check PROPERTY_5 (1, "0e329232ea6d0d73", "8787878787878787", "0000000000000000");
+check PROPERTY_5 (0, "0e329232ea6d0d73", "0000000000000000", "8787878787878787");
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_6
+	"The DES (with concrete bits) correctly computes the encryption result"
+	"of data 0123456789ABCDEF with key 133457799BBCDFF1; moreover, when"
+	"value offers are removed from action labels, the LTS generated from"
+	"the DES with concrete bits is included, modulo branching preorder,"
+	"in the LTS generated from the DES with abstract bits"
+is
+	"des_sample.bcg" = branching reduction of
+		"DES_SAMPLE.lnt":"MAIN_SAMPLE";
+
+	"des_sample.bcg" |= with evaluator4
+		library standard.mcl end_library
+		[ not ( { OUTPUT ... } )* ] INEVITABLE ( { OUTPUT ... } );
+	expected TRUE;
+
+	branching comparison
+        	total rename
+                	"CRYPT.*"  -> "CRYPT",
+                	"DATA.*"   -> "DATA",
+                	"KEY.*"    -> "KEY",
+                	"OUTPUT.*" -> "OUTPUT"
+		in "des_sample.bcg"
+	<=
+		hide SUBKEY in
+        	total rename
+                	"CRYPT.*"  -> "CRYPT",
+                	"DATA.*"   -> "DATA",
+                	"KEY.*"    -> "KEY",
+                	"OUTPUT.*" -> "OUTPUT"
+        	in "des.bcg";
+	expected TRUE;
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_7
+	"equivalence between the LNT and LOTOS models"
+is
+	(* build the LTSs from the LOTOS specifications *)
+	% ( cd LOTOS ; echo "" ; svl )
+
+	(* comparison of the LTSs generated with abstract bits *)
+	branching comparison
+		"des.bcg"
+		==
+		"LOTOS/des.bcg";
+	expected TRUE;
+
+	(* comparison of the LTSs generated with concrete bits *)
+	% if [ -f LOTOS/des_sample.bcg ]
+	% then
+		branching comparison
+			"des_sample.bcg"
+			==
+			"LOTOS/des_sample.bcg";
+		expected TRUE;
+	% fi
+
+	(* cleanup *)
+	% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"
+end property
+
+-------------------------------------------------------------------------------
+

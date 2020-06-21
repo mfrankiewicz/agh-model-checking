@@ -1,0 +1,61 @@
+-------------------------------------------------------------------------------
+-- DES_SAMPLE.lnt -- 1.34 -- 2017/10/13 11:37:02 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module DES_SAMPLE (DES) is
+
+-- DES_SAMPLE uses concrete bits
+
+process MAIN_SAMPLE [CRYPT: CB, KEY, DATA, OUTPUT: C64] is
+   par CRYPT, KEY, DATA, OUTPUT in
+      DES [CRYPT, KEY, DATA, OUTPUT]
+   ||
+      ENVIRONMENT [CRYPT, KEY, DATA, OUTPUT]
+   end par
+end process
+
+-------------------------------------------------------------------------------
+-- 64-bit constant frequently used as example for a key
+
+function C_13345779_9BBCDFF1 : BIT64 is
+   return MK_64 (0, 0, 0, 1,  0, 0, 1, 1,  0, 0, 1, 1,  0, 1, 0, 0,
+                 0, 1, 0, 1,  0, 1, 1, 1,  0, 1, 1, 1,  1, 0, 0, 1,
+                 1, 0, 0, 1,  1, 0, 1, 1,  1, 0, 1, 1,  1, 1, 0, 0,
+                 1, 1, 0, 1,  1, 1, 1, 1,  1, 1, 1, 1,  0, 0, 0, 1)
+end function
+
+-------------------------------------------------------------------------------
+-- 64-bit constant frequently used as example data
+
+function C_01234567_89ABCDEF : BIT64 is
+   return MK_64 (0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 1, 0,  0, 0, 1, 1,
+                 0, 1, 0, 0,  0, 1, 0, 1,  0, 1, 1, 0,  0, 1, 1, 1,
+                 1, 0, 0, 0,  1, 0, 0, 1,  1, 0, 1, 0,  1, 0, 1, 1,
+                 1, 1, 0, 0,  1, 1, 0, 1,  1, 1, 1, 0,  1, 1, 1, 1)
+end function
+
+-------------------------------------------------------------------------------
+-- result of ciphering C_01234567_89ABCDEF with C_13345779_9BBCDFF1
+
+function C_85E81354_0F0AB405 : BIT64 is
+   return MK_64 (1, 0, 0, 0,  0, 1, 0, 1,  1, 1, 1, 0,  1, 0, 0, 0,
+                 0, 0, 0, 1,  0, 0, 1, 1,  0, 1, 0, 1,  0, 1, 0, 0,
+                 0, 0, 0, 0,  1, 1, 1, 1,  0, 0, 0, 0,  1, 0, 1, 0,
+                 1, 0, 1, 1,  0, 1, 0, 0,  0, 0, 0, 0,  0, 1, 0, 1)
+end function
+
+-------------------------------------------------------------------------------
+-- process simulating the environment in order to close the system, executing
+-- a single encryption of C_01234567_89abcdef with C_13345779_9BBCDFF1
+
+process ENVIRONMENT [CRYPT: CB, KEY, DATA, OUTPUT: C64] is
+   CRYPT (true);
+   KEY (C_13345779_9BBCDFF1);
+   DATA (C_01234567_89abcdef);
+   -- cipher of C_01234567_89abcdef with C_13345779_9BBCDFF1
+   OUTPUT (C_85e81354_0f0ab405);
+   stop
+end process
+
+end module
+

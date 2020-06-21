@@ -1,0 +1,279 @@
+#!/bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeuca_convert
+#   Auteurs             :       Hubert GARAVEL, Mark JORGENSEN
+#   Version             :       2.35
+#   Date                :       2017/11/27 11:54:40
+##############################################################################
+
+# shell qui ne fait que convertir un fichier dans un autre format 
+# (si necessaire). Il rend comme resultat le nom du fichier converti.
+# Ce nom peut etre genere ici (temporaire) ou il peut etre impose lors
+# de l'appel. Le nombre d'arguments varie de 2 a 4 inclus:
+# $1 : fichier a traiter
+# $2 : format(s) de l'outil en entree. Cet argument peut etre une liste.
+#      Dans ce cas, on convertit vers le 1er format de la liste.
+# $3 : (optionnel) Nom du fichier resultat
+# $4 : (optionnel) Options eventuelles a passer a bcg_io pour produire le 
+#      fichier resultat (-parse, -small, -verbose, etc.)
+
+#-----------------------------------------------------------------------------
+
+set -e
+
+#-----------------------------------------------------------------------------
+
+ARCH=`"$CADP"/com/arch`
+COMMAND=`basename "$0"`
+
+case $ARCH in
+	sun3 | sun4 )
+		LS="/bin/ls -lg" ;;
+	sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 )
+		LS="/bin/ls -l" ;;
+	win32 | macOS | mac86 | mac64 )
+		LS="ls -l" ;;
+	* )
+		echo "$COMMAND: unknown architecture '$ARCH'"
+		exit 1
+		;;
+esac
+
+#-----------------------------------------------------------------------------
+
+EXEC () {
+	echo "$@"
+	# La ligne ci-dessous execute la commande passee en argument
+	"$@"
+}
+
+#-----------------------------------------------------------------------------
+
+CAR () {
+	echo $1
+}
+
+#=============================================================================
+
+ABSOLUTE_FILE_NAME () {
+	( cd `dirname "$1"` ; echo `pwd`"/"`basename "$1"` )
+}
+
+#-----------------------------------------------------------------------------
+
+FILE_DATE () {
+   # on doit prendre des precautions pour le cas ou les champs Owner et Group 
+   # dans $1 comporteraient des espaces, ce qui peut se produire sous Windows, 
+   # par exemple "Tout le monde"
+
+   NB_COLUMNS=`$LS "$1" | wc -w`
+   TIME_RANGE="`expr $NB_COLUMNS - 3`-`expr $NB_COLUMNS - 1`" 
+
+   # valeur standard lorsque les champs Owner et Group ne comportent aucun
+   # espace : TIME_RANGE = 6-8
+
+   $LS -a "$1" | sed -e "s/\ \ */\ /g" | cut -d' ' -s -f$TIME_RANGE
+}
+
+#-----------------------------------------------------------------------------
+
+FILE_TYPE () {
+	case "$1" in
+		*.bcg ) TYPE=".bcg" ;;
+		*.aut ) TYPE=".aut" ;;
+		*.seq ) TYPE=".seq" ;;
+		*.fc2 ) TYPE=".fc2" ;;
+		*.exp ) TYPE=".exp" ;;
+		* )     TYPE="unknown" ;;
+	esac
+	echo $TYPE
+}
+
+#=============================================================================
+
+# Procedures de Gestion de la Base de Donnees
+
+DATABASE=${EUCALYPTUS_TMP}_convert.db
+
+#-----------------------------------------------------------------------------
+
+SEARCH_DATABASE () {
+   FILE=$1
+   FORMAT=$2
+   if [ -s "$DATABASE" ]
+   then
+      fgrep "`ABSOLUTE_FILE_NAME \"$FILE\"` | `FILE_DATE \"$FILE\"`" "$DATABASE" | \
+             cut -d'|' -f3  | \
+             tr -d '\015' | \
+             grep $FORMAT\$ | \
+             "$CADP"/src/com/cadp_tail -n 1
+   fi
+}
+
+#-----------------------------------------------------------------------------
+
+ADD_TO_DATABASE () {
+	INDEX=$1
+	ENTRY=$2
+	echo `ABSOLUTE_FILE_NAME "$INDEX"` "|" `FILE_DATE "$INDEX"` "|" $ENTRY | \
+	cat >> "$DATABASE"
+
+}
+
+#-----------------------------------------------------------------------------
+
+# Recuperation des arguments 
+INPUT_FILE=$1
+FORMAT=`CAR "$2"`
+OUTPUT_FILE=$3
+# $OUTPUT_FILE peut etre eventuellement vide
+OUTPUT_OPTION=$4
+# $OUTPUT_OPTION peut etre eventuellement vide
+
+# Quelque tests sur le fichier en entree
+
+case "$INPUT_FILE" in
+	*.bcg ) BASE=`"$CADP"/src/com/cadp_basename "$INPUT_FILE" .bcg` ;;
+	*.aut ) BASE=`"$CADP"/src/com/cadp_basename "$INPUT_FILE" .aut` ;;
+	*.seq ) BASE=`"$CADP"/src/com/cadp_basename "$INPUT_FILE" .seq` ;;
+	*.fc2 ) BASE=`"$CADP"/src/com/cadp_basename "$INPUT_FILE" .fc2` ;;
+	*.exp ) BASE=`"$CADP"/src/com/cadp_basename "$INPUT_FILE" .exp` ;;
+	* )
+		echo "$INPUT_FILE is not a labelled transition system"
+		exit 1
+		;;
+esac
+
+if [ ! -s "$INPUT_FILE" ]
+then
+	echo "$INPUT_FILE: Empty File"
+	exit 1
+fi
+
+# On cherche dans la base de donnees
+SEARCH=`SEARCH_DATABASE "$INPUT_FILE" $FORMAT`
+if [ -n "$SEARCH" ]
+then
+	if [ -s "$SEARCH" ]
+	then
+		# Le fichier converti existe deja.
+		# echo "already done"
+		if [ "$OUTPUT_FILE" = "" ] 
+		then
+			# xeuca_convert appele avec 2 arguments
+			echo "xeuca_result: $SEARCH"
+		else
+			# xeuca_convert appele avec 3 ou 4 arguments
+			echo "File already converted: renaming to $OUTPUT_FILE"
+			EXEC mv "$SEARCH" "$OUTPUT_FILE"
+			echo "xeuca_result: $OUTPUT_FILE"
+		fi
+		exit 0
+	fi
+fi
+
+# On utilise un temporaire si le nom de fichier de sortie n'est pas precise.
+if [ "$OUTPUT_FILE" = "" ] 
+then
+	# xeuca_convert appele avec 2 arguments
+	OUTPUT_FILE=`echo "${EUCALYPTUS_TMP}"_$$_0$FORMAT`
+	TEMPORARY=`echo "${EUCALYPTUS_TMP}"_$$_1$FORMAT`
+else
+	# xeuca_convert appele avec 3 ou 4 arguments
+	TEMPORARY=`echo "${EUCALYPTUS_TMP}"_$$_0$FORMAT`
+fi
+
+# Conversion
+
+case "$OUTPUT_FILE" in
+	*.ps )
+	case "$INPUT_FILE" in
+		*.aut | *.seq | *.fc2 )
+			EXEC bcg_io "$INPUT_FILE" "$TEMPORARY.bcg"
+			EXEC bcg_draw -ps "$TEMPORARY.bcg"
+			rm -f "$TEMPORARY".bcg
+			EXEC mv "$TEMPORARY".ps "$BASE".ps
+			;;
+		*.bcg )
+			EXEC bcg_draw -ps "$INPUT_FILE"
+		;;
+	esac
+	;;
+	*.eps )
+	case "$INPUT_FILE" in
+		*.aut | *.seq | *.fc2)
+			EXEC bcg_io "$INPUT_FILE" "$TEMPORARY".bcg
+			EXEC bcg_draw -eps "$TEMPORARY".bcg
+			rm -f $TEMPORARY.bcg
+			EXEC mv "$TEMPORARY".ps "$BASE".ps
+			;;
+		*.bcg )
+			EXEC bcg_draw -eps "$INPUT_FILE"
+		;;
+	esac
+	;;
+	*.fc2)
+	case "$INPUT_FILE" in
+		*.exp )
+			# ici, on suppose que xeuca_convert a ete appele' avec
+			# "$INPUT_FILE" et "$OUTPUT_FILE" tels que
+			# `basename $INPUT_FILE .exp" soit identique a
+			# `basename $OUTPUT_FILE .fc2`
+			EXEC exp.open -network fc2 "$INPUT_FILE"
+			;;
+		*)
+			EXEC bcg_io "$INPUT_FILE" $OUTPUT_OPTION "$OUTPUT_FILE"
+			;;
+	esac
+	;;
+	*.ll_net)
+	case "$INPUT_FILE" in
+		*.exp )
+			# ici, on suppose que xeuca_convert a ete appele' avec
+			# "$INPUT_FILE" et "$OUTPUT_FILE" tels que
+			# `basename $INPUT_FILE .exp" soit identique a
+			# `basename $OUTPUT_FILE .ll_net`
+			EXEC exp.open -network pep "$INPUT_FILE"
+			;;
+	esac
+	;;
+	*.tpn)
+	case "$INPUT_FILE" in
+		*.exp )
+			# ici, on suppose que xeuca_convert a ete appele' avec
+			# "$INPUT_FILE" et "$OUTPUT_FILE" tels que
+			# `basename $INPUT_FILE .exp" soit identique a
+			# `basename $OUTPUT_FILE .tpn`
+			EXEC exp.open -network tina "$INPUT_FILE"
+			;;
+	esac
+	;;
+
+	* ) 
+	EXEC bcg_io "$INPUT_FILE" $OUTPUT_OPTION "$OUTPUT_FILE"
+	;;
+esac
+
+# Mise a jour de la base de donnees
+
+case "$INPUT_FILE" in
+	"$EUCALYPTUS_TMP"* ) 
+		ADD_TO_DATABASE "$OUTPUT_FILE" "$INPUT_FILE" ;;
+	* ) 
+		ADD_TO_DATABASE "$INPUT_FILE" "$OUTPUT_FILE" ;;
+esac 
+
+# Affichage du resultat
+
+echo "xeuca_result: $OUTPUT_FILE" 
+exit 0
+

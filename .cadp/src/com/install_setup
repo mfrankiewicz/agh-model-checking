@@ -1,0 +1,91 @@
+#!/bin/sh 
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       install_setup
+#   Auteurs             :       Patrick WENDEL et Hubert GARAVEL
+#   Version             :       1.12
+#   Date                :       2004/04/27 12:47:00 
+##############################################################################
+
+# le parametre $1 peut prendre les valeurs suivantes: 
+#	- INSTALL, 
+# 	- CANCEL_AND_LEAVE, 
+#	- CANCEL_AND_UNINSTALL, 
+#	- UPGRADE_AND_KEEP_OLD, 
+#	- UPGRADE_AND_REMOVE_OLD
+
+# les variables d'environnement suivantes sont lues par ce shell-script
+#	$CADP_NEW_PATH
+#	$CADP_TAIL_NEW_PATH
+#	$CADP_TMP_ARCHIVE
+#	$CADP_OLD_DIR
+#	$CADP_DIR
+#	$CADP_LOG_FILE
+
+COMMAND=`basename "$0"`
+
+RM_FORCE() {
+chmod -R u+rwx "$1"
+rm -rf "$1"
+}
+
+MV_FORCE(){
+chmod u+rwx "$1" "$1"/* 
+chmod u+rwx "$2"
+mv "$1"/* "$2"
+}
+
+INSTALLATOR_STATE="$1"
+
+cd /
+
+case "$INSTALLATOR_STATE" in
+
+INSTALL | CANCEL_AND_LEAVE )
+	# rien a faire
+	;;
+
+CANCEL_AND_UNINSTALL )
+	RM_FORCE "$CADP_NEW_PATH"
+	;;
+
+UPGRADE_AND_KEEP_OLD | UPGRADE_AND_REMOVE_OLD )
+	# mise a jour, avec sauvegarde ou effacement de l'ancienne version
+	# creation forcee d'un repertoire pour stocker l'ancienne version
+	RM_FORCE "$CADP_DIR/$CADP_OLD_DIR"
+	mkdir "$CADP_DIR/$CADP_OLD_DIR"
+	# deplacement de l'ancienne version dans ce repertoire 
+	MV_FORCE "$CADP_DIR" "$CADP_DIR/$CADP_OLD_DIR"
+	# extraction et installation de la nouvelle version
+	MV_FORCE "$CADP_DIR/$CADP_OLD_DIR/$CADP_TAIL_NEW_PATH" "$CADP_DIR"
+	# suppression du sous-repertoire devenu vide
+	rmdir "$CADP_DIR/$CADP_OLD_DIR/$CADP_TAIL_NEW_PATH"
+	# effacement conditionnel de l'ancienne version
+	if [ "$INSTALLATOR_STATE" = UPGRADE_AND_REMOVE_OLD ]
+	then
+		RM_FORCE "$CADP_DIR/$CADP_OLD_DIR"
+	fi
+	;;
+
+* ) 
+	echo "$COMMAND: invalid argument INSTALLATOR_STATE = \"$INSTALLATOR_STATE\""
+	exit 1
+	;;
+esac
+
+# Mise a jour du fichier INSTALLATOR.log
+cat "$CADP_TMP/$CADP_PREFIXE$CADP_LOG_FILE" >> "$CADP_INSTALLATOR/$CADP_LOG_FILE"
+
+# Nettoyage des fichiers temporaires et des archives
+rm -f "$CADP_TMP"/$CADP_PREFIXE* "$CADP_TMP_ARCHIVE"/$CADP_PREFIXE*
+
+exit 0
+

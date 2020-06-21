@@ -1,0 +1,37 @@
+(******************************************************************************
+ *                                X T L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       radius.xtl
+ *   Auteur             :       Radu MATEESCU
+ *   Version            :       1.5
+ *   Date               :       2014/09/18 12:59:17
+ *****************************************************************************)
+
+(* This program computes the radius of an LTS, i.e., the maximal distance
+ * (measured in the number of transitions) from the initial state to all the
+ * other states. The computation is done by performing a breadth-first search
+ * of the LTS and counting the number of levels reached. *)
+
+let (any stateset, any stateset, RADIUS:number) =
+    for
+        in    (EXPLORED, LEVEL:stateset, NUMBER:number)
+        while LEVEL <> {}
+        apply (union, replace, +)
+        from  ({}, { init }, #0)
+        to    let NEXT:stateset =
+                  <| union on S:state among LEVEL |> succ (S)
+              in
+                  (NEXT, NEXT diff EXPLORED, 1)
+              end_let
+    end_for
+in
+    printf ("Radius of the LTS: ") fby
+    print (RADIUS - 1) fby
+    printf ("\n")
+end_let
+

@@ -1,0 +1,36 @@
+
+process ErrHandler [cerri, derri, timeout, erro, CO] : noexit :=
+
+    Handler [cerri, derri, timeout, erro, CO] (false, emptyl) 
+
+where 
+
+(* ====================================================================== *)
+
+process Handler [cerri, derri, timeout, erro, CO] 
+					(b:Bool, l:EnvList) : noexit :=
+
+  cerri ; 
+	Handler [cerri, derri, timeout, erro, CO] (true, l)
+[]
+  derri ?e:Env [not (e IsIn l)] ; 
+	Handler [cerri, derri, timeout, erro, CO] (b, insert (e,l))
+[]
+  derri ?e:Env [e IsIn l] ; 
+	Handler [cerri, derri, timeout, erro, CO] (b, l)
+[]
+  timeout ?n:PortNo ?e:Env [not (e IsIn l)] ; 
+	Handler [cerri, derri, timeout, erro, CO] (b, insert (e,l))
+[]
+  timeout ?n:PortNo ?e:Env [e IsIn l] ; 
+	Handler [cerri, derri, timeout, erro, CO] (b, l)
+[]
+  erro ;
+    CO !b !l ; 
+	Handler [cerri, derri, timeout, erro, CO] (false, emptyl)
+endproc
+
+(* ====================================================================== *)
+
+endproc
+

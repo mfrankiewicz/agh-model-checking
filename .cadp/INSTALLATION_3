@@ -1,0 +1,240 @@
+
+          CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+
+                      REQUEST FOR LICENSE PROCEDURE
+
+	This document is intended to persons in charge of installing or
+upgrading the CADP software. It provides technical information regarding
+the licensing scheme used by CADP.
+
+	This document assumes that the latest available version of CADP 
+has already been downloaded and copied to your site using either the
+automated or manual installation procedure. For more information about
+CADP and its latest version, please consult the CADP Web page:
+                http://cadp.inria.fr
+
+-------------------------------------------------------------------------------
+
+	The binary programs contained in the CADP software need an valid
+license file ($CADP/LICENSE) to execute. The license is granted for a 
+defined set of machines and a defined lapse of time.
+
+	The Request For License procedure (RFL, in short) aims at producing
+a valid license file for a given installation site. The RFL procedure is 
+necessary in three situations:
+
+	    - When installing CADP for the first time, or when upgrading 
+	      to a new version of CADP;
+
+	    - When the existing license has expired (most licenses are
+	      granted for a defined lifetime). In such case, it is 
+	      advisable to upgrade to the latest version of CADP;
+
+	    - When changing the configuration of the local network, e.g.,
+	      when modifying IP addresses, machine names, domain name,
+	      and especially when adding new workstations (if the CADP
+	      tools are supposed to be run on these machines).
+
+-------------------------------------------------------------------------------
+
+The Request for License procedure can be done in two ways:
+
+	    - It can be launched from Installator (the CADP Installation
+	      Assistant).  At the end of the installation, Installator will
+	      prompt you for registration information and will perform an
+	      RFL automatically.
+
+	      This is the recommended approach, because Installator can reuse
+	      registration information from your previous CADP license (if
+	      any), thus speeding up the registration process. This facility
+	      is particularly suitable when you merely upgrade your version
+	      of CADP, and when you want to obtain a new license since the
+	      configuration of your local area network has changed (addition
+	      of new machines, changes of IP addresses, etc.)
+
+	    - It can be invoked manually, by launching the "rfl" command
+	      (located in $CADP/com/rfl) from the command-line shell. For
+	      detailed explanations, see the instructions regarding license
+	      preparation in file $CADP/INSTALLATION_4.  
+
+-------------------------------------------------------------------------------
+
+The RFL procedure involves three successive steps:
+
+   - In a first step, a "prototype" license file is prepared by running the
+     "rfl" command on your network, either automatically (if Installator is
+     used) or manually (if "rfl" is launched from the command-line shell).
+
+   - The prototype license file is sent to the CADP team at INRIA Rhone-Alpes,
+     either automatically (if Installator is used) or manually (for this,
+     you need to invoke a mail sending command explicitly). When using
+     Installator, either FTP or e-mail can be used for sending the prototype
+     license file.
+
+   - The prototype license file is turned into a valid license file at 
+     INRIA Rhone-Alpes. Then, this valid license file is sent back to you
+     using e-mail. 
+
+Note: it is easy to distinguish between a prototype license file and a valid
+license file. A prototype license file contains many sequences of X's (i.e.,
+"XXXXXXXXXXX"), which do not appear in valid license files.
+
+Note: More technical details and important recommendations are available from
+    http://cadp.inria.fr/installator/rfl.html
+
+-------------------------------------------------------------------------------
+
+If you want to install CADP on N machines (i.e., workstations) of your local
+area network, you have three options:
+
+   1) You install one single copy of CADP on a disk shared by all the 
+      machines, with one unique license file for all the machines.
+
+   2) You install N separate copies of CADP (one copy on each machines),
+      with one unique license file (valid for all the machines) replicated
+      on each machine.
+
+   3) You install N separate copies of CADP (one copy on each machine),
+      with N different license files (one license file per machine).
+
+Most system administrators will prefer Option 1), which enables centralized
+software installation and management. 
+
+The CADP team also recommends Option 1), which reduces license overhead, or
+if not applicable, Option 2).
+
+Option 1) is only applicable if:
+
+	- All the machines share a common disk (e.g., shared using 
+	  NFS or SAMBA) on which CADP is installed, and
+
+	- All the machines can be remotely accessed from your current
+	  machine (i.e., the one on which you are preparing the
+	  CADP license file) using either "rsh"/"rcp", or "ssh"/"scp",
+	  or Kerberos' "krsh"/"kcp".  
+
+Options 2) and 3) are always applicable. Option 2) is obtained by logging
+on each machine, preparing a prototype license file on each machine, and
+concatenating all prototype license files into a single file before sending
+it to "cadp@inria.fr" using e-mail.
+
+Note: Recent versions of CADP (starting from beta-version CADP 2003-i dated
+August 2004) allow multiple license files. In addition to the primary license
+file located at "$CADP/LICENSE", it is now possible to have a secondary
+license file named "$CADP/LICENSE.1", and even a tertiary license file named
+"$CADP/LICENSE.2". These files will be consulted in the order: primary, then
+secondary, then tertiary. This feature is intended to administrators of 
+clusters or large networks with hundreds of machines: secondary/ tertiary
+license files allow to obtain licences for machines that were down or 
+unavailable at the time the primary license file was prepared.
+
+More precisely, the RFL procedure involves the following steps:
+
+-------------------------------------------------------------------------------
+
+a) Define the list of machines on which you want to install the CADP tools.
+
+     Note: when preparing the license, you should ensure that all machines
+	   in the list are effectively switched on.
+
+     Note: you should ensure that the architectures and operating systems of
+	   all the machines in this list are supported by the version of CADP
+	   for which you are preparing the license.
+
+    In the sequel let us assume that these machines are: "jupiter", "mars", 
+    "neptune", and "venus".
+
+    Let us assume also that your current machine (on which you are preparing
+    the license) is "neptune".
+
+-------------------------------------------------------------------------------
+
+b) You should ensure that, on each machine in the list, the CADP software
+   is installed and can be accessed using the pathname defined by the
+   value of the $CADP variable (e.g., "/opt/cadp").
+
+-------------------------------------------------------------------------------
+
+c) If you want to obtain a license for more than one machine, you should
+   ensure that all machines in the list (possibly excepted your current
+   machine "neptune") accept "remote shell" and "remote copy" commands 
+   originating from your current machine "neptune": 
+
+      - Remote shell can be done using either "rsh", or "ssh", or "krsh",
+        depending on the availability of these commands on your network.
+
+      - Remote copy can be done using either "rcp", or "scp", or "kcp",
+        depending on the availability of these commands on your network.
+
+   Note: in the case of a single machine, remote access is not needed.
+   If you want to prepare a license for "neptune" only, it is not required
+   that "neptune" accepts remote shell and remote copy commands from "neptune":
+   local shell ("sh") and local copy ("cp") will be used instead.
+
+   1) If you are using "rsh"/"rcp", there are two ways to enable remote
+   access from "neptune":
+
+	- You can modify the "/etc/hosts.equiv" files of "jupiter", "mars",
+	  and "venus" to declare "neptune" as a trusted host (see 
+	  "man hosts.equiv").
+
+	  Note: you need to be system administrator ("root") to do this.
+	  Many sites forbid this practice for security reasons.
+
+	- You can edit your "$HOME/.rhosts" files on  "jupiter", "mars",
+	  and "venus" to declare your account on "neptune" as a trusted 
+	  account on "jupiter", "mars" and "venus" (see "man hosts").
+
+	  Basically, it is sufficient to add the following line in your
+	  "$HOME/.rhosts" file:
+
+		neptune your_login_name
+
+	  provided that your home directory is shared between all the 
+	  machines in the list (which is usually the case). If not,
+	  you have to create one ".rhost" file for each machine in the list.
+	  
+	  Note: if the security policy of your site forbids ".rhosts"
+	  files, don't forget to remove the ".rhost" file(s) as soon as
+	  the RFL procedure has successfully completed.
+
+   2) If you are using "ssh"/"scp", please consult the SSH documentation.
+
+   Note by Volker Braun (Univ. of Dortmund): To run "rfl", you need access
+   to the remote machine without any password request. This sometimes needs
+   reconfiguration of the "ssh" daemon on the remote machine (and thus, to
+   be able to become a super-user on the remote machine). If you want to
+   use ".rhosts" or ".shosts", you have to set IgnoreRhosts to "no" in the 
+   "sshd_config" file on the remote machine. Another possibility is to use a
+   private/public key-pair, which can be generated using "ssh-keygen". In 
+   this case the public part of your key pair must be contained in the 
+   "authorized_keys" file of the remote machine.
+
+   Note by Solofo Ramangalahy (Bull): Assuming that "ssh-keygen" has been
+   used to create a private/public key-pair and that the "authorized_keys"
+   files are correctly set on the remote machines, it is a good idea to
+   start an SSH agent on your local machine before running "rfl". Everytime
+   "rfl" will attempt a remote connection, the remote machine will ask your
+   local machine for a password and the SSH agent will send this password 
+   automatically, so that you have to type the password only once. Moreover,
+   the SSH agent will exist only during the current session on your local
+   machine. Starting the SSH agent can be done by the following commands:
+	eval `ssh-agent`
+	ssh-add ~/.ssh/identity
+   If file ~/.ssh/identity, does not exist, try:
+	ssh-add ~/.ssh/id_dsa
+
+   3) If you are using "krsh"/"kcp", please consult the Kerberos documentation.
+
+-------------------------------------------------------------------------------
+
+d) During its first phase, the "rfl" command will check that the CADP is 
+   correctly installed on all the machines, that remote access is allowed, 
+   and so on. It will abort if some problem is found. In such case, try to
+   apply the solutions described above and try again. If it still fails, 
+   remove the machines that cause problems from the list and try again.
+
+-------------------------------------------------------------------------------
+Written by Hubert Garavel. Last updated on 2016/11/13 09:14:05
+-------------------------------------------------------------------------------
+

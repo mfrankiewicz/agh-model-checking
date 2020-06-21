@@ -1,0 +1,73 @@
+(****************************************************************
+ * @(#)misc.xtl - 1998/01/08 - Charles Pecheur, INRIA Rhone-Alpes
+ * Patched by Radu Mateescu on 2009/04/08.
+ *
+ *  Miscellaneous general-purpose functions and macros for XTL.
+ *
+ *  NOTE: in particular, it is advisable to group general-purpose
+ *  functions such as "<-" (see below) in this separate library and
+ *  then re-use it in several other libraries, in order to avoid
+ *  multiple definition problems.
+ ****************************************************************)
+
+(****************************************************************
+ * andalso(X:boolean,Y:BOOLEAN):boolean
+ * orelse(X:boolean,Y:BOOLEAN):boolean
+ *
+ *  Sequential versions of the logical "and" and "or", i.e. they do
+ *  not evaluate their second arg if the first is resp. false or true.
+ ****************************************************************)
+
+macro andalso(X,Y) =
+  if (X) then (Y) else false end_if
+end_macro
+
+macro orelse(X,Y) =
+  if (X) then true else (Y) end_if
+end_macro
+
+(****************************************************************
+ * do(A:action,X:type):type
+ *
+ *  do A then evaluate and return X.
+ ****************************************************************)
+
+macro do(A,X) =
+  let the:action = (A) in (X) end_let
+end_macro
+ 
+(****************************************************************
+ *  insertif(XS:typeset, XB:(type, boolean)):typeset
+ *
+ *  insertif(XS, (X, B)) = inserts X in XS if B. Useful in iterators;
+ *  for example:
+ *
+ *  for S:state among STATES    
+ *  apply (insertif, insertif)
+ *  from ({}, {})
+ *  to if COMPLEX_COMPUTATION(S) 
+ *     then ((S,true), (S,false))
+ *     else ((S,false), (S,true))
+ *     end_if
+ *  end_for
+ *
+ *  Definitions are provided for all internal set types.
+ *****************************************************************)
+
+def insertif(XS:stateset, XB:(state, boolean)) : stateset =
+  let(X:state, B:boolean) = XB in
+    if B then insert(XS, X) else XS end_if
+  end_let
+end_def
+
+def insertif(XS:edgeset, XB:(edge, boolean)) : edgeset =
+  let(X:edge, B:boolean) = XB in
+    if B then insert(XS, X) else XS end_if
+  end_let
+end_def
+
+def insertif(XS:labelset, XB:(label, boolean)) : labelset =
+  let(X:label, B:boolean) = XB in
+    if B then insert(XS, X) else XS end_if
+  end_let
+end_def

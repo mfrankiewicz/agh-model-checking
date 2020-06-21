@@ -1,0 +1,527 @@
+
+          CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+
+                            WINDOWS INSTALLATION
+
+******************************************************************************
+
+        This document is intended to every person planning to use CADP on
+a computer running a Microsoft operating system of the Windows family.
+If you do not plan to use CADP in a Windows environment, you can avoid
+reading this document.
+
+******************************************************************************
+
+SECTION 1. CADP ON WINDOWS
+
+   The following versions of Windows are supported:
+      - Windows 7     (32- and 64-bit versions)
+      - Windows 8     (32- and 64-bit versions)
+      - Windows 10    (32- and 64-bit versions)
+
+   For more details about supported architectures, please refer to 
+       http://cadp.inria.fr/status.html
+
+   To use CADP on a Windows system, there are two different options:
+
+   - You can install a virtualization software (e.g., Oracle VirtualBox
+     or VMware's desktop software) on your system, then create a virtual
+     machine running Linux (e.g., stable Debian distribution), and install
+     a Linux version of CADP in this virtual machine.
+
+     This solution is often the easiest one and is surprisingly effective:
+     we observed better performance using a Linux version of CADP running in
+     VirtualBox machine on Windows than using the Windows version of CADP.
+     If you choose this approach, you can stop reading this document and
+     switch to the installation instructions for the Linux versions of CADP.
+
+   - Alternatively, you can choose to install the Windows version of CADP.
+     Before doing so, you have to enrich your Windows system with "Unix-like"
+     extensions provided by the Cygwin software. Technical reasons for using
+     Cygwin are given in Annex A below. Instructions for installing Cygwin
+     are given in this document. Detailed information about Cygwin can be
+     obtained from http://www.cygwin.com
+
+     Caution: The CADP toolbox was originally designed for Unix and gets
+     its best performance when running on Unix systems (Solaris, Linux,
+     etc.) It was then ported to Windows, where it runs less efficiently
+     due to the performance overhead of Cygwin. Also, the installation
+     procedure must be followed strictly. Any ommission or deviation from
+     the following instructions may prevent the software from working.
+
+-------------------------------------------------------------------------------
+
+SECTION 2. DEFINITIONS
+
+   In this document:
+
+   - We use the Unix term "directory" as a synonym of the Windows term
+     "folder".
+
+   - We assume that you are working with an English version of Windows.
+     The name of the icons, menus, options, etc. can be different for
+     other languages; please, perform the appropriate translation to the
+     language used by your version of Windows.
+
+   - We use the term "Cygwin shell window" to denote a window that can
+     be opened either by launching the "Cygwin Bash Shell" application
+     or the "Cygwin Terminal" application (the latter only exists in
+     recent versions of Cygwin). These applications can be launched
+     either by clicking on the corresponding icon on the desktop, or by
+     clicking on the "Start" button of Windows and selecting "Programs",
+     then "Cygwin", then "Cygwin Bash Shell" or "Cygwin Terminal".
+ 
+-------------------------------------------------------------------------------
+
+SECTION 3. IF CYGWIN IS ALREADY INSTALLED ON YOUR MACHINE
+
+   Normally, CADP should work with all versions of Cygwin released since
+   2001. However, if you notice trouble with old versions of Cygwin, please
+   notify cadp@inria.fr and upgrade to the latest Cygwin version as explained
+   below. To know which version of Cygwin is installed on your machine, open
+   a Cygwin shell window (see Section 2) and type the command "uname -r -v",
+   which will display the release number and the date of your version of
+   Cygwin.
+
+   You should then check whether your version of Cygwin has been specifically
+   installed to be compatible with CADP. This can be done by opening a
+   Cygwin Terminal window and searching for a file "/etc/setup/cadp_cygwin".
+   If this file does not exist, then it is likely that your version of Cygwin
+   should be removed and reinstalled.
+
+   Then, proceed to Section 7 below and run the "tst" command to check
+   whether your version of Cygwin works properly with CADP. If problems
+   are reported, apply the changes suggested by "tst". If some problems
+   cannot be solved, come back here in Section 3, otherwise proceed as
+   stated in Section 7.
+
+   To remove Cygwin from your machine, see Annex B below.
+
+   To install a fresh version of Cygwin compatible with CADP, proceed to
+   Section 4 below.
+
+-------------------------------------------------------------------------------
+
+SECTION 4. INSTALLING CYGWIN
+
+   CADP can function with either the 32-bit or the 64-bit version of Cygwin.
+   In April 2016, a user reported that CADP was nearly three times faster
+   on Windows 10 if 64-bit Cygwin was used rather than 32-bit Cygwin. In any
+   case, one should keep in mind that the CADP tools are Win32 executables,
+   so that a GCC compiler producing 32-bit binaries must be present.
+
+   The following instructions have been updated in October 2016 for the
+   version 2.876 of the Cygwin Net Release Setup Program. We hope that
+   they will still be valid for future versions of Cygwin. Please notify 
+   cadp@inria.fr if you notice changes in more recent Cygwin releases.
+
+   To be used with CADP, Cygwin must be installed in one of the three
+   following locations:
+            C:\            traditional location for use with CADP 
+            C:\Cygwin      default location chosen by Cygwin 32 bits
+            C:\Cygwin64    default location chosen by Cygwin 64 bits
+
+   In the remainder of this document, we note this location using a
+   variable we note $CYGROOT that can be equal to either C:\, 
+   C:\Cygwin, or C:\Cygwin64.
+
+   Any other location is forbidden, in the sense that CADP will not work.
+   If possible, the former location "C:\" is recommended, because it has
+   been used since the origins of CADP and extensively tested (the reasons
+   for this choice are discussed in Annex C below). The two latter locations
+   are also tolerated since October 2016, however with much less testing;
+   should you find any problem, please report the issue to cadp@inria.fr
+
+   (1) Log into your Windows system as an administrator.
+
+   (2) Before installing Cygwin, make sure that the directories 
+            $CYGROOT\bin
+            $CYGROOT\cygsetup
+            $CYGROOT\dev
+            $CYGROOT\etc
+            $CYGROOT\lib
+            $CYGROOT\sbin
+            $CYGROOT\srv
+            $CYGROOT\tmp
+            $CYGROOT\usr
+            $CYGROOT\var
+      and the files
+            $CYGROOT\Cygwin.bat          (or $CYGROOT\cygwin.bat)
+            $CYGROOT\Cygwin.bat.ORIG     (or $CYGROOT\cygwin.bat.ORIG)
+            $CYGROOT\Cygwin.ico          (or $CYGROOT\cygwin.ico)
+            $CYGROOT\Cygwin-Terminal.ico
+      do not exist already, as the installation of Cygwin will overwrite
+      them. Should they exist already, then you should move or remove them
+      before installing Cygwin.
+
+      If the directory "$CYGROOT\home" exists, it can be left unchanged, as
+      the Cygwin installer will not overwrite it (hopefully). 
+
+      Note: Remember that lower-case and upper-case letters are equivalent in 
+      Windows (but not always in Cygwin).
+
+   (3) Create a new, empty directory named "C:\cygsetup".
+
+   (4) Download the 32-bit Cygwin installer from:
+        https://cygwin.com/setup-x86.exe
+      or the 64-bit Cygwin installer from:
+        https://cygwin.com/setup-x86_64.exe
+      and save it in "C:\cygsetup".
+
+   (5) Then, double-click on the icon of the downloaded file in "C:\cygsetup".
+       A warning might appear, stating that the software vendor cannot be
+       identified; ignore this warning and proceed. Another message might
+       ask you to allow the setup program to modify your computer's
+       configuration; allow this to happen. A window entitled "Cygwin Net
+       Release Setup Program" opens.
+
+   - Click on "Next"
+
+   - "Choose A Download Source":
+     keep "Install from Internet" and click on "Next"
+
+   - "Select Root Install Directory":
+
+        - "Root Directory:" if possible, we recommend that you select "C:\"
+          (overriding the default choice "C:\Cygwin" or "C:\Cygwin64").
+          However, keeping the default choice is also possible. Do not
+          enter any other location than one among the three listed above.
+
+        - "Install For": keep "All Users (RECOMMENDED)" 
+
+     Click on "Next". If you have selected "C:\", ignore the warning message
+     (if any) about not using the root of the hard drive as the Cygwin root,
+     and click on "Yes" to proceed anyway.
+
+   - "Select Local Package Directory": 
+     enter or keep "C:\cygsetup" and click on "Next"
+
+   - "Select Your Internet Connection":
+     keep "Direct Connection" (unless your machine needs a proxy) and
+     click on "Next"
+
+   - "Choose A Download Site": 
+     select an FTP or HTTP site close to your location and click on "Next"
+
+   - "Select Packages":
+     The latest releases of the Cygwin Setup program do not install
+     all packages by default. As of October 2016, you must make the
+     following selections explicitly (if any of them is not possible,
+     please notify cadp@inria.fr):
+
+        - On line "Archive", click on the [+] box, so that the list opens.
+          In this list, select the three packages "sharutils", "unzip", and
+          "zip" by clicking once on their looping arrows.
+
+	- On line "Base", click on the [+] box, so that the list opens.
+	  In this list, select the package "util-linux" (if not already
+	  selected) by clicking once on its looping arrow. This will install
+	  useful commands (such as "more").
+
+        - On line "Devel", click on the [+] box, so that the list opens. In
+          this list, select the four packages "binutils", "indent", "make",
+          and "mingw64-i686-gcc-core" by clicking once on their looping
+	  arrows (the "gcc-core" and "mingw64-x86_64-gcc-core" packages,
+	  if installed, will not be used by CADP).
+
+        - On line "Editors", click on the [+] box, so that the list opens.
+          In this list, select the package "ed" by clicking once on its
+          looping arrow. Installing "ed" is mandatory for using CADP. You
+          may wish to install also your favourite text editor(s), such as
+          emacs, gvim, nedit, vim, xemacs, etc.
+
+        - On line "Graphics", click on the [+] box, so that the list opens.
+          In this list, select the three packages "evince", "ghostscript",
+          and "gnuplot" by clicking once on their looping arrows.
+
+        - On line "Math", click on the [+] box, so that the list opens.
+          In this list, select the package "bc" by clicking once on its
+          looping arrow.
+
+        - On line "Net", click on the [+] box, so that the list opens.
+          In this list, select the package "ncftp" by clicking once on its
+          looping arrow (this FTP client can be useful if you opt later for
+          the manual installation of CADP).
+
+        - On line "Utils", click on the [+] box, so that the list opens. In
+          this list, select the package "diffutils" by clicking once on its
+          looping arrow. This will install useful commands (such as "cmp").
+
+        - On line "Web", click on the [+] box, so that the list opens. In this
+          list, select the package "wget" by clicking once on its looping
+          arrow.
+
+        - Besides the above mandatory packages, you might wish to install some 
+          additional packages for your own convenience. Click on "Next".
+
+   - "Resolving dependencies":
+     Let the installer select the required packages to satisfy dependencies
+     and click on "Next"
+
+   - "Progress": Wait a moment; the installer will first download all the
+      package into "C:\cygsetup" and then will extract these packages into
+      the directory in which you chose to install Cygwin (namely, into
+      subdirectories "/bin", "/etc", "/lib", and so on). Downloading and
+      extraction usually take some time.
+
+   - "Create Icons"
+      - "Create icon on Desktop": check the box
+      - "Add icon to Start Menu": check the box
+     Click on "Finish".
+
+   - "Installation complete": click on "OK"
+
+-------------------------------------------------------------------------------
+
+SECTION 5. FURTHER CONFIGURING CYGWIN
+
+   The version of Cygwin that has just been installed is not yet sufficient
+   for a proper functionning of the CADP tools. 
+
+   FIRST STEP
+
+   Still logged on as an administrator, open a Cygwin shell window (see
+   Section 2). This opens a black command-line window. The first time this
+   window opens, initializations actions are performed. You may wish to
+   customize this window by right-clicking on its window bar and then
+   selecting "Options".
+
+   SECOND STEP
+
+   The CADP team provides a shell-script named "cadp_cygwin.com" that 
+   slightly modifies the Cygwin distribution to solve various problems.
+   The application of this shell-script is mandatory, otherwise CADP will
+   not function properly. More information can be obtained by reading the
+   code of this shell-script.
+
+   To apply the "cadp_cygwin.com" shell-script, type the following commands
+   in your Cygwin shell window:
+
+            cd C:\cygsetup
+            wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/installator.win32/cadp_cygwin.com
+            /bin/bash -o igncr cadp_cygwin.com
+
+   IMPORTANT: Do not try to execute "cadp_cygwin.com" from your Web browser
+   nor by double clicking on it, as nothing would happen. This would be useless
+   because "cadp_cygwin.com" is a Unix shell-script, not a Windows application.
+
+   IMPORTANT: Do not replace /bin/bash by /bin/sh and do not forget the
+   "-o igncr" option.
+
+   Close all your Cygwin shell windows, because "cadp_cygwin.com" has no
+   effect on windows already open: it will only have effects on the Cygwin
+   shell windows that you will open afterwards. 
+
+   Note: In order to save disk space, the directory "C:\cygsetup\*\release"
+   can be removed. However, we recommend to keep it unless disk space is
+   a real issue.
+
+-------------------------------------------------------------------------------
+
+SECTION 6. INSTALLING A POSTSCRIPT VIEWER
+
+   The BCG_DRAW and BCG_EDIT tools of CADP requires a PostScript interpreter
+   and a PostScript viewer, which are not available by default on Windows.
+
+   Regarding the PostScript interpreter, we recommend using the "ghostscript"
+   package of Cygwin that has been already installed (see above instructions).
+
+   Regarding the PostScript viewer, we recommend installing the "evince"
+   package of Cygwin that has been already installed (see above instructions).
+
+   Note: If you prefer installing the GSview viewer rather than Evince,
+   please consult Annex D below.
+
+-------------------------------------------------------------------------------
+
+SECTION 7. CHECK YOUR CYGWIN INSTALLATION
+
+   Open a new Cygwin shell window and type the following commands:
+
+            cd /tmp
+            wget -O tst ftp://ftp.inrialpes.fr/pub/vasy/cadp/tst
+            sh ./tst win32
+
+   Note: If the command "wget" is not available on your machine, use
+   your web browser to download the "tst" shell-script from
+   ftp://ftp.inrialpes.fr/pub/vasy/cadp/tst
+
+   Inspect carefully the output of the "tst" command, looking for lines
+   starting with "***", which report major installation problems. Apply
+   the changes suggested until no problem is reported.
+
+   You are now ready to install the CADP software itself. Go back to:
+
+     http://cadp.inria.fr/installator/index.html#win32 
+
+-------------------------------------------------------------------------------
+
+ANNEX A. WHY IS CYGWIN NEEDED TO USE WINDOWS VERSIONS OF CADP?
+
+     All the CADP tools distributed in binary form for Windows (i.e., all
+     files having extension ".exe", ".dll", or ".a" and contained in the
+     "bin.win32" directories of the CADP distribution) are pure Windows
+     executables.
+
+     However, some of these tools invoke Unix commands (e.g., "ls", "mv",
+     "cp", etc. as well as the GCC compiler) which are not available by
+     default on Windows systems. 
+
+     Moreover, several CADP tools are written in Bourne shell language (e.g.,
+     all files enclosed in the "com" directories of the CADP distribution).
+     The Bourne shell interpreter is available by default on Unix systems,
+     but not on Windows systems.
+
+     For technical and economical reasons, we have chosen not to rewrite
+     the CADP tools entirely, but rather to assume that they are run on
+     a Windows enriched with "Unix-like" features, including a Bourne shell.
+
+     There are several Unix extensions for Windows available on the market.
+     For the moment, we support the Cygwin software distributed by RedHat
+     (formerly, Cygnus Solutions) under the General Public License. See
+     http://www.cygwin.com for detailed information about Cygwin.
+
+-------------------------------------------------------------------------------
+
+ANNEX B. HOW TO REMOVE CYGWIN FROM YOUR MACHINE?
+
+   TO REMOVE CYGWIN 1.1.4 AND HIGHER
+
+     Cygwin has no automatic uninstall facility. The official instructions
+     for uninstalling Cygwin are available from:
+       http://cygwin.com/faq.html#faq.setup.uninstall-all
+
+     If your version of Cygwin has not been specifically installed to be
+     compatible with CADP (i.e., if file "C:\etc\setup\cadp_cygwin" does
+     not exist), apply the official instructions.
+
+     If your version of Cygwin has been specifically installed to be
+     compatible with CADP, stop first any Cygwin applications and services
+     that may be running (this can be done by applying the official
+     instructions).
+
+     Then, open (using the Windows Explorer) the directory noted $CYGROOT
+     in which Cygwin has been installed; typically, $CYGROOT is either C:\,
+     C:\Cygwin, or C:\Cygwin64. Remove the following directories (if they
+     exist) by dropping them into the trash can:
+            C:\cygsetup
+            $CYGROOT\bin
+            $CYGROOT\dev
+            $CYGROOT\etc
+            $CYGROOT\lib
+            $CYGROOT\sbin
+            $CYGROOT\srv
+            $CYGROOT\tmp
+            $CYGROOT\usr
+            $CYGROOT\var
+     and remove the following files (if they exist):
+            $CYGROOT\Cygwin.bat          (or $CYGROOT\cygwin.bat)
+            $CYGROOT\Cygwin.bat.ORIG     (or $CYGROOT\cygwin.bat.ORIG)
+            $CYGROOT\Cygwin.ico          (or $CYGROOT\cygwin.ico)
+            $CYGROOT\Cygwin-Terminal.ico
+     Notice that some of these directories and files may not exist, depending
+     on your version of Cygwin and depending whether Cygwin services have
+     been running.
+
+     You may wish to keep the "$CYGROOT\home" directory, which contains
+     users' files and settings, or remove this directory after having saved
+     its contents to another place.
+
+     If Cygwin has been installed in "C:\Cygwin" or "C:\Cygwin64", remove
+     also the following symbolic links (if they exist) that might have
+     been created when installing versions of CADP more recent than
+     December 2017:
+            C:\bin
+            C:\dev
+            C:\etc
+            C:\home
+            C:\lib
+            C:\sbin
+            C:\tmp
+            C:\usr
+            C:\var
+
+-------------------------------------------------------------------------------
+
+ANNEX C. WHY IT IS RECOMMENDED TO INSTALL CYGWIN DIRECTLY IN "C:\" 
+
+   The reason for this is the following. The binary programs contained
+   in the CADP distribution (e.g. caesar, bcg_io, etc.) are "pure" Win32
+   executables. They are not compiled against the Cygwin DLL, which allows
+   them to be fully independent from Cygwin (so that other Unix emulations
+   could be used in the future). For a proper functionning of "pure" Win32
+   executables and Cygwin executables, it is required that the root directory
+   of Windows (i.e., "\") and the root directory of Cygwin (i.e., "/")
+   coincide. Therefore, if you install Cygwin at a different place than "\"
+   then Win32 program will not understand Cygwin pathnames (there exists
+   a Cygwin command named "cygpath" for performing pathname conversions,
+   but using this command would require to modify all the script-shells of 
+   CADP in a Cygwin-dependent way, which we have chosen to avoid).
+
+   In October 2016, this constraint was relaxed by allowing C:/ to be
+   replaced with C:/Cygwin (32-bit version) or C:/Cygwin64 (64-bit version).
+   In December 2017, several errors occurring when Cygwin was not installed
+   in C:/ have been corrected.
+
+-------------------------------------------------------------------------------
+
+ANNEX D. INSTALLING GHOSTSCRIPT AND GSVIEW AS AN ALTERNATIVE VIEWER
+
+   The BCG_DRAW tool requires a PostScript viewer in order to display the
+   BCG graphs. These are instructions for installing the Ghostscript/GSview
+   software. For information about this software, please consult
+      https://www.ghostscript.com/Ghostscript.html
+
+   If you already have a working version of Ghostscript/GSview installed
+   on your machine, we recommend that you keep it unchanged.
+
+   Otherwise, you have two options: installing an old, stable version
+   that is known to work properly with CADP, or installing the most recent 
+   version. Note that recent versions of GSview prompt the user for 
+   software registration every time Gsview is invoked.
+
+   You must be logged on as an administrator to install Ghostscript 
+   and GSview (otherwise the registry will not be updated properly).
+
+   FIRST OPTION: INSTALLING GHOSTSCRIPT 5.50 / GSVIEW 2.7 (AUG. 2000)
+
+      Download Ghostscript 5.50 / GSview 2.7 installer for Windows
+      (3,429,376 bytes) from
+      ftp://ftp.inrialpes.fr/pub/vasy/cadp/installator.win32/gsv27550.exe
+
+      Save this file anywhere on the disk and double-click on it. 
+      We recommend that you keep the default installation directory
+      (otherwise, you will have to customize the environment variables 
+      $CADP_PS_VIEWER and $CADP_PS_INTERPRETER later). When the installation
+      is complete, you can remove "gsv27550.exe".
+
+   SECOND OPTION: INSTALLING GHOSTSCRIPT 9.50 / GSVIEW 5.0 (OCT. 2019)
+
+      Normally, Cygwin already comes with Ghostscript installed in
+      "/bin/gs". If this command is not present, you can download
+      Ghostscript 9.50 (32- or 64-bit version) for Windows from
+        https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs950/gs950w32.exe
+      or
+        https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs950/gs950w64.exe 
+
+      Save this file anywhere on the disk and double-click on it. 
+      We recommend that you keep the default installation directory
+      (otherwise, you will have to customize the environment variable 
+      $CADP_PS_VIEWER later). When the installation is complete, you
+      can remove "gs950w32.exe" or "gs950w64.exe".
+
+      Download GSview 5.0 (32- or 64-bit version) for Windows from
+        http://www.ghostgum.com.au/download/gsv50w32.exe
+      or
+        http://www.ghostgum.com.au/download/gsv50w64.exe
+
+      Save this file anywhere on the disk and double-click on it.
+      We recommend that you keep the default installation directory
+      (otherwise, you will have to customize the environment variable
+      $CADP_PS_INTERPRETER later). When the installation is complete,
+      you can remove "gsv50w32.exe" or "gsv50w64.exe".
+
+-------------------------------------------------------------------------------
+Written by Hubert Garavel. Last updated on 2019/10/17 13:12:04
+-------------------------------------------------------------------------------
+

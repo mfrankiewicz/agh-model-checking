@@ -1,0 +1,130 @@
+# This file is a customization file for a2ps
+# Style sheet for MCL
+# $Id#
+
+style MCL is
+
+written by "Syntax Editor Configuration Tool <cadp@inria.fr>"
+version is 1.8
+
+documentation is
+ "This style is designed to fontify the MCL language"
+end documentation
+
+alphabets are
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+
+keywords in Keyword_strong are
+   among,
+   any,
+   "case",
+   choice,
+   continue,
+   do,
+   else,
+   elsif,
+   "end",
+   end_library,
+   end_macro,
+   exists,
+   exit,
+   export,
+   for,
+   forall,
+   from,
+   if,
+   "in",
+   let,
+   library,
+   loop,
+   macro,
+   mu,
+   nil,
+   nu,
+   of,
+   on,
+   repeat,
+   step,
+   tau,
+   then,
+   to,
+   until,
+   where,
+   while
+end keywords
+
+keywords in Keyword are
+   bool,
+   nat,
+   natset,
+   int,
+   real,
+   char,
+   "string",
+   false,
+   true,
+   abs,
+   and,
+   concat,
+   diff,
+   empty,
+   equ,
+   implies,
+   index,
+   insert,
+   isin,
+   isalnum,
+   isalpha,
+   isdigit,
+   islower,
+   isupper,
+   isxdigit,
+   inter,
+   length,
+   not,
+   nth,
+   or,
+   prefix,
+   remove,
+   rindex,
+   sign,
+   substr,
+   succ,
+   suffix,
+   tolower,
+   toupper,
+   union,
+   xor
+end keywords
+
+operators in Keyword_strong are
+   "+",
+   -,
+   =,
+   !,
+   "/",
+   ^,
+   %,
+   |,
+   <,
+   >,
+   [,
+   ],
+   @,
+   *,
+   ?,
+   <> \neq,
+   <= \leq,
+   >= \geq,
+   -> \rightarrow,
+   -|
+end operators
+
+sequences are
+   "(*" Comment "*)",
+   C-char,
+   C-string
+end sequences
+
+end style
+

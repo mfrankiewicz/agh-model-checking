@@ -1,0 +1,147 @@
+module CONTROL (TYPES, CHANNELS) is
+
+-------------------------------------------------------------------------------
+
+process Control [CI:CInChannel, cerri:NullChannel, erro:NullChannel, 
+                 crep:PortChannel, rq:RqChannel, ra:RaChannel] is
+
+   par CI in
+      Controler [CI, cerri, erro, crep, rq, ra] ({} of RouteList, {} of PortSet)
+   ||
+      Control_Msg_Generator [CI]
+   end par
+
+end process
+
+-------------------------------------------------------------------------------
+
+process Control_Msg_Generator [CI:CInChannel] is
+
+    par
+       Add_Port_Generator [CI]
+    ||
+       Add_Route_Generator [CI]
+    ||
+       Send_Faults_Generator [CI]
+    ||
+       Other_Command_Generator [CI]
+   end par
+
+end process
+
+-------------------------------------------------------------------------------
+
+process Add_Port_Generator [CI:CInChannel] is
+
+   select
+      i;
+      loop
+         CI (Add_Data_Port, 0 of PortNo)
+      end loop
+   []
+      i;
+      loop
+         CI (Add_Data_Port, 1 of PortNo)
+      end loop
+   []
+      i;
+      loop
+         CI (Add_Data_Port, ?any PortNo)
+      end loop
+   end select
+
+end process
+
+-------------------------------------------------------------------------------
+
+process Add_Route_Generator [CI:CInChannel] is
+
+   var ps:PortSet in
+      loop
+         select
+            ps := {}
+         []
+            ps := {0 of PortNo}
+         []
+            ps := {1 of PortNo}
+         []
+            ps := {1 of PortNo, 0 of PortNo}
+         end select;
+         CI (Add_Route, ?any RouteNo, ps)
+      end loop
+   end var
+
+end process
+
+-------------------------------------------------------------------------------
+
+process Send_Faults_Generator [CI:CInChannel] is
+
+   loop
+      select
+         i;
+         stop
+      []
+         CI (Send_Faults)
+      end select
+   end loop
+
+end process
+
+-------------------------------------------------------------------------------
+
+process Other_Command_Generator [CI:CInChannel] is
+
+   loop
+      CI (Other_Command)
+   end loop
+
+end process
+
+-------------------------------------------------------------------------------
+
+process Controler [CI:CInChannel, erri:NullChannel,
+                   erro:NullChannel, crep:PortChannel,
+                   rq:RqChannel, ra:RaChannel]
+                  (in var rl:RouteList, in var ps:PortSet) is
+
+   var n:PortNo, r:RouteNo, s:PortSet, e:Env in
+      loop
+         select
+            -- Valid commands from control-port-in
+            CI (Add_Data_Port, ?n) where not (n IsIn ps);
+            crep (n);
+            ps := add (n, ps)
+         []
+            CI (Add_Route, ?r, ?s);
+            if r IsIn rl then
+               rl := update (r, s, rl)
+            else
+               rl := insert (r, s, rl)
+            end if
+         []
+            CI (Send_Faults);
+            erro
+         []
+            -- Other command from control-port-in
+            CI (Other_Command);
+            erri
+         []
+            -- Route query from data ports
+            rq (?r, ?e);
+            if (r IsIn rl) and (ps contains route (r, rl)) and
+               (route (r, rl) != {}) then
+               ra (route (r, rl), r, e)
+            else
+               ra (Unknown_Route, r, e)
+            end if
+         end select
+      end loop
+   end var
+
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

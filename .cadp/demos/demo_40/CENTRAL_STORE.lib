@@ -1,0 +1,52 @@
+(******************************************************************************
+ * CENTRALSTORE.lib:
+ * Process definition for the stock management system [Chirichiello-Salaun-05]
+ *
+ * The central store can receive a request from a local store or emit a request
+ * to a supplier. In case of reception of a request from a local store, the
+ * answer (ok or nok) is computed depending on the availability of the product
+ * in the stock. If items are delivered (in reponse to a request from a local
+ * store) or received (in response to a successful request to a supplier), the
+ * stock is updated accordingly.
+ *****************************************************************************)
+ 
+process CentralStore [request_local,    ok_local,    nok_local,
+                      request_supplier, ok_supplier, nok_supplier]
+                     (s : Stock) : noexit :=
+
+   (* request received from a local store *)
+   request_local ?id : Nat ?q : Nat;
+      (
+         [isAvailable (id, q, s)] ->
+            (* quantity available *)
+            ok_local;
+               (* items delivered: update the stock *)
+               CentralStore [request_local, ok_local, nok_local,
+                             request_supplier, ok_supplier, nok_supplier]
+                            (decrease (id, q, s))
+         []
+         [not (isAvailable (id, q, s))] ->
+            (* quantity not available *)
+            nok_local;
+               CentralStore [request_local,    ok_local,    nok_local,
+                             request_supplier, ok_supplier, nok_supplier] (s)
+      )
+
+   []
+
+   (* request sent to a supplier *)
+   request_supplier !extract (s) !5;
+      (
+         ok_supplier;
+            (* successful request: update the stock *)
+            CentralStore [request_local,    ok_local,    nok_local,
+                          request_supplier, ok_supplier, nok_supplier]
+                         (increase (extract (s), 5, s))
+         []
+         nok_supplier;
+            CentralStore [request_local,    ok_local,    nok_local,
+                          request_supplier, ok_supplier, nok_supplier] (s)
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)

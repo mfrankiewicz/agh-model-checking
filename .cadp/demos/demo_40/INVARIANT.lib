@@ -1,0 +1,43 @@
+(******************************************************************************
+ * INVARIANT.lib: 
+ * specification of invariants and constraints for the book auction example
+ *
+ * This type defines several predefined invariants or constraints together with
+ * an evaluation function to check the satisfaction.
+ * Invariants or constraints are used by processes to decide if a value
+ * proposed during a negotiation round is acceptable.
+ *****************************************************************************)
+
+type INVARIANT is
+   NATURAL, BOOLEAN, BOOK
+   sorts Inv
+   opns
+        (* constructors: predefined invariants 
+         *  - pMinYYY: the price has to be at least 'YYY'
+         *  - pMaxYYY: the price has to be at most 'YYY'
+         *)
+        pMin2 (*! constructor *) : -> Inv
+        pMin3 (*! constructor *) : -> Inv
+        pMin4 (*! constructor *) : -> Inv
+        pMin5 (*! constructor *) : -> Inv
+        pMin6 (*! constructor *) : -> Inv
+        pMax3 (*! constructor *) : -> Inv
+        pMax4 (*! constructor *) : -> Inv
+        pMax5 (*! constructor *) : -> Inv
+
+        (* evaluation function *)
+        conform : Nat,  Inv -> Bool
+
+   eqns
+      forall p : Nat
+      ofsort Bool
+         conform (p, pMin2) = (p >= 2);
+         conform (p, pMin3) = (p >= 3);
+         conform (p, pMin4) = (p >= 4);
+         conform (p, pMin5) = (p >= 5);
+         conform (p, pMin6) = (p >= 6);
+      ofsort Bool
+         conform (p, pMax3) = (p <= 3);
+         conform (p, pMax4) = (p <= 4);
+         conform (p, pMax5) = (p <= 5);
+endtype

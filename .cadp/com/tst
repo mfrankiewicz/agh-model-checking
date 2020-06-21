@@ -1,0 +1,3181 @@
+#!/bin/sh
+	
+#
+# CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+# http://cadp.inria.fr
+#
+# tst version 1.522 -- date 2019/11/05 17:04:44 -- Hubert Garavel
+#
+# -----------------------------------------------------------------------------
+#
+# ATTENTION 1: toutes les lignes ci-dessus doivent etre des commentaires
+#
+# ATTENTION 2: les lignes de cette section doivent obligatoirement se terminer
+# par un commentaire afin de neutraliser les '\r' parasites dans le cas ou le
+# shell de Cygwin n'aurait pas l'option 'igncr' correctement positionnee
+#
+CHECK_CYGWIN_INSTALLATION() { #
+	RESULT=0 #
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# recherche du fichier /etc/setup/cadp_cygwin cree par cadp_cygwin.com
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	if [ -f /etc/setup/cadp_cygwin ] #
+	then #
+		# note : si /etc/setup/cadp_cygwin comporte plusieurs lignes
+		# (c'est-a-dire si cadp_cygwin.com a ete appele plusieurs fois)
+		# on affiche la liste des numeros de versions
+		VERSION_LIST=`sed -e 's/^cadp_cygwin.com \([0-9.]*\).*/\1/' /etc/setup/cadp_cygwin` #
+		VERSION_LIST=`echo $VERSION_LIST` #
+		echo '' #
+		echo "The shell-script \`\`cadp_cygwin.com'' (version $VERSION_LIST) has been applied" #
+	else #
+		echo '' #
+		echo "*** The shell-script \`\`cadp_cygwin.com'' has not been applied" #
+		RESULT=1 #
+	fi #
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# verification pour savoir si /bin/sh.exe accepte l'option igncr
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	( /bin/sh.exe -o igncr true 2> /dev/null ) #
+	if [ $? -ne 2 ] #
+	then #
+		echo '' #
+		echo "Command \`\`/bin/sh.exe'' accepts option \`\`igncr''" #
+		SH_IGNCR=0 #
+	else #
+		echo '' #
+		echo "*** Command \`\`/bin/sh.exe'' refuses option \`\`igncr''" #
+		SH_IGNCR=1 #
+	fi #	
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# verification pour savoir si /bin/sh.exe est identique a /bin/bash.exe
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	cmp -s /bin/bash.exe /bin/sh.exe #
+	if [ $? -eq 0 ] #
+	then #
+		echo '' #
+		echo "Commands \`\`/bin/sh.exe'' and \`\`/bin/bash.exe'' are identical" #
+	else #
+		echo '' #
+		echo "Commands \`\`/bin/sh.exe'' and \`\`/bin/bash.exe'' are different" #
+		if [ $SH_IGNCR -eq 1 ] #
+		then #
+			# on a une erreur fatale
+			RESULT=1 #
+		fi #
+	fi #
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# on regarde si /etc/profile a ete patche par cadp_cygwin.com
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	if [ ! -f /etc/profile ] #
+	then #
+		echo '' #
+		echo "*** File /etc/profile does not exist" #
+		echo "    Please, notify cadp@inria.fr" #
+		ETC_PROFILE_OK=0 #
+	else #
+		cat /etc/profile | tr -d '\015' | grep -s '^set -o igncr ; export SHELLOPTS$' > /dev/null 2> /dev/null #
+		if [ $? -eq 0 ] #
+		then #
+			echo '' #
+			echo "File \`\`/etc/profile'' exists and has been patched" #
+			ETC_PROFILE_OK=1 #
+		else #
+			echo '' #
+			echo "File \`\`/etc/profile'' exists and has not been patched" #
+			ETC_PROFILE_OK=0 #
+		fi #
+	fi #
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# on regarde si /Cygwin.bat a ete patche par cadp_cygwin.com
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	if [ ! -f /Cygwin.bat ] #
+	then #
+		echo '' #
+		echo "*** File /Cygwin.bat does not exist" #
+		echo "    Please, notify cadp@inria.fr" #
+		CYGWIN_BAT_OK=0 #
+	else #
+		cat /Cygwin.bat | tr -d '\015' | grep '^set SHELLOPTS=igncr$' > /dev/null 2> /dev/null #
+		if [ $? -eq 0 ] #
+		then #
+			echo '' #
+			echo "File \`\`/Cygwin.bat'' exists and has been patched" #
+			CYGWIN_BAT_OK=1 #
+		else #
+			echo '' #
+			echo "File \`\`/Cygwin.bat'' exists and has not been patched" #
+			CYGWIN_BAT_OK=0 #
+		fi #
+	fi #
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# on verifie l'existence de /Cygwin-Terminal.ico
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	if [ -f /Cygwin-Terminal.ico ] #
+	then #
+		echo '' #
+		echo "File \`\`/Cygwin-Terminal.ico'' exists" #
+		CYGWIN_TERMINAL_OK=1 #
+	else #
+		echo '' #
+		echo "File \`\`/Cygwin-Terminal.ico'' does not exist" #
+		CYGWIN_TERMINAL_OK=0 #
+	fi #
+	#
+	if [ $ETC_PROFILE_OK -eq 0 -a ! \( $CYGWIN_BAT_OK -eq 1 -a $CYGWIN_TERMINAL_OK -eq 0 \) ] #
+	then #
+		# autre cas d'erreur fatale
+		RESULT=1 #
+	fi #
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# on verifie la presence de liens symboliques si Cygwin pas dans C:/
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	CYGWIN_ROOT=`cygpath -w /` #
+	if [ "$CYGWIN_ROOT" != "C:\\" ] #
+	then #
+		for DIR in bin dev etc home lib sbin tmp usr var #
+		do #
+			if [ ! -L "C:\\$DIR" ] #
+			then #
+				echo '' #
+				echo "*** Symbolic link \`\`C:\\$DIR -> $CYGWIN_ROOT\\$DIR'' is missing" #
+				# erreur fatale
+				RESULT=1 #
+			elif [ ! "C:\\$DIR" -ef "$CYGWIN_ROOT\\$DIR" ] #
+			then #
+				echo '' #
+				echo "*** Symbolic link \`\`C:\\$DIR'' does not point to \`\`$CYGWIN_ROOT\\$DIR'' as expected" #
+				# erreur fatale
+				RESULT=1 #
+			else #
+				echo '' #
+				echo "Symbolic link \`\`C:\\$DIR -> $CYGWIN_ROOT\\$DIR'' exists" #
+			fi #
+		done #
+	fi #
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	# message d'erreur recapitulatif eventuel
+	# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	if [ $RESULT = 1 ] #
+	then #
+		echo '' #
+		echo "*** Your version of Cygwin is not properly installed" #
+		echo "    The CADP software will not function on this system" #
+		echo "==> See explanations in http://cadp.inria.fr/win32.html" #
+		echo "    Download the \`\`cadp_cygwin.com'' shell-script from:" #
+		echo "    ftp://ftp.inrialpes.fr/pub/vasy/cadp/installator.win32/cadp_cygwin.com" #
+		echo "    Save this script as a file and execute it using the following command:" #
+		echo "    /bin/bash -o igncr cadp_cygwin.com" #
+	fi #
+	return $RESULT #
+} #
+#
+if [ -x /bin/cygpath.exe -a `expr "$SHELLOPTS" : '.*igncr.*'` = 0 ] #
+then #
+	# On est sous Windows/Cygwin et la variable $SHELLOPTS ne contient pas
+	# la valeur indispensable "igncr" qui permet de tolerer les caracteres
+	# '\r' dans les shell-scripts. Voir discussion plus detaillee :
+	# http://cygwin.com/ml/cygwin-announce/2010-08/msg00015.html
+	echo '' #
+	echo "*** Variable \`\`\$SHELLOPTS'' does not contain option \`\`igncr''" #
+	echo "    The CADP software will not function on this system" #
+	echo "==> See explanations in http://cadp.inria.fr/win32.html" #
+	CHECK_CYGWIN_INSTALLATION #
+	exit 1 #
+fi #
+#
+# -----------------------------------------------------------------------------
+
+TST_BANNER="This is \`\`tst'' version 1.522 (2019/11/05 17:04:44)"
+
+# -----------------------------------------------------------------------------
+
+# Cette commande peut etre appelee avec 0 ou 1 argument
+#
+# - S'il y a zero argument : on suppose que le logiciel CADP est installe' sur
+#   la machine courante ; dans ce cas on fait une double verification, en
+#   testant a la fois le systeme d'exploitation de la machine et la maniere
+#   dont CADP est installe'. Ce mode de fonctionnement de "tst" sert APRES
+#   l'installation de CADP.
+#
+# - S'il y a un argument : cet argument doit etre un nom d'architecture (sun4,
+#   sun5, etc.) ; dans ce cas on ne teste que le systeme d'exploitation de la
+#   machine courante, sans supposer que CADP est installe' sur cette machine.
+#   Ce mode de fonctionnement de "tst" sert AVANT l'installation de CADP.
+
+if [ "$1" = "" ]
+then
+	CHECK_CADP=1
+else
+	CHECK_CADP=0
+fi
+export CHECK_CADP
+
+# -----------------------------------------------------------------------------
+
+TAIL_LINE () {
+	if [ $CHECK_CADP = 1 ]
+	then
+		"$CADP"/src/com/cadp_tail -n 1
+	else
+		case "$ARCH" in
+			sun3 | sun4 | sun5 | sun64 | sol86 | sol64 )
+				tail -1
+				;;
+			* )
+				tail -n 1
+				;;
+		esac
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+WHERE () {
+	# recherche le repertoire $2 dans la liste de repertoire $1 (qui suit
+	# les conventions de la variable $PATH)
+	SAVED_IFS=$IFS
+	IFS=":"
+	for DIR in $1
+	do
+		if [ "$DIR" = "$2" ]
+		then
+			IFS=$SAVED_IFS
+			return 0
+		fi
+	done
+	IFS=$SAVED_IFS
+	return 1
+}
+
+# -----------------------------------------------------------------------------
+
+DIAGNOSTIC () {
+	# cette commande affiche un message d'aide
+
+	# argument(s) facultatif(s) :
+	# argument $1 : "-n" s'il ne faut pas sauter de ligne en fin du message
+	# de diagnostic
+
+	if [ "@$1" = "@-n" ]
+	then
+		OPTION_N="-n"
+		shift
+	else
+		OPTION_N=""
+	fi
+
+	# arguments obligatoires
+	# argument $1 : repertoire pour sun3, sun4
+	# argument $2 : repertoire pour sun5, sun64, sol86, sol64
+	# argument $3 : repertoire pour iX86, x64, ia64
+	# argument $4 : repertoire pour win32
+	# argument $5 : repertoire pour macOS, mac86, mac64
+
+	if [ "$#" -ne 5 ]
+	then
+		echo "*** internal error: extra or missing arguments to DIAGNOSTIC()"
+	fi
+	case $ARCH in
+		sun3 | sun4 )
+			WHERE "$PATH" "$1"
+			if [ $? = 1 ]
+			then
+				echo "==> Add directory $1 to your \`\`\$PATH'' variable"
+			else
+				echo "==> Install the SunOS package containing this command"
+			fi
+			;;
+		sun5 | sun64 | sol86 | sol64 )
+			WHERE "$PATH" "$2"
+			if [ $? = 1 ]
+			then
+				echo "==> Add directory $2 to your \`\`\$PATH'' variable"
+			else
+				echo "==> Install the Solaris package containing this command"
+			fi
+			;;
+		iX86 | x64 | ia64 )
+			WHERE "$PATH" "$3"
+			if [ $? = 1 ]
+			then
+				echo "==> Add directory $3 to your \`\`\$PATH'' variable"
+			else
+				echo "==> Install the Linux package containing this command"
+			fi
+			;;
+		win32 )
+			WHERE "$PATH" "$4"
+			if [ $? = 1 ]
+			then
+				echo "==> Add directory $4 to your \`\`\$PATH'' variable"
+			else
+				echo "==> Install the Cygwin package containing this command"
+			fi
+			;;
+		macOS | mac86 | mac64 )
+			WHERE "$PATH" "$5"
+			if [ $? = 1 ]
+			then
+				echo "==> Add directory $5 to your \`\`\$PATH'' variable"
+			else
+				echo "==> See explanations in http://cadp.inria.fr/macOS.html"
+			fi
+			;;
+		* )
+			echo "==> Unknown architecture \`\`$ARCH''"
+			;;
+	esac
+	if [ "$OPTION_N" = "" ]
+	then
+		echo ''
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+WHICH () {
+	# argument $1 : nom de la commande dont on verifie l'existence
+	# ou que l'on recherche dans la liste $PATH. Attention: cet
+	# argument peut contenir des espaces, comme par exemple
+	#    /Program Files/Internet Explorer/iexplore.exe
+	# c'est pourquoi on positionne a ':' la variable $IFS du shell qui
+	# sert a definir les separateurs entre les noms de fichiers
+	FILE="$1"
+	case "$FILE" in
+	/* )
+		# chemin absolu
+		if test -x "$FILE"
+		then
+			echo `dirname "$FILE"`
+			return 0
+		else
+			echo ""
+			return 0
+		fi
+		;;
+	* )	
+		# chemin relatif
+		SAVED_IFS=$IFS
+		IFS=":"
+		for DIR in $PATH
+		do
+			if [ -x "$DIR/$FILE" ]
+			then
+				echo "$DIR"
+				IFS=$SAVED_IFS
+				return 0
+			fi
+		done
+		echo ""
+		IFS=$SAVED_IFS
+		return 0
+		;;
+	esac	
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_PRESENT () {
+	# argument $1 : nom de la commande dont on verifie l'existence
+	# cet argument peut contenir des espaces, comme par exemple
+	# "/Program Files/Internet Explorer/iexplore.exe"
+	# argument $2 (optionnel) : nom de la variable d'environnement
+	# (si elle existe) qui est censee contenir la valeur $1
+
+	if [ "$1" = "" ]
+	then
+		echo ''
+		echo "*** Unexpected empty value"
+		if [ "$2" = "" ]
+		then
+			echo "==> Please report the problem to cadp@inria.fr"
+		else
+			echo "==> Read file \$CADP/INSTALLATION_2 to learn about variable \$$2"
+			echo "==> Install the third-party software that seems to be missing"
+			echo "==> Make sure that your \$PATH variable gives access to it, and re-run \`\`tst''"
+		fi
+		# on renvoie 0 et non pas 1 pour eviter des messages
+		return 0
+	fi
+
+	WHICH_DIRECTORY=`WHICH "$1"`
+	if [ "$WHICH_DIRECTORY" != "" ]
+	then
+		echo "Command \`\`$1'' is ok"
+		return 0
+	else
+		echo ''
+		echo "*** Can't find command \`\`$1''"
+		return 1
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_PRESENT_WITH_DIAGNOSTIC () {
+	# argument(s) facultatif(s) :
+	# argument $1 : -n indiquant qu'on ne doit pas sauter de ligne
+	# supplementaire a la fin du message de diagnostic eventuel
+
+	if [ "@$1" = "@-n" ]
+	then
+		OPTION_N="-n"
+		shift
+	else
+		OPTION_N=""
+	fi
+
+	# arguments obligatoires :
+	# argument $1 : nom de la commande dont on verifie l'existence
+	# arguments restants : liste de repertoires dans laquelle la commande
+	# $1 devrait se trouver en fonction de l'architecture courante
+
+	if [ $# -ne 6 ]
+	then
+		echo "Command \`\`$1'': internal error: extra or missing arguments to CHECK_PRESENT_WITH_DIAGNOSTIC ()"
+	fi
+
+	CHECK_PRESENT $1
+	RESULT=$?
+	if [ $RESULT = 1 ]
+	then
+		shift
+		DIAGNOSTIC $OPTION_N "$@"
+	fi
+	return $RESULT
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_ACCESS () {
+	echo ''
+	WHERE "$1" "$2"
+	if [ $? = 1 ]
+	then
+		echo "*** Can't locate directory \`\`$2'' in \`\`$4''"
+		echo "==> Read file \$CADP/INSTALLATION_2 and"
+		echo "==> Add directory \`\`$3'' to your \`\`$4'' variable"
+	else
+		echo "Directory \`\`$3'' is included in the \`\`$4'' variable"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+SEARCH_IN_LIST () {
+# argument 1 : commande a rechercher
+# argument 2 : liste de repertoires
+COMMAND=$1
+DIRS=$2
+
+WHICH_DIRECTORY=`WHICH $1`
+if [ "$WHICH_DIRECTORY" = "" ]
+then
+	return
+fi
+
+for D in $DIRS
+do
+	if [ "$D" = "$WHICH_DIRECTORY" ]
+	then
+		return
+	elif cmp -s "$D/$COMMAND" "$WHICH_DIRECTORY/$COMMAND"
+	then
+		return
+	fi
+done
+
+FIRST_DIR=`echo $DIRS | sed -e s'/\ .*//'`
+echo "==> But using \`\`$WHICH_DIRECTORY/$COMMAND'' instead of \`\`$FIRST_DIR/$COMMAND'' might create problems"
+echo "==> If you notice something wrong, try to re-order your \`\`\$PATH'' variable"
+echo ""
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_LOCATION () {
+
+if [ "$#" -ne 6 ]
+then
+	echo "*** internal error: extra or missing arguments to CHECK_LOCATION()"
+fi
+
+if [ "$ARCH" != win32 ]
+then
+	COMMAND=`basename "$1"`
+else
+	COMMAND=`basename "$1"`.exe
+fi
+DIRS_SUN34="$2"
+DIRS_SUN5="$3"
+DIRS_IX86="$4"
+DIRS_WIN32="$5"
+DIRS_MACOS="$6"
+
+case $ARCH in
+	sun3 | sun4 )
+		SEARCH_IN_LIST "$COMMAND" "$DIRS_SUN34" ;;
+		
+	sun5 | sun64 | sol86 | sol64 )
+		SEARCH_IN_LIST "$COMMAND" "$DIRS_SUN5" ;;
+
+	iX86 | x64 | ia64 )
+		SEARCH_IN_LIST "$COMMAND" "$DIRS_IX86" ;;
+
+	win32 )
+		SEARCH_IN_LIST "$COMMAND" "$DIRS_WIN32" ;;
+
+	macOS | mac86 | mac64 )
+		SEARCH_IN_LIST "$COMMAND" "$DIRS_MACOS" ;;
+	* )
+		echo "==> Unknown architecture \`\`$ARCH''"
+		;;
+esac
+}
+
+# -----------------------------------------------------------------------------
+
+COMPUTE_CC () {
+# renvoie le nom plausible du compilateur C utilise
+if [ $CHECK_CADP = 1 ]
+then
+	"$CADP"/src/com/cadp_cc -default
+else
+	# CADP n'est pas encore installe sur la machine courante
+	# tentative rudimentaire de determiner le compilateur C sans recopier
+	# extensivement le code de cadp_cc et cadp_compiler
+	case $ARCH in
+		sun3 | sun4 | sun5 | sun64 | sol86 | sol64 )
+			echo ${CADP_CC:-cc} ;;
+		iX86 | x64 | ia64 | macOS | mac86 | mac64 )
+			echo ${CADP_CC:-gcc} ;;
+		win32 )
+			if [ "$CADP_CC" != "" ]
+			then
+				echo "$CADP_CC"
+			elif [ -x /bin/i686-pc-mingw32-gcc ]
+			then
+				# version recente de Cygwin
+				echo "/bin/i686-pc-mingw32-gcc"
+			elif [ -x /usr/bin/i686-w64-mingw32-gcc ]
+			then
+				# version Cygwin 64 bits
+				echo "/usr/bin/i686-w64-mingw32-gcc"
+			elif [ -x /bin/gcc-3 ]
+			then
+				# version ancienne de Cygwin
+				echo "/bin/gcc-3 -mno-cygwin"
+			else
+				# solution peu satisfaisante
+				echo "/bin/gcc -mno-cygwin"
+			fi
+			;;
+		* )
+			echo "compiler-for-unknown-architecture-$ARCH"
+	esac
+fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_CC () {
+if [ $CHECK_CADP = 1 -a -x "$CADP/src/com/cadp_compiler" ]
+then
+	case "`$CADP/src/com/cadp_compiler $CC`" in
+		cc-* )
+			echo "cc" ;;
+		gcc-* )
+			echo "gcc" ;;
+		icc-* )
+			echo "icc" ;;
+		unknown-* )
+			echo "unknown" ;;
+	esac
+else
+	# tentative rudimentaire de determiner le compilateur C sans recopier
+	# extensivement le code de cadp_compiler
+	case "`basename "$CC"`" in
+		suncc* )
+			echo "cc" ;;
+		cc* )
+			# grossiere approximation
+			case "$ARCH" in
+				sun5 | sun64 ) echo "cc" ;;
+				* ) echo "gcc" ;;
+			esac
+			;;
+		gcc* )
+			echo "gcc" ;;
+		icc* )
+			echo "icc" ;;
+		* )
+			echo "unknown" ;;
+	esac
+fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_SOLARIS_COMPILER () {
+
+# on regarde s'il existe /opt/sunstudio12.1 etc.
+LIST1=`/bin/ls -d /opt/sunstudio1* 2> /dev/null`
+
+# on regarde s'il existe /opt/solstudio12.1 etc.
+LIST2=`/bin/ls -d /opt/solstudio1* 2> /dev/null`
+
+# on regarde s'il existe /opt/solarisstudio12.4 etc.
+LIST3=`/bin/ls -d /opt/solarisstudio1* 2> /dev/null`
+
+# on regarde s'il existe /opt/developerstudio12.6 etc.
+LIST4=`/bin/ls -d /opt/developerstudio1* 2> /dev/null`
+
+if [ -h /opt/SUNWspro ]
+then
+	# /opt/SUNWspro est un lien symbolique : on ne dit rien
+	true
+elif [ -d /opt/SUNWspro ]
+then
+	#  /opt/SUNWspro est un repertoire
+	if [ "$LIST1" != "" -o "$LIST2" != "" -o "$LIST3" != "" -o "$LIST4" != "" ]
+	then
+		echo ""
+		echo "*** /opt/SUNWspro exists but more recent C compiler(s) may be available in"
+		echo "    "`echo "$LIST1 $LIST2 $LIST3 $LIST4" | sed -e 's/^[ ]*//'`
+		echo "==> We recommend to continue installing recent versions of the C compiler"
+		echo "    in /opt/SUNWspro, so as to benefit from Oracle system updates"
+	fi
+else
+	# on suppose que /opt/SUNWspro n'existe pas (on neglige les cas tordus)
+	if [ "$LIST1" != "" -o "$LIST2" != "" -o "$LIST3" != "" -o "$LIST4" != "" ]
+	then
+		echo ""
+		echo "*** /opt/SUNWspro does not exist but recent C compiler(s) are available in"
+		echo "    "`echo "$LIST1 $LIST2 $LIST3 $LIST4" | sed -e 's/^[ ]*//'`
+		echo "==> Read file \$CADP/INSTALLATION_2 and possibly create /opt/SUNWspro as"
+		echo "    a symbolic link pointing to the most recent C compiler"
+	else
+		echo ""
+		echo "*** /opt/SUNWspro does not exist"
+		echo "==> Read file \$CADP/INSTALLATION_2 to install Oracle Developer Studio"
+	fi
+fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_C_COMPILER () {
+	# compilation et execution d'un programme C minimal
+	TEMPORARY="$TEMP/test_$$"
+	cat > $TEMPORARY.c << \EOF
+#include <stdio.h>
+int main ()
+{
+puts ("Hello Vasy");
+return 0;
+}
+EOF
+	(cd "$TEMP" ; "$CC" $TEMPORARY.c -o $TEMPORARY) > /dev/null 2>&1
+	# note : le changement de repertoire avant de lancer $CC est rendu
+	# necessaire par un bug des compilateurs SunStudio (Sparc ou Intel) :
+	# si l'option -o comporte un chemin absolu, celui-ci semble etre
+	# ignore lorsque le compilateur cherche a produire le fichier .o et
+	# la compilation echoue donc si l'on n'a pas le droit d'ecriture
+	# dans le repertoire courant
+	if [ $? -ne 0 ]
+	then
+		echo "*** \`\`$CC'' failed to compile a minimal C program"
+		echo "==> Check that your C compiler is installed properly"
+	else
+		test "`$TEMPORARY 2>/dev/null`" = "Hello Vasy"
+		RESULT=$?
+		if [ $RESULT -ne 0 ]
+		then
+			echo "*** A minimal C program compiled using \`\`$CC'' did not execute properly"
+			if [ \( "$ARCH" = "iX86" -o "$ARCH" = "x64" -o "$ARCH" = "ia64" \) -a "`CHECK_CC`" = "icc" ]
+			then
+				# cas du compilateur icc pour Linux pour lequel
+				# $LD_LIBRARY_PATH doit etre positionnee pour
+				# executer les binaires produits par icc avec
+				# edition dynamique de liens
+				echo "==> Set variable \`\`\$LD_LIBRARY_PATH'' to access the Intel CC runtime library"
+				echo "    (e.g., `dirname $CC`/../lib)"
+			else
+				echo "==> Check that your C compiler is installed properly"
+			fi
+		fi
+	fi
+	rm -f $TEMPORARY.c $TEMPORARY $TEMPORARY.exe
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_CC_VERSION () {
+	echo ''
+	if [ $CHECK_CADP = 1 -a -x "$CADP/src/com/cadp_compiler" ]
+	then
+		echo "Current C compiler is \`\``$CADP/src/com/cadp_compiler $CC`''"
+	else
+		echo "Current cc version is \`\`"`($CC -V 2>&1 || echo '0 (unknown)') | head -n 1 | sed -e 's/.*\([0-9]\.[0-9]\).*/\1/'`"''"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_GCC_VERSION () {
+	echo ''
+	if [ $CHECK_CADP = 1 -a -x "$CADP/src/com/cadp_compiler" ]
+	then
+		echo "Current C compiler is \`\``$CADP/src/com/cadp_compiler $CC`''"
+	else
+		echo "Current gcc version is \`\`"`($CC -v 2>&1 || echo '0 (unknown)') | TAIL_LINE | sed -e 's/^[^0-9]*//'`"''"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_ICC_VERSION () {
+	echo ''
+	if [ $CHECK_CADP = 1 -a -x "$CADP/src/com/cadp_compiler" ]
+	then
+		echo "Current C compiler is \`\``$CADP/src/com/cadp_compiler $CC`''"
+	else
+		echo "Current icc version is \`\`"`($CC -V 2>&1 || echo '0 (unknown)') | head -n 1 | sed -e 's/.*Version \([.0-9]*\).*ID: \(l_cc_.*\)$/\1 (\2)/'`"''"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_CC_ISSUES () {
+	if [ "$ARCH" = "iX86" ]
+	then
+		# le compilateur C de Sun, lorsqu'il fait l'edition de liens
+		# sur des binaires iX86 produits par gcc, necessite d'ajouter
+		# libgcc.a pour eviter des messages d'erreur de la forme :
+		#    undefined reference to `__umoddi3'
+		#    undefined reference to `__udivdi3'
+		# ceci est fait dans le script cadp_cc
+
+		# on verifie ici que la bibliotheque libgcc.a a bien ete
+		# installee (ce qui, selon les distributions Linux, n'est
+		# pas systematique)
+
+		# la commande ci-dessous existe aussi dans "cadp_cc" et devra
+		# etre mise a jour en meme temps que le present fichier
+
+		LIBGCC=`ls -r /usr/lib/gcc/i?86-*-*/*.*.*/libgcc.a /usr/lib/gcc-lib/*-redhat-linux/*.*/libgcc.a 2>/dev/null | head -n1`
+		if [ "$LIBGCC" = "" ]
+		then
+			echo "*** The Sun C compiler on 32-bit Linux requires the libgcc.a library"
+			echo "    which seems to be missing from this system"
+			echo "    The CADP software will not function properly on this system"
+			echo "==> Install the libgcc.a library, which can be found in the \`\`gcc'' package"
+			echo "    (on Debian, Ubuntu, etc.) or in the \`\`compat-libgcc-296.i386'' package"
+			echo "    (on RedHat, Fedora, etc.)"
+		fi
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_ICC_ISSUES () {
+	# detection de la bogue #1 de ICC: la version l_cc_c_9.0.030 n'etend
+	# pas correctement le signe des "unsigned char" et "unsigned short"
+	# lors d'une promotion vers le type "int". Cela ne se produit qu'avec
+	# l'option d'optimisation "-O1", qui est une option par defaut de ICC.
+	# Cette bogue a ete corrigee en mars 2006 par Intel: Q338282
+	# "sign extension on cast from unsigned short to int when optimized"
+	# et ne se produit plus a partir de la version l_cc_c_9.0.031.
+	TEMPORARY="$TEMP/test_$$"
+	cat > $TEMPORARY.c << \EOF
+#include <stdio.h>
+int main ()
+{
+volatile unsigned char v = 1 << 7;
+v = v >> 7;
+printf ("%d", v);
+return 0;
+}
+EOF
+
+	"$CC" $TEMPORARY.c -o $TEMPORARY > /dev/null 2>&1
+	test "`$TEMPORARY 2> /dev/null`" = "1"
+	RESULT=$?
+	rm $TEMPORARY.c $TEMPORARY
+	if [ $RESULT -ne 0 ]
+	then
+		echo ''
+		echo "*** Your version of the icc compiler is obsolete (bug #1)"
+		echo "    The CADP software will not function properly on this system"
+		echo "==> Upgrade icc to version 9.0.031 or later"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+GLIBC_VERSION_METHOD_1 () {
+	# fonction appelee uniquement sur architectures Linux (iX86, x64, ia64)
+	# determine la version de la GNU libc en consultant le repertoire /lib
+	(echo /lib/libc-*.so 2>/dev/null || echo /lib64/libc-*.so 2>/dev/null || echo "") | sed -e 's+/lib/libc-++g' | sed -e 's+/lib64/libc-++g' | sed -e 's+\.so++g'
+}
+
+# -----------------------------------------------------------------------------
+
+GLIBC_VERSION_METHOD_2 () {
+	# fonction appelee uniquement sur architectures Linux (iX86, x64, ia64)
+	# determine la version de la GNU libc en generant et compilant un
+	# programme C qui appelle la fonction gnu_get_libc_version()
+	TEMPORARY="$TEMP/test_$$"
+	cat > $TEMPORARY.c << \EOF
+#include <stdio.h>
+#include <gnu/libc-version.h>
+int main (void) {
+   puts (gnu_get_libc_version ());
+   return 0;
+}
+EOF
+	(cd "$TEMP" ; $CC $TEMPORARY.c -o $TEMPORARY && $TEMPORARY) 2> /dev/null
+	# le changement de repertoire est prevu pour le cas ou $CC pointerait
+	# vers un compilateur Sun (voir remarque ci-dessus a ce sujet)
+	rm -f $TEMPORARY.c $TEMPORARY
+}
+
+# -----------------------------------------------------------------------------
+
+GLIBC_VERSION_METHOD_3 () {
+	# fonction appelee uniquement sur architectures Linux (iX86, x64, ia64)
+	# determine la version de la GNU libc en executant la bibliotheque
+	# libc.so.* ; pour trouver son chemin, on recherche les dependances
+	# (au sens de ldd) d'un binaire quelconque lie' dynamiquement
+	# (ici /bin/sh) ; selon la distribution de Linux, la libc ainsi
+	# trouvee n'est pas necessairement executable ; on la fait donc
+	# executer par "ld-linux", dont on trouve egalement le chemin dans
+	# les dependances de tout binaire lie' dynamiquement
+	LD_LINUX=`ldd /bin/sh 2> /dev/null | grep ld-linux | sed -n -e 's/.* => \(.*\) (.*)/\1/p'`
+	if test -x "$LD_LINUX"
+	then
+		LIBC=`ldd /bin/sh 2> /dev/null | grep 'libc\.' | sed -n -e 's/.* => \(.*\) (.*)/\1/p'`
+		VERSION=`"$LD_LINUX" "$LIBC" 2> /dev/null | head -n 1 | sed -n -e 's/.* version \([^ ,]*\).*/\1/p'`
+	fi
+	case "$VERSION" in
+		[0-9]*.* )	echo "$VERSION" ;;
+		* ) 		echo "" ;;
+	esac
+}
+
+# -----------------------------------------------------------------------------
+
+GLIBC_VERSION_METHOD_4 () {
+	# fonction appelee uniquement sur architectures Linux (iX86, x64, ia64)
+	# determine la version de la GNU libc en appellant "ldd --version"
+	VERSION=`ldd --version | head -n 1 | sed -e 's/ldd ([^)]*) //'`
+	case "$VERSION" in
+		[0-9]*.* )	echo "$VERSION" ;;
+		* ) 		echo "" ;;
+	esac
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_GLIBC_VERSION () {
+	# fonction appelee uniquement sur architectures Linux (iX86, x64, ia64)
+	GLIBC_VERSION=`GLIBC_VERSION_METHOD_1`
+	if [ "$GLIBC_VERSION" = "*" -o "$GLIBC_VERSION" = "" ]
+	then
+		GLIBC_VERSION=`GLIBC_VERSION_METHOD_2`
+		if [ "$GLIBC_VERSION" = "" ]
+		then
+			GLIBC_VERSION=`GLIBC_VERSION_METHOD_3`
+			if [ "$GLIBC_VERSION" = "" ]
+			then
+				GLIBC_VERSION=`GLIBC_VERSION_METHOD_4`
+				if [ "$GLIBC_VERSION" = "" ]
+				then
+					GLIBC_VERSION="(unknown)"
+				fi
+			fi
+		fi
+	fi
+
+	echo ''
+	echo "Current glibc version is \`\`$GLIBC_VERSION''"
+
+	case "$GLIBC_VERSION" in
+		1.* | 2.[012] | 2.[012].* )
+			# detection des versions de glibc anterieures a 2.3
+			# pour lesquelles CADP 2006 risque de ne pas fonctionner
+			echo ''
+			echo "*** Your glibc library might be outdated"
+			echo "==> If you notice something wrong (especially 'undefined symbols' problems)"
+			echo "    try to upgrade your glibc to version 2.7 or higher"
+			;;
+		2.[3-6] | 2.[3-6].* )
+			if [ $ARCH = x64 ]
+			then
+				# detection des versions de glibc entre 2.3 et
+				# 2.6 pour lesquelles CADP 2010-j prevoit une
+				# solution de compatibilite (libcompat-2.7.a)
+				# a titre temporaire
+				echo ''
+				echo "*** Your glibc library might be outdated"
+				echo "==> If you notice something wrong (especially 'undefined symbols' problems)"
+				echo "    try to upgrade your glibc to version 2.7 or higher"
+			fi
+			;;
+	esac
+
+	# verification specifique aux machines AMD64 et Intel EM64T
+	if [ $DETAILED_ARCH = iX86-64 -a \
+		-d "/usr/include/x86_64-linux-gnu" -a ! -f "/usr/include/gnu/stubs-32.h" ]
+	then
+		echo ''
+		echo "*** The 32-bit development library seems to be missing"
+		echo "==> Install an i386 version of the \`\`glibc-devel'' library"
+		echo "    (e.g., CentOS package \`\`glibc-devel.i386'')"
+		echo "    (e.g., Debian/Ubuntu package \`\`libc6-dev-i386'')"
+		echo "    (e.g., Fedora package \`\`glibc-devel-i586'')"
+		echo "    (e.g., RedHat package \`\`glibc-devel-2.*.*-*.i386'')"
+		echo "    (e.g., Suse/OpenSuse package \`\`glibc-devel-32bit'')"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_CYGWIN_PIPES () {
+	# verification du comportement des tubes Cygwin vis-a-vis des
+	# caracteres \r ; ce comportement a change en fevrier 2017 pour
+	# les commandes awk, grep et sed
+
+	N=`printf "a\r\n" | sed -e 's/a//' | wc -c | sed -e 's/^[ ]*//'`
+	case "$N" in
+		1 )
+			echo ''
+			echo "Cygwin pipes operate in text mode (erasing CR characters)"
+			;;
+		2 )
+			echo ''
+			echo "Cygwin pipes operate in binary mode (preserving CR characters)"
+			;;
+		* )
+			echo ''
+			echo "*** Unexpected value \`\`$N'' while testing Cygwin pipes"
+			echo "==> Please report the problem to cadp@inria.fr"
+			;;
+	esac
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_CYGWIN_MOUNT () {
+	# verification que les systemes de fichiers Cygwin sont montes en
+	# mode binaire (ce qui est la situation par defaut depuis la fin
+	# des annees 200x) et non pas en mode texte (ce qui etait le cas
+	# auparavant)
+
+	LIST=`mount | grep -v '\<binary\>'`
+	if [ "$LIST" = "" ]
+	then
+		echo ''
+		echo "All the Cygwin filesystems are mounted in binary mode"
+	else
+		echo ''
+		echo "*** Some Cygwin filesystems are mounted in text mode"
+		mount
+	fi
+
+	# recherche du repertoire d'installation de Cygwin
+	CYGWIN_DIR=`mount | grep ' / ' 2> /dev/null | sed -e 's/[ 	].*//'`
+
+	# on verifie que "mount" a rendu le resultat attendu, c'est-a-dire que
+	# $CYGWIN_DIR ne contient qu'une seule ligne et que cette ligne a la
+	# forme d'un chemin Windows (par exemple, "C:\")
+
+	if [ "`echo $CYGWIN_DIR | wc -l`" -ne 1 -o \
+		"`echo $CYGWIN_DIR | sed -e 's/^[A-Z]:.*/OK/'`" != "OK" ]
+	then
+		# comportement inattendu: on affiche le point de montage du
+		# repertoire '/' en utilisant notre propre version de "mount"
+		TEMPORARY="$TEMP/test_$$"
+		cat > $TEMPORARY.c << \EOF
+#include <stdio.h>
+#include <mntent.h>
+#include <string.h>
+
+int  main (int argc, char *argv[])
+{
+     struct mntent *ent;
+     char *path = NULL;
+
+     if (argc == 2) {
+          path = argv[1];       /* le seul chemin a afficher */
+     } else if (argc > 2) {
+          fprintf (stderr, "usage: %s [posix-path]\n", argv[0]);
+          return 1;             /* mauvais appel */
+     }
+     while ((ent = getmntent (NULL))) {
+          if (path) {
+               if (strcmp (path, ent->mnt_dir) == 0)
+                    printf ("%s\n", ent->mnt_fsname);
+          } else {
+               printf ("%s\t%s\n", ent->mnt_dir, ent->mnt_fsname);
+          }
+     }
+     return 0;
+}
+EOF
+		CC=`COMPUTE_CC`
+		$CC $TEMPORARY.c -o $TEMPORARY.exe
+		CYGWIN_DIR=`$TEMPORARY.exe /`
+		rm -f "$TEMPORARY.c" "$TEMPORARY.exe"
+	fi
+
+	LOCATION=`"$CADP"/src/com/cadp_path -cygwin`
+
+	# exemples de ce qu'on peut avoir :
+	# - $CYGWIN_DIR = "C:/Cygwin" et $LOCATION = "C:/Cygwin"
+	# - $CYGWIN_DIR = "C:" et $LOCATION = "C:/"
+
+	if [ "$CYGWIN_DIR" != "$LOCATION" -a "$CYGWIN_DIR/" != "$LOCATION" ]
+	then
+		echo ''
+		echo "*** Your Cygwin mount point \`\`$CYGWIN_DIR'' for the root directory \`\`/''"
+		echo "    does not coincide with the directory \`\`$LOCATION'' where Cygwin"
+		echo "    is installed"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+EXPAND_VM_TYPE () {
+
+case "$1" in
+	none )
+		;;
+	qemu )
+		echo "QEMU software virtualization"
+		;;
+	kvm )
+		echo "Linux KVM kernel virtual machine"
+		;;
+	zvm )
+		echo "s390 z/VM"
+		;;
+	vmware )
+		echo "VMWare"
+		;;
+	microsoft )
+		echo "Hyper-V Windows server vitualization"
+		;;
+	oracle )
+		echo "Oracle VM VirtualBox"
+		;;
+	xen )
+		echo "Xen Hypervisor"
+		;;
+	bochs )
+		echo "Bochs Emulator"
+		;;
+	uml )
+		echo "User-mode Linux"
+		;;
+	parallels )
+		echo "Parallels Desktop or Server"
+		;;
+	bhyve )
+		echo "FreeBSD hypervisor bhyve"
+		;;
+	openvz )
+		echo "OpenVZ/Vituozzo"
+		;;
+	lxc )
+		echo "Linux container implementation by LXC"
+		;;
+	lxc-libvirt )
+		echo "Linux container implementation by libvirt"
+		;;
+	systemd-nspawn )
+		echo "systemd-nspawn"
+		;;
+	docker )
+		echo "Docker container manager"
+		;;
+	rkt )
+		echo "rkt app container runtime"
+		;;
+	* )
+		echo "unknown"
+		;;
+esac
+}
+
+# -----------------------------------------------------------------------------
+
+DISPLAY_VIRTUAL_MACHINE () {
+
+VM_TYPE=
+case $ARCH in
+	sun5 | sun64 | sol86 | sol64 | macOS | mac86 | mac64 )
+		# on omet la possibilite que ces architectures fonctionnent
+		# dans une machine virtuelle
+		;;
+
+	iX86 | x64 | ia64 )
+		# sous Linux, il existe plusieurs moyens de detecter si on
+		# est dans une machine virtuelle
+		if [ -x /usr/bin/systemd-detect-virt ]
+		then
+			RESULT=`/usr/bin/systemd-detect-virt`
+			VM_TYPE=`EXPAND_VM_TYPE "$RESULT"`
+			DIAGNOSTIC="/usr/bin/systemd-detect-virt says ``$RESULT''"
+		elif [ -x /usr/bin/hostnamectl ]
+		then
+			RESULT=`/usr/bin/hostnamectl | grep '^[ ]*Virtualization:' | sed -e 's/[ ]*Virtualization:[ ]*//'`
+			VM_TYPE=`EXPAND_VM_TYPE "$RESULT"`
+			DIAGNOSTIC="/usr/bin/hostnamectl says \`\`$RESULT''"
+		elif [ -r /proc/cpuinfo ]
+		then
+			grep '^flags.* hypervisor ' /proc/cpuinfo > /dev/null 2> /dev/null
+			if [ $? = 0 ]
+			then
+				VM_TYPE="unknown"
+				DIAGNOSTIC="/proc/cpuinfo contains the \`\`hypervisor'' flag"
+			fi
+		fi
+		;;
+
+	win32 )
+		# sous Windows, on detecte l'execution dans une machine
+		# virtuelle par une requete dans la base des registres
+		# Note: il semble que cette la cle existe sous Windows 10
+		# mais pas sous Windows 7
+		reg query HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run /v VBoxTray > /dev/null 2> /dev/null
+		if [ $? = 0 ]
+		then
+			VM_TYPE="Oracle VM VirtualBox"
+		fi
+		;;
+esac
+
+case "$VM_TYPE" in
+	"" )
+		# on n'a pas pu determiner si le systeme tourne dans une
+		# machine virtuelle, on ne dit rien
+		;;
+	"unknown" )
+		# le systeme tourne dans une machine virtuelle mais on n'a
+		# pas su determiner de quel type
+		echo ''
+		echo "The system is running in a non-recognized virtual machine"
+		echo "($DIAGNOSTIC)"
+		;;
+	* )
+		# le systeme tourne dans une machine virtuelle dont on a
+		# reussi a determiner le type
+		echo ''
+		echo "The system is running in \`\`$VM_TYPE''"
+		;;
+esac
+}
+
+# -----------------------------------------------------------------------------
+
+DISPLAY_OPERATING_SYSTEM_VERSION () {
+
+OS=`uname -sr`
+echo ''
+echo "Current operating system is \`\`$OS''"
+
+case $ARCH in
+	sun5 | sun64 | sol86 | sol64 )
+		if test -f "/etc/release"
+		then
+			SUNOS_DISTRIBUTION=`head -1 /etc/release | sed -e 's/^[ ]*//'`
+			echo ''
+			echo "Current SunOS distribution is \`\`$SUNOS_DISTRIBUTION''"
+		fi
+		;;
+
+	iX86 | x64 | ia64 )
+		if test -f "/etc/gentoo-release"
+		then
+			# sous Gentoo, /etc/issue n'est pas utilisable, car il
+			# contient juste une banniere parametree du style :
+			#    .\O (\s \m ) \t
+			LINUX_DISTRIBUTION=`cat /etc/gentoo-release`
+		elif test -f "/etc/centos-release"
+		then
+			# sous CentOS, /etc/issue n'est pas utilisable, car il
+			# contient seulement deux lignes
+			# 	\S
+			# et
+			#	Kernel \r on an \m
+			LINUX_DISTRIBUTION=`cat /etc/centos-release`
+		elif test -f "/etc/redhat-release"
+		then
+			LINUX_DISTRIBUTION=`cat /etc/redhat-release`
+		elif test -f "/etc/system-release"
+		then
+			LINUX_DISTRIBUTION=`cat /etc/system-release`
+		elif test -f "/etc/os-release"
+		then
+			# ce fichier existe sous Debian, alors que les fichiers
+			# ci-dessus n'existent pas
+			LINUX_DISTRIBUTION=`grep "^PRETTY_NAME=" /etc/os-release | sed -e 's/^PRETTY_NAME="//' | sed -e 's/"$//'`
+		else
+			# on utilise /etc/issue
+			LINUX_DISTRIBUTION=`cat /etc/issue | grep -v "^$" | head -1 | sed -e 's/\\\\[lnr]//g' | sed -e 's/^Welcome[ ]to[ ]//'`
+		fi
+		# pour une detection fine des multiples distributions Linux :
+		#  - http://linuxmafia.com/faq/Admin/release-files.html
+		#  - https://linuxconfig.org/how-to-check-redhat-version
+		LINUX_DISTRIBUTION=`echo "$LINUX_DISTRIBUTION" | sed -e 's/[ ]*$//'`
+		echo ''
+		echo "Current Linux distribution is \`\`$LINUX_DISTRIBUTION''"
+		# exemples de distributions ainsi affichees :
+		# 	Debian GNU/Linux 4.0
+		# 	Fedora release 9 (Sulphur)
+		#	Ubuntu 8.04.1
+		#	Mandriva Linux release 2007.1 (Official) for x86_64
+		#	Red Hat Enterprise Linux Server release 5.2 (Tikanga)
+		#	SUSE Linux Enterprise Server 10 SP1 (x86_64) etc.
+		;;
+
+	win32 )
+		# rien a ajouter
+		;;
+
+	macOS | mac86 | mac64 )
+		echo ''
+		PRODUCT=`sw_vers -productVersion`
+		BUILD=`sw_vers -buildVersion`
+		echo "Current macOS version is $PRODUCT (build $BUILD)"
+		;;
+esac
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_CYGWIN_OPERATING_SYSTEM() {
+	# fonction auxiliaire appelee par CHECK_OPERATING_SYSTEM()
+
+	WINDOWS_ROOT=`cygpath -w -W`
+	echo ''
+	echo "Windows directory is \`\`$WINDOWS_ROOT''"
+
+	CYGWIN_ROOT=`cygpath -w /`
+	echo ''
+	echo "Cygwin directory is \`\`$CYGWIN_ROOT''"
+
+	CHECK_CYGWIN_INSTALLATION || exit 1
+
+	# verification du fichier startup: au printemps 2002, il y a eu un
+	# changement dans le fichier "/etc/profile" qui fait que le fichier
+	# ~/.bashrc n'est plus execute systematiquement au demarrage de "bash".
+	# Ce  changement est conforme au manuel de "bash" et coherent avec le
+	# fait que d'autres shells que "bash" executent aussi le fichier
+	# "/etc/profile". Neanmoins, il est incompatible avec les versions de
+	# Cygwin plus anciennes et impose a l'utilisateur qu'il renomme son
+	# fichier ".bashrc" en ".profile"
+
+	grep -q ".bashrc\>" /etc/profile
+	if [ $? -ne 0 ]
+	then
+		# le fichier /etc/profile ne contient pas le mot ".bashrc"
+		# on a donc affaire a une version recente de Cygwin
+		# (posterieure au printemps 2002)
+
+		if [ -f  $HOME/.bashrc -a ! -f $HOME/.profile ]
+		then
+			echo "*** Your startup file should be named \`\`$HOME/.profile''"
+			echo "    instead of \`\`$HOME/.bashrc'' (see problem 2001-d in"
+			echo "    http://cadp.inria.fr/patches2001.html)"
+			echo "==> Please, rename your startup file by typing, in a Cygwin window"
+
+			echo "    mv \$HOME/.bashrc \$HOME/.profile"
+			fi
+	fi
+
+	# recherche de la presence de liens symboliques eventuels dans $CADP
+
+	if [ $CHECK_CADP = 1 ]
+	then
+		NB_LINKS=`find "$CADP/" -type l 2> /dev/null | wc -l`
+		# le caractere "/" apres $CADP est indispensable sous Windows
+		# car, dans ce cas, le repertoire $CADP lui-meme peut etre un
+		# lien symbolique (et doit l'etre) quand Cygwin n'est pas
+		# installe dans "C:/" ; l'ajout de "/" apres $CADP permet de
+		# de suivre ce lien symbolique (eventuel) sans le compter dans
+		# NB_LINKS, ce qui declencherait un message non pertinent
+		if [ "$NB_LINKS" -gt 0 ]
+		then
+			echo ''
+			echo "*** Warning: some symbolic links still exist in the \$CADP directory"
+			echo "    Symbolic links are specific extensions of Cygwin and, as such, will not"
+			echo "    be recognized by pure Windows applications, such as CADP binary programs"
+			echo "==> In order to eliminate these links, please run the following command:"
+			echo "    /bin/sh \"\$CADP\"/src/com/cadp_adjust -verbose"
+		fi
+	fi
+
+	# detection de la bogue #1 de Cygwin : d'anciennes versions du shell
+	# "sh" (egalement appele' "ash") refusaient d'executer les commandes
+	# qui n'ont pas le suffixe ".exe" et dont le pathname contient au moins
+	# un "/". On prend ici le cas d'un fichier ayant un suffixe ".x" comme
+	# ceux produits par certains outils de CADP. Ce probleme semble
+	# desormais resolu (Cygwin 1.5.4, novembre 2003).
+
+	TEMPORARY="$TEMP/test_$$"
+	cp /bin/echo.exe $TEMPORARY.x
+
+	# avec Cygwin 1.5.25(0.156/4/2) sous Windows Vista, la commande "cp" ne
+	# transfere pas a $TEMPORARY.x la permission "execute" que possede pour
+	# "/bin/echo.exe" ; ceci est du a un probleme de Cygwin qui ne permet
+	# une correspondance fidele entre les ACL Windows et les permissions
+	# POSIX ; c'est pourquoi, par mesure de precaution, on doit rajouter
+	# explicitement la permission "execute" au fichier copie (sinon, le
+	# fichier ne serait pas executable et "tst" signalerait indument la
+	# bogue #1)
+
+	chmod a+rx $TEMPORARY.x
+
+	$TEMPORARY.x > /dev/null 2> /dev/null
+	RESULT=$?
+	rm -f $TEMPORARY.x	
+	if [ $RESULT -ne 0 ]
+	then
+		echo ''
+		echo "*** Your version of Cygwin is obsolete or badly installed (bug #1)"
+		echo "    The shell was found to exhibit the problem reported in"
+		echo "    http://sources.redhat.com/ml/cygwin/2000-09/msg01019.html"	
+		echo "    http://sources.redhat.com/ml/cygwin/2000-09/msg01022.html"	
+		echo "    The CADP software will not function properly on this system"
+		echo "==> Reinstall your Cygwin software following the explanations in"
+		echo "    http://cadp.inria.fr/win32.html"
+	fi
+
+	# detection et verification du compilateur GCC
+
+	CC=`COMPUTE_CC` ; export CC
+
+	# detection de la bogue #2 de Cygwin : d'anciennes versions du shell
+	# "bash" n'eliminaient pas le caractere '\r' en fin de ligne. Ce
+	# probleme semble desormais resolu (Cygwin 1.5.4, novembre 2003).
+	# En decembre 2006, ce probleme reapparait dans la version 3.2.9-10
+	# de "bash" (et les versions suivantes).
+
+	cat > $TEMPORARY.c << \EOF
+#include <stdio.h>
+int main ()
+{
+printf ("Hello\n");
+exit (0);
+}
+EOF
+
+	$CC $TEMPORARY.c -o $TEMPORARY.exe > $TEMPORARY.log 2>&1
+	RESULT=$?
+	if [ $RESULT -ne 0 ]
+	then
+		echo ''
+		echo "*** Your C compiler \`\`$CC'' does not work properly"
+		cat $TEMPORARY.log
+		rm -f $TEMPORARY.c $TEMPORARY.exe $TEMPORARY.log
+		return
+		# le reste de cette fonction est exclusivement consacre a des
+		# verifications portant sur le compilateur C ou necessitant
+		# un compilateur C en etat de fonctionner
+	fi
+	/bin/test "`$TEMPORARY`" = "Hello"
+	RESULT=$?
+	rm -f $TEMPORARY.c $TEMPORARY.exe $TEMPORARY.log
+	if [ $RESULT -ne 0 ]
+	then
+		# verification de la version du shell de Cygwin
+		MAJOR="`/bin/bash --version | head -1 | sed -e 's/[^0-9]*\([0-9.]*\).*/\1/'`"
+		case "$MAJOR" in
+			[012].* )
+				echo ''
+				echo "*** Your version of Cygwin is obsolete or badly installed (bug #2)"
+				echo "    The shell was found to exhibit the problem reported in"
+				echo "    http://sources.redhat.com/ml/cygwin/2000-09/msg01023.html"
+				echo "    The CADP software will not function properly on this system"
+				echo "==> Reinstall your Cygwin software following the explanations in"
+				echo "    http://cadp.inria.fr/win32.html"
+				;;
+			*)
+				echo ''
+				echo "*** Your Cygwin shell does not treat carriage-returns like spaces"
+				echo "    although variable \$SHELLOPTS indeed contains \`\`igncr''"
+				echo "==> This situation should not occur (please notify cadp@inria.fr)"
+				;;
+		esac
+	fi
+
+	# detection de la bogue #3 de Cygwin : cpp ne traite pas correctement
+	# le caractere \ en fin de ligne suivi de <CR> <LF>
+
+	cat > $TEMPORARY.c << \EOF
+#define T \
+1
+int main () { return 0; }
+EOF
+
+	COUNT=`wc -c $TEMPORARY.c | sed -e "s+$TEMPORARY.c++"`
+
+	if [ $COUNT = 40 ]
+	then
+		cat $TEMPORARY.c | sed -e "s+$+\r+" > $TEMPORARY.new
+		mv $TEMPORARY.new $TEMPORARY.c
+	fi
+
+	$CC $TEMPORARY.c -o $TEMPORARY.exe > /dev/null 2> /dev/null
+
+	RESULT=$?
+	rm -f $TEMPORARY.c $TEMPORARY.exe
+	if [ $RESULT -ne 0 ]
+	then
+		GCC_VERSION="`$CC -v 2>&1 | TAIL_LINE`"
+		echo ''
+		echo "*** Your version of Cygwin is obsolete (bug #3)"
+		echo "    The C compiler is $GCC_VERSION"
+		echo "    It was found to exhibit the problem reported in"
+		echo "    http://sources.redhat.com/ml/cygwin/2000-05/msg00560.html"
+		echo "    The CADP software will not function properly on this system"
+		echo "==> Upgrade your Cygwin software following the explanations in"
+		echo "    http://cadp.inria.fr/win32.html"
+	fi
+
+	# detection de la bogue #4 de Cygwin : certaines versions de gcc et
+	# de mingw32 ne savent plus compiler fstat() et fileno() correctement
+	# (probleme signale' par Greg Eakman)
+
+	cat > $TEMPORARY.c << \EOF
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+
+int main (argc, argv)
+int argc;
+char *argv[];
+{
+   struct stat B;
+   FILE *F;
+
+   if (argc <= 1) exit (1); /* bad invocation */
+   F = fopen (argv[1], "r");
+   if (F == NULL) exit (1); /* bad file */
+   if (fstat (fileno (F), &B) == 0)
+      exit (0); /* fstat() successfully returned */
+   else
+      exit (2); /* fstat() does not work properly */
+}
+
+EOF
+	if [ $CHECK_CADP = 1 ]
+	then
+		"$CADP"/src/com/cadp_cc $TEMPORARY.c -o $TEMPORARY.exe
+	else
+		# on emule le code de cadp_cc pour win32
+		$CC $TEMPORARY.c -o $TEMPORARY.exe -lmingw32
+	fi
+	$TEMPORARY.exe $TEMPORARY.c
+	RESULT=$?
+	rm -f $TEMPORARY.c $TEMPORARY.exe
+	if [ $RESULT -eq 2 ]
+	then
+		echo ''
+		echo "*** Your versions of Cygwin and CADP are incompatible (bug #4)"
+		echo "    The C compiler '$CC' failed to compile functions"
+		echo "    fstat() and fileno() properly. The compiler version is:"
+		echo "    `$CC -v 2>&1 | TAIL_LINE`"
+		echo "==> Upgrade your Cygwin software following the explanations in"
+		echo "    http://cadp.inria.fr/win32.html"
+		echo "==> Then, upgrade your version CADP to beta-version 99-y or higher"
+	fi
+
+	# verification de la semantique des tubes Cygwin
+
+	CHECK_CYGWIN_PIPES
+
+	# verification des montages des systemes de fichiers (cette verification
+	# peut necessiter l'emploi du compilateur C)
+
+	CHECK_CYGWIN_MOUNT
+
+	# verification de l'absence de la variable $MSYSTEM specifique a MSYS
+	# qui est consultee par certains binaires de CADP
+	if [ "$MSYSTEM" != "" ]
+	then
+		echo ''
+		echo "*** The environment variable \`\`\$MSYSTEM'' should not be set"
+		echo "==> This situation should not occur (please notify cadp@inria.fr)"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_MINGWIN_OPERATING_SYSTEM() {
+	# fonction auxiliaire appelee par CHECK_OPERATING_SYSTEM()
+
+	# verification de la presence de la variable $MSYSTEM specifique a MSYS
+	# qui est consultee par certains binaires de CADP
+	if [ "$MSYSTEM" = "" ]
+	then
+		echo ''
+		echo "*** The environment variable \`\`\$MSYSTEM'' should be set"
+		echo "==> This situation should not occur (please notify cadp@inria.fr)"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_OPERATING_SYSTEM () {
+
+case $ARCH in
+	sun5 | sun64 | sol86 | sol64 )
+		case `uname -r` in
+		    5.[012345789] )
+			echo ''
+			echo "*** The CADP software is intended for Solaris 10 (SunOS 5.10) or higher"
+			echo "==> If you notice something wrong (including unexpected core dumps),"
+			echo "    try to upgrade your operating system to a more recent version"
+			;;
+		esac
+		;;
+
+	iX86 | x64 | ia64 )
+		if [ -r /etc/debian_version ]
+		then
+			read DEBIAN_VERSION < /etc/debian_version
+			# ici, la variable $DEBIAN_VERSION vaut soit un numero
+			# de version (notamment si on est sur Debian), soit
+			# un nom de version (notamment si on est sur Ubuntu)
+			# (par exemple, "lenny/sid"). Voir la correspondance
+			# dans http://en.wikipedia.org/wiki/Debian#Releases
+			case "$DEBIAN_VERSION" in
+				buzz* )   DEBIAN_VERSION=1.1 ;;
+				rex* )    DEBIAN_VERSION=1.2 ;;
+				bo* )     DEBIAN_VERSION=1.3 ;;
+				hamm* )   DEBIAN_VERSION=2.0 ;;
+				slink* )  DEBIAN_VERSION=2.1 ;;
+				potato* ) DEBIAN_VERSION=2.2 ;;
+				woody* )  DEBIAN_VERSION=3.0 ;;
+				sarge* )  DEBIAN_VERSION=3.1 ;;
+				etch* )   DEBIAN_VERSION=4.0 ;;
+				lenny* )  DEBIAN_VERSION=5.0 ;;
+				* ) ;;
+			esac
+			case "$DEBIAN_VERSION" in
+				0* | 1.* | 2.0 )
+					echo ''
+					echo "*** The CADP software might not work correctly on Debian $DEBIAN_VERSION"
+					echo "==> Please upgrade to Debian 2.2 (potato) or higher"
+					;;
+				2.1 )
+					echo ''
+					echo "*** The CADP software might not work correctly on Debian 2.1 (slink)"
+					echo "    In particular, \$CADP/tcl-tk/bin.$ARCH/wish will core dump"
+					echo "==> Please upgrade to Debian 2.2 (potato) or higher"
+					echo "    or, at least, replace \CADP/tcl-tk/bin.$ARCH by a symbolic"
+					echo "    link to /usr/bin/wish"
+					;;
+
+				*)
+					;;
+			esac
+		elif (rpm -q redhat-release > /dev/null 2> /dev/null)
+		then
+			REDHAT_VERSION="`rpm -q --queryformat '%{VERSION}' redhat-release`"
+			case "$REDHAT_VERSION" in
+				5.1 )
+					echo ''
+					echo "*** The CADP software might not work correctly on RedHat $REDHAT_VERSION"
+					echo "==> Please upgrade to RedHat 6.0 or higher"
+					;;
+				*)
+					;;
+			esac
+		elif (rpm -q fedora-release > /dev/null 2> /dev/null)
+		then
+			FEDORA_VERSION="`rpm -q --queryformat '%{VERSION}' fedora-release`"
+			case "$FEDORA_VERSION" in
+				*)
+				;;
+			esac
+		fi
+
+		# detection des noyaux implementant GR Security
+
+		if [ -d /proc/sys/kernel/grsecurity ]
+		then
+			echo ''
+			echo "*** Your Linux kernel is built with GR-Security extensions"
+			echo "    The CADP software might not function properly on this system"
+			echo "==> If you notice something wrong, please try to rebuild your kernel"
+			echo "    by disabling GR-Security extensions"
+		fi
+
+		# detection des noyaux comportant le module de securite Yama
+
+		YAMA_PTRACE_SCOPE=`/sbin/sysctl -n -e kernel.yama.ptrace_scope 2> /dev/null`
+		# ou bien : YAMA_PTRACE_SCOPE=`cat /proc/sys/kernel/yama/ptrace_scope 2> /dev/null`
+
+		if [ "$YAMA_PTRACE_SCOPE" != "" ]
+		then
+			echo ''
+			echo "Security module Yama is present (ptrace_scope value is $YAMA_PTRACE_SCOPE)"
+		fi
+
+		# detection du compilateur GCC et de la bibliotheque Glibc
+
+		CC=`COMPUTE_CC` ; export CC
+		CHECK_GLIBC_VERSION
+	;;
+
+	win32 )
+	echo ''
+	echo "Variable \`\`\$HOMEDRIVE'' is set to \`\`$HOMEDRIVE''"
+
+	echo ''
+	echo "Variable \`\`\$SYSTEMDRIVE'' is set to \`\`$SYSTEMDRIVE''"
+
+	echo ''
+	echo "Variable \`\`\$SYSTEMROOT'' is set to \`\`$SYSTEMROOT''"
+
+	if [ $CHECK_CADP = 1 ]
+	then
+		# on dispose de la commande "cadp_path"
+
+		LOCATION=`"$CADP"/src/com/cadp_path -mingwin`
+		if [ "$LOCATION" != "" ]
+		then
+			echo ''
+			echo "The Mingw/MSYS tools are installed in \`\`$LOCATION''"
+		fi
+
+		LOCATION=`"$CADP"/src/com/cadp_path -gnuwin32`
+		if [ "$LOCATION" != "" ]
+		then
+			echo ''
+			echo "The GnuWin32 tools are installed in \`\`$LOCATION''"
+		fi
+
+		LOCATION=`"$CADP"/src/com/cadp_path -cygwin`
+		if [ "$LOCATION" != "" ]
+		then
+			echo ''
+			echo "The Cygwin tools are installed in \`\`$LOCATION''"
+		fi
+	fi
+
+	case "$DETAILED_ARCH" in
+		"win32-cygnus" | "win64-cygnus" )
+			CHECK_CYGWIN_OPERATING_SYSTEM
+			;;
+		"win32-msys" )
+			CHECK_MINGWIN_OPERATING_SYSTEM
+			;;
+	esac
+
+	;;
+
+	macOS | mac86 | mac64 )
+	OS=`uname -sr`
+	case "$OS" in
+		Darwin?9.[01234].* )
+			MINOR=`echo $OS | sed -e 's/Darwin[ ]9[.]\([0-9]*\)[.].*/\1/'`
+			# Darwin 9.$MINOR.x correspond a MacOS X 10.5.$MINOR
+			echo ''
+			echo "*** The CADP software is intended for MacOS X version 10.5.5"
+			echo "    (i.e. Darwin 9.5.x) or higher. It will not work on MacOS X"
+			echo "    version 10.5.$MINOR (i.e. $OS)"
+			echo "==> Please, upgrade your operating system to a more recent version"
+			;;
+	esac
+
+	# verification de l'installation de X11 sous MacOS
+	echo ''
+	if [ -f /private/etc/X11/xinit/xinitrc -a -d /usr/X11R6/include/X11 ]
+	then
+		# cas de MacOS X 10.4 "Tiger"
+		echo "X11 seems to be installed"
+	elif [ -f /usr/X11/lib/X11/xinit/xinitrc -a -d /usr/X11R6/include/X11 ]
+	then
+		# cas de MacOS X 10.5 "Leopard" et plus recent (y compris
+		# macOS 10.12 Sierra)
+		echo "X11 seems to be installed"
+	else
+		# il y a un probleme ; on essaie d'aider l'utilisateur
+		if [ ! -d /Applications/Utilities/XQuartz.app ]
+		then
+			echo "*** XQuartz does not seem do be installed"
+			echo "==> See explanations in http://cadp.inria.fr/macOS.html"
+		elif [ -d /opt/X11 -a ! -d /usr/X11R6 ]
+		then
+			echo "*** XQuartz is installed in /opt/X11 but not in /usr/X11R6"
+			echo "==> Please, run x11-select as explained in http://cadp.inria.fr/macOS.html"
+		else
+			# cas inconnu pour l'instant
+			echo "*** X11 does not seem do be properly installed"
+			echo "==> See explanations in http://cadp.inria.fr/macOS.html"
+		fi
+	fi
+	;;
+
+esac
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_POSIX_COMMANDS () {
+
+# verification que diverses commandes Unix sont bien disponibles
+
+CHECK_PRESENT_WITH_DIAGNOSTIC awk "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+case "$ARCH" in
+	mac86 | mac64 )
+		if [ ! -x /opt/local/bin/gawk -a ! -x /usr/local/bin/gawk ]
+		then
+			echo "*** but the \`\`gawk'' command is missing"
+			echo "    (not found in /opt/local/bin/gawk or /usr/local/bin/gawk)"
+			echo "==> See explanations given in http://cadp.inria.fr/macOS.html"
+			echo ""
+		fi
+	;;
+esac
+
+CHECK_PRESENT_WITH_DIAGNOSTIC basename "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+	# sous Solaris, il y a un probleme avec "/bin/basename" qui interprete
+	# son second argument comme une expression reguliere, ce qui peut
+	# donner un resultat different de celui qu'on obtient sous toutes
+	# les autres architectures ; c'est pourquoi il faut plutot utiliser
+	# "/usr/xpg4/bin/basename" qui a un comportement conforme aux autres
+	# architectures ; le script "cadp_basename" fait cela ; on verifie ici
+	# que "/usr/xpg4/bin/basename" existe bien
+	if test ! -x /usr/xpg4/bin/basename
+	then
+		echo "*** /usr/xpg4/bin/basename is not available"
+		echo "==> Make sure the \`\`basename'' command accessible in your \`\`\$PATH''"
+		echo "    interprets its second argument as a string, not a regular expression"
+		echo ""
+	fi
+esac
+
+CHECK_PRESENT_WITH_DIAGNOSTIC bc "/bin" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+# pour info : CHECK_PRESENT_WITH_DIAGNOSTIC bunzip2 "/bin" "/bin" "/bin" "/usr/bin" "/usr/bin"
+CHECK_PRESENT bunzip2
+if [ $? = 1 ]
+then
+	echo "==> You might wish to install the \`\`bunzip2'' command"
+	echo "==> (otherwise some CADP tools will not support compressed .bz2 files)"
+	echo ""
+fi
+
+# pour info : CHECK_PRESENT_WITH_DIAGNOSTIC bzip2 "/bin" "/bin" "/bin" "/usr/bin" "/usr/bin"
+CHECK_PRESENT bzip2
+if [ $? = 1 ]
+then
+	echo "==> You might wish to install the \`\`bzip2'' command"
+	echo "==> (otherwise some CADP tools will not support compressed .bz2 files)"
+	echo ""
+fi
+
+CHECK_PRESENT_WITH_DIAGNOSTIC cat "/bin" "/bin" "/bin" "/bin" "/bin"
+
+if [ "$CHECK_CADP" = 1 -o "$ARCH" != "win32" ]
+then
+	# on ne fait ce test que si l'utilisateur n'a pas invoque "tst win32" ;
+	# en effet, il n'y a aucun paquetage Cygwin implementant la commande
+	# "compress" : il est donc inutile de demander a l'utilisateur de
+	# l'installer ; elle sera fournie dans $CADP/bin.win32
+	CHECK_PRESENT_WITH_DIAGNOSTIC -n compress "/bin" "/bin" "/usr/bin" "-" "/usr/bin"
+	if [ $? = 1 ]
+	then
+		case "$ARCH" in
+			iX86 | x64 | ia64 )
+				echo "==> This package is named \`\`ncompress'' on most Linux distributions"
+				echo ""
+		esac
+	fi
+fi
+
+CHECK_PRESENT_WITH_DIAGNOSTIC cmp "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC cp "/bin" "/bin" "/bin" "/bin" "/bin"
+
+if [ "$ARCH" = win32 ]
+then
+	CHECK_PRESENT_WITH_DIAGNOSTIC cmd "-" "-" "-" "/WINDOWS/system32" "-"
+
+	# ``cadp_more'' utilise implicitement la commande ``less'' sous Windows
+	# lorsque la variable d'environnement $PAGER n'est pas definie
+	CHECK_PRESENT_WITH_DIAGNOSTIC less "-" "-" "-" "/bin" "-"
+fi
+
+CHECK_PRESENT_WITH_DIAGNOSTIC cut "/bin" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC date "/bin" "/bin" "/bin" "/bin" "/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC df "/bin" "/bin" "/bin" "/bin" "/bin"
+
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+		CHECK_PRESENT_WITH_DIAGNOSTIC digest "-" "/bin" "-" "-" "-"
+esac
+
+CHECK_PRESENT_WITH_DIAGNOSTIC dirname "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC echo "/bin" "/bin" "/bin" "/bin" "/bin"
+
+case "$ARCH" in
+	win32 )
+		# sous Windows exclusivement, la commande "ed" est utilisee
+		# dans le script cadp_cygwin.com
+		CHECK_PRESENT_WITH_DIAGNOSTIC ed "-" "-" "-" "/bin" "-"
+esac
+
+CHECK_PRESENT_WITH_DIAGNOSTIC egrep "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC expand "/usr/ucb" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC fgrep "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC file "/bin" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC fold "-" "/bin" "/usr/bin" "/bin" "/usr/bin"
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+		if [ $CHECK_CADP = 1 ]
+		then
+			DEFAULT=`"$CADP"/src/com/cadp_fold -default`
+			cmp -s $DEFAULT /bin/fold
+			if [ $? = 0 ]
+			then
+				echo "==> But using /bin/fold may cause problems when compiling LNT specifications"
+				echo "==> If you notice something wrong, install the GNU coreutils package"
+				echo "    which provides a correct implementation of the \`\`fold'' command"
+				echo ""
+			fi
+		fi
+	;;
+esac
+
+CHECK_PRESENT_WITH_DIAGNOSTIC grep "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT gnuplot
+if [ $? = 1 ]
+then
+	echo "==> You might wish to install the \`\`gnuplot'' software"
+	echo "    (otherwise you will not be able to run some demo examples)"
+	case "$ARCH" in
+		win32 )
+			echo "==> See explanations in http://cadp.inria.fr/win32.html"
+			;;
+		macOS | mac86 | mac64 )
+			echo "==> See explanations in http://cadp.inria.fr/macOS.html"
+			;;
+	esac
+	echo ""
+fi
+
+CHECK_PRESENT_WITH_DIAGNOSTIC gunzip "/usr/bin or /usr/local" "/bin" "/bin" "/usr/bin" "/usr/bin"
+# voir gzip
+
+CHECK_PRESENT_WITH_DIAGNOSTIC gzip "/usr/bin or /usr/local" "/bin" "/bin" "/usr/bin" "/usr/bin"
+# gzip est desormais appele' par Bisimulator/Evaluator pour produire des
+# fichiers compresses ".bes.gz". Sous Solaris 7-8, gzip est un composant
+# optionnel, alors sous Solaris 9-10, gzip est installe' dans /usr/bin/gzip
+
+CHECK_PRESENT_WITH_DIAGNOSTIC head "/usr/ucb" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC hostname "/bin" "/bin" "/bin" "/bin" "/bin"
+
+( PATH="$PATH:/opt/SUNWspro/bin" ; CHECK_PRESENT_WITH_DIAGNOSTIC indent "/bin" "/opt/SUNWspro/bin" "/usr/bin" "/bin" "/usr/bin" )
+# pour eviter un warning inutile sous Solaris, on ajoute /opt/SUNWspro/bin
+# au $PATH, car la commande "cadp_indent" sait trouver automatiquement
+# /opt/SUNWspro/bin/indent lorsque le compilateur Sun/Oracle est installe
+INDENT_RESULT=$?
+if [ $INDENT_RESULT = 1 ]
+then
+	case "$ARCH" in
+		sun5 | sun64 | sol86 | sol64 )
+			echo "    To address this issue, we recommend that you install the Oracle"
+			echo "    Developer Studio tool suite following the indications given in"
+			echo "    file \$CADP/INSTALLATION_2"
+			echo ""
+	esac
+fi
+if [ $INDENT_RESULT = 0 -a "$ARCH" = mac86 ]
+then
+	MAC86_VERSION="`/usr/bin/uname -r`"
+	case "$MAC86_VERSION" in
+		10.* )
+		# sous Snow Leopard (uname -r = 10.0.0 ; sw_vers = 10.6 et
+		# 10.6.1) la commande /usr/bin/indent fait segmentation fault
+		# On ne sait pas quand cette erreur sera corrigee
+		echo "    the program \`\`/usr/bin/indent'' has bugs on this version of macOS"
+		echo "    (it may corrupt C code instead of formatting it properly)"
+		echo "    the CADP tools will never invoke it to format the C code they generate"
+		echo ""
+		;;
+	esac
+fi
+
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 | win32 )
+		# aucune verification a faire
+		;;
+	* )
+		CHECK_PRESENT_WITH_DIAGNOSTIC lpr "/bin" "-" "/usr/bin" "-" "/usr/bin"
+esac
+
+CHECK_PRESENT_WITH_DIAGNOSTIC make "/usr/ucb" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC man "/usr/ucb" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+if [ "$ARCH" = macOS -o "$ARCH" = mac86 -o "$ARCH" = mac64 ]
+then
+	CHECK_PRESENT_WITH_DIAGNOSTIC md5 "-" "-" "-" "-" "/sbin"
+fi
+
+if [ "$ARCH" = iX86 -o "$ARCH" = x64 -o "$ARCH" = ia64 -o "$ARCH" = win32 ]
+then
+	CHECK_PRESENT_WITH_DIAGNOSTIC md5sum "-" "-" "/usr/bin" "/usr/bin" "-"
+fi
+
+CHECK_PRESENT_WITH_DIAGNOSTIC mkdir "/bin" "/bin" "/bin" "/bin" "/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC more "/usr/ucb" "/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC mv "/bin" "/bin" "/bin" "/bin" "/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC nroff "/bin" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC ps "/bin" "/bin" "/bin" "/bin" "/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC rm "/bin" "/bin" "/bin" "/bin" "/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC rmdir "/bin" "/bin" "/bin" "/bin" "/bin"
+
+CHECK_PRESENT sed
+if [ $? = 1 ]
+then
+	DIAGNOSTIC "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+fi
+# sous Solaris, il faut eviter /usr/ucb/sed qui a des fonctionnalites limitees
+CHECK_LOCATION "sed" "/bin /usr/bin" "/bin /usr/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC sh "/bin" "/bin" "/bin" "/bin" "/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC sort "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC strings "/usr/ucb" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC tail "/usr/ucb" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC tar "/bin" "/bin" "/bin" "/usr/bin" "/usr/bin"
+case "$ARCH" in
+	mac86 | mac64 )
+		if [ ! -x /usr/bin/gnutar -a \
+		     ! -x /opt/local/bin/gnutar -a \
+		     ! -x /usr/local/bin/gtar ]
+		then
+			echo "*** but the \`\`gnutar'' or \`\`gtar'' command is missing"
+			echo "    (not found in /usr/bin/gnutar, /opt/local/bin/gnutar, /usr/local/bin/gtar)"
+			echo "==> See explanations given in http://cadp.inria.fr/macOS.html"
+			echo ""
+		fi
+	;;
+esac
+
+CHECK_PRESENT_WITH_DIAGNOSTIC tbl "/bin" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC tee "/bin" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT test
+if [ $? = 1 ]
+then
+	DIAGNOSTIC "/bin" "/bin" "/usr/bin" "/bin" "/bin"
+fi
+# sous Solaris, il faut eviter /usr/ucb/test qui a des fonctionnalites limitees
+CHECK_LOCATION "test" "/bin /usr/bin" "/bin /usr/bin" "/usr/bin" "/bin" "/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC tr "/bin" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC true "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC uname "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+	# on ne teste la presence de "uncompress" que sous Solaris car, sur
+	# les autres systemes, il est frequent que cette commande n'existe pas
+	# auquel cas cadp_zip la remplace automatiquement par "gunzip"
+	CHECK_PRESENT_WITH_DIAGNOSTIC uncompress "/usr/ucb" "/bin" "/usr/bin" "/bin" "/usr/bin"
+	# sous Linux, uncompress n'est pas toujours installe par defaut ;
+	# s'il l'est, il peut etre dans /usr/bin ou parfois dans /bin
+esac
+
+# pour info : CHECK_PRESENT_WITH_DIAGNOSTIC unzip "/bin" "/bin" "/usr/bin" "/usr/bin" "/usr/bin"
+CHECK_PRESENT unzip
+if [ $? = 1 ]
+then
+	echo "==> You might wish to install the \`\`unzip'' command"
+	echo "==> (otherwise some CADP tools will not support compressed .zip files)"
+	echo ""
+fi
+
+CHECK_PRESENT_WITH_DIAGNOSTIC -n uudecode "/bin" "/bin" "/usr/bin" "/usr/bin" "/usr/bin"
+if [ $? = 1 ]
+then
+	case "$ARCH" in
+		iX86 | x64 | ia64 )
+		echo "==> This package is named \`\`sharutils'' on most Linux distributions"
+		echo ""
+	esac
+fi
+
+CHECK_PRESENT_WITH_DIAGNOSTIC wc "/usr/ucb" "/bin" "/usr/bin" "/bin" "/usr/bin"
+
+CHECK_PRESENT_WITH_DIAGNOSTIC wget "-" "/usr/sfw/bin" "/usr/bin" "/usr/bin" "/opt/local/bin"
+# sous win32-msys, wget est dans C:/gnuwin32/bin/wget.exe
+# sous mac86 et mac64, wget est installe par MacPorts dans /opt/local/bin/wget
+
+CHECK_PRESENT_WITH_DIAGNOSTIC xargs "/bin" "/bin" "/bin" "/bin" "/usr/bin"
+
+if [ "$ARCH" != iX86 -a "$ARCH" != x64 -a "$ARCH" != win32 -a "$ARCH" != macOS -a "$ARCH" != mac86 -a "$ARCH" != mac64 ]
+then
+	CHECK_PRESENT_WITH_DIAGNOSTIC xterm "/usr/openwin/bin" "/usr/openwin/bin" "/usr/bin" "-" "-"
+fi
+
+# pour info : CHECK_PRESENT_WITH_DIAGNOSTIC zip "/bin" "/bin" "/usr/bin" "/usr/bin" "/usr/bin"
+CHECK_PRESENT zip
+if [ $? = 1 ]
+then
+	echo "==> You might wish to install the \`\`zip'' command"
+	echo "==> (otherwise some CADP tools will not support compressed .zip files)"
+	echo ""
+fi
+
+# on verifie que "ls -l" renvoie bien un resultat 8 ou 9 colonnes ;
+# dans le cas particulier de Windows avec Cygwin (mais pas avec Mingw/MSYS),
+# le repertoire / appartient a un utilisateur et un groupe appeles chacun
+# "NT SERVICE+TrustedInstaller" : on doit normalise ces deux noms qui faussent
+# le calcul
+
+NB_COLUMNS=`ls -ld / | sed -e 's/NT SERVICE+TrustedInstaller/root/g' | wc -w`
+if [ "$NB_COLUMNS" -ne 8 -a "$NB_COLUMNS" -ne 9 ]
+then
+	echo "*** Command "ls -l" displays results on $NB_COLUMNS columns"
+	echo "==> This situation should not occur (please notify cadp@inria.fr)"
+fi
+
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_UMASK () {
+	UMASK=`umask`
+	case "$UMASK" in
+		0?? | 00?? )
+			echo "Umask value \`\`$UMASK'' is ok" ;;
+		* )
+			echo "*** Incorrect umask value \`\`$UMASK''"
+			echo "==> Set your umask to a recommended value such as 022, 027, or 077"
+	esac
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_FILENAME () {
+	if [ `echo $1 | wc -w` -gt 1 ]
+	then
+		echo ''
+		echo "*** Variable \`\`$2'' should not contain spaces nor word separators"
+	fi	
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_HOME () {
+	if [ "$HOME" = "" ]
+	then
+		echo "*** Variable \`\`\$HOME'' (home directory) is not set"
+	else
+		echo "Variable \`\`\$HOME'' (home directory) is set to \`\`$HOME''"
+	fi
+	CHECK_FILENAME "$HOME" '$HOME'
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_SHELL () {
+	if [ "$SHELL" = "" ]
+	then
+		echo "*** Variable \`\`\$SHELL'' (login shell) is not set"
+	else
+		echo "Variable \`\`\$SHELL'' (login shell) is set to \`\`$SHELL''"
+
+		# verification que le fichier de demarrage fait pas d'ecriture
+		# sur stdout et s'execute sans anicroche
+
+		if [ "$ARCH" = "macOS" -o "$ARCH" = "mac86" -o "$ARCH" = "mac64" ]
+		then
+			OUTPUT=`$SHELL -c /usr/bin/true`
+			RESULT=$?
+		else
+			OUTPUT=`$SHELL -c /bin/true`
+			RESULT=$?
+		fi
+		if [ "$OUTPUT" != "" ]
+		then
+			echo ''
+			echo "*** The startup file for your shell should not write the string"
+			echo "    \`\`$OUTPUT'' to the standard output"
+			echo "    This will make shell commands such as \`\`rsh'' and \`\`which'' to fail"
+			echo "==> Remove the cause of output from your shell startup file"
+			echo "    (in particular, your startup file should not invoke \`\`echo'' nor \`\`stty'')"
+		fi
+		if [ $RESULT != 0 ]
+		then
+			echo ''
+			echo "*** The startup file for your shell does not execute correctly"
+			echo "    It returns the error code $RESULT"
+			echo "==> Correct your login shell startup file"
+		fi
+
+		# verification que l'utilisateur n'ecrase pas sa variable
+		# $PATH dans son fichier de demarrage
+
+		PATH_MARKER="inria-vasy-cadp-tst"
+		export PATH_MARKER
+		RESULT=`( PATH="$PATH_MARKER:$PATH" ; export PATH ; $SHELL -c "/bin/echo \\\$PATH") | grep "$PATH_MARKER"`
+		if [ "$RESULT" = "" ]
+		then
+			echo ''
+			echo "*** The startup file for your shell overwrites the value of variable \`\`\$PATH''"
+			echo "    This is not a recommended practice on Unix systems"
+			echo "    This might prevent the Eucalyptus interface from working properly"
+			echo "==> Modify your startup file not to erase the value of your \`\`\$PATH'' variable"
+			echo "    (instead, extend it by concatenating new directories to be searched in)"
+		fi
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_ULIMIT () {
+
+	if [ "$ARCH" = "win32" ]
+	then
+		# sous Windows, la taille maximale de la pile depend de
+		# chaque binaire individuellement et non d'un parametre
+		# que l'on regle globalement ; la commande "ulimit -s" de
+		# Cygwin ne permet d'ailleurs pas de modifier cette taille
+		return
+	fi
+
+	# verification de la taille de la pile d'execution
+
+	STACK_LIMIT=`ulimit -s`
+
+	# $STACK_LIMIT est soit une valeur numerique, soit une chaine de
+	# caracteres ("unlimited" en anglais, "sans limite" en francais, etc.)
+	# indiquant que la taille de la pile n'est pas bornee
+
+	case "$STACK_LIMIT" in
+		[0-9]* )
+			# cas d'une valeur numerique
+			if [ "$STACK_LIMIT" -lt 8192 ]
+			then
+				echo ''
+				echo "*** The maximal stack size for executing your programs is currently"
+				echo "    limited to $STACK_LIMIT kbytes (see the \`\`ulimit -s'' command'')"
+				echo "    This size should be unlimited or, at least, larger than 8192 kbytes"
+				echo "    (otherwise, some CADP tools may abort in an unexpected way)"
+				echo "==> Please modify the startup file of your shell to change this limit"
+			fi
+			;;
+	esac
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_STATIC_HOSTNAME () {
+	if [ "$CHECK_CADP" = 0 ]
+	then
+		# le script cadp_hostname n'est pas disponible
+		return
+	fi
+	STATIC="`$CADP/src/com/cadp_hostname -static`"
+	if [ "$STATIC" != 0 ]
+	then
+		# cas ou MacOS X definit dynamiquement la valeur de hostname
+		echo ''
+		echo "*** The hostname of this machine is defined dynamically and might vary "
+		echo "    in function of the current IP address (reason $STATIC)"
+		echo "==> To use CADP, assign a static hostname to this machine according to"
+		echo "    the explanations given in http://cadp.inria.fr/macOS.html"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_LICENSE_FILE () {
+	echo ''
+
+	# verification que le fichier LICENSE n'est pas un repertoire
+	if [ -d "$CADP"/LICENSE ]
+	then
+		echo "*** \`\`\$CADP/LICENSE'' should be a file, not a directory"
+		echo "==> Remove this directory and read file \$CADP/INSTALLATION_3"
+		echo "    to apply the RFL procedure"
+		return
+	fi
+
+	# verification de l'existence du fichier LICENSE
+	if [ ! -f "$CADP"/LICENSE ]
+	then
+		echo "*** License file \`\`\$CADP/LICENSE'' does not exist"
+
+		if [ -f "$CADP"/LICENSE.bin ]
+		then
+			# certains clients de messagerie sauvegardent le fichier
+			# licence sous le nom "LICENSE.bin" au lieu de "LICENSE"
+			echo "    but another file named \`\`\$CADP/LICENSE.bin'' is present"
+			echo "==> Consider renaming file \`\`\$CADP/LICENSE.bin'' to \`\`\$CADP/LICENSE''"
+			echo "    Otherwise, read file \$CADP/INSTALLATION_3 to apply the RFL procedure"
+		elif [ -f "$CADP"/LICENSE.txt ]
+		then
+			# certains clients de messagerie sauvegardent le fichier
+			# licence sous le nom "LICENSE.txt" au lieu de "LICENSE"
+			echo "    but another file named \`\`\$CADP/LICENSE.txt'' is present"
+			echo "==> Consider renaming file \`\`\$CADP/LICENSE.txt'' to \`\`\$CADP/LICENSE''"
+			echo "    Otherwise, read file \$CADP/INSTALLATION_3 to apply the RFL procedure"
+		else
+			echo "==> Read file \$CADP/INSTALLATION_3 to apply the RFL procedure"
+		fi
+		return
+	fi
+
+	# verification de la presence d'un fichier LICENSE prototype
+	grep "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" "$CADP"/LICENSE > /dev/null 2> /dev/null
+	if [ $? = 0 ]
+	then
+		echo "*** File \`\`\$CADP/LICENSE'' exists, but is just a prototype license file"
+		echo "    (not a valid license file)"
+		echo "==> Read file \$CADP/INSTALLATION_3 to apply the RFL procedure"
+		return
+	fi
+
+	echo "License file \`\`\$CADP/LICENSE'' exists"
+
+	if [ ! -r "$CADP"/LICENSE ]
+	then
+		echo "*** License file is not readable"
+		echo "==> Check the owner of this file and add read permission"
+		return
+	fi
+
+	# presence de la chaine $VERSION dans le fichier LICENSE
+	grep "$VERSION" "$CADP"/LICENSE > /dev/null 2> /dev/null
+	if [ $? != 0 ]
+	then
+		# recherche d'une chaine speciale ecrite par RFL
+		grep "This is a privileged license" "$CADP"/LICENSE > /dev/null 2> /dev/null
+		if [ $? != 0 ]
+		then
+			echo "*** License file is not valid for CADP $VERSION"
+			echo "==> Read file \$CADP/INSTALLATION_3 to apply the RFL procedure"
+			return
+		fi
+	fi
+
+	# presence de la chaine $HOSTINFO complete dans le fichier LICENSE
+	if [ "$HOSTINFO" != "" ]
+	then
+		grep "$HOSTINFO" "$CADP"/LICENSE > /dev/null 2> /dev/null
+		if [ $? = 0 ]
+		then
+			echo "Host \`\`$HOSTNAME'' seems to have a valid license"
+			return
+		fi		
+	fi
+
+	# presence de la chaine $HOSTINFO partielle dans le fichier LICENSE
+	if [ "$HOSTINFO" != "" ]
+	then
+		HOSTINFO=`echo $HOSTINFO | cut -d' ' -f 1,2,3,4`
+		grep "$HOSTINFO" "$CADP"/LICENSE > /dev/null 2> /dev/null
+		if [ $? = 0 ]
+		then
+			echo "Host \`\`$HOSTNAME'' might have a valid license"
+			return
+		fi		
+	fi
+
+	# la chaine $HOSTINFO (complete ou partielle) n'a pas ete trouvee
+	# on recherche si le nom de la machine (c'est-a-dire $HOSTNAME) est present
+	# l'option -i sert pour Windows/Cygwin ou les noms de machines
+	# renvoyes par cadp_hostinfo sont en majuscules
+	grep -i "^#.license entries for host \"$HOSTNAME\"" "$CADP"/LICENSE > /dev/null 2> /dev/null
+	if [ $? = 0 ]
+	then
+		echo "*** Host \`\`$HOSTNAME'' seems to have invalid license entries"
+		echo "==> Read file \$CADP/INSTALLATION_3 to apply the RFL procedure"
+		return
+	fi
+
+	# on teste le cas ou $HOSTNAME est un nom de machine suffixe'
+	# par son domaine (ex.: "dome.inrialpes.fr") alors que dans le
+	# fichier license, le nom de domaine est absent (ex.: "dome")
+	# l'option -i sert pour Windows/Cygwin (cf ci-dessus)
+	SHORT_HOSTNAME=`echo $HOSTNAME | sed -e 's/[.].*//'`
+	grep -i "^#.license entries for host \"$SHORT_HOSTNAME\"" "$CADP"/LICENSE > /dev/null 2> /dev/null
+	if [ $? = 0 ]
+	then
+		echo "*** Host \`\`$SHORT_HOSTNAME ($HOSTNAME)'' seems to have invalid license entries"
+		echo "==> Read file \$CADP/INSTALLATION_3 to apply the RFL procedure"
+		return
+	fi
+
+	echo "*** No license exists for host \`\`$HOSTNAME''"
+	echo  "==> Read file \$CADP/INSTALLATION_3 to apply the RFL procedure"
+}
+
+# -----------------------------------------------------------------------------
+
+echo ''
+echo "$TST_BANNER"
+
+# positionnement de $HOSTNAME
+# (a ce point, on ne peut pas utiliser $CADP/src/com/cadp_hostname puisque l'on
+# n'est pas certain que la variable d'environnement $CADP soit disponible)
+
+HOSTNAME=`hostname`
+echo ''
+echo "Current host is \`\`$HOSTNAME''"
+
+# positionnement de $ARCH
+
+if [ "$CHECK_CADP" = 0 ]
+then
+	ARCH="$1"
+	DETAILED_ARCH="$1"
+elif [ "$CADP" = "" ]
+then
+	echo ''
+	echo "*** Variable \`\`\$CADP'' is not defined in the environment"
+	echo "    It should point to the directory where CADP is installed"
+	echo "    or the architecture should be specified by a command-line argument"
+	echo "==> Read file \$CADP/INSTALLATION_2"
+	echo ''
+	exit 1
+else
+	echo ''
+	echo "Variable \`\`\$CADP'' is set to \`\`$CADP''"
+
+	# verification que le repertoire $CADP existe
+	CHECK_FILENAME "$CADP" '$CADP'
+
+	# verification que $CADP designe bien un repertoire
+	if [ ! -d "$CADP" ]
+	then
+		echo ''
+		echo "*** Variable \`\`\$CADP'' does not point to a directory"
+		exit 1
+	fi
+
+	# verification que le repertoire $CADP contient une distribution CADP
+	if [ `"$CADP"/src/com/cadp_path -check_release "$CADP"` = 0 ]
+	then
+		echo ''
+		echo "*** Variable \`\`\$CADP'' does not point to the directory where CADP is installed"
+		exit 1
+	fi
+
+	# verification que $CADP commence par un "/"
+	if [ `"$CADP"/src/com/cadp_path -relative "$CADP"` = 1 ]
+	then
+		echo "*** Variable \`\`\$CADP'' should be an absolute pathname, meaning that"
+		echo "    its value should always start with a '/' character"
+		exit 1
+	fi
+
+	# verification que $CADP ne finit pas par un "/"
+	case "$CADP" in
+		*/ )
+			echo ''
+			echo "*** Variable \`\`\$CADP'' contains a trailing '/' that"
+			echo "    might create problems and should be removed"
+		    ;;
+	esac
+
+	# ici $CADP devrait etre correctement positionnee
+	ARCH=`"$CADP"/com/arch`
+	DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+	if [ "$ARCH" = "win32" ]
+	then
+		# verification que, sous Windows, la variable $CADP est
+		# correctement positionnee
+		case "$CADP" in
+			[A-Za-z]:* )
+				# ici, $CADP est un chemin Windows
+				echo ''
+				echo "*** Variable \`\`\$CADP'' should not be set to a Windows path with a drive letter"
+				echo "==> Read file \$CADP/INSTALLATION_2"
+				;;
+			/cygdrive/* )
+				# ici, $CADP est un chemin specifique a Cygwin
+				echo ''
+				echo "*** Variable \`\`\$CADP'' should not be set to a Cygwin path starting with /cygdrive"
+				echo "==> Read file \$CADP/INSTALLATION_2"
+				;;
+		esac
+
+		# verification que le lien symbolique Cygwin vers $CADP existe
+		# et est bien positionne lorsque sa presence est necessaire
+		"$CADP"/src/com/cadp_path -check_cygwin_link
+
+		# verification que le repertoire courant se trouve bien sur
+		# le meme lecteur Windows que Cygwin
+		WORKING_DIR=`pwd`
+		WORKING_DRIVE=`cygpath -w "$WORKING_DIR" | sed -e 's/:.*//'`
+		CYGWIN_DRIVE=`cygpath -w "/" | sed -e 's/:.*//'`
+		if [ "$WORKING_DRIVE" != "$CYGWIN_DRIVE" ]
+		then
+			echo ''
+			echo "*** The working directory for using CADP is currently on drive \`\`$WORKING_DRIVE:''"
+			echo "whereas it should be located on the same drive \`\`$CYGWIN_DRIVE:'' as Cygwin"
+		fi
+	fi
+fi
+
+if [ "$ARCH" = "$DETAILED_ARCH" ]
+then
+	DETAIL=""
+else
+	DETAIL=" ($DETAILED_ARCH)"
+fi
+
+if [ "$CHECK_CADP" = 0 ]
+then
+	PRECISION=" (specified on the command line)"
+else
+	PRECISION=""
+fi
+
+echo ''
+echo "Current architecture$PRECISION is \`\`$ARCH$DETAIL''"
+
+# verification de la compatibilite entre $CADP_BITS et $ARCH
+echo ''
+case $CADP_BITS in
+	"" )
+		echo "Variable \`\`\$CADP_BITS'' is not set"
+		;;
+	32 )
+		echo "Variable \`\`\$CADP_BITS'' is set to \`\`$CADP_BITS''"
+		if [ "$ARCH" = "ia64" -o "$ARCH" = "mac64" ]
+		then
+			echo "*** Value of \`\`\$CADP_BITS'' is not compatible with the architecture"
+			echo "==> \`\`\$CADP_BITS'' will not be taken into account"
+		fi
+		;;
+	64 )
+		echo "Variable \`\`\$CADP_BITS'' is set to \`\`$CADP_BITS''"
+		if [ "$ARCH" = "iX86" -o "$ARCH" = "win32" -o "$ARCH" = "macOS" -o "$ARCH" = "mac86" ]
+		then
+			echo "*** Value of \`\`\$CADP_BITS'' is not compatible with the architecture"
+			echo "==> \`\`\$CADP_BITS'' will not be taken into account"
+		fi
+		;;
+	* )
+		echo "Variable \`\`\$CADP_BITS'' is set to \`\`$CADP_BITS''"
+		echo "*** Variable \`\`\$CADP_BITS'' contains an unknown value"
+		echo "==> \`\`\$CADP_BITS'' will not be taken into account"
+		;;
+esac
+
+# Dans "arch", on a suppose que tous les Sparc avec Solaris pouvaient executer
+# des programmes 64 bits. On verifie ici que c'est bien le cas.
+
+if [ $ARCH = "sun64" -o $ARCH = "sol64" ]
+then
+	if [ `isainfo -b` = "32" ]
+	then
+		echo ''
+		echo "*** Your Solaris machine does not support 64-bit programs"
+		echo "==> Set \`\`\$CADP_BITS'' to 32 to use CADP in 32 bit mode"
+	fi
+fi
+
+# positionnement eventuel de la variable $TEMP vers un repertoire temporaire
+
+case "$ARCH" in
+	win32 )
+		# normalement $TEMP doit contenir un chemin defini par Windows
+		# tel que /DOCUME~1/%USER%/LOCALS~1/Temp
+		if [ "$TEMP" = "" ]
+		then
+			# on cherche une valeur de substitution pour $TEMP
+			# en utilisant des regles empiriques
+			if [ -d "/tmp"	]
+			then
+				# cette branche couvre aussi le cas ou /tmp
+				# est un lien symbolique vers C:/Cygwin/tmp
+				# ou vers C:/Cygwin64/tmp
+				TEMP="/tmp"
+			elif [ -d "c:/WINDOWS/Temp" ]
+			then
+				TEMP="c:/WINDOWS/Temp"
+			else
+				TEMP="$HOME"
+			fi
+		fi
+		;;
+	* )
+		TEMP=/tmp
+		;;
+esac
+export TEMP
+
+# verification si on est sur une machine virtuelle
+
+DISPLAY_VIRTUAL_MACHINE
+
+# verification du systeme d'exploitation
+
+DISPLAY_OPERATING_SYSTEM_VERSION
+
+case "$ARCH" in
+	win32 | macOS | mac86 | mac64 )
+		SHELL_VERSION=" - `( /bin/sh --version 2> /dev/null ) | head -1`"
+		# note : la ligne ci-dessus est valable pour sh et bash
+		# sous Cygwin, ni ash ni dash n'acceptent --version
+		;;
+	* )
+		# sous Solaris, /bin/sh n'accepte pas --version
+		# sous Linux, /bib/sh -> dash n'accepte pas --version
+		SHELL_VERSION=""
+		;;
+esac
+
+echo ''
+echo "System shell is \`\`"`ls -l /bin/sh | sed -e 's+[^/]*++'`"''$SHELL_VERSION"
+
+CHECK_OPERATING_SYSTEM
+
+echo ''
+CHECK_POSIX_COMMANDS
+
+echo ''
+CHECK_UMASK
+
+echo ''
+CHECK_HOME
+
+echo ''
+CHECK_SHELL
+
+CHECK_ULIMIT
+
+CHECK_STATIC_HOSTNAME
+
+# terminaison si l'argument $1 est non vide
+
+if [ "$CHECK_CADP" = 0 ]
+then
+	echo ''
+	exit 0
+fi
+
+# affichage de la memoire physique disponible
+
+echo ''
+RAM=`(unset CADP_MEMORY ; "$CADP"/bin.$ARCH/cadp_memory -physical)`
+if [ $? != 0 ]
+then
+	echo "*** Execution of cadp_memory failed"
+elif [ "$RAM" = "" ]
+then
+	echo "*** Execution of cadp_memory returned an empty result"
+else
+	echo "Current amount of RAM is $RAM bytes"
+fi
+
+echo ''
+if [ "$CADP_MEMORY" = "" ]
+then
+	echo "Variable \`\`\$CADP_MEMORY'' is not set"
+else
+	echo "Variable \`\`\$CADP_MEMORY'' is set to $CADP_MEMORY bytes"
+fi
+
+# determination du numero de version de CADP
+
+VERSION=`"$CADP"/bin.$ARCH/cadp_lib -1`
+echo ''
+echo "Current version of CADP is $VERSION"
+
+# verification de la commande cadp_hostinfo
+
+HOSTINFO=`"$CADP"/bin.$ARCH/cadp_hostinfo 2>&1`
+if [ $? = 0 ]
+then
+	echo ''
+	echo "Current platform is \`\`$HOSTINFO''"
+else
+	echo ''
+	echo "*** Execution of cadp_hostinfo failed"
+	if [ "$HOSTINFO" != "" ]
+	then
+		echo "$HOSTINFO"
+	fi
+	echo "==> Please, report the problem to cadp@inria.fr"
+	HOSTINFO=""
+fi
+
+# verification du fichier LICENSE
+
+CHECK_LICENSE_FILE
+
+# verification de la variable $PATH : repertoire $CADP/com
+
+CHECK_ACCESS "$PATH" "$CADP/com" "\$CADP/com" "\$PATH"
+
+# verification specifique sur la commande "arch"
+
+echo ''
+CHECK_PRESENT arch
+DEFAULT_ARCH=`arch`
+if [ "$DEFAULT_ARCH" != "$ARCH" ]
+then
+	WHICH_ARCH=`WHICH arch`
+	echo "(\`\`$WHICH_ARCH/arch'' returns \`\`$DEFAULT_ARCH'' and \`\`\$CADP/com/arch'' returns \`\`$ARCH'')"
+fi
+
+# verification que les commandes de CADP appelees sont dans $CADP/com
+# (on exclut "arch" car elle a deja ete verifiee)
+
+for TOOL in `ls "$CADP"/com | grep -v READ_ME | grep -v '\<arch\>'`
+do
+	WHICH_DIRECTORY=`( cd / ; WHICH $TOOL )`
+	if [ "$WHICH_DIRECTORY" != "$CADP/com" -a "$WHICH_DIRECTORY" != "" ]
+	then
+		echo ''
+		echo "*** The tool \`\`$TOOL'' is not searched in \`\`\$CADP/com''"
+		echo "    but in \`\`$WHICH_DIRECTORY'' instead"
+		echo "    You might have two versions of CADP installed"
+		echo "==> Reorder your \`\`\$PATH'' variable to have \`\`\$CADP/com'' first"
+		echo "    and remove all obsolete versions of CADP, if any"
+	fi
+done
+
+# verification de la variable $PATH : repertoire $CADP/bin.$ARCH
+
+CHECK_ACCESS "$PATH" "$CADP/bin.$ARCH" "\$CADP/bin.\`\$CADP/com/arch\`" "\$PATH"
+
+# verification que les binaires de CADP appeles sont dans $CADP/bin.$ARCH
+# on exclut les fichiers *.a et READ_ME
+
+for TOOL in `ls "$CADP"/bin.$ARCH | grep -v READ_ME | grep -v "\.a$"`
+do
+	WHICH_DIRECTORY=`( cd / ; WHICH $TOOL )`
+	if [ "$WHICH_DIRECTORY" != "$CADP/bin.$ARCH" -a "$WHICH_DIRECTORY" != "" ]
+	then
+		echo ''
+		echo "*** The tool \`\`$TOOL'' is not searched in \`\`\$CADP/bin.$ARCH''"
+		echo "    but in \`\`$WHICH_DIRECTORY'' instead"
+		echo "    You might have two versions of CADP installed"
+		echo "==> Reorder your \`\`\$PATH'' variable to have \`\`\$CADP/bin.$ARCH'' first"
+		echo "    and remove all obsolete versions of CADP, if any"
+	fi
+done
+
+# appel de cadp_lib -tst sur les fichiers bin.*/*.a
+
+echo ''
+for LIB in `ls "$CADP"/bin.$ARCH/*.a`
+do
+	"$CADP"/bin.$ARCH/cadp_lib -tst $LIB
+done
+
+# verification de la variable LD_LIBRARY_PATH
+
+case "$ARCH" in
+	sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 | win32 | macOS | mac86 | mac64 )
+		if [ "$LD_LIBRARY_PATH" = "" ]
+		then
+			echo ''
+			echo "Variable \`\`\$LD_LIBRARY_PATH'' is not set"
+		else
+			echo ''
+			echo "Variable \`\`\$LD_LIBRARY_PATH'' is set to \`\`$LD_LIBRARY_PATH''"
+			CC=`COMPUTE_CC`
+			if [ \( "$ARCH" = "iX86" -o "$ARCH" = "x64" -o "$ARCH" = "ia64" \) -a "`CHECK_CC`" = "icc" ]
+			then
+				# cas du compilateur icc pour Linux pour lequel
+				# $LD_LIBRARY_PATH doit etre positionnee afin
+				# d'executer les binaires produits par icc avec
+				# edition dynamique de liens : on retire de
+				# $LD_LIBRARY_PATH les choses specifiques a icc
+				ICC_PATH="`echo $CC | sed -e 's+/bin/icc$+/lib+'`"
+				REDUCED_LD_LIBRARY_PATH=`echo "$LD_LIBRARY_PATH" | sed -e "s+$ICC_PATH/++" | sed -e "s+$ICC_PATH++"`
+			else
+				REDUCED_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+			fi
+			case "$REDUCED_LD_LIBRARY_PATH" in
+				"" | ":" | "::" )
+					# rien a dire
+					;;
+				* )
+					echo "==> Setting this variable is not recommended (at least, not needed for CADP)"
+					;;
+			esac
+		fi
+		;;
+	* )
+		echo "==> Unknown architecture \`\`$ARCH''"
+		;;
+esac
+
+# verification de la disponibilite des manuels et de la variable $MANPATH
+
+case "$ARCH" in
+	sun4 | sun5 | sun64 | sol86 | sol64 )
+		MAN_AVAILABLE=`/bin/man -l caesar_graph 2> /dev/null | grep -c "$CADP"`
+		# ici $MAN_AVAILABLE vaut 1 ssi la page man de "caesar_graph"
+		# est accessible (la commande /bin/man -l devant renvoyer une
+		# chaine de la forme "caesar_graph (l)        -M $CADP"
+		if [ $MAN_AVAILABLE -eq 0 ]
+		then
+			# on verifie que $MANPATH contient "$CADP/man"
+			CHECK_ACCESS "$MANPATH" "$CADP/man" "\$CADP/man" "\$MANPATH"
+		fi
+		;;
+	iX86 | x64 | ia64 )
+		MAN_AVAILABLE=`man -w caesar_graph 2> /dev/null | grep -c "$CADP"`
+		# ici $MAN_AVAILABLE vaut 1 ssi la page man de "caesar_graph"
+		# est accessible (la commande man -w devant renvoyer une
+		# chaine de la forme "$CADP/man/manl/caesar_graph.l"
+		if [ $MAN_AVAILABLE -eq 0 ]
+		then
+			echo ''
+			echo "*** The CADP manual pages are not reachable by the \`\`man'' command"
+			if [ "@$MANPATH" = "@" ]
+			then
+				echo "    Variable \`\`\$MANPATH'' is not set"
+			else
+				echo "    Variable \`\`\$MANPATH'' is equal to \`\`$MANPATH''"
+			fi
+
+			# A priori, les manuels ne sont pas accessibles car
+			# l'utilisateur a positionne $MANPATH en lui donnant
+			# comme valeur une liste non-vide de repertoires
+			# separes par ':' sans inclure le repertoire `chaine
+			# vide' dans cette liste (ni en debut, ni au milieu,
+			# ni en fin)
+			EMPTY_PRESENT=`echo ":$MANPATH:" | grep -c "::"`
+			# ici $EMPTY_PRESENT vaut 1 ssi $MANPATH est vide ou
+			# contient le repertoire vide en debut, milieu ou fin
+			if [ $EMPTY_PRESENT -eq 1 ]
+			then
+				# cas d'erreur incomprehensible
+				echo  "==> Read file \$CADP/INSTALLATION_2"
+			else
+				echo "    It should probably contain the empty directory as well"
+				echo  "==> Read file \$CADP/INSTALLATION_2, and "
+				echo  "==> Add a colon \`:' character at the beginning of the value of \`\`\$MANPATH''"
+			fi
+		fi
+		;;
+	win32 )
+		MAN_AVAILABLE=`man -w caesar_graph 2> /dev/null | grep -c "$CADP"`
+		# ici $MAN_AVAILABLE vaut 1 ssi la page man de "caesar_graph"
+		# est accessible (la commande man -w devant renvoyer une
+		# chaine de la forme "$CADP/man/manl/caesar_graph.l"
+		if [ $MAN_AVAILABLE -eq 0 ]
+		then
+			echo ''
+			echo "*** The CADP manual pages are not reachable by the \`\`man'' command"
+			case "`$CADP/src/com/cadp_man -check`" in
+			"KO" )
+				# la recherche de pages man n'inclut pas les
+				# pages de la section LOCAL ou se trouvent les
+				# pages man de CADP
+				echo "==> Set variable \`\`\$MANSECT'' as explained in file \$CADP/INSTALLATION_2"
+				;;
+			"OK" )
+				# cas d'erreur incomprehensible
+				echo  "==> Read file \$CADP/INSTALLATION_2"
+			esac
+		fi
+		;;
+	macOS | mac86 | mac64 )
+		MAN_AVAILABLE=`man -w caesar_graph 2> /dev/null | grep -c "$CADP"`
+		# ici $MAN_AVAILABLE vaut 1 ssi la page man de "caesar_graph"
+		# est accessible (la commande man -w devant renvoyer une
+		# chaine de la forme "$CADP/man/catl/caesar_graph.l.gz
+		# (source: $CADP/man/manl/caesar_graph.l")
+		if [ $MAN_AVAILABLE -eq 0 ]
+		then
+			# on verifie que $MANPATH contient "$CADP/man"
+			CHECK_ACCESS "$MANPATH" "$CADP/man" "\$CADP/man" "\$MANPATH"
+		fi
+		;;
+	* )
+		echo "==> Unknown architecture \`\`$ARCH''"
+		;;
+esac
+
+# affichage de la variable $CADP_LANGUAGE
+
+echo ''
+if [ -n "$CADP_LANGUAGE" ]
+then
+	echo "Variable \`\`\$CADP_LANGUAGE'' is set to \`\`$CADP_LANGUAGE''"
+else
+	echo "Variable \`\`\$CADP_LANGUAGE'' is not set (default value is \`\`english'')"
+fi
+
+# affichage et verification de la variable $CADP_TMP
+
+echo ''
+if [ -n "$CADP_TMP" ]
+then
+	echo "Variable \`\`\$CADP_TMP'' is set to \`\`$CADP_TMP''"
+	"$CADP"/src/com/cadp_path -check_tmp
+else
+	DEFAULT="/tmp"
+	echo "Variable \`\`\$CADP_TMP'' is not set (default value is \`\`$DEFAULT'')"
+	"$CADP"/src/com/cadp_path -check_default_tmp "$DEFAULT"
+fi
+
+# determination si l'architecture courante est de celles pour lesquelles on
+# peut legitimement avoir besoin de positionner soi-meme la variable $CADP_CC
+# (voir $CADP/INSTALLATION_2)
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+	 	# l'utilisateur peut vouloir utiliser le compilateur GCC
+		EXPLICIT_CADP_CC=1
+		;;
+	iX86 | x64 | ia64 )
+		# l'utilisateur peut vouloir utiliser le compilateur ICC
+		EXPLICIT_CADP_CC=1
+		;;
+	* ) EXPLICIT_CADP_CC=0
+	    ;;
+esac
+
+# affichage de la variable $CADP_CC et verification de son contenu
+echo ''
+if [ -n "$CADP_CC" ]
+then
+	echo "Variable \`\`\$CADP_CC'' is set to \`\`$CADP_CC''"
+	if [ $EXPLICIT_CADP_CC = 0 ]
+	then
+		# impression d'un message pour dissuader l'utilisateur de
+		# positionner lui-meme $CADP_CC
+		echo "==> On architecture $ARCH, it is not necessary to set the variable \`\`\$CADP_CC''"
+	fi
+else
+	DEFAULT=`COMPUTE_CC`
+	echo "Variable \`\`\$CADP_CC'' is not set (default value is '$DEFAULT')"
+fi
+CC=`COMPUTE_CC`; export CC
+CHECK_PRESENT "$CC" "CC"
+if [ $? = 1 ]
+then
+	if [ $EXPLICIT_CADP_CC = 0 ]
+	then
+		echo "==> Do not set the variable \`\`\$CADP_CC'' yourself (recommended)"
+		echo "==> or add directory containing \`\`$CC'' to your \`\`\$PATH'' variable"
+	else
+		echo "==> Add directory containing \`\`$CC'' to your \`\`\$PATH'' variable"
+		echo "==> or set variable \`\`\$CADP_CC'' to use another C compiler (e.g., \`\`gcc'')"
+		case "$ARCH" in
+			sun5 | sun64 | sol86 | sol64 )
+			echo "==> Read file \$CADP/INSTALLATION_2 for a discussion on C compilers for Solaris"
+				;;
+		esac
+	fi
+else
+	# compilation et execution d'un programme C minimal
+	CHECK_C_COMPILER
+
+	# verifications specifiques a Solaris
+	case "$ARCH" in
+		sun5 | sun64 | sol86 | sol64 )
+			# on verifie l'existence de /usr/include/stdio.h qui, sous
+			# OpenIndiana, n'est pas installe par defaut (de meme que
+			# d'autres fichiers includes) lorsque l'on installe "cc"
+			if [ ! -f /usr/include/stdio.h ]
+			then
+				echo ""
+				echo "*** Include file \`\`/usr/include/stdio.h'' does not exist"
+				if [ "`uname -r`" = 5.11 ]
+				then
+					echo "==> Install the SunOS package \`\`system/header''"
+				fi	
+			fi
+
+			if [ "$CADP_CC" != "" ]
+			then
+				# l'utilisateur n'a pas choisi explicitement
+				# de compilateur C ; on verifie l'existence et
+				# le niveau de /opt/SUNWspro (cf. instructions
+				# de INSTALLATION_2)
+				CHECK_SOLARIS_COMPILER
+			fi
+
+			# on s'assure que le compilateur n'est pas /usr/ucb/cc
+			if [ "`WHICH $CC`" = "/usr/ucb" ]
+			then
+				echo ""
+				echo "*** Variable \`\`\$CADP_CC'' should never be set to \`\`/usr/ucb/cc''"
+				echo "==> (this may create unexpected segmentation faults)"
+				echo "==> Read file \$CADP/INSTALLATION_2"
+			fi
+	esac
+
+	case "`CHECK_CC`" in
+		cc )
+			CHECK_CC_VERSION
+			CHECK_CC_ISSUES
+			;;
+
+		gcc )
+			CHECK_GCC_VERSION
+			;;
+
+		icc )
+			CHECK_ICC_VERSION
+			CHECK_ICC_ISSUES
+			;;
+	esac
+fi
+
+# affichage de la variable $CADP_PS_VIEWER et verification de son contenu
+
+echo ''
+if [ -n "$CADP_PS_VIEWER" ]
+then
+	echo "Variable \`\`\$CADP_PS_VIEWER'' is set to \`\`$CADP_PS_VIEWER''"
+else
+	DEFAULT=`"$CADP"/src/com/cadp_postscript -default`
+	echo "Variable \`\`\$CADP_PS_VIEWER'' is not set (default value is '$DEFAULT')"
+fi
+PS_VIEWER=`"$CADP"/src/com/cadp_postscript -default`
+CHECK_PRESENT "$PS_VIEWER" "PS_VIEWER"
+if [ $? = 1 ]
+then
+	echo "==> Add directory containing \`\`$PS_VIEWER'' to your \`\`\$PATH'' variable"
+	echo "==> (otherwise you will not be able to use \`\`bcg_draw'')"
+fi
+
+# affichage de la variable $CADP_PS_INTERPRETER et verification de son contenu
+
+echo ''
+if [ -n "$CADP_PS_INTERPRETER" ]
+then
+	echo "Variable \`\`\$CADP_PS_INTERPRETER'' is set to \`\`$CADP_PS_INTERPRETER''"
+else
+	DEFAULT=`"$CADP"/src/com/cadp_psbox -default`
+	echo "Variable \`\`\$CADP_PS_INTERPRETER'' is not set (default value is '$DEFAULT')"
+fi
+PS_INTERPRETER=`"$CADP"/src/com/cadp_psbox -default`
+CHECK_PRESENT "$PS_INTERPRETER" "PS_INTERPRETER"
+if [ $? = 1 ]
+then
+	echo "==> Add directory containing \`\`$PS_INTERPRETER'' to your \`\`\$PATH'' variable"
+	echo "==> (otherwise you will not be able to use \`\`bcg_draw -eps'')"
+fi
+
+# affichage de la variable $EDITOR et verification de son contenu
+
+echo ''
+if [ -n "$EDITOR" ]
+then
+	echo "Variable \`\`\$EDITOR'' is set to \`\`$EDITOR''"
+else
+	DEFAULT=`"$CADP"/src/com/cadp_edit -default`
+	echo "Variable \`\`\$EDITOR'' is not set (default value is '$DEFAULT')"
+fi
+EDITOR=`"$CADP"/src/com/cadp_edit -default`
+CHECK_PRESENT "$EDITOR" "EDITOR"
+if [ $? = 1 ]
+then
+	echo "==> Add directory containing \`\`$EDITOR'' to your \`\`\$PATH'' variable"
+	echo "==> (otherwise you will not be able to edit files within Eucalyptus)"
+fi
+
+# affichage de la variable $NAVIGATOR
+
+echo ''
+if [ -n "$NAVIGATOR" ]
+then
+	echo "Variable \`\`\$NAVIGATOR'' is set to \`\`$NAVIGATOR''"
+else
+	DEFAULT=`"$CADP"/src/com/cadp_web -default`
+	echo "Variable \`\`\$NAVIGATOR'' is not set (default value is '$DEFAULT')"
+fi
+NAVIGATOR=`"$CADP"/src/com/cadp_web -default`
+CHECK_PRESENT "$NAVIGATOR" "NAVIGATOR"
+if [ $? = 1 ]
+then
+	echo "==> Add directory containing \`\`$NAVIGATOR'' to your \`\`\$PATH'' variable"
+	echo "==> (otherwise you will not be able to consult Internet pages within Eucalyptus)"
+fi
+
+# affichage de la variable $PAGER
+
+echo ''
+if [ -n "$PAGER" ]
+then
+	echo "Variable \`\`\$PAGER'' is set to \`\`$PAGER''"
+else
+	DEFAULT=`"$CADP"/src/com/cadp_more -default`
+	echo "Variable \`\`\$PAGER'' is not set (default value is '$DEFAULT')"
+fi
+
+# si $PAGER contient une commande suivie de parametres (comme "less -X -E"),
+# il ne faut conserver que la commande
+PAGER=`"$CADP"/src/com/cadp_more -default | cut -d' ' -f1`
+
+CHECK_PRESENT "$PAGER" "PAGER"
+if [ $? = 1 ]
+then
+	echo "==> Add directory containing \`\`$PAGER'' to your \`\`\$PATH'' variable"
+	echo "==> (otherwise Caesar/Caesar.adt will not be able to display error messages)"
+fi
+case `"$CADP"/src/com/cadp_basename "$PAGER"` in
+	cadp_more )
+		echo "*** Variable \`\`\$PAGER'' should not be set to \`\`cadp_more''"
+		echo "    because this will cause infinite loops"
+		echo "==> Unset \`\`\$PAGER'' or set it to a correct value"
+		;;
+	more | more.exe )
+		# Sous Windows, il ne faut pas utiliser ``/bin/more.exe'' de
+		# Cygwin car cette commande se bloque lorsqu'elle est invoquee
+		# par ``caesar'' et ``caesar.adt'' (via own_system()). Il
+		# s'agit du bug 0288 signale' en mai 2006 et toujours present
+		# en juin 2009 sous XP et Vista
+		if [ "$ARCH" = "win32" ]
+		then
+			echo "*** Variable \`\`\$PAGER'' should not be set to \`\`more'' on Windows"
+			echo "    because this will cause freezing"
+			echo "==> Unset \`\`\$PAGER'' or set it to a correct value such as \`\`less -X -E''"
+		fi
+		;;
+esac
+
+# test de la variable $EUCALYPTUS
+
+if [ -n "$EUCALYPTUS" ]
+then
+	echo ''
+	echo "*** Variable \`\`\$EUCALYPTUS'' should not be set"
+	echo "    This variable was formerly needed for versions 1.x of Eucalyptus,"
+	echo "    but it is no longer useful for versions 2.x of Eucalyptus"
+	echo "==> Remove this variable from your startup files (.cshrc or .profile)"
+	if [ -f $EUCALYPTUS/src/eucalyptus.xtpanel ]
+	then
+		echo '==> Remove also the older version 1.x of Eucalyptus located in directory'
+		echo "    $EUCALYPTUS"
+	fi
+fi
+
+# test du fichier .eucarc (pour Eucalyptus 1.0)
+
+if [ -f "$HOME/.eucarc" ]
+then
+	echo ''
+	echo "*** Startup file \`\`$HOME/.eucarc'' is obsolete"
+	echo "    This file was intended for versions 1.x of Eucalyptus"
+	echo "    and is no longer useful for versions 2.x of Eucalyptus"
+	echo "==> Remove this file"
+fi
+
+# test de l'alias xeuca (pour Eucalyptus 1.0)
+
+for CSH_FILE in "$HOME/.cshrc" "$HOME/.tcshrc"
+do
+	if [ -f "$CSH_FILE" ]
+	then
+		grep -s '\<alias\>.*\<xeuca\>' "$CSH_FILE" > /dev/null 2> /dev/null
+		if [ $? = 0 ]
+		then
+			echo ''
+			echo "*** File \`\`$CSH_FILE'' defines an \`\`xeuca'' alias"
+			echo "    This alias was intended for versions 1.x of Eucalyptus"
+			echo "    and will not work with versions 2.x of Eucalyptus"
+			echo "==> Remove the alias \`\`xeuca'' from your \`\`$CSH_FILE'' file"
+		fi
+	fi
+done
+
+SETUP_UPGRADE_NEEDED=0
+CONFIG_DIR=$HOME/.config/cadp
+
+# test du fichier xeucarc (pour Eucalyptus)
+
+if [ -f "$HOME/.xeucarc" ]
+then
+	echo ''
+	echo "Custom file \`\`$HOME/.xeucarc'' exists (obsolete location)"
+	SETUP_UPGRADE_NEEDED=1
+fi
+
+if [ -f "$CONFIG_DIR/xeucarc" ]
+then
+	echo ''
+	echo "Custom file \`\`$CONFIG_DIR/xeucarc'' exists"
+fi
+
+# test du fichier ocisrc (pour OCIS)
+
+if [ -f "$HOME/.ocisrc" ]
+then
+	echo ''
+	echo "Custom file \`\`$HOME/.ocisrc'' exists (obsolete location)"
+	SETUP_UPGRADE_NEEDED=1
+fi
+
+if [ -f "$CONFIG_DIR/ocisrc" ]
+then
+	echo ''
+	echo "Custom file \`\`$CONFIG_DIR/ocisrc'' exists"
+fi
+
+# test du repertoire contributor (pour CONTRIBUTOR)
+
+if [ -d "$HOME/.contributor" ]
+then
+	echo ''
+	echo "Custom directory \`\`$HOME/.contributor'' exists (obsolete location)"
+	SETUP_UPGRADE_NEEDED=1
+fi
+
+if [ -d "$CONFIG_DIR/contributor" ]
+then
+	echo ''
+	echo "Custom directory \`\`$CONFIG_DIR/contributor'' exists"
+fi
+
+echo ''
+
+if [ $SETUP_UPGRADE_NEEDED = 1 ]
+then
+	"$CADP"/src/com/cadp_setup -upgrade
+fi
+
+exit 0
+

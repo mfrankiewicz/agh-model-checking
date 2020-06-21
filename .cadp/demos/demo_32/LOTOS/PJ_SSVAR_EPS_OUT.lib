@@ -1,0 +1,86 @@
+(** The action sync is used in order to make all the actions (separated by [])
+    in fact atomic; otherwise there are (internal) states in which some of the
+    choices are not available; partially this is due to the fact that some
+    actions synchronise all processes (mw), some 2 of them (mr)
+    and some can be executed by a single process (cl, r, w, ..)
+
+    The structure of the process PJ is the same as that of PI except that
+    there are no message via the diagnostic port "diag": initially synchronize
+    with everybody on sync; then repeat for ever synchronize on one of the
+    possible actions (either as a sender, a receiver or "let pass") and then
+    synchronize on sync.
+
+    In this module, the abstraction from all local variables of process P(ind)
+    is done by hand by eliminating them from the program. This is much more
+    efficient with the version of CAESAR used in the 90s.
+
+    In all local actions (not in mw) the paramenter el:elem is uniformly
+    forced to be "eps", as all transitions can take place with none or with 
+    all possible values of el. However, due to artificial synchronisation
+    of all processes on all actions (also local ones), the elimination of
+    a parameter would imply the obligation to change the description of the
+    other processes.
+
+    The difference between PJ_SSVAR_EPS.lib and this module is that the
+    buffer OUT is not abstracted; it is used in a context in which PJ can
+    write (some of) the distinguished elements, and therefore put them into
+    the buffers IN of all other processes.
+**)
+
+process PJ [sync, w, r, mw, cu, mr, cl] (ind:index,
+                                         AD:set_of_elem,
+                                         Out:buf_of_elem) : noexit :=
+   sync;
+      (
+      (* start loop of nondet choice of actions *)
+         (* WRITE *)
+         (
+            choice el:elem []
+               w !ind !el [notIsIn (Ad, el) and datum (ind, el)];
+                  PJ [sync, w, r, mw, cu, mr, cl] (ind, Insert (AD, el), Enqueue (Out, el, false))
+         )
+         []
+         (* READ *)
+         r !ind !eps;
+            PJ [sync, w, r, mw, cu, mr, cl] (ind, AD, Out)
+         []
+         (* MEMORY_WRITE *)
+         (
+            choice el:elem []
+               (
+                  mw !ind !el [first (Out, el) and not ((el eq eps) or empty (Out))];
+                     PJ [sync, w, r, mw, cu, mr, cl] (ind, AD, Dequeue (Out))
+                  []
+                  mw !ind !el [first (Out, el) and ((el eq eps) or empty (Out))];
+                     PJ [sync, w, r, mw, cu, mr, cl] (ind, AD, Out)
+               )
+         )
+         []
+         (* mw from another process *)
+         mw ?j:index ?el:elem [not (j eq ind)];
+            PJ [sync, w, r, mw, cu, mr, cl] (ind, AD, Out)
+         []
+         (* CACHE_UPDATE *)
+         cu !ind !eps;
+            PJ [sync, w, r, mw, cu, mr, cl] (ind, AD, Out)
+         []
+         (* MEMORY_READ *)
+         mr !ind !eps;
+            PJ [sync, w, r, mw, cu, mr, cl] (ind, AD, Out)
+         []
+         (* CLEAR_CACHE *)
+         cl !ind !eps;
+            PJ [sync, w, r, mw, cu, mr, cl] (ind, AD, Out)
+         []
+         (* PASSIVE SYNCHRONISATIONS *)
+         (* synchronizes all processes on all actions in order to guarantee the
+            update of the variables directly after each step *)
+         (
+            choice G in [r, w, cu, mr, cl] []
+               G ?j:index ?el:elem [not (j eq ind)];
+                  PJ [sync, w, r, mw, cu, mr, cl] (ind, AD, Out)
+         )
+      (* end of loop of nondet choice of actions *)
+      )
+endproc
+

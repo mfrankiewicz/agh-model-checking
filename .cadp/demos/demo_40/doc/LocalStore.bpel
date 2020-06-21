@@ -1,0 +1,174 @@
+<!-- LocalStore BPEL Process  -->
+<process name="LocalStore" targetNamespace="http://ourExamples.demo.com" suppressJoinFailure="yes" xmlns:tns="http://ourExamples.demo.com" xmlns="http://schemas.xmlsoap.org/ws/2003/03/business-process/" xmlns:bpelx="http://schemas.oracle.com/bpel/extension" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ora="http://schemas.oracle.com/xpath/extension" xmlns:cx="http://schemas.collaxa.com/xpath/extension">
+	<bpelx:exec import="java.util.*"/>
+	<bpelx:exec import="com.demo.ourExamples.javaexec.DBConnection"/>
+	<bpelx:exec import="org.w3c.dom.Element"/>
+	<bpelx:exec import="java.rmi.RemoteException"/>
+	<bpelx:exec import="javax.naming.NamingException"/>
+	<!-- ================================================================= -->
+	<!-- PARTNERLINKS                                                      -->
+	<!-- List of services participating in this BPEL process               -->
+	<!-- ================================================================= -->
+	<partnerLinks>
+		<!-- The DummyProcess is the services that requires a dummy instantiation of this process -->
+		<partnerLink name="DummyProcess" partnerLinkType="tns:LocalStore" partnerRole="LocalStoreRequester" myRole="LocalStoreProvider"/>
+		<!-- The CentralStore is the service provided by the CentralStore BPEL process -->
+		<partnerLink name="CentralStore" partnerLinkType="tns:CentralStoreOrder" partnerRole="orderProvider" myRole="orderRequester"/>
+	</partnerLinks>
+	<!-- ================================================================= -->
+	<!-- VARIABLES                                                         -->
+	<!-- List of messages and XML documents used within this BPEL process  -->
+	<!-- ================================================================= -->
+	<variables>
+		<!-- Reference to the message passed as input for a dummy instantiation  -->
+		<variable name="inputLocalStore" messageType="tns:LocalStoreRequestMessage"/>
+		<!-- Reference to the message that will be sent back to the DummyProcess -->
+		<variable name="outputLocalStore" messageType="tns:LocalStoreResponseMessage"/>
+		<!-- Reference to the message to be sent to the CentralStore to make an order -->
+		<variable name="productRequest" messageType="tns:ProductRequestMessage"/>
+		<!-- Reference to the message received from the CentralStore as a response -->
+		<variable name="productResponse" messageType="tns:ProductResponseMessage"/>
+		<variable name="available" type="xsd:boolean"/>
+	</variables>
+	<!-- ================================================================= -->
+	<!-- ORCHESTRATION LOGIC                                               -->
+	<!-- Set of activities coordinating the flow of messages across the    -->
+	<!-- services integrated within this business process                  -->
+	<!-- ================================================================= -->
+	<sequence name="main">
+		<pick createInstance="yes">
+			<onMessage partnerLink="DummyProcess" portType="tns:LocalStore" operation="initiateLocalStore" variable="inputLocalStore">
+				<!-- dummy instantiation -->
+				<sequence>
+					<!-- set default values -->
+					<assign>
+						<copy>
+							<from expression="'000'"/>
+							<to variable="productRequest" part="order" query="/tns:ProductRequest/tns:productId"/>
+						</copy>
+						<copy>
+							<from expression="0"/>
+							<to variable="productRequest" part="order" query="/tns:ProductRequest/tns:quantity"/>
+						</copy>
+					</assign>
+					<!-- verify if an order has to be made -->
+					<bpelx:exec language="java" version="1.4">
+						<![CDATA[
+						
+						//read the name of the DB 
+						Element name= (Element) getVariableData("inputLocalStore", "DBName");
+						
+						String dbName= (String) name.getNodeValue();
+		           
+		                //open the connection to the DB
+                        DBConnection cscDBC=new DBConnection(dbName);   
+                      
+                        //vector of productIds whose quantity is zero 
+                        Vector productIds=cscDBC.extract();
+                      
+                        //close the connection with the DB
+                        cscDBC.close();
+                        
+                        //productIds is empty if there are no products to order
+                        
+                        if(productIds.size()!=0)
+                        {
+                        
+                          //read the first product Id 
+                          String productId=(String)productIds.get(0);
+                        
+                         //construct the product request message
+                         setVariableData("productRequest", "order",  "/tns:ProductRequest/tns:productId", new String(productId));
+                        
+                         //order 5 pieces of the product 
+                         setVariableData("productRequest", "order",  "/tns:ProductRequest/tns:quantity",new Integer(5));
+                   
+                        }/* if productIds.size!=0 */
+                        
+                        System.out.println("555");
+                    ]]>
+					</bpelx:exec>
+					<switch>
+						<case condition="bpws:getVariableData('productRequest', 'order', '/tns:ProductRequest/tns:quantity')!=0">
+							<sequence>
+								<!-- send a request to the CentralStore to refill the stock -->
+								<assign>
+									<copy>
+										<from expression="'CentralStoreStock'"/>
+										<to variable="productRequest" part="DBName"/>
+									</copy>
+								</assign>
+								<invoke name="requestProduct" partnerLink="CentralStore" portType="tns:CentralStore" operation="requestProduct" inputVariable="productRequest" outputVariable="productResponse"/>
+								<!-- update the state of the stock only if the the order can be procedeed by the CentralStore -->
+								<switch>
+									<case condition="bpws:getVariableData('productResponse', 'response', 'response')=true()">
+										<sequence>
+											<bpelx:exec language="java" version="1.4">
+												<![CDATA[
+		                     
+   	                        			      //we read the availability response  
+   	                      				      Element isAvailable =(Element)getVariableData("productResponse", "response", "/tns:ProductResponse/tns:response");                 
+   	                                           
+                               				  //read the productId 
+   	                                          Element productId =(Element)getVariableData("productRequest", "order", "/tns:ProductRequest/tns:productId"); 
+   	                   
+   	                                          Boolean tempBool=new Boolean((String)isAvailable.getNodeValue());
+   	                   
+                                              //the stock is upadated only if the requested product is available
+                                              if(tempBool.booleanValue())
+                                              {
+                                                //read the name of the DB 
+					                            Element name= (Element) getVariableData("inputLocalStore", "DBName");
+					                            						
+						                        String dbName= (String) name.getNodeValue();
+						                                                                      
+                                                //open the connection with the DB
+                                                DBConnection cscDBC=new DBConnection(dbName);   
+                            
+                                               //read the quantity requested 
+   	                                           Element quantityReq =(Element)getVariableData("productRequest", "order", "/tns:ProductRequest/tns:quantity");    
+   	                    
+   	                                           Integer tempInt = new Integer((String)quantityReq.getNodeValue());
+   	                    
+   	                                           //we update the quantity of the requested product 
+   	                                           cscDBC.increase((String)productId.getNodeValue(),tempInt.intValue());
+   	                        
+   	                                           //close the connection with the DB
+   	                                           cscDBC.close();
+   	                              
+   	                                           }/* if isAvailable */
+                                            ]]>
+											</bpelx:exec>
+										</sequence>
+									</case>
+								</switch>
+								<assign>
+									<copy>
+										<from expression="true()">
+										</from>
+										<to variable="outputLocalStore" part="payload"/>
+									</copy>
+								</assign>
+								<!-- callback to the DummyProcess -->
+								<reply partnerLink="DummyProcess" portType="tns:LocalStore" operation="initiateLocalStore" variable="outputLocalStore"/>
+							</sequence>
+						</case>
+						<otherwise>
+							<sequence>
+								<assign>
+									<copy>
+										<from expression="true()">
+										</from>
+										<to variable="outputLocalStore" part="payload"/>
+									</copy>
+								</assign>
+								<!-- callback to the DummyProcess -->
+								<reply partnerLink="DummyProcess" portType="tns:LocalStore" operation="initiateLocalStore" variable="outputLocalStore"/>
+							</sequence>
+						</otherwise>
+					</switch>
+				</sequence>
+			</onMessage>
+		</pick>
+	</sequence>
+</process>

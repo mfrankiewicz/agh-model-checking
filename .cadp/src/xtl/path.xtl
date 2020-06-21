@@ -1,0 +1,115 @@
+(******************************************************************************
+ *                                X T L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       path.xtl
+ *   Auteur             :       Radu MATEESCU
+ *   Version            :       1.5
+ *   Date               :       2014/09/17 15:50:40
+ *****************************************************************************)
+
+library basic.xtl end_library
+
+(*
+ * Compute the shortest path from the initial state to a state satisfying F.
+ * A path is given as a couple containing the set of its transitions and its
+ * start state.
+ *)
+
+def COMPUTE_PATH (F : stateset) : (edgeset, state) =
+
+    if (F = {}) or (init among F) then
+	({}, init)
+    else
+	COMP_PATH ({ init }, { init }, F)
+    end_if
+
+where
+
+    def COMP_PATH (CRT_LEVEL, VISITED, F : stateset) : (edgeset, state) =
+	(* Assert: F not empty and disjoint from VISITED *)
+
+	assert (F <> {}) and ((F inter VISITED) = {}) in
+	let (RTS : edgeset, RS2 : state, RN : integer) =
+	(*
+	 * if there exists a transition T starting from a state S in CRT_LEVEL
+	 * and leading to a state satisfying F, then compute ({T}, S, 1);
+	 * otherwise compute ({}, init, 0)
+	 *)
+	    for S : state among CRT_LEVEL, T : edge among out (S)
+		in    (TS : edgeset, S2 : state, N : integer)
+		while N = 0
+		where target (T) among F
+		apply (insert, replace, +)
+		from  ({}, init, 0)
+		to    (T, S, 1)
+	    end_for
+	in
+	    if RN = 1 then
+		(RTS, RS2)
+	    else
+		let NEXT_LEVEL : stateset =
+		(* compute (efficiently) the next breadth-first level *)
+		    <| insert on S : state among CRT_LEVEL,
+			T : edge among out (S)
+		    |> target (T)
+		in
+		    let (RTS : edgeset, RS : state) =
+		    (* breadth-first exploration *)
+		    COMP_PATH (NEXT_LEVEL diff VISITED, VISITED union NEXT_LEVEL, F)
+		    in
+		    if exists T : edge among in (RS) in
+			source (T) among CRT_LEVEL end_exists
+ 		    then
+			(*
+			 * add the transition leading from a state in CRT_LEVEL
+			 * to RS; assert: there is always (at least) one
+			 *)
+			(RTS union { T }, source (T))
+		    else
+			(* not reached *)
+			(RTS, RS)
+		    end_if
+		    end_let
+		end_let
+	    end_if
+	end_let
+	end_assert
+
+    end_def (* COMP_PATH *)
+
+end_def
+
+(*---------------------------------------------------------------------------*)
+(* Print a path given as a set of transitions and a start state *)
+
+def PRINT_PATH (EDGES : edgeset, START : state) : action =
+    if EDGES = {} then
+	printf ("Empty path\n")
+    else
+	let (any number, any state) =
+	for
+	    in    (N : number, CURRENT : state)
+	    while N > 0
+	    apply (-, replace)
+	    from  (card (EDGES), START)
+	    to    (1, for T : edge among out (CURRENT)
+			 where T among EDGES (* Assert: only one iteration *)
+			 apply replace
+			 from  CURRENT
+			 to    let A : action = print (T) fby newline () in
+				   target (T)
+			       end_let
+		      end_for
+		  )
+	end_for
+	in
+	    nop
+	end_let
+    end_if
+end_def
+

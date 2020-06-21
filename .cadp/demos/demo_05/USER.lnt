@@ -1,0 +1,94 @@
+module USER (MESSAGES, REPOSITORY, FILES) is
+
+-------------------------------------------------------------------------------
+
+process USER [PUT, GET, EVENT : any, raise END_OF_LIST : none]
+             (in var WRITE_LIST, READ_LIST : FILENAME_LIST) is
+   loop
+      select
+         only if not (EMPTY (WRITE_LIST)) then
+            (* Envoi du premier fichier de la liste vers l'autre utilisateur *)
+            PUT (!WRITE, !GET_FILE (FIRST [END_OF_LIST] (WRITE_LIST)),
+                 !FIRST [END_OF_LIST] (WRITE_LIST));
+            select
+               (*
+                * Confirmation que le fichier envoye a bien ete lu de l'autre
+                * cote, on enleve le fichier de la liste d'ecriture
+                *)
+               GET (!SUCCESS);
+               WRITE_LIST := NEXT [END_OF_LIST] (WRITE_LIST)
+            []
+               (*
+                * Erreur, le fichier n'a pas pu etre envoye, on le laisse dans
+                * la liste
+                *)
+               GET (!ERROR of USER_MESSAGE)
+            end select
+         end if
+      []
+         only if not (EMPTY (READ_LIST)) then
+            PUT (!READ, !FIRST [END_OF_LIST] (READ_LIST));
+            select
+               (*
+                * Le processus TFTP fait parvenir un fichier qu'il a recu
+                * de l'autre utilisateur. On le compare au fichier present dans
+                * le repertoire.
+                *)
+               var
+                  F : FILE
+               in
+                  GET (!SUCCESS, ?F);
+                  if not (COMPARE (F, FIRST [END_OF_LIST] (READ_LIST))) then
+                     (*
+                      * Le fichier recu ne correspond pas au fichier dans le
+                      * repertoire
+                      *)
+                     EVENT (!FILE_MISMATCH)
+                  else
+                     (*
+                      * Le fichier correspond, on avance dans la liste des
+                      * fichiers a recuperer
+                      *)
+                     READ_LIST := NEXT [END_OF_LIST] (READ_LIST)
+                  end if
+               end var
+            []
+               GET (!ERROR of USER_MESSAGE)
+            end select
+         end if
+      []
+         (*
+          * Une requete de lecture est parvenue au processus TFTP qui nous la
+          * transmet. On renvoie le contenu du fichier demande.
+          *)
+         var
+            N : NAT
+         in
+            GET (!READ, ?N);
+            PUT (!WRITE, !GET_FILE (N))
+         end var
+      []
+         (*
+          * Une requete d'ecriture est parvenue au processus TFTP qui a recupere
+          * le fichier et le transmet.
+          *)
+         var
+            F : FILE,
+            N : NAT
+         in
+            GET (!WRITE, ?F, ?N);
+            (*
+             * Le fichier recu ne correspond pas au fichier dans le repertoire
+             *)
+            if not (COMPARE (F, N)) then
+               EVENT (!FILE_MISMATCH)
+            end if
+         end var
+      end select
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

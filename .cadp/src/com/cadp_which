@@ -1,0 +1,107 @@
+#! /bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_which
+#   Auteur              :       Hubert GARAVEL
+#   Version             :       1.22
+#   Date                :       2018/05/24 15:53:55
+##############################################################################
+
+DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+case $DETAILED_ARCH in
+
+	sun3 | sun4 | sun5 | sun64 | sol86 | sol64 )
+		# Par precaution, puisqu'on va analyser le resultat de la
+		# command "type", on demande a ce que les messages soient
+		# dans la langue par defaut (qu'on suppose etre l'anglais).
+		# En fait, on n'est pas certain que "type" puisse se comporter
+		# differemment selon la langue.
+		LANG=C
+		LC_ALL=C
+		export LANG
+		export LC_ALL
+
+		# Jusqu'a Solaris 10 inclus, la commande ci-dessous s'ecrivait
+		# simplement WHICH=`type "$1"`. Avec Solaris 11 et son Korn
+		# shell ksh93, la commande devient plus complexe, car "type"
+		# est un alias de "whence -v" qui emet des messages prefixes
+		# par "/bin/sh: whence: " ou meme "pathname[1234]: whence: ".
+		# Ces prefixes doivent etre supprimes.
+		WHICH=`type "$1" 2>&1 | sed -e 's+^.*: whence: ++'`
+
+		# plusieurs resultats possibles
+		# - $1 not found
+		# - $1: not found (avec ksh93 sous Solaris 11)
+		# - $1 is a shell builtin
+		# - $1 is /absolute-pathname/$1
+		# - $1 is a tracked alias for /absolute-pathname/$1 (avec
+		#                                       ksh93 sous Solaris 11)
+		if [ "$WHICH" = "$1 not found" -o "$WHICH" = "$1: not found" ]
+		then
+			echo "$1"
+		elif [ "$WHICH" = "$1 is a shell builtin" ]
+		then
+			echo "$1"
+		else
+			# on utilise ':' pour sed car $1 peut contenir des '/'
+			echo "$WHICH" |
+			sed -e 's+a tracked alias for ++' |
+			sed -e "s+^$1[ ]is[ ]++"
+		fi
+		;;
+
+	iX86 | iX86-64 | x64 | ia64 | macOS | mac86 | mac64 | win32-msys )
+		# Sur la plupart des systemes derives de GNU, "/bin/sh" est un
+		# lien vers "/bin/bash" : on est oblige utiliser la commande
+		# "type" de "bash" en lui passant l'option "-p". Mais sur
+		# certaines versions de Linux comme Ubuntu 6.10, "/bin/sh" est
+		# un lien vers "/bin/dash" dont la commande predefinie "type"
+		# n'a pas l'option "-p". On resoud le probleme en appelant
+		# explicitement "bash" dans tous les cas
+		WHICH=`/bin/bash -c "type -p '$1'"`
+		# plusieurs resultats
+		# - "" si $1 n'est pas un fichier sur disque
+		# - sinon /absolute-pathname/$1
+		if [ "$WHICH" = "" ]
+		then
+			echo "$1"
+		else
+			echo "$WHICH"
+		fi
+		;;
+
+	win32-cygnus | win64-cygnus )
+		# la commande "type" predefinie de "/bin/sh.exe" n'a pas
+		# d'option "-p" alors que la commande "type" predefinie de
+		# "/bin/bash.exe" possede cette option "-p" ; comme on ne veut
+		# plus faire l'hypothese que "/bin/sh.exe" a ete remplace par
+		# "/bin/bash.exe", comme le faisait "cadp_cygwin.com", on
+		# appelle explicitement "bash"
+		WHICH=`bash -c "type -p '$1'"`
+
+		# plusieurs resultats
+		# - "" si $1 n'est pas un fichier sur disque
+		# - sinon /absolute-pathname/$1
+		if [ "$WHICH" = "" ]
+		then
+			echo "$1"
+		else
+			echo "$WHICH"
+		fi
+		;;
+
+	* )
+		echo "$COMMAND: unknown detailed architecture $DETAILED_ARCH"
+		exit 1 ;;
+esac
+
+exit 0

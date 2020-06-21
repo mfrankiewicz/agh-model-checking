@@ -1,0 +1,151 @@
+(******************************************************************************
+ *             D A T A    E N C R Y P T I O N    S T A N D A R D
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	KEY_PATH.lib
+ *   Auteur		:	Wendelin SERWE
+ *   Version		:	1.4
+ *   Date		: 	2015/08/19 08:20:45
+ *****************************************************************************)
+
+(* KEY_PATH generates the 16 sub keys for the 16 iterations *)
+
+process KEY_PATH [KEY, SUBKEY, CTRL_CK, CTRL_SHIFT, CTRL_DK] : noexit :=
+   hide FIRST_K, INTERMEDIATE_K in
+      PC1 [KEY, FIRST_K]
+      |[FIRST_K]|
+      (
+         (
+            hide K, KKK, SK in
+               (
+                  SHIFT_REGISTER [CTRL_SHIFT, K, SK]
+                  |[SK]|
+                  DUPLICATE_K [CTRL_DK, SK, INTERMEDIATE_K, KKK]
+               )
+               |[K, KKK]|
+               CHOOSE_K [CTRL_CK, FIRST_K, KKK, K]
+         )
+         |[INTERMEDIATE_K]|
+         PC2 [INTERMEDIATE_K, SUBKEY]
+      )
+
+where
+
+(* ------------------------------------------------------------------------- *)
+(* PC1 breaks the initial 64 bit key into a 56-bit vector *)
+
+   process PC1 [KEY, FIRST_K] : noexit :=
+      KEY ?K64:BIT64;
+         FIRST_K !PC1(K64);
+            PC1 [KEY, FIRST_K]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* SHIFT_REGISTER performs, depending on the iteration, one or two shifts to
+ * the left or right shift(s) of a 56 bit word *)
+
+   process SHIFT_REGISTER [CTRL, INPUT, OUTPUT] : noexit :=
+      (
+         CTRL ?CTRL:SHIFT;
+            exit (CTRL, any BIT56)
+         |||
+         INPUT ?I56:BIT56;
+            exit (any SHIFT, I56)
+      )
+      >> accept CTRL : SHIFT, I56 : BIT56 in
+      (
+         [CTRL == NO] ->
+            OUTPUT !I56;
+               SHIFT_REGISTER [CTRL, INPUT, OUTPUT]
+         []
+         [CTRL == LS1] ->
+            OUTPUT !LSHIFT(I56);
+               SHIFT_REGISTER [CTRL, INPUT, OUTPUT]
+         []
+         [CTRL == LS2] ->
+            OUTPUT !LSHIFT(LSHIFT(I56));
+               SHIFT_REGISTER [CTRL, INPUT, OUTPUT]
+         []
+         [CTRL == RS1] ->
+            OUTPUT !RSHIFT(I56);
+               SHIFT_REGISTER [CTRL, INPUT, OUTPUT]
+         []
+         [CTRL == RS2] ->
+            OUTPUT !RSHIFT(RSHIFT(I56));
+               SHIFT_REGISTER [CTRL, INPUT, OUTPUT]
+      )
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* CHOOSE_K closes the loop in the key path, by redirecting the input on INPUT
+ * to OUTPUT, but for the first iteration where the original key is read on
+ * FIRST_IN *)
+
+   process CHOOSE_K [CTRL, FIRST_IN, INPUT, OUTPUT] : noexit :=
+      CTRL ?CTRL:PHASE;
+         (
+            [CTRL == F] ->
+               FIRST_IN ?I56:BIT56;
+                  OUTPUT_K [CTRL, FIRST_IN, INPUT, OUTPUT] (I56)
+            []
+            [CTRL == N] ->
+               INPUT ?I56:BIT56;
+                  OUTPUT_K [CTRL, FIRST_IN, INPUT, OUTPUT] (I56)
+         )
+   where
+      process OUTPUT_K [CTRL, FIRST_IN, INPUT, OUTPUT] (B56 : BIT56) : noexit :=
+         OUTPUT !B56;
+            CHOOSE_K [CTRL, FIRST_IN, INPUT, OUTPUT]
+      endproc
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* DUPLICATE_K reads a 56-bit vector from INPUT and outputs it to OUTPUT1 and
+ * OUTPUT2, but for the last iteration, where it outputs only to OUTPUT1 *)
+
+   process DUPLICATE_K [CTRL, INPUT, OUTPUT1, OUTPUT2] : noexit :=
+      (
+         CTRL ?CTRL:PHASE;
+            exit (CTRL, any BIT56)
+         |||
+         INPUT ?I56:BIT56;
+            exit (any PHASE, I56)
+      )
+      >> accept CTRL : PHASE, I56 : BIT56 in
+      (
+         [CTRL == N] ->
+            (
+               (
+                  OUTPUT1 !I56;
+                     exit
+                  |||
+                  OUTPUT2 !I56;
+                     exit
+               )
+               >> 
+               DUPLICATE_K [CTRL, INPUT, OUTPUT1, OUTPUT2]
+            )
+         []
+         [CTRL == L] ->
+            OUTPUT1 !I56;
+               DUPLICATE_K [CTRL, INPUT, OUTPUT1, OUTPUT2]
+      )
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* PC2 applies PC2 to generate the current sub key *)
+
+   process PC2 [KK, SUBKEY] : noexit :=
+      KK ?I56:BIT56;
+         SUBKEY !PC2(I56);
+            PC2 [KK, SUBKEY]
+   endproc
+
+endproc
+
+(* ------------------------------------------------------------------------- *)
+

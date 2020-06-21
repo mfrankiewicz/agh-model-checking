@@ -1,0 +1,42 @@
+#! /bin/sh
+
+##############################################################################
+#				L N T . O P E N
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module		: lnt_path
+#   Auteurs		: Wendelin SERWE et Hubert GARAVEL
+#   Version		: 1.2
+#   Date		: 2018/10/09 16:53:46
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+if [ $# -ne 2 ]
+then
+	echo "$COMMAND: two arguments expected" >&2
+	exit 1
+fi
+
+# $1 : directory containing the source LNT files (e.g., $DIRNAME)
+# $2 : name of the module to be compiled (e.g., $MODULE)
+
+# -----------------------------------------------------------------------------
+
+if [ -f "$1/$2" ]
+then
+	echo "$1/$2"
+elif [ -f "${LNT_LOCATION:-$CADP}/lib/$2" ]
+then
+	echo "${LNT_LOCATION:-$CADP}/lib/$2"
+else
+	echo "$COMMAND: file \`\`$2'' absent from both \`\`$1'' and \`\`${LNT_LOCATION:-$CADP}/lib''" >&2
+	exit 1
+fi
+
+exit 0
+

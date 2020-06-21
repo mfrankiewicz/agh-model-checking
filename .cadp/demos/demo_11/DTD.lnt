@@ -1,0 +1,294 @@
+module DTD (SIZE, INFO) is
+
+-------------------------------------------------------------------------------
+
+process DTD [HOST, ST, LD_RQ, LD_RSP, WAKEUP, BOOT,
+             DTD_SCHEDULE_HOST_REQUESTS, DTD_DISPATCH_DUP: any] is
+   var
+      fifo: Fifo, -- queue of jobs received from the host
+      info: Info_Array, -- status information of the processors
+      index_master: Int_Array, -- current master of processors (-1 iff none)
+      i: Pid
+   in
+      fifo := {};
+      info := Info_Array (Info_C (dont_care, unknown, Job_Stack (none), 0));
+      index_master := Int_Array (0);
+      loop
+         select
+            -- handling host requests if there is still space in the FIFO
+            only if free_space (fifo) then
+               var p: host_job in
+                  HOST (?p);
+                  fifo := enqueue (fifo, p)
+               end var
+            end if
+         []
+            -- handling processor i
+            -- BOOT: only possible if processor i has not yet booted
+            var extension: Extension in
+               i := any Pid;
+               only if Info[Nat (i)].state == unknown then
+                  BOOT (i, ?extension);
+                  info[Nat (i)] := info[Nat (i)].{extension -> extension};
+                  eval set_state (!?info, i, idle)
+               end if
+            end var
+         []
+            -- LD_RQ: case processor i scheduled as neutral or slave
+            i := any Pid;
+            only if info[Nat (i)].state == scheduled then
+               LD_RQ (i);
+               eval set_state (!?info, i, requested)
+            end if
+         []
+            -- LD_RQ: case processor i scheduled as master
+            i := any Pid;
+            only if info[Nat (i)].state == dispatched_master then
+               LD_RQ (i);
+               eval set_state (!?info, i, requested_master)
+            end if
+         []
+            -- LD_RQ: case processor i running
+            i := any Pid;
+            only if info[Nat (i)].state == running then
+               LD_RQ (i);
+               eval set_state (!?info, i, terminated)
+            end if
+         []
+            -- ST i.e., dup(): only possible if processor i is running
+            var cmd: Store, sp: Nat in
+               i := any Pid;
+               only if info[Nat (i)].state == running then
+                  ST (i, ?cmd);
+                  -- processor i will run in master mode after next dispatch
+                  eval set_state (!?info, i, scheduled_master);
+                  -- store the DUP infos on the next level of the stack
+                  sp := info[Nat (i)].sp + 1;
+                  eval set_stack_frame (!?info, i, sp, master (get_pc (cmd),
+                                        get_extension (cmd), get_c (cmd), 0));
+                  eval set_stack_pointer (!?info, i, sp)
+               end if
+            end var
+         []
+            -- from to_wakeup to scheduled by sending a WAKEUP
+            i := any Pid;
+            only if info[Nat (i)].state == to_wakeup then
+               WAKEUP (i);
+               eval set_state (!?info, i, scheduled)
+            end if
+         []
+            -- from requested to running by sending an LD_RSP (job)
+            i := any Pid;
+            only if info[Nat (i)].state == requested then
+               case get_stack_frame (info, i, info[Nat (i)].sp) of Job in
+                  var pc: PC, index: Int in
+                     neutral (pc) ->
+                        LD_RSP (i, EXEC (pc, -1))
+                   | slave (any Pid, any Nat, pc, index) ->
+                        LD_RSP (i, EXEC (pc, index))
+                   | any -> null -- to avoid a warning from lnt2lotos
+               end case;
+               eval set_state (!?info, i, running)
+            end if
+         []
+            -- from requested_master to running by sending an LD_RSP (job)
+            i := any Pid;
+            only if info[Nat (i)].state == requested_master then
+               var p: PC in
+                  eval set_state (!?INFO, i, running);
+                  p := get_pc (get_stack_frame (info, i, info[Nat (i)].sp));
+                  LD_RSP (!i, !EXEC (p, index_master[Nat (i)]))
+               end var
+            end if
+         []
+            -- from terminated to running/idle by sending an LD_RSP (job)
+            i := any Pid;
+            if info[Nat (i)].state == terminated then
+               var job: Job in
+                  job := get_stack_frame (info, i, info[Nat (i)].sp);
+                  case job in
+                     var m: Pid, s: Nat, pc: PC, extension: Extension,
+                         index: Int, sl: Nat
+                     in
+                       neutral (any PC) ->
+                           -- check for a new job from the host
+                           if not (is_empty (fifo)) then
+                              var hj: Host_Job in
+                                 hj := head (fifo);
+                                 if compatible (get_extension (hj),
+                                                info[Nat (i)].extension)
+                                 then
+                                    var ppc: PC in
+                                       -- assign next job from the host to
+                                       -- processor i
+                                       ppc := get_pc (hj);
+                                       fifo := dequeue (fifo);
+                                       eval set_state (!?info, i, running);
+                                       eval set_stack_frame (!?info, i, 0,
+                                                             neutral (ppc));
+                                       LD_RSP (i, EXEC (ppc, -1))
+                                    end var
+                                 else
+                                    -- first job of the host incompatible:
+                                    -- go idle
+                                    eval reset_status (!?info, i);
+                                    LD_RSP (i, none of Job_Desc)
+                                 end if
+                              end var
+                           else
+                              -- no more jobs from the host: go to idle mode
+                              eval reset_status (!?info, i);
+                              LD_RSP (i, none of Job_Desc)
+                           end if
+                     | slave (m, s, any PC, any Int) ->
+                           -- check for a remaining subtask from same master
+                           var master_job: Job, extension: Extension, p: PC,
+                               index: Int, sl: Nat
+                           in
+                              -- access job description, i.e., the triple
+                              -- (master, stack-frame, extension)
+                              master_job := get_stack_frame (info,
+                                                             get_master (job),
+                                                             get_sp (job));
+                              p := get_pc (master_job);
+                              extension := get_extension (master_job);
+                              index := get_count (master_job);
+                              sl := get_slaves (master_job);
+                              if index > 0 then
+                                 -- assign new subtask to processor i
+                                 eval set_stack_frame (!?info, m, s,
+                                                       master (p, extension,
+                                                               index-1, sl));
+                                 eval set_state (!?info, i, running);
+                                 LD_RSP (i, EXEC (p, index-1))
+                              else
+                                 -- no more subtasks: go to idle mode
+                                 eval set_stack_frame (!?info, m, s,
+                                                       master (p, extension,
+                                                               index, sl-1));
+                                 eval reset_status (!?info, i);
+                                 LD_RSP (i, none of Job_Desc)
+                              end if
+                           end var
+                     | master (pc, extension, index, sl) ->
+                           -- check for a remaining subtask
+                           if (index > 0) and
+                               compatible (extension, info[Nat (i)].extension)
+                           then
+                               -- there is at least one more subtask that
+                               -- processor i can handle
+                              eval set_stack_frame (!?info, i, info[Nat (i)].sp,
+                                                    master (pc, extension,
+                                                            index-1, sl));
+                              eval set_state (!?info, i, running);
+                              LD_RSP (i, EXEC (pc, index-1))
+                           elsif (index > 0) and (sl == 0) then
+                              -- no slave has been started: retry dispatch
+                              eval set_state (!?INFO, i, scheduled_master);
+                              LD_RSP (i, wait_slave)
+                           elsif (sl > 0) then
+                              -- not all slaves have finished: continue waiting
+                              eval set_state (!?info, i, running);
+                              LD_RSP (i, wait_slave)
+                           else
+                              -- all slaves have finished
+                              eval set_state (!?info, i, running);
+                              eval set_stack_frame (!?info, i, info[Nat (i)].sp,
+                                                    none);
+                              eval set_stack_pointer (!?info, i,
+                                                      (info[Nat (i)].sp - 1));
+                              LD_RSP (i, done)
+                           end if
+                      | any -> null -- to avoid a warning from lnt2lotos
+                  end case
+               end var
+            end if
+         []
+            -- decision rule 1: dispatch jobs from the host
+            only if not (is_empty (fifo)) and exists_idle (fifo, info) then
+               while not (is_empty(fifo)) and exists_idle (fifo, info) loop
+                  var pe: Pid, hj: Host_Job in
+                     hj := head (fifo);
+                     pe := find_idle (get_extension (hj), info);
+                     fifo := dequeue (fifo);
+                     eval set_state (!?info, pe, to_wakeup);
+                     eval set_stack_frame (!?info, pe, 0,
+                                           neutral (get_pc (hj)))
+                  end var
+               end loop;
+               -- mark the decision concerning scheduling of host requests
+               DTD_SCHEDULE_HOST_REQUESTS
+            end if
+         []
+            -- decision rule 2: select master and dispatch slaves
+            only if exists_scheduled_master (info) then
+               while exists_scheduled_master (info) loop
+                  var pe: Pid, sp: Nat, maxc: Int, job: Job, pc: PC,
+                      extension: Extension
+                  in
+                     -- find the processor that scheduled the highest number
+                     -- of slaves
+                     eval pe := find_max_master (info, ?maxc);
+                     -- if possible: dispatch a substask on the master
+                     sp := info[Nat (pe)].sp;
+                     job := get_stack_frame (info, pe, sp);
+                     pc := get_pc (job);
+                     extension := get_extension (job);
+                     if compatible (extension, info[nat (pe)].Extension) then
+                        -- dispatch one of the subtasks on the master
+                        index_master[Nat (pe)] := get_count (job) - 1;
+                        maxc := maxc - 1;
+                        -- update the count of remaining instances
+                        eval set_stack_frame (!?info, pe, sp,
+                                              master (pc,
+                                                      extension,
+                                                      index_master [Nat(pe)],
+                                                      get_slaves (job)));
+                        eval set_state (!?info, pe, dispatched_master)
+                     else
+                        -- impossible to dispatch a subtask to the master
+                        eval set_state (!?info, pe, running)
+                     end if;
+                     eval set_stack_pointer (!?info, pe, sp);
+                     -- dispatch remaining subtasks on all available other
+                     -- processors
+                     var i: Nat in
+                        for i := 0 while i < N by i := i + 1 loop
+                           if (info[i].state == idle) and
+                              (maxc > 0) and
+                              compatible (extension, info[i].extension)
+                           then
+                              -- dispatch a subtask to processor i
+                              var index: Int in
+                                 -- get infos from the master stack
+                                 job := get_stack_frame (info, pe, sp);
+                                 index := get_count (job) - 1;
+                                 -- update master stack
+                                 eval set_stack_frame
+                                         (!?info, pe, sp,
+                                          master (pc, extension, index,
+                                                  get_slaves (job) + 1));
+                                 -- set the slave stack
+                                 eval set_stack_frame (!?info, Pid (i), 0,
+                                                       slave (pe, sp,
+                                                              pc, index));
+                                 maxc := maxc - 1
+                              end var;
+                              eval set_state (!?info, Pid (i), to_wakeup)
+                           end if
+                        end loop
+                     end var
+                  end var
+               end loop;
+               -- marking the decision concerning dispatch of dup()
+               DTD_DISPATCH_DUP
+            end if
+         end select
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

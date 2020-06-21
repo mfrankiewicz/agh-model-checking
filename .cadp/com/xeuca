@@ -1,0 +1,158 @@
+#!/bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeuca
+#   Auteurs             :       Hubert GARAVEL, Jean-Michel FRUME,
+#				Aldo MAZZILLI et Moez CHERIF
+#   Version             :       1.59
+#   Date                :       2019/02/13 12:54:01
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+if [ "$CADP" = "" ]
+then
+	echo "$COMMAND: the \$CADP variable is not defined in the environment"
+	exit 1
+else
+	CADP_ARCH=`"$CADP"/com/arch`
+	# We assume here that CADP is correctly installed. In particular:
+	# the $PATH variable should contain $CADP/bin.$CADP_ARCH and $CADP/com
+fi
+
+# ----------------------------------------------------------------------------
+
+NEW_PATH=""
+
+if [ "$APERODIR" != "" ]
+then
+	NEW_PATH="$NEW_PATH:$APERODIR/$CADP_ARCH/bin"
+else
+	APERODIR=/not_installed
+	export APERODIR
+fi
+
+# assert ($NEW_PATH = "") or ($NEW_PATH has the form "[:].*[^:]")
+
+# ----------------------------------------------------------------------------
+
+if [ "$CADP_DEBUG" = "garavel" ]
+then
+	XEUCADIR="$HOME/Parallelisme/Eucalyptus"
+	sh "$XEUCADIR"/Make-tcl
+	PATH="$XEUCADIR/com""$NEW_PATH:$PATH:$XEUCADIR/default"
+else
+	XEUCADIR="$CADP/src/eucalyptus"
+	PATH="$CADP/src/com""$NEW_PATH:$PATH:$XEUCADIR/default"
+fi
+
+export XEUCADIR
+export PATH
+
+# ----------------------------------------------------------------------------
+
+if [ "$CADP_TMP" = "" ]
+then
+	CADP_TMP="/tmp"
+fi
+export CADP_TMP
+
+# ----------------------------------------------------------------------------
+
+EUCALYPTUS_TMP=$CADP_TMP/xeuca_$$
+export EUCALYPTUS_TMP
+
+# ----------------------------------------------------------------------------
+
+# Dans le script TCL, on ne doit pas utiliser $env(HOME). En effet, meme si
+# $HOME est positionne a un pathname Unix (par exemple "/home/user"), la 
+# version win32 de TCL va rectifier automatiquement la valeur de $env(HOME)
+# qui sera egale a "c:\home\user" au lieu de "/home/user". Ceci ne pose pas
+# de probleme tant que l'on reste a l'interieur de TCL, mais ne fonctionne
+# plus correctement des que le script TCL passe des commandes au shell Unix
+# Pour eviter ce probleme, on utilise une variable $XEUCA_HOME egale a $HOME
+# en sachant que TCL ne rectifiera pas la valeur de $env(XEUCA_HOME).
+
+XEUCA_HOME="$HOME"
+export XEUCA_HOME
+
+# ----------------------------------------------------------------------------
+
+case $CADP_ARCH in
+	sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 | macOS | mac86 | mac64 )
+		XEUCA_SHELL=""
+        	XEUCA_TITLE_FONT="-Adobe-Helvetica-Medium-R-Normal-*-25-*"
+        	XEUCA_LEFT_WINDOW_FONT="-Misc-Fixed-Bold-R-SemiCondensed-*-13-*"
+		XEUCA_RIGHT_WINDOW_FONT="-Misc-Fixed-Medium-R-SemiCondensed-*-13-*"
+		XEUCA_LEFT_WINDOW_WIDTH=504
+		XEUCA_CHARACTER_WIDTH=6
+		XEUCA_COLORED_RADIO_CHECK_BUTTONS=1
+		XEUCA_BLOCKING_FACTOR=0
+		case $CADP_ARCH in
+			macOS | mac86 | mac64 )
+				# Sur Macintosh, il faut prendre en compte, non
+				# seulement la barre de titre de la fenetre
+				# (25 pt), mais aussi la barre de menu Apple
+				# (25 pt) qui ne disparait jamais (sauf en
+				# mode plein ecran non utilise par Eucalyptus)
+				XEUCA_WINDOW_HEADER_SIZE=50
+				;;
+			* )
+				XEUCA_WINDOW_HEADER_SIZE=25
+				;;
+		esac
+		;;
+	win32 )
+		XEUCA_SHELL="sh -c"
+		XEUCA_TITLE_FONT="-adobe-helvetica-medium-r-normal-*-25-*"
+		XEUCA_LEFT_WINDOW_FONT="-*-courier-bold-R-normal-*-14-*"
+		XEUCA_RIGHT_WINDOW_FONT="-*-courier-medium-R-normal-*-11-*"
+		XEUCA_LEFT_WINDOW_WIDTH=492
+		XEUCA_CHARACTER_WIDTH=7
+		XEUCA_COLORED_RADIO_CHECK_BUTTONS=0
+		# la determination de XEUCA_BLOCKING_FACTOR est empirique
+		XEUCA_BLOCKING_FACTOR=1
+		XEUCA_WINDOW_HEADER_SIZE=25
+
+		# transformation de $XEUCADIR en un chemin Windows
+		XEUCADIR=`"$CADP"/src/com/cadp_path -winpath "$XEUCADIR"`
+		;;
+	* )
+		echo "$COMMAND: unknown architecture $CADP_ARCH"
+		exit 1
+		;;
+esac
+
+export XEUCA_SHELL
+export XEUCA_TITLE_FONT
+export XEUCA_LEFT_WINDOW_FONT
+export XEUCA_RIGHT_WINDOW_FONT
+export XEUCA_LEFT_WINDOW_WIDTH
+export XEUCA_CHARACTER_WIDTH
+export XEUCA_SCREEN_WIDTH
+export XEUCA_SCREEN_HEIGHT
+export XEUCA_COLORED_RADIO_CHECK_BUTTONS
+export XEUCA_BLOCKING_FACTOR
+export XEUCA_WINDOW_HEADER_SIZE
+
+# ----------------------------------------------------------------------------
+
+# Mise a jour eventuelle des parametres de configuration
+
+"$CADP/src/com/cadp_setup" -query -upgrade
+
+# -----------------------------------------------------------------------------
+
+trap "/bin/rm -rf \"${EUCALYPTUS_TMP}\"_*" 0 1 2 3 13 14 15
+
+"$CADP"/tcl-tk/com/wish -f "$XEUCADIR"/eucalyptus.tcl
+
+exit 0

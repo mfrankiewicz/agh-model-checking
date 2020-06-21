@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- jedit definitions for the MCL language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.8:MCL+1.5:SECT -->
+
+<MODE>
+  <PROPS>
+    <PROPERTY NAME="commentStart" VALUE="(*"/>
+    <PROPERTY NAME="commentEnd" VALUE="*)"/>
+    <PROPERTY NAME="lineComment" VALUE=""/>
+  </PROPS>
+
+  <RULES IGNORE_CASE="TRUE" HIGHLIGHT_DIGITS="TRUE">
+    <!-- Comments -->
+    <SPAN TYPE="COMMENT1" DELEGATE="COMMENT">
+      <BEGIN>(*</BEGIN>
+      <END>*)</END>
+    </SPAN>
+
+    <!-- Standard Operators -->
+    <SEQ TYPE="OPERATOR">-|</SEQ>
+    <SEQ TYPE="OPERATOR">-&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">&gt;=</SEQ>
+    <SEQ TYPE="OPERATOR">&lt;=</SEQ>
+    <SEQ TYPE="OPERATOR">&lt;&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">?</SEQ>
+    <SEQ TYPE="OPERATOR">*</SEQ>
+    <SEQ TYPE="OPERATOR">@</SEQ>
+    <SEQ TYPE="OPERATOR">]</SEQ>
+    <SEQ TYPE="OPERATOR">[</SEQ>
+    <SEQ TYPE="OPERATOR">&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">&lt;</SEQ>
+    <SEQ TYPE="OPERATOR">|</SEQ>
+    <SEQ TYPE="OPERATOR">%</SEQ>
+    <SEQ TYPE="OPERATOR">^</SEQ>
+    <SEQ TYPE="OPERATOR">/</SEQ>
+    <SEQ TYPE="OPERATOR">!</SEQ>
+    <SEQ TYPE="OPERATOR">=</SEQ>
+    <SEQ TYPE="OPERATOR">-</SEQ>
+    <SEQ TYPE="OPERATOR">+</SEQ>
+
+    <KEYWORDS>
+      <!-- Reserved Words -->
+      <KEYWORD1>among</KEYWORD1>
+      <KEYWORD1>any</KEYWORD1>
+      <KEYWORD1>case</KEYWORD1>
+      <KEYWORD1>choice</KEYWORD1>
+      <KEYWORD1>continue</KEYWORD1>
+      <KEYWORD1>do</KEYWORD1>
+      <KEYWORD1>else</KEYWORD1>
+      <KEYWORD1>elsif</KEYWORD1>
+      <KEYWORD1>end</KEYWORD1>
+      <KEYWORD1>end_library</KEYWORD1>
+      <KEYWORD1>end_macro</KEYWORD1>
+      <KEYWORD1>exists</KEYWORD1>
+      <KEYWORD1>exit</KEYWORD1>
+      <KEYWORD1>export</KEYWORD1>
+      <KEYWORD1>for</KEYWORD1>
+      <KEYWORD1>forall</KEYWORD1>
+      <KEYWORD1>from</KEYWORD1>
+      <KEYWORD1>if</KEYWORD1>
+      <KEYWORD1>in</KEYWORD1>
+      <KEYWORD1>let</KEYWORD1>
+      <KEYWORD1>library</KEYWORD1>
+      <KEYWORD1>loop</KEYWORD1>
+      <KEYWORD1>macro</KEYWORD1>
+      <KEYWORD1>mu</KEYWORD1>
+      <KEYWORD1>nil</KEYWORD1>
+      <KEYWORD1>nu</KEYWORD1>
+      <KEYWORD1>of</KEYWORD1>
+      <KEYWORD1>on</KEYWORD1>
+      <KEYWORD1>repeat</KEYWORD1>
+      <KEYWORD1>step</KEYWORD1>
+      <KEYWORD1>tau</KEYWORD1>
+      <KEYWORD1>then</KEYWORD1>
+      <KEYWORD1>to</KEYWORD1>
+      <KEYWORD1>until</KEYWORD1>
+      <KEYWORD1>where</KEYWORD1>
+      <KEYWORD1>while</KEYWORD1>
+
+      <!-- Standard Library Sorts -->
+      <KEYWORD2>bool</KEYWORD2>
+      <KEYWORD2>nat</KEYWORD2>
+      <KEYWORD2>natset</KEYWORD2>
+      <KEYWORD2>int</KEYWORD2>
+      <KEYWORD2>real</KEYWORD2>
+      <KEYWORD2>char</KEYWORD2>
+      <KEYWORD2>string</KEYWORD2>
+
+      <!-- Constants -->
+      <KEYWORD3>false</KEYWORD3>
+      <KEYWORD3>true</KEYWORD3>
+
+      <!-- Standard Library Functions -->
+      <FUNCTION>abs</FUNCTION>
+      <FUNCTION>and</FUNCTION>
+      <FUNCTION>concat</FUNCTION>
+      <FUNCTION>diff</FUNCTION>
+      <FUNCTION>empty</FUNCTION>
+      <FUNCTION>equ</FUNCTION>
+      <FUNCTION>implies</FUNCTION>
+      <FUNCTION>index</FUNCTION>
+      <FUNCTION>insert</FUNCTION>
+      <FUNCTION>isin</FUNCTION>
+      <FUNCTION>isalnum</FUNCTION>
+      <FUNCTION>isalpha</FUNCTION>
+      <FUNCTION>isdigit</FUNCTION>
+      <FUNCTION>islower</FUNCTION>
+      <FUNCTION>isupper</FUNCTION>
+      <FUNCTION>isxdigit</FUNCTION>
+      <FUNCTION>inter</FUNCTION>
+      <FUNCTION>length</FUNCTION>
+      <FUNCTION>not</FUNCTION>
+      <FUNCTION>nth</FUNCTION>
+      <FUNCTION>or</FUNCTION>
+      <FUNCTION>prefix</FUNCTION>
+      <FUNCTION>remove</FUNCTION>
+      <FUNCTION>rindex</FUNCTION>
+      <FUNCTION>sign</FUNCTION>
+      <FUNCTION>substr</FUNCTION>
+      <FUNCTION>succ</FUNCTION>
+      <FUNCTION>suffix</FUNCTION>
+      <FUNCTION>tolower</FUNCTION>
+      <FUNCTION>toupper</FUNCTION>
+      <FUNCTION>union</FUNCTION>
+      <FUNCTION>xor</FUNCTION>
+
+    </KEYWORDS>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>'</BEGIN>
+      <END>'</END>
+    </SPAN>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>"</BEGIN>
+      <END>"</END>
+    </SPAN>
+
+  </RULES>
+
+  <RULES SET="INQUOTE" DEFAULT="LITERAL1" ESCAPE="\">
+    <!-- no rules -->
+  </RULES>
+
+  <RULES SET="COMMENT" DEFAULT="COMMENT1" IGNORE_CASE="TRUE">
+    <!-- no rules -->
+  </RULES>
+
+</MODE>
+

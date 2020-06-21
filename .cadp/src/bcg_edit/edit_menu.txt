@@ -1,0 +1,59 @@
++-----------+
+| EDIT menu | 
++-----------+
+
+"Refresh"
+---------
+Refreshs the window. This may be useful if the window manager fails
+to do it automatically.
+              
+"Active the grid"
+-----------------
+If this switch is on, all items will be aligned with the grid when 
+they are moved. Otherwise, items are not aligned with the grid. 
+The grid size might be modified (see the command "Display options..."
+in the "Options..." menu).
+
+"Active arrow auto-scale"
+-------------------------
+If this switch is on, the edge arrows might be scaled automatically 
+(i.e., their size might be reduced) when vertices are moved. This
+occurs whenever the origin vertice and target vertice of an edge
+are moved so close one from the otehr that the distance between
+those two vertices becomes less than the ARROW_SHAPE_1 constant.
+In such case, the size of the arrow is reduced to fit the available
+space. 
+
+This scheme works well for straight edges. However, for asymmetrical 
+curved edges, an approximation is used that might scale the arrows
+even if it is not needed actually. Should this happen, the user can 
+always edit and modify each arrow individually (see the informations
+about "Edge editing").
+
+If this switch is off, the shapes and sizes of the edges are not 
+modified when vertices are moved.
+
+"Hide all control points"
+-------------------------
+Removes all control points of the displayed items. Control points can 
+also be removed individually by double clicking on them with the left 
+button.
+
+"Show all control points"
+-------------------------
+Shows all the control points of the displayed items.
+   
+"Align horizontally"
+--------------------
+Aligns horizontally a group of selected vertices (taking for reference
+the vertice with the lowest state number). See "Item alignment" to learn
+about vertex selection.
+        
+"Align vertically"
+------------------
+Aligns vertically a group of selected vertices (taking for reference
+the vertice with the lowest state number). See "Item alignment" to learn
+about vertex selection.
+
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

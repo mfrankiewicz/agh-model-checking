@@ -1,0 +1,14 @@
+(* ========================================================================= *)
+(* Maximum number of references *)
+def M_r () : natural = 2 end_def
+
+(*========================================================================== *)
+(* Basic predicates over actions *)
+
+(* Parameterized predicates *)
+macro isRequest (ref)      = EVAL_A (REQUEST !ref ...)       end_macro
+macro isCancel (ref)       = EVAL_A (CANCEL !ref)            end_macro
+macro isInvoice (ref)      = EVAL_A (INVOICE !ref)           end_macro
+
+(*========================================================================== *)
+

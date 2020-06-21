@@ -1,0 +1,53 @@
+
+(* The shell variable CAESAR_OPTIONS contains the options to pass to the
+   CAESAR tool, which will generate the BCG graph of the LOTOS description
+   "overtaking.lotos". Option -monitor will open a window with real-time
+   information about the BCG graph being generated. *)
+
+% CAESAR_OPTIONS="-monitor"
+
+(* The BCG graph corresponding to the LOTOS specification "overtaking.lotos"
+   is generated. Then, label hiding and renaming is applied in order to
+   compute an abstract version of the protocol, that only refers to the
+   actions needed for verification. Precisely, some labels are renamed in 
+   order to abstract away the vehicle brand information (second offer),
+   while all the other labels are hidden. The resulting graph is then reduced
+   for strong bisimulation and stored in file "overtaking.bcg". *)
+
+"overtaking.bcg" = strong reduction of
+		   total hide all but 
+		     "S !OT_BEGIN !TAIL", 
+		     "S !OT_BEGIN !MIDDLE", 
+		     "S !OT_END !TAIL" 
+		   in total rename 
+		     "S !OT_BEGIN !.* !MIDDLE" -> "S !OT_BEGIN !MIDDLE",
+		     "S !OT_BEGIN !.* !TAIL" -> "S !OT_BEGIN !TAIL",
+		     "S !OT_END !.* !TAIL" -> "S !OT_END !TAIL"
+		   in generation of "overtaking.lotos";
+
+(* We now want to verify, using equivalences, the following safety property:
+   "A vehicle can overtake only if there is no vehicle already overtaking it".
+
+   Using the notations of the LOTOS description, this can be rephrased as:
+   "When the TAIL vehicle is commited into an overtaking, the vehicle in
+   MIDDLE position cannot overtake unless the TAIL vehicle terminates".
+
+   The expected behaviour of the system is represented by the graph
+   stored in file "true_property.aut". The graphs "overtaking.bcg" and
+   "true_property.aut" are compared with respect to safety equivalence
+   (the comparison is computed on-the-fly). *)
+
+"diag1.seq" = safety comparison 
+		"true_property.aut" == "overtaking.bcg";
+
+(* It is then checked whether there is a sequence in which the above
+   property is violated.
+
+   Such an undesirable sequence is expressed by the graph stored in
+   file "false_property.aut". Verifying if this sequence is possible is
+   done by comparing "overtaking.hide" and "false_property.aut" with
+   respect to tau*.a preorder. *)
+
+"diag2.seq" = tau*.a comparison
+		"false_property.aut" <= "overtaking.bcg";
+

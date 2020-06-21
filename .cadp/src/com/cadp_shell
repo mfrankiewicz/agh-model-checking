@@ -1,0 +1,85 @@
+#! /bin/sh 
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_shell
+#   Auteurs             :       Hubert GARAVEL, Moez CHERIF et Marie VIDAL
+#   Version             :       1.20
+#   Date                :       2019/02/13 12:31:25
+##############################################################################
+
+COMMAND=`basename "$0"`
+ 
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	CADP="$CADP_INSTALLATOR"
+	# do not export $CADP here
+fi
+
+ARCH=`"$CADP"/com/arch`
+
+case "$ARCH" in
+	sun3 | sun4 | sun5 | sun64 | sol86 | sol64 )
+		echo "/bin/sh"
+		;;
+	iX86 | x64 | ia64 | macOS | mac86 | mac64 )
+		echo "/bin/bash -P"
+		# Sous Linux, on ne peut pas renvoyer "/bin/sh" car c'est un
+		# lien symbolique vers un shell ("bash", "dash"...) qui varie
+		# selon les distributions avec un comportement pas toujours
+		# compatible avec le Bourne shell. On prend "bash" car il est
+		# present sur toutes les distributions.
+
+		# Avec "bash", on doit ajouter l'option "-P" car, par defaut,
+		# "bash" memorise les liens symboliques lorsque l'on fait 
+		# "cd lien-symbolique ; pwd", ce qui donne un resultat
+		# different de celui du shell "sh" de Solaris et du "wish"
+		# de Tcl/Tk (quelle que soit l'architecture)
+		#
+		# /bin/bash sur MacOS est un outil GNU et doit donc etre
+		# traite de la meme facon que sur iX86
+		;;
+	win32 )
+		DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+		case "$DETAILED_ARCH" in
+			win32-cygnus | win64-cygnus )
+				echo "sh" 
+				# Contrairement a Linux, Cygwin 1.1 fait une 
+				# difference entre /bin/sh.exe (qui est Posix)
+				# et /bin/bash.exe qui ne l'est pas. Ne pas
+				# mettre d'option "-P" a /bin/sh.exe qui la 
+				# refuse. Ne pas mettre le chemin d'acces 
+				# absolu "/bin/sh" sinon wish le rejette
+				#
+				# Note: on a choisi d'eliminer sh.exe qui ne
+				# marche pas et d'installer a sa place bash.exe
+				# En toute rigueur, il faudrait une option -P
+				# mais ca ne semble pas creer de probleme 
+				;;
+			win32-msys )
+				echo "`$CADP/src/com/cadp_path -msys`/bin/sh"
+				# Sous Mingw/MSYS, sh.exe et bash.exe sont
+				# identiques ; ne pas prendre simplement
+				# "/bin/sh" mais prendre le chemin complet,
+				# c'est-a-dire : "C:/MinGW/msys/1.0/bin/sh.exe"
+				;;
+			* )
+				echo "sh"
+				# sans garantie aucune, car non teste
+				;;
+		esac	
+		;;
+	* )
+		echo "$COMMAND: unknown architecture $ARCH"
+		exit 1
+		;;
+esac
+

@@ -1,0 +1,117 @@
+
+% DEFAULT_EVALUATOR3_LIBRARIES="standard.mcl"
+% DEFAULT_EVALUATOR4_LIBRARIES="standard.mcl"
+
+-------------------------------------------------------------------------------
+(* Example 1: Application of [Chirichiello-Salaun-05]
+ *
+ * This example describes a stock management system, composed of a wholesale
+ * merchant interacting with two suppliers and two local stores.
+ *)
+-------------------------------------------------------------------------------
+
+property COMMERCE_1
+    "There are no deadlocks."
+is
+    "commerce.lotos" |= [ true* ] < true > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property COMMERCE_2
+    "A request is always answered, i.e., followed by either OK or NOK"
+is
+    -- version 1: dataless formula
+    "commerce.lotos" |= with evaluator3
+        SOME (true* . 'REQUEST_SUPPLIER !.* !.*')
+        and
+        AFTER_1_INEVITABLE_2 (
+            'REQUEST_SUPPLIER !.* !.*',
+            "OK_SUPPLIER" or "NOK_SUPPLIER"
+        )
+        and 
+        SOME (true* . 'REQUEST_LOCAL !.* !.*')
+        and
+        AFTER_1_INEVITABLE_2 (
+            'REQUEST_LOCAL !.* !.*',
+            "OK_LOCAL" or "NOK_LOCAL"
+        );
+    expected TRUE;
+
+    -- version 2: value-passing formula
+    "commerce.lotos" |= with evaluator4
+        SOME (true* . { REQUEST_SUPPLIER ?any ?any })
+        and
+        AFTER_1_INEVITABLE_2 (
+            { REQUEST_SUPPLIER ?any ?any },
+            OK_SUPPLIER or NOK_SUPPLIER
+        )
+        and
+        SOME (true* . { REQUEST_LOCAL ?any ?any })
+        and
+        AFTER_1_INEVITABLE_2 (
+            { REQUEST_LOCAL ?any ?any },
+            OK_LOCAL or NOK_LOCAL
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+(* Example 2: Application of [Salaun-Ferrara-Chirichiello-04]
+ *
+ * This example describes an online book auction between several bookstores
+ * and clients.
+ *)
+-------------------------------------------------------------------------------
+
+property NEGOTIATION_1
+    "There exists an execution for which an order is possible"
+is
+    "negotiation.lotos" |= < true* . "ORDER" > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property NEGOTIATION_2
+    "Negotiation offers are always answered, i.e., SENDPRICEP and SENDPRICER"
+    "are followed by either ORDER or REFUSAL."
+is
+    -- version 1: dataless formula
+    "negotiation.lotos" |= with evaluator3
+        (
+          [true* . 'SENDPRICER !.*']
+            mu X. (<true> true and [not ("ORDER" or "REFUSAL")] X)
+          and
+          < true* . 'SENDPRICER !.*' > true 
+        )
+        and 
+        (
+          [true* . 'SENDPRICEP !.*']
+            mu X. (<true> true and [not ("ORDER" or "REFUSAL")] X)
+          and
+          < true* . 'SENDPRICEP !.*' > true 
+        );
+    expected TRUE;
+
+    -- version 2: value-passing formula
+    "negotiation.lotos" |= with evaluator4
+        SOME (true* . { SENDPRICER ?any })
+        and
+        AFTER_1_INEVITABLE_2 (
+            { SENDPRICER ?any },
+            ORDER or REFUSAL
+        )
+        and
+        SOME (true* . { SENDPRICEP ?any })
+        and
+        AFTER_1_INEVITABLE_2 (
+            { SENDPRICEP ?any },
+            ORDER or REFUSAL
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+

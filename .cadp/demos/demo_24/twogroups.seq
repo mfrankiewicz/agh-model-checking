@@ -1,0 +1,12 @@
+################################################################
+# @(#)twogroups.seq	1.1 - 97/04/30 - Charles Pecheur, INRIA Rhone-Alpes
+# Traces where base3 is registered as member of two different bases,
+# and that terminate successfully.
+# For use with hierarchy 6.
+################################################################
+
+<until> [.*SIGREGISTERED !3]
+<until> [.*SIGREGISTERED !3]
+<until> "OK"
+[]
+

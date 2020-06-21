@@ -1,0 +1,263 @@
+
+####################################################################
+#
+# Datei tksim_9
+#
+# VERSION: 9.1
+# Autor : 	   Artur Brauer
+# Erstellzetraum : November 1992 bis November 93
+# Lezte Aenderung: 16.11.93
+#
+# Diese Datei enthaelt das Hauptprogramm der Fertigungszellen-Simulation
+#
+####################################################################
+
+#------------------------------------------------------------------------------
+# This file was modified by Hubert Garavel - Tue Sep 24 13:47:45 CEST 2013
+#------------------------------------------------------------------------------
+
+package require comm
+
+# store the current socket number of this script into $socket
+set socket [comm::comm self]
+# write $socket to file $env(SOCKET_FILE) so that feedback pipe can read it 
+set fd [open "$env(SOCKET_FILE)" w]
+puts $fd "$socket"
+close $fd
+
+# Bestimme den Pfad der Simulation
+set path_name [file dirname [info script] ]/
+
+# Include the setup file
+source ${path_name}setups.tcl
+
+# Bestimme die Sprache
+if { [lsearch $argv -bw] != -1 } {
+   set color_schwarzweiss schwarzweiss
+}
+if { [lsearch $argv -eng ] != -1 } {
+   set engl_deutsch english
+}
+if { [lsearch $argv -grm ] != -1 } {
+   set engl_deutsch deutsch
+}
+
+# Besimme den Modus
+if { [lsearch $argv -snc ] != -1 } {
+   set mode react
+}
+
+# siminterface.tcl
+# diese Datei enthaelt die Schnittstelle zur Steuerung der Simulation
+# diese Schnittstelle ist in doc/protocol beschrieben
+source ${path_name}siminterface.tcl
+
+# simcoltab_cl/bw.tcl
+# bestimmt die Farbwerte der Simulation
+
+case $color_schwarzweiss in {
+   {color} {
+      source ${path_name}simcoltab_cl.tcl
+   }
+   {schwarzweiss} {
+      source ${path_name}simcoltab_bw.tcl
+   }
+}
+
+# simmath.tcl
+# enthaelt die Funktionen minimum und maximum
+
+source ${path_name}simmath.tcl
+
+# simname_grm/eng.tcl
+# enthaelt die Nahmen der Geraete, die in der Simulation beutzt werden
+# simerrors_grm/eng.tcl
+# enthaelt die moeglichen Ausgaben (Fehlermeldungen)
+
+case $engl_deutsch in {
+   { deutsch } {
+      source ${path_name}simname_grm.tcl
+      source ${path_name}simerrors_grm.tcl 
+   }
+   { english } {
+      source ${path_name}simname_eng.tcl
+      source ${path_name}simerrors_eng.tcl 
+   }
+}
+
+# enthaelt die Graphikinitialisieruungsfunktionen
+source ${path_name}siminit.tcl
+
+# enthaelt die Graphikaktualisierungs- und Graphikverwaltungsfunktionen
+source ${path_name}simmotion.tcl
+
+################
+# proc enter_main_loop
+# 
+# In der Prozedur wird in eine Endlosschleife 
+# eingegangen in der die Szene laufend aktualisiert wird
+################
+
+proc enter_main_loop {} {
+
+   global stop move_tb move_pr move_cr move_rob move_b1 move_b2
+   global add_blank guardslist demo status_flag passings_flag passings
+
+   set i 2
+
+   while { !$stop } {
+      case $i in {
+         {0} { 
+	     manage_blanks
+	     }
+         {1} {
+	     if {$move_tb} { update_table  426 312 }
+	     if {$move_cr} { update_crane }
+	     }
+         {2} {
+	     if {$move_rob} { update_robot 555 205 }
+	     }
+      }
+
+     incr i
+     set i [expr $i%3]
+
+     if {$move_b2} 		{update_belt2 }
+     if {$move_b1} 		{update_belt1}
+     if {$move_pr} 		{update_press}
+     if {$add_blank} 		{put_blank }
+     if {$guardslist != ""} 	{manage_guards}
+     if {$demo} 		{demonstration}
+     if {$status_flag} 		{do_get_status ; set status_flag 0}
+     if {$passings_flag} 	{do_get_passings ; set passings_flag 0}
+
+     incr passings
+     set passings [expr $passings%10000]
+     update
+  }
+}
+
+################
+# proc react
+# 
+# In der Prozedur wird die Szene einen 
+# Schrittt aktualisiert wird
+################
+
+proc react {} {
+
+   global move_tb move_pr move_cr move_rob move_b1 move_b2
+   global add_blank guardslist demo status_flag passings_flag passings
+
+   manage_blanks
+   if {$move_tb} 		{ update_table  426 312 }
+   if {$move_cr} 		{ update_crane }
+   if {$move_rob} 		{ update_robot 555 205 }
+   if {$move_b2} 		{ update_belt2 }
+   if {$move_b1} 		{ update_belt1 }
+   if {$move_pr} 		{ update_press }
+   if {$add_blank} 		{ put_blank }
+   if {$guardslist != ""} 	{ manage_guards }
+   if {$demo} 			{ demonstration }
+   if {$status_flag} 		{ do_get_status ; set status_flag 0 } 
+   if {$passings_flag} 		{ do_get_passings ; set passings_flag 0 }
+
+   incr passings
+   set passings [expr $passings%10000]
+
+   update
+}
+
+#****************************
+# H A U P T P R O G R A M M *
+#****************************
+
+# Globale Variablen fuer die Zustaende der Stionen
+global stop
+global move_rob move_b2 move_b1 move_tb move_pr move_cr demo
+
+# Globale Variablen fuer die Produktionsteile-Verwaltung
+global loc_blanks
+global add_blank
+
+# Sonstige Variablen 
+global passings
+global guardslist
+global status_flag
+global passings_flag
+global lauf_demo
+
+# Initialisierung der Flags 
+set stop 0
+set move_rob 0
+set move_b2 0
+set move_b1 0
+set move_tb 0
+set move_pr 0
+set move_cr 0
+set demo 0
+set errorlist 0
+set status_flag 0
+set passings_flag 0
+
+# Initialisierung der Teile-Verwaltung
+
+set add_blank 0
+for {set i 1} {$i <= $max_blanks} {incr i} {lappend loc_blanks 0}
+
+# Initialisierung sonstiger Variablen
+set guardslist {}
+set passings 0
+set lauf_demo 0
+
+# Initialisierung der Graphik
+create_widgets
+create_scene
+
+# Festlegen der Drehwinkel von Roboter und Tisch
+choose_angle_rob $robot_rotation_angle
+choose_angle_tab $table_rotation_angle
+
+# Melde Willkommen
+report_message 0
+
+#***************************
+#***************************
+# Verzweigen zur Endlosschleife oder 
+# Reactmodus annehmen indem in den Eventloop
+# gegangen wird
+#***************************
+#***************************
+
+# Vorlauf um einen definierten Anfangszustand zu bekommen, 
+# wenn der Parameter -def beim Aufruf Uebergeben wurde
+
+if { [lsearch $argv -def ] != -1} {
+
+   arm2_backward
+   new_guard 5 == 0 arm2_stop
+   arm1_backward
+   new_guard 4 == 0.0 arm1_stop
+   robot_right
+   new_guard 6 >= 50 robot_stop
+
+   # folgende 2 Zeilen auskommentiert - kw (Anfangs Presse middle)
+   # press_downward
+   # new_guard 1 == 1 press_stop
+   crane_to_belt2
+   new_guard 10 == 1 crane_stop_h
+   crane_lower 
+   new_guard 12 >= 0.912088 crane_stop_v
+
+   while { $guardslist != ""} {
+      update_crane 
+      update_robot 555 205 
+      update_press 
+      manage_guards 
+   }
+}
+
+if {$mode == "loop"} {
+   enter_main_loop
+}
+ 

@@ -1,0 +1,70 @@
+
+specification R3_INTERFACE [R_T3, R13, R23] : noexit behaviour
+
+(* Interface for Receiver_Node 2 *)
+
+(* 
+   Messages received by a Receiver_Node always verify the following
+   properties:
+    - they are numbered from 1 to 3
+    - "FIRST" type messages are received before "SECOND" type messages
+    - messages are received either from the Transmitter or from another 
+      Receiver_Node but a Receiver_Node cannot send a message it has not 
+      received itself from the Transmitter
+    - The Transmitter and the Receiver_Node can crash at any time and then 
+      stop to send messages
+*)
+
+
+    (
+	ABS_TRANS [R_T3] 
+
+	|||
+
+	ABS_REC [R13]
+
+	|||
+
+	ABS_REC [R23]
+    )
+
+	|[R_T3, R13, R23]|
+
+     Q [R_T3, R13, R23] (0 of MSG)
+
+where
+
+library DATA endlib
+
+process ABS_TRANS [RT] : noexit :=
+	RT !1 of MSG !FIRST ; 
+	RT !1 of MSG !SECOND ;
+	RT !2 of MSG !FIRST ; 
+	RT !2 of MSG !SECOND ; 
+	RT !3 of MSG !FIRST ; 
+	RT !3 of MSG !SECOND ; 
+	stop 
+endproc
+
+process ABS_REC [RR] : noexit :=
+	(RR !1 of MSG !FIRST ; RR !1 of MSG !SECOND ; stop )
+		[>
+	(RR !2 of MSG !FIRST ; RR !2 of MSG !SECOND ;  stop )
+		[>
+	(RR !3 of MSG !FIRST ; RR !3 of MSG !SECOND ; stop )
+endproc
+
+process Q[RT, RR1, RR2] (X:MSG) : noexit :=
+    choice RR in [RR1, RR2] []
+    (
+	(RR ?Y:MSG !FIRST [(Y eq X) or (Y eq (X+1))] ; Q[RT, RR1, RR2] (X))
+	[]
+	(RR ?Y:MSG !SECOND [Y ge X] ; Q[RT, RR1, RR2] (X))
+    )
+   []
+    (RT ?Y:MSG !SECOND [Y ge X] ; Q[RT, RR1, RR2] (Y))
+   []
+    (RT ?Y:MSG !FIRST ; Q[RT, RR1, RR2] (X))
+endproc 
+
+endspec

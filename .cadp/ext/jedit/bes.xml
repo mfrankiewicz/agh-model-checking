@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- jedit definitions for the BES language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.3:BES+1.5:SECT -->
+
+<MODE>
+  <PROPS>
+    <PROPERTY NAME="commentStart" VALUE="(*"/>
+    <PROPERTY NAME="commentEnd" VALUE="*)"/>
+    <PROPERTY NAME="lineComment" VALUE=""/>
+  </PROPS>
+
+  <RULES IGNORE_CASE="FALSE" HIGHLIGHT_DIGITS="TRUE">
+    <!-- Comments -->
+    <SPAN TYPE="COMMENT1" DELEGATE="COMMENT">
+      <BEGIN>(*</BEGIN>
+      <END>*)</END>
+    </SPAN>
+
+    <KEYWORDS>
+      <!-- Reserved Words -->
+      <KEYWORD1>block</KEYWORD1>
+      <KEYWORD1>end</KEYWORD1>
+      <KEYWORD1>is</KEYWORD1>
+      <KEYWORD1>mode</KEYWORD1>
+      <KEYWORD1>mu</KEYWORD1>
+      <KEYWORD1>nu</KEYWORD1>
+      <KEYWORD1>unique</KEYWORD1>
+
+      <!-- Constants -->
+      <KEYWORD3>false</KEYWORD3>
+      <KEYWORD3>true</KEYWORD3>
+
+      <!-- Standard Library Functions -->
+      <FUNCTION>and</FUNCTION>
+      <FUNCTION>or</FUNCTION>
+
+    </KEYWORDS>
+
+  </RULES>
+
+  <RULES SET="INQUOTE" DEFAULT="LITERAL1" ESCAPE="\">
+    <!-- no rules -->
+  </RULES>
+
+  <RULES SET="COMMENT" DEFAULT="COMMENT1" IGNORE_CASE="TRUE">
+    <!-- no rules -->
+  </RULES>
+
+</MODE>
+

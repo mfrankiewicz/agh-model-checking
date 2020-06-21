@@ -1,0 +1,122 @@
+(******************************************************************************
+ *                                X T L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       ctl.xtl
+ *   Author             :       Radu MATEESCU
+ *   Version            :       1.4
+ *   Date               :       2000/06/09 17:55:57
+ *****************************************************************************)
+
+(*
+ * Definition the CTL (Computation Tree Logic) temporal logic in XTL.
+ * Reference:
+ * [1] E. M. Clarke, E. A. Emerson, and A. P. Sistla, "Automatic Verification
+ *     of Finite-State Concurrent Systems using Temporal Logic Specifications",
+ *     ACM Transactions on Programming Languages and Systems, 8(2), p. 244-263,
+ *     April 1986
+ *
+ * The semantics of temporal operators is defined over a Kripke structure
+ * M = (Q, T, q0), where:
+ *  - Q is the set of states
+ *  - T in Q * Q is the transition relation
+ *  - q0 in Q is the initial state.
+ * For each q in Q, we note Path (q) = { q->q1->q2->... } the set of
+ * execution sequences starting at q. The semantics of a state formula f,
+ * noted [[f]], is the set of states satisfying it.
+ *)
+
+(*===========================================================================*)
+(* Libraries used *)
+
+library hml.xtl, mu_calculus.xtl end_library
+
+(*===========================================================================*)
+(* Modal operators *)
+
+(*
+ * EX f
+ * [[ EX f ]] = { p | exists q such that (p, q) in T and q in [[f]] }
+ *)
+
+macro EX (F) = Dia (F) end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AX f
+ * [[ AX f ]] = { p | (exists q such that (p, q) in T) and 
+ *	(forall q, (p, q) in T => q in [[f]]) }
+ *)
+
+macro AX (F) = Dia (true) and Box (F) end_macro
+
+(*===========================================================================*)
+(* Temporal operators *)
+
+(*
+ * E [f U g]
+ * [[ E [f U g] ]] = { p | exists s in Path (p), exists k >= 0 such that
+ *	(forall i=0..(k-1), s(i) in [[f]]) and s(k) in [[g]] }
+ *)
+
+def EU (F, G : stateset) : stateset =
+    lfp (X, G or (F and Dia (X)))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * A [f U g]
+ * [[ A [f U g] ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	(forall i=0..(k-1), s(i) in [[f]]) and s(k) in [[g]] }
+ *)
+
+def AU (F, G : stateset) : stateset =
+    lfp (X, G or (F and Dia (true) and Box (X)))
+end_def
+
+(*===========================================================================*)
+(* Derived operators *)
+
+(*
+ * EF g = E [true U g]
+ * [[ EF g ]] = { p | exists s in Path (p), exists k >= 0 such that
+ *	s(k) in [[g]] }
+ *)
+
+def EF (G : stateset) : stateset =
+    lfp (X, G or Dia (X))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AF g = A [true U g]
+ * [[ AF g ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	s(k) in [[g]] }
+ *)
+
+def AF (G : stateset) : stateset =
+    lfp (X, G or (Dia (true) and Box (X)))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * EG g = not AF not g
+ * [[ EG g ]] = { p | exists s in Path (p) such that forall k >= 0,
+ *	s(k) in [[g]] }
+ *)
+
+macro EG (G) = not (AF (not (G))) end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AG g = not EF not g
+ * [[ AG g ]] = { p | forall s in Path (p), forall k >= 0,
+ *	s(k) in [[g]] }
+ *)
+
+macro AG (G) = not (EF (not (G))) end_macro
+

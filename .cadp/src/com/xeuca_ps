@@ -1,0 +1,79 @@
+#! /bin/sh 
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeuca_ps
+#   Auteurs             :       Hubert GARAVEL et Aldo MAZZILLI
+#   Version             :       1.22
+#   Date                :       2018/12/04 11:26:26
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+case $DETAILED_ARCH in
+	sun3 | sun4 )
+		PS="/bin/ps -gx" ;;
+	sun5 | sun64 | sol86 | sol64 )
+		# autrefois, on appelait /usr/ucb/ps -gxww
+		PS="/usr/bin/ps gxww" ;;
+	iX86 | iX86-64 | x64 | ia64 )
+		PS="/bin/ps x" ;;
+		# l'option -x produit un warning:
+		# "Warning: bad syntax, perhaps a bogus '-'"
+	win32-cygnus | win64-cygnus )
+		# sous Cygwin, la commande "ps" affiche une premiere colonne
+		# optionnelle contenant une lettre (S, I, etc.) indiquant
+		# l'etat du processus : l'utilisation de sed permet d'eliminer
+		# cette lettre afin que les numeros de processus figurent
+		# en premiere colonne, comme sur les autres architectures,
+		# ce qui est l'invariant a respecter absolument.
+		# sous Cygwin, la commande "ps" n'affiche pas les parametres
+		# des commandes, ni le nom des shells: on lui met l'option -l
+		# pour avoir au moins l'heure a laquelle la commande a ete
+		# lancee, ce qui peut aider l'utilisateur d'EUCALYPTUS a 
+		# reconnaitre le processus qu'il recherche
+		PS="ps -l | sed -e 's/^[A-Z ]*//'" ;;
+	win32-interix )
+		PS="ps -x" ;;
+	win32-* )
+		PS="ps" ;;
+	macOS | mac86 | mac64 )
+		PS="ps -x" ;;
+	* )
+		echo "$COMMAND: unknown architecture '$ARCH'"
+		exit 1
+		;;
+esac
+
+# recuperation de l'argument optionel qui correspond a une commande Unix
+# que l'on recherche parmi la liste des processus affichee par $PS.
+# - si cet argument est present, on ne renvoie que les lignes de la liste 
+#   qui contiennent cet argument
+# - si cet argument est absent, on renvoie toutes les lignes de la liste
+#   (on les filtre avec l'expression reguliere "." qui accepte tout)
+
+if [ "$1" != "" ]
+then
+	FILTER="\<$1\>"
+else
+	FILTER="."
+fi
+
+# on affiche le resultat de la commande "$PS" en filtrant tous les
+# processus parasites produits par la commande "xeuca_ps" elle-meme
+
+$PS | "$CADP"/src/com/cadp_tail -n +2 | grep "$FILTER" | grep -v "\<$COMMAND\>" | grep -v "\<ps\>" | grep -v "\<sed\>" | grep -v "\<cadp_tail\>" | grep -v "\<tail\>" | grep -v "\<grep\>"
+
+# indispensable sous Windows
+
+exit 0
+

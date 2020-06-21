@@ -1,0 +1,1407 @@
+
+
+
+type BaseId is Boolean
+   sorts BaseId
+opns		
+  First (*! constructor *) :-> BaseId
+  Next (*! constructor *) : BaseId -> BaseId
+  _eq_,_ne_ : BaseId , BaseId -> Bool
+eqns forall m,n : BaseId
+ofsort bool
+
+  m eq m = true ;
+  m eq n = false ;
+
+  m ne n = not(m eq n) ;
+endtype
+
+
+type		BaseIdOpns is BaseId
+opns		base0,base1,base2,base3,base4,
+		base5,base6,base7,base8,base9 : -> BaseId
+eqns
+ofsort BaseId
+	base0 = first ;
+	base1 = next(base0) ;
+	base2 = next(base1) ;
+	base3 = next(base2) ;
+	base4 = next(base3) ;
+	base5 = next(base4) ;
+	base6 = next(base5) ;
+	base7 = next(base6) ;
+	base8 = next(base7) ;
+	base9 = next(base8) ;
+endtype
+
+
+
+
+type Id is Boolean
+   sorts Id
+opns		
+  First (*! constructor *) :-> Id
+  Next (*! constructor *) : Id -> Id
+  _eq_,_ne_ : Id , Id -> Bool
+eqns forall m,n : Id
+ofsort bool
+
+  m eq m = true ;
+  m eq n = false ;
+
+  m ne n = not(m eq n) ;
+endtype
+
+
+
+
+
+type Atom is Boolean 
+sorts Atom
+opns  white(*! constructor *),
+  black(*! constructor *),
+  square(*! constructor *): -> Atom
+  First , Last : -> Atom
+  Succ , Pred : Atom -> Atom
+  _eq_ , _ne_ : Atom , Atom -> Bool 
+  is_white , is_black , is_square : Atom -> Bool 
+eqns forall 
+   x , y : Atom
+ofsort Atom
+  First = white ; 
+  Last = square ; 
+  Succ ( white ) = black ;
+  Succ ( black ) = square ;
+  Pred ( black ) = white ;
+  Pred ( square ) = black ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_white ( x ) = x eq white ; 
+  Is_black ( x ) = x eq black ; 
+  Is_square ( x ) = x eq square ; 
+endtype
+
+
+type		AtomCompatibility is Atom, Boolean
+opns		comp : Atom, Atom -> Bool
+eqns forall a1, a2 : Atom
+ofsort Bool
+	comp(black, white) = false ;
+	comp(white, black) = false ;
+	comp(a1, a2) = true ;
+endtype
+
+
+
+
+type Knowledge is Atom , Boolean, NaturalNumber
+  sorts Knowledge
+  opns
+    {} (*! constructor *) : -> Knowledge
+
+    Insert_C (*! constructor *) : Atom , Knowledge -> Knowledge
+
+    Insert, Remove: Atom , Knowledge -> Knowledge
+    _ IsIn _, _ NotIn _: Atom , Knowledge -> Bool
+    _ Union _, _ Ints _, _ Minus _: Knowledge , Knowledge -> Knowledge
+    _ eq _, _ ne _, _ Includes _, _ IsSubsetOf _: Knowledge , Knowledge -> Bool
+    Card: Knowledge -> Nat
+  eqns
+    forall x, y: Atom , s, t: Knowledge
+
+    ofsort Knowledge
+       Insert (x, {}) = Insert_C (x, {});
+       x eq y => 
+          Insert (x, Insert_C (y, s)) = Insert_C (x, s);
+       Insert(x, Insert_C (y, s)) = Insert_C (y, Insert (x, s));
+    ofsort Knowledge
+       Remove (x, {}) = {};
+       x eq y => 
+          Remove (x, Insert_C (y, s)) = s;
+       Remove (x, Insert_C (y, s)) = Insert_C (y, Remove (x, s));
+    ofsort Bool
+       x IsIn {} = false;
+       x eq y => 
+          x IsIn Insert_C (y, s) = true;
+       x IsIn Insert_C (y, s) = x IsIn s;
+    ofsort Bool
+       x NotIn s = not (x IsIn s);
+    ofsort Knowledge
+       {} Union s = s;
+       Insert_C (x, s) Union t = Insert_C (x, s Union t);
+    ofsort Knowledge
+       {} Ints s = {};
+       x IsIn t =>
+          Insert_C (x, s) Ints t = Insert_C (x, s Ints t);
+       Insert_C (x, s) Ints t = s Ints t;
+    ofsort Knowledge
+       s Minus {} = s;
+       s Minus Insert_C (x, t) = Remove (x, s) Minus t
+    ofsort Bool
+       s Includes {} = true;
+       s Includes Insert_C (x, t) = (x IsIn s) and (s Includes t);
+    ofsort Bool
+       s IsSubsetOf t = t Includes s;
+    ofsort Bool
+       s eq t = (s Includes t) and (t Includes s);
+    ofsort Bool
+       s ne t = not (s eq t)
+    ofsort Nat
+       Card ({} of Knowledge ) = 0;
+       Card (Insert_C (x, s)) = Succ (Card (s))
+
+  endtype
+
+
+type Change is Atom
+sorts Change
+opns
+  assert(*! constructor *): Atom -> Change
+  retract(*! constructor *): Atom -> Change
+  _eq_ , _ne_ : Change , Change -> Bool 
+  Is_assert : Change -> Bool 
+  Is_retract : Change -> Bool 
+eqns forall
+  x_1 , y_1 : Change , 
+  x_1_1_1 , y_1_1_1 : Atom , 
+  x_1_2_1 , y_1_2_1 : Atom
+ofsort Bool
+  x_1_1_1 eq y_1_1_1 => 
+    assert ( x_1_1_1 ) eq assert ( y_1_1_1 ) = true ; 
+  x_1_2_1 eq y_1_2_1 => 
+    retract ( x_1_2_1 ) eq retract ( y_1_2_1 ) = true ; 
+  x_1 eq y_1 = not ( true ) ; 
+  x_1 ne y_1 = not ( x_1 eq y_1 ) ; 
+ofsort Bool 
+  Is_assert ( assert ( x_1_1_1 ) ) = true ; 
+  Is_assert ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_retract ( retract ( x_1_2_1 ) ) = true ; 
+  Is_retract ( x_1 ) = not ( true ) ; 
+endtype
+
+
+
+
+type Proposal is Change , Boolean, NaturalNumber
+   sorts Proposal
+   opns
+      <> (*! constructor *) : -> Proposal
+      _+_ (*! constructor *) : Change , Proposal -> Proposal
+      String : Change -> Proposal
+      _+_ : Proposal , Change -> Proposal
+      _++_ : Proposal , Proposal -> Proposal
+      Reverse : Proposal -> Proposal
+      Length : Proposal -> Nat
+      _eq_, 
+      _ne_ : Proposal , Proposal -> Bool
+   eqns
+      forall s, t : Proposal , x, y : Change , a : Bool
+      ofsort Proposal
+         String(x) = x + <>;
+         <> + x = x + <>;
+        (x + s) + y = x + (s + y);
+         <> ++ s = s;
+         (x + s) ++ t = x + (s ++ t);
+         Reverse (<>) = <>;
+         Reverse (x + s) = Reverse (s) + x;
+
+      ofsort Nat
+         Length (<> of Proposal ) = 0;
+         Length (x + s) = Succ (Length (s));
+
+      ofsort Bool
+
+         <> of Proposal eq <> of Proposal = true;
+         <> eq (x + s) = false;
+         (x + s) eq <> = false;
+         x eq y => 
+            (x + s) eq (y + t) = s eq t;
+         x ne y =>
+            (x + s) eq (y + t) = false;
+
+         s ne t = not (s eq t)
+
+endtype
+
+
+type		KnowledgeOpns is 
+		AtomCompatibility, Knowledge, Proposal, Boolean
+opns		atom		: Change -> Atom
+		_+_		: Knowledge, Change -> Knowledge
+		_+_		: Knowledge, Proposal -> Knowledge
+		_*_		: Proposal, Proposal -> Proposal
+		query		: Knowledge, Atom -> Bool
+		query		: Knowledge, Proposal -> Bool
+		isconsistent	: Knowledge -> Bool
+		assert		: Knowledge -> Proposal
+eqns forall
+	k : Knowledge,
+	a, a1, a2 : Atom,
+	c : Change,
+	p, p1, p2 : Proposal
+ofsort Atom
+	atom(assert(a)) = a ;
+	atom(retract(a)) = a ;
+ofsort Knowledge
+	k + assert(a) = insert(a, k) ;
+	k + retract(a) = remove(a, k) ;
+	k + <> = k ;
+	k + (c + p) = (k + c) + p ;
+ofsort Proposal
+	p1 * p2 = p1 ++ p2 ;
+ofsort Bool
+(* NB: uses hidden constructor insert_C generated for CADP *)
+	query({}, a) = true ;
+	query(insert_C(a1, k), a2) = comp(a1, a2) and query(k, a2) ;
+	isconsistent({}) = true ;
+	isconsistent(insert_C(a, k)) = query(k, a) and isconsistent(k) ;
+	query(k, p) = isconsistent(k + p) ;
+ofsort Proposal
+	assert({}) = <> ;
+	assert(insert_C(a, k)) = assert(a) + assert(remove(a, k)) ;
+endtype
+
+
+type Request is BaseId , Proposal
+sorts Request
+opns
+  reqregister(*! constructor *): BaseId -> Request
+  reqevaluate(*! constructor *): Proposal -> Request
+  reqachieve(*! constructor *): Proposal -> Request
+  reqforward(*! constructor *): Request -> Request
+  reqchallenge(*! constructor *): Proposal -> Request
+  reqtell(*! constructor *): Proposal -> Request
+  _eq_ , _ne_ : Request , Request -> Bool 
+  Is_reqregister : Request -> Bool 
+  Is_reqevaluate : Request -> Bool 
+  Is_reqachieve : Request -> Bool 
+  Is_reqforward : Request -> Bool 
+  Is_reqchallenge : Request -> Bool 
+  Is_reqtell : Request -> Bool 
+eqns forall
+  x_1 , y_1 : Request , 
+  x_1_1_1 , y_1_1_1 : BaseId , 
+  x_1_2_1 , y_1_2_1 : Proposal , 
+  x_1_3_1 , y_1_3_1 : Proposal , 
+  x_1_4_1 , y_1_4_1 : Request , 
+  x_1_5_1 , y_1_5_1 : Proposal , 
+  x_1_6_1 , y_1_6_1 : Proposal
+ofsort Bool
+  x_1_1_1 eq y_1_1_1 => 
+    reqregister ( x_1_1_1 ) eq reqregister ( y_1_1_1 ) = true ; 
+  x_1_2_1 eq y_1_2_1 => 
+    reqevaluate ( x_1_2_1 ) eq reqevaluate ( y_1_2_1 ) = true ; 
+  x_1_3_1 eq y_1_3_1 => 
+    reqachieve ( x_1_3_1 ) eq reqachieve ( y_1_3_1 ) = true ; 
+  x_1_4_1 eq y_1_4_1 => 
+    reqforward ( x_1_4_1 ) eq reqforward ( y_1_4_1 ) = true ; 
+  x_1_5_1 eq y_1_5_1 => 
+    reqchallenge ( x_1_5_1 ) eq reqchallenge ( y_1_5_1 ) = true ; 
+  x_1_6_1 eq y_1_6_1 => 
+    reqtell ( x_1_6_1 ) eq reqtell ( y_1_6_1 ) = true ; 
+  x_1 eq y_1 = not ( true ) ; 
+  x_1 ne y_1 = not ( x_1 eq y_1 ) ; 
+ofsort Bool 
+  Is_reqregister ( reqregister ( x_1_1_1 ) ) = true ; 
+  Is_reqregister ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_reqevaluate ( reqevaluate ( x_1_2_1 ) ) = true ; 
+  Is_reqevaluate ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_reqachieve ( reqachieve ( x_1_3_1 ) ) = true ; 
+  Is_reqachieve ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_reqforward ( reqforward ( x_1_4_1 ) ) = true ; 
+  Is_reqforward ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_reqchallenge ( reqchallenge ( x_1_5_1 ) ) = true ; 
+  Is_reqchallenge ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_reqtell ( reqtell ( x_1_6_1 ) ) = true ; 
+  Is_reqtell ( x_1 ) = not ( true ) ; 
+endtype
+
+
+type		RequestOpns is Request
+opns		content		: Request -> BaseId
+		content		: Request -> Proposal
+		content		: Request -> Request
+eqns forall	b : BaseId,
+		p : Proposal,
+		r : Request
+ofsort BaseId
+	content(reqregister(b)) = b ;
+ofsort Proposal
+	content(reqevaluate(p)) = p ;
+	content(reqachieve(p)) = p ;
+	content(reqchallenge(p)) = p ;
+	content(reqtell(p)) = p ;
+ofsort Request
+	content(reqforward(r)) = r ;
+endtype
+
+
+type Answer is Id , Proposal
+sorts Answer
+opns
+  acceptx(*! constructor *): -> Answer
+  reject(*! constructor *): -> Answer
+  challenge(*! constructor *): Id , Proposal -> Answer
+  replywith : Answer -> Id
+  content : Answer -> Proposal
+  _eq_ , _ne_ : Answer , Answer -> Bool 
+  Is_acceptx : Answer -> Bool 
+  Is_reject : Answer -> Bool 
+  Is_challenge : Answer -> Bool 
+eqns forall
+  x_1 , y_1 : Answer , 
+  x_1_3_1 , y_1_3_1 : Id , 
+  x_1_3_2 , y_1_3_2 : Proposal
+ofsort Id
+  replywith ( challenge ( x_1_3_1 , x_1_3_2 ) ) = x_1_3_1 ; 
+ofsort Proposal
+  content ( challenge ( x_1_3_1 , x_1_3_2 ) ) = x_1_3_2 ; 
+ofsort Bool
+  acceptx of Answer eq acceptx of Answer = true ;
+  reject of Answer eq reject of Answer = true ;
+  x_1_3_1 eq y_1_3_1 , 
+  x_1_3_2 eq y_1_3_2 => 
+    challenge ( x_1_3_1 , x_1_3_2 ) eq challenge ( y_1_3_1 , y_1_3_2 ) = true ; 
+  x_1 eq y_1 = not ( true ) ; 
+  x_1 ne y_1 = not ( x_1 eq y_1 ) ; 
+ofsort Bool 
+  Is_acceptx ( acceptx of Answer ) = true ; 
+  Is_acceptx ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_reject ( reject of Answer ) = true ; 
+  Is_reject ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_challenge ( challenge ( x_1_3_1 , x_1_3_2 ) ) = true ; 
+  Is_challenge ( x_1 ) = not ( true ) ; 
+endtype
+
+
+type		AnswerOpns is Answer, Boolean
+opns		answer : Bool -> Answer
+eqns
+ofsort Answer
+	answer(true) = acceptx ;
+	answer(false) = reject ;
+endtype
+
+
+type Message is Id , BaseId , Proposal , Request , Answer
+sorts Message
+opns
+  register(*! constructor *): Id , BaseId -> Message
+  evaluate(*! constructor *): Id , Proposal -> Message
+  achieve(*! constructor *): Id , Proposal -> Message
+  forward(*! constructor *): Id , Request -> Message
+  deny(*! constructor *): Id -> Message
+  reply(*! constructor *): Id , Answer -> Message
+  askall(*! constructor *): Id , Request -> Message
+  error(*! constructor *): Id -> Message
+  notify(*! constructor *): Id , Answer -> Message
+  poolnotify(*! constructor *): Id , Answer -> Message
+  pooldeny(*! constructor *): Id -> Message
+  tell(*! constructor *): Proposal -> Message
+  _eq_ , _ne_ : Message , Message -> Bool 
+  Is_register : Message -> Bool 
+  Is_evaluate : Message -> Bool 
+  Is_achieve : Message -> Bool 
+  Is_forward : Message -> Bool 
+  Is_deny : Message -> Bool 
+  Is_reply : Message -> Bool 
+  Is_askall : Message -> Bool 
+  Is_error : Message -> Bool 
+  Is_notify : Message -> Bool 
+  Is_poolnotify : Message -> Bool 
+  Is_pooldeny : Message -> Bool 
+  Is_tell : Message -> Bool 
+eqns forall
+  x_1 , y_1 : Message , 
+  x_1_1_1 , y_1_1_1 : Id , 
+  x_1_1_2 , y_1_1_2 : BaseId , 
+  x_1_2_1 , y_1_2_1 : Id , 
+  x_1_2_2 , y_1_2_2 : Proposal , 
+  x_1_3_1 , y_1_3_1 : Id , 
+  x_1_3_2 , y_1_3_2 : Proposal , 
+  x_1_4_1 , y_1_4_1 : Id , 
+  x_1_4_2 , y_1_4_2 : Request , 
+  x_1_5_1 , y_1_5_1 : Id , 
+  x_1_6_1 , y_1_6_1 : Id , 
+  x_1_6_2 , y_1_6_2 : Answer , 
+  x_1_7_1 , y_1_7_1 : Id , 
+  x_1_7_2 , y_1_7_2 : Request , 
+  x_1_8_1 , y_1_8_1 : Id , 
+  x_1_9_1 , y_1_9_1 : Id , 
+  x_1_9_2 , y_1_9_2 : Answer , 
+  x_1_10_1 , y_1_10_1 : Id , 
+  x_1_10_2 , y_1_10_2 : Answer , 
+  x_1_11_1 , y_1_11_1 : Id , 
+  x_1_12_1 , y_1_12_1 : Proposal
+ofsort Bool
+  x_1_1_1 eq y_1_1_1 , 
+  x_1_1_2 eq y_1_1_2 => 
+    register ( x_1_1_1 , x_1_1_2 ) eq register ( y_1_1_1 , y_1_1_2 ) = true ; 
+  x_1_2_1 eq y_1_2_1 , 
+  x_1_2_2 eq y_1_2_2 => 
+    evaluate ( x_1_2_1 , x_1_2_2 ) eq evaluate ( y_1_2_1 , y_1_2_2 ) = true ; 
+  x_1_3_1 eq y_1_3_1 , 
+  x_1_3_2 eq y_1_3_2 => 
+    achieve ( x_1_3_1 , x_1_3_2 ) eq achieve ( y_1_3_1 , y_1_3_2 ) = true ; 
+  x_1_4_1 eq y_1_4_1 , 
+  x_1_4_2 eq y_1_4_2 => 
+    forward ( x_1_4_1 , x_1_4_2 ) eq forward ( y_1_4_1 , y_1_4_2 ) = true ; 
+  x_1_5_1 eq y_1_5_1 => 
+    deny ( x_1_5_1 ) eq deny ( y_1_5_1 ) = true ; 
+  x_1_6_1 eq y_1_6_1 , 
+  x_1_6_2 eq y_1_6_2 => 
+    reply ( x_1_6_1 , x_1_6_2 ) eq reply ( y_1_6_1 , y_1_6_2 ) = true ; 
+  x_1_7_1 eq y_1_7_1 , 
+  x_1_7_2 eq y_1_7_2 => 
+    askall ( x_1_7_1 , x_1_7_2 ) eq askall ( y_1_7_1 , y_1_7_2 ) = true ; 
+  x_1_8_1 eq y_1_8_1 => 
+    error ( x_1_8_1 ) eq error ( y_1_8_1 ) = true ; 
+  x_1_9_1 eq y_1_9_1 , 
+  x_1_9_2 eq y_1_9_2 => 
+    notify ( x_1_9_1 , x_1_9_2 ) eq notify ( y_1_9_1 , y_1_9_2 ) = true ; 
+  x_1_10_1 eq y_1_10_1 , 
+  x_1_10_2 eq y_1_10_2 => 
+    poolnotify ( x_1_10_1 , x_1_10_2 ) eq poolnotify ( y_1_10_1 , y_1_10_2 ) = true ; 
+  x_1_11_1 eq y_1_11_1 => 
+    pooldeny ( x_1_11_1 ) eq pooldeny ( y_1_11_1 ) = true ; 
+  x_1_12_1 eq y_1_12_1 => 
+    tell ( x_1_12_1 ) eq tell ( y_1_12_1 ) = true ; 
+  x_1 eq y_1 = not ( true ) ; 
+  x_1 ne y_1 = not ( x_1 eq y_1 ) ; 
+ofsort Bool 
+  Is_register ( register ( x_1_1_1 , x_1_1_2 ) ) = true ; 
+  Is_register ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_evaluate ( evaluate ( x_1_2_1 , x_1_2_2 ) ) = true ; 
+  Is_evaluate ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_achieve ( achieve ( x_1_3_1 , x_1_3_2 ) ) = true ; 
+  Is_achieve ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_forward ( forward ( x_1_4_1 , x_1_4_2 ) ) = true ; 
+  Is_forward ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_deny ( deny ( x_1_5_1 ) ) = true ; 
+  Is_deny ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_reply ( reply ( x_1_6_1 , x_1_6_2 ) ) = true ; 
+  Is_reply ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_askall ( askall ( x_1_7_1 , x_1_7_2 ) ) = true ; 
+  Is_askall ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_error ( error ( x_1_8_1 ) ) = true ; 
+  Is_error ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_notify ( notify ( x_1_9_1 , x_1_9_2 ) ) = true ; 
+  Is_notify ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_poolnotify ( poolnotify ( x_1_10_1 , x_1_10_2 ) ) = true ; 
+  Is_poolnotify ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_pooldeny ( pooldeny ( x_1_11_1 ) ) = true ; 
+  Is_pooldeny ( x_1 ) = not ( true ) ; 
+ofsort Bool 
+  Is_tell ( tell ( x_1_12_1 ) ) = true ; 
+  Is_tell ( x_1 ) = not ( true ) ; 
+endtype
+
+
+type		MessageOpns is Message
+opns		replywith : 	Message -> Id
+		inreplyto : 	Message -> Id
+		content :	Message -> BaseId
+		content :	Message -> Proposal
+		content :	Message -> Request
+		content :	Message -> Answer
+eqns forall
+	m : Id,
+	n : Id,
+	b : BaseId,
+	p : Proposal,
+	r : Request,
+	a : Answer
+ofsort Id
+	replywith(register(m, b)) = m ;
+	replywith(evaluate(m, p)) = m ;
+	replywith(achieve(m, p)) = m ;
+	replywith(forward(m, r)) = m ;
+	replywith(askall(n, r)) = n ;
+	inreplyto(deny(m)) = m ;
+	inreplyto(error(m)) = m ;
+	inreplyto(notify(m, a)) = m ;
+	inreplyto(reply(n, a)) = n ;
+	inreplyto(pooldeny(n)) = n ;
+	inreplyto(poolnotify(n, a)) = n ;
+ofsort BaseId
+	content(register(m, b)) = b ;
+ofsort Proposal
+	content(evaluate(m, p)) = p ;
+	content(achieve(m, p)) = p ;
+	content(tell(p)) = p ;
+ofsort Request
+	content(forward(m, r)) = r ;
+	content(askall(n, r)) = r ;
+ofsort Answer
+	content(notify(m, a)) = a ;
+	content(reply(n, a)) = a ;
+	content(poolnotify(n, a)) = a ;
+endtype
+
+
+
+
+type UserAction is Boolean 
+sorts UserAction
+opns  doregister(*! constructor *),
+  doevaluate(*! constructor *),
+  doachieve(*! constructor *),
+  doforward(*! constructor *),
+  dodeny(*! constructor *),
+  doaccept(*! constructor *),
+  doreject(*! constructor *),
+  dochallenge(*! constructor *): -> UserAction
+  First , Last : -> UserAction
+  Succ , Pred : UserAction -> UserAction
+  _eq_ , _ne_ : UserAction , UserAction -> Bool 
+  is_doregister , is_doevaluate , is_doachieve , is_doforward , is_dodeny , is_doaccept , is_doreject , is_dochallenge : UserAction -> Bool 
+eqns forall 
+   x , y : UserAction
+ofsort UserAction
+  First = doregister ; 
+  Last = dochallenge ; 
+  Succ ( doregister ) = doevaluate ;
+  Succ ( doevaluate ) = doachieve ;
+  Succ ( doachieve ) = doforward ;
+  Succ ( doforward ) = dodeny ;
+  Succ ( dodeny ) = doaccept ;
+  Succ ( doaccept ) = doreject ;
+  Succ ( doreject ) = dochallenge ;
+  Pred ( doevaluate ) = doregister ;
+  Pred ( doachieve ) = doevaluate ;
+  Pred ( doforward ) = doachieve ;
+  Pred ( dodeny ) = doforward ;
+  Pred ( doaccept ) = dodeny ;
+  Pred ( doreject ) = doaccept ;
+  Pred ( dochallenge ) = doreject ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_doregister ( x ) = x eq doregister ; 
+  Is_doevaluate ( x ) = x eq doevaluate ; 
+  Is_doachieve ( x ) = x eq doachieve ; 
+  Is_doforward ( x ) = x eq doforward ; 
+  Is_dodeny ( x ) = x eq dodeny ; 
+  Is_doaccept ( x ) = x eq doaccept ; 
+  Is_doreject ( x ) = x eq doreject ; 
+  Is_dochallenge ( x ) = x eq dochallenge ; 
+endtype
+
+
+
+
+type SignalVal is Boolean 
+sorts SignalVal
+opns  sigregistered(*! constructor *),
+  sigstored(*! constructor *),
+  signotinA(*! constructor *),
+  signotinP(*! constructor *),
+  signotinC(*! constructor *),
+  signotconsistent(*! constructor *): -> SignalVal
+  First , Last : -> SignalVal
+  Succ , Pred : SignalVal -> SignalVal
+  _eq_ , _ne_ : SignalVal , SignalVal -> Bool 
+  is_sigregistered , is_sigstored , is_signotinA , is_signotinP , is_signotinC , is_signotconsistent : SignalVal -> Bool 
+eqns forall 
+   x , y : SignalVal
+ofsort SignalVal
+  First = sigregistered ; 
+  Last = signotconsistent ; 
+  Succ ( sigregistered ) = sigstored ;
+  Succ ( sigstored ) = signotinA ;
+  Succ ( signotinA ) = signotinP ;
+  Succ ( signotinP ) = signotinC ;
+  Succ ( signotinC ) = signotconsistent ;
+  Pred ( sigstored ) = sigregistered ;
+  Pred ( signotinA ) = sigstored ;
+  Pred ( signotinP ) = signotinA ;
+  Pred ( signotinC ) = signotinP ;
+  Pred ( signotconsistent ) = signotinC ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_sigregistered ( x ) = x eq sigregistered ; 
+  Is_sigstored ( x ) = x eq sigstored ; 
+  Is_signotinA ( x ) = x eq signotinA ; 
+  Is_signotinP ( x ) = x eq signotinP ; 
+  Is_signotinC ( x ) = x eq signotinC ; 
+  Is_signotconsistent ( x ) = x eq signotconsistent ; 
+endtype
+
+
+
+
+
+type SubmittedEntry is Id , Request , Boolean
+sorts SubmittedEntry
+opns 
+  submitted(*! constructor *): Id , Request -> SubmittedEntry
+  id : SubmittedEntry -> Id
+  req : SubmittedEntry -> Request
+  Set_id : Id , SubmittedEntry -> SubmittedEntry
+  Set_req : Request , SubmittedEntry -> SubmittedEntry
+  _eq_ , _ne_ : SubmittedEntry , SubmittedEntry -> Bool 
+eqns forall
+   x , y : SubmittedEntry ,
+  x_1 , y_1 : Id ,
+  x_2 , y_2 : Request
+ofsort Id
+  id ( submitted ( x_1 , x_2 ) ) = x_1 ; 
+ofsort Request
+  req ( submitted ( x_1 , x_2 ) ) = x_2 ; 
+ofsort SubmittedEntry
+  Set_id ( y_1 , submitted ( x_1 , x_2 ) ) = submitted ( y_1 , x_2 ) ; 
+  Set_req ( y_2 , submitted ( x_1 , x_2 ) ) = submitted ( x_1 , y_2 ) ; 
+ofsort Bool
+  x_1 eq y_1 ,
+  x_2 eq y_2 =>
+    submitted ( x_1 , x_2 ) eq submitted ( y_1 , y_2 ) = true ;
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+endtype
+
+
+
+
+type SubmittedTbl is SubmittedEntry , Boolean, NaturalNumber
+sorts
+  SubmittedTbl
+opns
+  {} (*! constructor *) : -> SubmittedTbl
+
+  Insert_C (*! constructor *) : SubmittedEntry , SubmittedTbl -> SubmittedTbl
+
+  Insert: SubmittedEntry , SubmittedTbl -> SubmittedTbl
+  Remove: Id , SubmittedTbl -> SubmittedTbl
+  Get: Id , SubmittedTbl -> SubmittedEntry
+  _IsIn_, _NotIn_: Id , SubmittedTbl -> Bool
+  Test: SubmittedEntry , SubmittedTbl -> Bool
+  _Over_: SubmittedTbl , SubmittedTbl -> SubmittedTbl
+  _eq_, _ne_, _Includes_, _IsSubTableOf_: SubmittedTbl , SubmittedTbl -> Bool
+  Card: SubmittedTbl -> Nat
+eqns forall x, y: Id , a, b: SubmittedEntry , s, t: SubmittedTbl
+
+ofsort SubmittedTbl
+  Insert(a,{}) = Insert_C(a,{}) ;
+  id (a) eq id (b) =>
+    Insert (a, Insert_C (b, s)) = Insert_C (a, s) ;
+  Insert (a, Insert_C (b, s)) = Insert_C (b, Insert (a, s)) ;
+  Remove (x, {}) = {} ;
+  x eq id (b) =>
+    Remove (x, Insert_C (b, s)) = s ;
+  Remove (x, Insert_C (b, s)) = Insert_C (b, Remove (x, s)) ;
+  {} Over s = s ;
+  Insert_C (a, s) Over t = Insert (a, s Over t) ;
+ofsort SubmittedEntry
+  x eq id (b) =>
+    Get (x, Insert_C (b, s)) = b ;
+  Get (x, Insert_C (b, s)) = Get (x, s) ;
+ofsort Bool
+  x IsIn {} = false ;
+  x eq id (b) =>
+    x IsIn Insert_C (b, s) = true ;
+  x IsIn Insert_C (b, s) = x IsIn s ;
+  x NotIn s = not (x IsIn s) ;
+  Test (a, {}) = false ;
+  a eq b =>
+    Test (a, Insert_C (b, s)) = true ;
+  id (a) eq id (b) =>
+    Test (a, Insert_C (b, s)) = false ;
+  Test (a, Insert_C (b, s)) = Test (a, s) ;
+  s Includes {} = true ;
+  s Includes Insert_C (a, t) = Test (a, s) and (s Includes t) ;
+  s IsSubTableOf t = t Includes s ;
+  s eq t = (s Includes t) and (t Includes s) ;
+  s ne t = not (s eq t) ;
+ofsort Nat
+  Card ({} of SubmittedTbl ) = 0 ;
+  Card (Insert_C (a, s)) = Succ (Card (s)) ;
+
+endtype
+
+
+
+
+type GrpSubmittedEntry is Id , Request , BaseId , Boolean
+sorts GrpSubmittedEntry
+opns 
+  submitted(*! constructor *): Id , Request , BaseId , Id -> GrpSubmittedEntry
+  id : GrpSubmittedEntry -> Id
+  req : GrpSubmittedEntry -> Request
+  sender : GrpSubmittedEntry -> BaseId
+  senderid : GrpSubmittedEntry -> Id
+  Set_id : Id , GrpSubmittedEntry -> GrpSubmittedEntry
+  Set_req : Request , GrpSubmittedEntry -> GrpSubmittedEntry
+  Set_sender : BaseId , GrpSubmittedEntry -> GrpSubmittedEntry
+  Set_senderid : Id , GrpSubmittedEntry -> GrpSubmittedEntry
+  _eq_ , _ne_ : GrpSubmittedEntry , GrpSubmittedEntry -> Bool 
+eqns forall
+   x , y : GrpSubmittedEntry ,
+  x_1 , y_1 : Id ,
+  x_2 , y_2 : Request ,
+  x_3 , y_3 : BaseId ,
+  x_4 , y_4 : Id
+ofsort Id
+  id ( submitted ( x_1 , x_2 , x_3 , x_4 ) ) = x_1 ; 
+ofsort Request
+  req ( submitted ( x_1 , x_2 , x_3 , x_4 ) ) = x_2 ; 
+ofsort BaseId
+  sender ( submitted ( x_1 , x_2 , x_3 , x_4 ) ) = x_3 ; 
+ofsort Id
+  senderid ( submitted ( x_1 , x_2 , x_3 , x_4 ) ) = x_4 ; 
+ofsort GrpSubmittedEntry
+  Set_id ( y_1 , submitted ( x_1 , x_2 , x_3 , x_4 ) ) = submitted ( y_1 , x_2 , x_3 , x_4 ) ; 
+  Set_req ( y_2 , submitted ( x_1 , x_2 , x_3 , x_4 ) ) = submitted ( x_1 , y_2 , x_3 , x_4 ) ; 
+  Set_sender ( y_3 , submitted ( x_1 , x_2 , x_3 , x_4 ) ) = submitted ( x_1 , x_2 , y_3 , x_4 ) ; 
+  Set_senderid ( y_4 , submitted ( x_1 , x_2 , x_3 , x_4 ) ) = submitted ( x_1 , x_2 , x_3 , y_4 ) ; 
+ofsort Bool
+  x_1 eq y_1 ,
+  x_2 eq y_2 ,
+  x_3 eq y_3 ,
+  x_4 eq y_4 =>
+    submitted ( x_1 , x_2 , x_3 , x_4 ) eq submitted ( y_1 , y_2 , y_3 , y_4 ) = true ;
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+endtype
+
+
+
+
+type GrpSubmittedTbl is GrpSubmittedEntry , Boolean, NaturalNumber
+sorts
+  GrpSubmittedTbl
+opns
+  {} (*! constructor *) : -> GrpSubmittedTbl
+
+  Insert_C (*! constructor *) : GrpSubmittedEntry , GrpSubmittedTbl -> GrpSubmittedTbl
+
+  Insert: GrpSubmittedEntry , GrpSubmittedTbl -> GrpSubmittedTbl
+  Remove: Id , GrpSubmittedTbl -> GrpSubmittedTbl
+  Get: Id , GrpSubmittedTbl -> GrpSubmittedEntry
+  _IsIn_, _NotIn_: Id , GrpSubmittedTbl -> Bool
+  Test: GrpSubmittedEntry , GrpSubmittedTbl -> Bool
+  _Over_: GrpSubmittedTbl , GrpSubmittedTbl -> GrpSubmittedTbl
+  _eq_, _ne_, _Includes_, _IsSubTableOf_: GrpSubmittedTbl , GrpSubmittedTbl -> Bool
+  Card: GrpSubmittedTbl -> Nat
+eqns forall x, y: Id , a, b: GrpSubmittedEntry , s, t: GrpSubmittedTbl
+
+ofsort GrpSubmittedTbl
+  Insert(a,{}) = Insert_C(a,{}) ;
+  id (a) eq id (b) =>
+    Insert (a, Insert_C (b, s)) = Insert_C (a, s) ;
+  Insert (a, Insert_C (b, s)) = Insert_C (b, Insert (a, s)) ;
+  Remove (x, {}) = {} ;
+  x eq id (b) =>
+    Remove (x, Insert_C (b, s)) = s ;
+  Remove (x, Insert_C (b, s)) = Insert_C (b, Remove (x, s)) ;
+  {} Over s = s ;
+  Insert_C (a, s) Over t = Insert (a, s Over t) ;
+ofsort GrpSubmittedEntry
+  x eq id (b) =>
+    Get (x, Insert_C (b, s)) = b ;
+  Get (x, Insert_C (b, s)) = Get (x, s) ;
+ofsort Bool
+  x IsIn {} = false ;
+  x eq id (b) =>
+    x IsIn Insert_C (b, s) = true ;
+  x IsIn Insert_C (b, s) = x IsIn s ;
+  x NotIn s = not (x IsIn s) ;
+  Test (a, {}) = false ;
+  a eq b =>
+    Test (a, Insert_C (b, s)) = true ;
+  id (a) eq id (b) =>
+    Test (a, Insert_C (b, s)) = false ;
+  Test (a, Insert_C (b, s)) = Test (a, s) ;
+  s Includes {} = true ;
+  s Includes Insert_C (a, t) = Test (a, s) and (s Includes t) ;
+  s IsSubTableOf t = t Includes s ;
+  s eq t = (s Includes t) and (t Includes s) ;
+  s ne t = not (s eq t) ;
+ofsort Nat
+  Card ({} of GrpSubmittedTbl ) = 0 ;
+  Card (Insert_C (a, s)) = Succ (Card (s)) ;
+
+endtype
+
+
+
+
+
+type Status is Boolean 
+sorts Status
+opns  new(*! constructor *),
+  accepted(*! constructor *),
+  rejected(*! constructor *),
+  challenged(*! constructor *): -> Status
+  First , Last : -> Status
+  Succ , Pred : Status -> Status
+  _eq_ , _ne_ : Status , Status -> Bool 
+  is_new , is_accepted , is_rejected , is_challenged : Status -> Bool 
+eqns forall 
+   x , y : Status
+ofsort Status
+  First = new ; 
+  Last = challenged ; 
+  Succ ( new ) = accepted ;
+  Succ ( accepted ) = rejected ;
+  Succ ( rejected ) = challenged ;
+  Pred ( accepted ) = new ;
+  Pred ( rejected ) = accepted ;
+  Pred ( challenged ) = rejected ;
+ofsort Bool
+   x eq x = true ; 
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+  Is_new ( x ) = x eq new ; 
+  Is_accepted ( x ) = x eq accepted ; 
+  Is_rejected ( x ) = x eq rejected ; 
+  Is_challenged ( x ) = x eq challenged ; 
+endtype
+
+
+
+
+type PendingEntry is Id , Request , Status , Boolean
+sorts PendingEntry
+opns 
+  pending(*! constructor *): Id , Request , Status -> PendingEntry
+  id : PendingEntry -> Id
+  req : PendingEntry -> Request
+  status : PendingEntry -> Status
+  Set_id : Id , PendingEntry -> PendingEntry
+  Set_req : Request , PendingEntry -> PendingEntry
+  Set_status : Status , PendingEntry -> PendingEntry
+  _eq_ , _ne_ : PendingEntry , PendingEntry -> Bool 
+eqns forall
+   x , y : PendingEntry ,
+  x_1 , y_1 : Id ,
+  x_2 , y_2 : Request ,
+  x_3 , y_3 : Status
+ofsort Id
+  id ( pending ( x_1 , x_2 , x_3 ) ) = x_1 ; 
+ofsort Request
+  req ( pending ( x_1 , x_2 , x_3 ) ) = x_2 ; 
+ofsort Status
+  status ( pending ( x_1 , x_2 , x_3 ) ) = x_3 ; 
+ofsort PendingEntry
+  Set_id ( y_1 , pending ( x_1 , x_2 , x_3 ) ) = pending ( y_1 , x_2 , x_3 ) ; 
+  Set_req ( y_2 , pending ( x_1 , x_2 , x_3 ) ) = pending ( x_1 , y_2 , x_3 ) ; 
+  Set_status ( y_3 , pending ( x_1 , x_2 , x_3 ) ) = pending ( x_1 , x_2 , y_3 ) ; 
+ofsort Bool
+  x_1 eq y_1 ,
+  x_2 eq y_2 ,
+  x_3 eq y_3 =>
+    pending ( x_1 , x_2 , x_3 ) eq pending ( y_1 , y_2 , y_3 ) = true ;
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+endtype
+
+
+
+
+type PendingTbl is PendingEntry , Boolean, NaturalNumber
+sorts
+  PendingTbl
+opns
+  {} (*! constructor *) : -> PendingTbl
+
+  Insert_C (*! constructor *) : PendingEntry , PendingTbl -> PendingTbl
+
+  Insert: PendingEntry , PendingTbl -> PendingTbl
+  Remove: Id , PendingTbl -> PendingTbl
+  Get: Id , PendingTbl -> PendingEntry
+  _IsIn_, _NotIn_: Id , PendingTbl -> Bool
+  Test: PendingEntry , PendingTbl -> Bool
+  _Over_: PendingTbl , PendingTbl -> PendingTbl
+  _eq_, _ne_, _Includes_, _IsSubTableOf_: PendingTbl , PendingTbl -> Bool
+  Card: PendingTbl -> Nat
+eqns forall x, y: Id , a, b: PendingEntry , s, t: PendingTbl
+
+ofsort PendingTbl
+  Insert(a,{}) = Insert_C(a,{}) ;
+  id (a) eq id (b) =>
+    Insert (a, Insert_C (b, s)) = Insert_C (a, s) ;
+  Insert (a, Insert_C (b, s)) = Insert_C (b, Insert (a, s)) ;
+  Remove (x, {}) = {} ;
+  x eq id (b) =>
+    Remove (x, Insert_C (b, s)) = s ;
+  Remove (x, Insert_C (b, s)) = Insert_C (b, Remove (x, s)) ;
+  {} Over s = s ;
+  Insert_C (a, s) Over t = Insert (a, s Over t) ;
+ofsort PendingEntry
+  x eq id (b) =>
+    Get (x, Insert_C (b, s)) = b ;
+  Get (x, Insert_C (b, s)) = Get (x, s) ;
+ofsort Bool
+  x IsIn {} = false ;
+  x eq id (b) =>
+    x IsIn Insert_C (b, s) = true ;
+  x IsIn Insert_C (b, s) = x IsIn s ;
+  x NotIn s = not (x IsIn s) ;
+  Test (a, {}) = false ;
+  a eq b =>
+    Test (a, Insert_C (b, s)) = true ;
+  id (a) eq id (b) =>
+    Test (a, Insert_C (b, s)) = false ;
+  Test (a, Insert_C (b, s)) = Test (a, s) ;
+  s Includes {} = true ;
+  s Includes Insert_C (a, t) = Test (a, s) and (s Includes t) ;
+  s IsSubTableOf t = t Includes s ;
+  s eq t = (s Includes t) and (t Includes s) ;
+  s ne t = not (s eq t) ;
+ofsort Nat
+  Card ({} of PendingTbl ) = 0 ;
+  Card (Insert_C (a, s)) = Succ (Card (s)) ;
+
+endtype
+
+
+type		PendingTblOpns is PendingTbl, RequestOpns
+opns		searchproposal	: Proposal, PendingTbl -> Bool
+		getproposal	: Proposal, PendingTbl -> PendingEntry
+eqns forall	e : PendingEntry,
+		t : PendingTbl,
+		p : Proposal
+ofsort Bool
+	searchproposal(p, {}) = false ;
+	is_reqachieve(req(e)),
+	content(req(e)) eq p =>
+		searchproposal(p, insert_C(e, t)) = true ;
+	searchproposal(p, insert_C(e, t)) =
+		searchproposal(p, t) ;
+ofsort PendingEntry
+	is_reqachieve(req(e)),
+	content(req(e)) eq p =>
+		getproposal(p, insert_C(e, t)) = e ;
+	getproposal(p, insert_C(e, t)) =
+		getproposal(p, t) ;
+endtype
+
+
+
+
+type SubscriberSet is BaseId , Boolean, NaturalNumber
+  sorts SubscriberSet
+  opns
+    {} (*! constructor *) : -> SubscriberSet
+
+    Insert_C (*! constructor *) : BaseId , SubscriberSet -> SubscriberSet
+
+    Insert, Remove: BaseId , SubscriberSet -> SubscriberSet
+    _ IsIn _, _ NotIn _: BaseId , SubscriberSet -> Bool
+    _ Union _, _ Ints _, _ Minus _: SubscriberSet , SubscriberSet -> SubscriberSet
+    _ eq _, _ ne _, _ Includes _, _ IsSubsetOf _: SubscriberSet , SubscriberSet -> Bool
+    Card: SubscriberSet -> Nat
+  eqns
+    forall x, y: BaseId , s, t: SubscriberSet
+
+    ofsort SubscriberSet
+       Insert (x, {}) = Insert_C (x, {});
+       x eq y => 
+          Insert (x, Insert_C (y, s)) = Insert_C (x, s);
+       Insert(x, Insert_C (y, s)) = Insert_C (y, Insert (x, s));
+    ofsort SubscriberSet
+       Remove (x, {}) = {};
+       x eq y => 
+          Remove (x, Insert_C (y, s)) = s;
+       Remove (x, Insert_C (y, s)) = Insert_C (y, Remove (x, s));
+    ofsort Bool
+       x IsIn {} = false;
+       x eq y => 
+          x IsIn Insert_C (y, s) = true;
+       x IsIn Insert_C (y, s) = x IsIn s;
+    ofsort Bool
+       x NotIn s = not (x IsIn s);
+    ofsort SubscriberSet
+       {} Union s = s;
+       Insert_C (x, s) Union t = Insert_C (x, s Union t);
+    ofsort SubscriberSet
+       {} Ints s = {};
+       x IsIn t =>
+          Insert_C (x, s) Ints t = Insert_C (x, s Ints t);
+       Insert_C (x, s) Ints t = s Ints t;
+    ofsort SubscriberSet
+       s Minus {} = s;
+       s Minus Insert_C (x, t) = Remove (x, s) Minus t
+    ofsort Bool
+       s Includes {} = true;
+       s Includes Insert_C (x, t) = (x IsIn s) and (s Includes t);
+    ofsort Bool
+       s IsSubsetOf t = t Includes s;
+    ofsort Bool
+       s eq t = (s Includes t) and (t Includes s);
+    ofsort Bool
+       s ne t = not (s eq t)
+    ofsort Nat
+       Card ({} of SubscriberSet ) = 0;
+       Card (Insert_C (x, s)) = Succ (Card (s))
+
+  endtype
+
+
+type		SubscriberSetOpns is SubscriberSet
+opns		pick : SubscriberSet -> BaseId
+eqns forall b : BaseId, s : SubscriberSet
+ofsort BaseId
+	pick(insert_C(b,s)) = b ;
+endtype
+
+
+
+
+type CfcEntry is BaseId , Id , Request , NaturalNumber , Boolean
+sorts CfcEntry
+opns 
+  cfc(*! constructor *): Id , BaseId , Id , Request , Nat -> CfcEntry
+  id : CfcEntry -> Id
+  sender : CfcEntry -> BaseId
+  senderid : CfcEntry -> Id
+  req : CfcEntry -> Request
+  count : CfcEntry -> Nat
+  Set_id : Id , CfcEntry -> CfcEntry
+  Set_sender : BaseId , CfcEntry -> CfcEntry
+  Set_senderid : Id , CfcEntry -> CfcEntry
+  Set_req : Request , CfcEntry -> CfcEntry
+  Set_count : Nat , CfcEntry -> CfcEntry
+  _eq_ , _ne_ : CfcEntry , CfcEntry -> Bool 
+eqns forall
+   x , y : CfcEntry ,
+  x_1 , y_1 : Id ,
+  x_2 , y_2 : BaseId ,
+  x_3 , y_3 : Id ,
+  x_4 , y_4 : Request ,
+  x_5 , y_5 : Nat
+ofsort Id
+  id ( cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = x_1 ; 
+ofsort BaseId
+  sender ( cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = x_2 ; 
+ofsort Id
+  senderid ( cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = x_3 ; 
+ofsort Request
+  req ( cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = x_4 ; 
+ofsort Nat
+  count ( cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = x_5 ; 
+ofsort CfcEntry
+  Set_id ( y_1 , cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = cfc ( y_1 , x_2 , x_3 , x_4 , x_5 ) ; 
+  Set_sender ( y_2 , cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = cfc ( x_1 , y_2 , x_3 , x_4 , x_5 ) ; 
+  Set_senderid ( y_3 , cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = cfc ( x_1 , x_2 , y_3 , x_4 , x_5 ) ; 
+  Set_req ( y_4 , cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = cfc ( x_1 , x_2 , x_3 , y_4 , x_5 ) ; 
+  Set_count ( y_5 , cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) ) = cfc ( x_1 , x_2 , x_3 , x_4 , y_5 ) ; 
+ofsort Bool
+  x_1 eq y_1 ,
+  x_2 eq y_2 ,
+  x_3 eq y_3 ,
+  x_4 eq y_4 ,
+  x_5 eq y_5 =>
+    cfc ( x_1 , x_2 , x_3 , x_4 , x_5 ) eq cfc ( y_1 , y_2 , y_3 , y_4 , y_5 ) = true ;
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+endtype
+
+
+
+
+type CfcTbl is CfcEntry , Boolean, NaturalNumber
+sorts
+  CfcTbl
+opns
+  {} (*! constructor *) : -> CfcTbl
+
+  Insert_C (*! constructor *) : CfcEntry , CfcTbl -> CfcTbl
+
+  Insert: CfcEntry , CfcTbl -> CfcTbl
+  Remove: Id , CfcTbl -> CfcTbl
+  Get: Id , CfcTbl -> CfcEntry
+  _IsIn_, _NotIn_: Id , CfcTbl -> Bool
+  Test: CfcEntry , CfcTbl -> Bool
+  _Over_: CfcTbl , CfcTbl -> CfcTbl
+  _eq_, _ne_, _Includes_, _IsSubTableOf_: CfcTbl , CfcTbl -> Bool
+  Card: CfcTbl -> Nat
+eqns forall x, y: Id , a, b: CfcEntry , s, t: CfcTbl
+
+ofsort CfcTbl
+  Insert(a,{}) = Insert_C(a,{}) ;
+  id (a) eq id (b) =>
+    Insert (a, Insert_C (b, s)) = Insert_C (a, s) ;
+  Insert (a, Insert_C (b, s)) = Insert_C (b, Insert (a, s)) ;
+  Remove (x, {}) = {} ;
+  x eq id (b) =>
+    Remove (x, Insert_C (b, s)) = s ;
+  Remove (x, Insert_C (b, s)) = Insert_C (b, Remove (x, s)) ;
+  {} Over s = s ;
+  Insert_C (a, s) Over t = Insert (a, s Over t) ;
+ofsort CfcEntry
+  x eq id (b) =>
+    Get (x, Insert_C (b, s)) = b ;
+  Get (x, Insert_C (b, s)) = Get (x, s) ;
+ofsort Bool
+  x IsIn {} = false ;
+  x eq id (b) =>
+    x IsIn Insert_C (b, s) = true ;
+  x IsIn Insert_C (b, s) = x IsIn s ;
+  x NotIn s = not (x IsIn s) ;
+  Test (a, {}) = false ;
+  a eq b =>
+    Test (a, Insert_C (b, s)) = true ;
+  id (a) eq id (b) =>
+    Test (a, Insert_C (b, s)) = false ;
+  Test (a, Insert_C (b, s)) = Test (a, s) ;
+  s Includes {} = true ;
+  s Includes Insert_C (a, t) = Test (a, s) and (s Includes t) ;
+  s IsSubTableOf t = t Includes s ;
+  s eq t = (s Includes t) and (t Includes s) ;
+  s ne t = not (s eq t) ;
+ofsort Nat
+  Card ({} of CfcTbl ) = 0 ;
+  Card (Insert_C (a, s)) = Succ (Card (s)) ;
+
+endtype
+
+
+type		CfcTblOpns is CfcTbl
+opns		pick		: CfcTbl -> CfcEntry
+		searchrequest	: BaseId, Id, CfcTbl -> Bool
+		getrequest	: BaseId, Id, CfcTbl -> CfcEntry
+		incallcount	: CfcTbl -> CfcTbl
+eqns forall	e : CfcEntry,
+		t : CfcTbl,
+		b : BaseId,
+		m : Id
+ofsort CfcEntry
+	pick(insert_C(e, t)) = e ;
+ofsort Bool
+	searchrequest(b, m, {}) = false ;
+	sender(e) eq b, senderid(e) eq m =>
+		searchrequest(b, m, insert_C(e, t)) = true ;
+	searchrequest(b, m, insert_C(e, t)) =
+		searchrequest(b, m, t) ;
+ofsort CfcEntry
+	sender(e) eq b, senderid(e) eq m =>
+		getrequest(b, m, insert_C(e, t)) = e ;
+	getrequest(b, m, insert_C(e, t)) =
+		getrequest(b, m, t) ;
+ofsort CfcTbl
+	incallcount({}) = {} ;
+	incallcount(insert_C(e, t)) =
+		insert(set_count(succ(count(e)), e),
+			incallcount(t)) ;
+endtype
+
+
+
+
+type ParentBase is BaseId , Boolean
+   sorts ParentBase
+   opns
+      Some (*! constructor *) : BaseId -> ParentBase
+      None (*! constructor *) : -> ParentBase
+      _OrElse_ : ParentBase , BaseId -> BaseId
+      IsSome, IsNone : ParentBase -> Bool
+      _eq_, _ne_ : ParentBase , ParentBase -> Bool
+   eqns
+      forall s, t : BaseId , x, y : ParentBase
+      ofsort BaseId
+         Some(s) OrElse t = s ;
+         None OrElse t = t ;
+      ofsort Bool
+         IsSome(Some(s)) = true ;
+         IsSome(None of ParentBase ) = false ;
+         IsNone(Some(s)) = false ;
+         IsNone(None of ParentBase ) = true ;
+
+         None of ParentBase eq None of ParentBase = true ;
+         s eq t =>
+           Some(s) eq Some(t) = true ;
+         x eq y = false ;
+
+         x ne y = not (x eq y) ;
+endtype
+
+
+type		ParentBaseOpns is ParentBase
+opns		the		: ParentBase -> BaseId
+eqns forall b,b1 : BaseId
+ofsort BaseId
+	the(some(b)) = b ;
+endtype
+
+
+type            NatOpns         is NaturalNumber
+opns            1,2,3,4,5,6,7,8,9 : -> Nat
+                pred            : Nat -> Nat
+eqns ofsort Nat
+forall x : Nat
+        1 = succ(0) ;
+        2 = succ(1) ;
+        3 = succ(2) ;
+        4 = succ(3) ;
+        5 = succ(4) ;
+        6 = succ(5) ;
+        7 = succ(6) ;
+        8 = succ(7) ;
+        9 = succ(8) ;
+        pred(succ(x)) = x ;
+endtype
+
+
+  
+
+type Packet is Message , BaseId , Boolean
+sorts Packet
+opns 
+  packet(*! constructor *): BaseId , BaseId , Message -> Packet
+  sender : Packet -> BaseId
+  receiver : Packet -> BaseId
+  message : Packet -> Message
+  Set_sender : BaseId , Packet -> Packet
+  Set_receiver : BaseId , Packet -> Packet
+  Set_message : Message , Packet -> Packet
+  _eq_ , _ne_ : Packet , Packet -> Bool 
+eqns forall
+   x , y : Packet ,
+  x_1 , y_1 : BaseId ,
+  x_2 , y_2 : BaseId ,
+  x_3 , y_3 : Message
+ofsort BaseId
+  sender ( packet ( x_1 , x_2 , x_3 ) ) = x_1 ; 
+ofsort BaseId
+  receiver ( packet ( x_1 , x_2 , x_3 ) ) = x_2 ; 
+ofsort Message
+  message ( packet ( x_1 , x_2 , x_3 ) ) = x_3 ; 
+ofsort Packet
+  Set_sender ( y_1 , packet ( x_1 , x_2 , x_3 ) ) = packet ( y_1 , x_2 , x_3 ) ; 
+  Set_receiver ( y_2 , packet ( x_1 , x_2 , x_3 ) ) = packet ( x_1 , y_2 , x_3 ) ; 
+  Set_message ( y_3 , packet ( x_1 , x_2 , x_3 ) ) = packet ( x_1 , x_2 , y_3 ) ; 
+ofsort Bool
+  x_1 eq y_1 ,
+  x_2 eq y_2 ,
+  x_3 eq y_3 =>
+    packet ( x_1 , x_2 , x_3 ) eq packet ( y_1 , y_2 , y_3 ) = true ;
+   x eq y = false ; 
+   x ne y = not ( x eq y ) ;
+endtype
+
+
+  
+
+type PacketQueue is Packet , Boolean, NaturalNumber
+   sorts PacketQueue
+   opns
+      <> (*! constructor *) : -> PacketQueue
+      _+_ (*! constructor *) : Packet , PacketQueue -> PacketQueue
+      String : Packet -> PacketQueue
+      _+_ : PacketQueue , Packet -> PacketQueue
+      _+_: Packet , Packet -> PacketQueue
+      _++_ : PacketQueue , PacketQueue -> PacketQueue
+      Reverse : PacketQueue -> PacketQueue
+      Length : PacketQueue -> Nat
+      First,Last: PacketQueue -> Packet
+      ButFirst,ButLast: PacketQueue -> PacketQueue
+      nth: PacketQueue , Nat -> Packet
+      SubStr: PacketQueue , Nat, Nat -> PacketQueue
+      Remove: Packet , PacketQueue -> PacketQueue
+      _IsIn_, _NotIn_: Packet , PacketQueue -> Bool
+      _IsPrefixOf_, _IsSuffixOf_,
+      _Includes_, _IsSubStrOf_: PacketQueue , PacketQueue -> Bool
+      _eq_, 
+      _ne_ : PacketQueue , PacketQueue -> Bool
+   eqns
+      forall s, t : PacketQueue , 
+        x, y : Packet , 
+        m, n : Nat,
+        a : Bool
+      ofsort PacketQueue
+         String(x) = x + <>;
+         <> + x = x + <>;
+         (x + s) + y = x + (s + y);
+         <> ++ s = s;
+         (x + s) ++ t = x + (s ++ t);
+         Reverse (<>) = <>;
+         Reverse (x + s) = Reverse (s) + x;
+
+      ofsort Nat
+         Length (<> of PacketQueue ) = 0;
+         Length (x + s) = Succ (Length (s));
+
+      ofsort Bool
+
+         <> of PacketQueue eq <> of PacketQueue = true;
+         <> eq (x + s) = false;
+         (x + s) eq <> = false;
+         x eq y => 
+            (x + s) eq (y + t) = s eq t;
+         x ne y =>
+            (x + s) eq (y + t) = false;
+
+         s ne t = not (s eq t)
+
+ofsort Packet
+  First (x + s) = x ;
+  Last (x + <>) = x ;
+
+  Last (x + s) = Last (s) ;
+
+  nth (x + s, 0) = x ;
+  nth (x + s, Succ (n)) = nth (s, n) ;
+ofsort PacketQueue
+  x + y = x + (y + <>) ;
+  ButFirst (x + s) = s ;
+  ButLast (x + <>) = <> ;
+
+  ButLast (x + s) = x + ButLast (s) ;
+
+  SubStr (s, 0, 0) = <> ;
+  SubStr (x + s, 0, Succ(n)) = x + SubStr (s, 0, n) ;
+  SubStr (x + s, Succ(m), n) = SubStr (s, m, n) ;
+  Remove (x, <>) = <> ;
+  x eq y =>
+    Remove (x, y + s) = Remove(x, s) ;
+
+    Remove (x, y + s) = y + Remove (x, s) ;
+ofsort Bool
+  x IsIn <> = false ;
+  x eq y =>
+    x IsIn (y + s) = true ;
+
+    x IsIn (y + s) = x IsIn s ;
+  x NotIn s = not (x IsIn s) ;
+  <> IsPrefixOf t = true ;
+  (x + s) IsPrefixOf <> = false ;
+  x eq y =>
+    (x + s) IsPrefixOf (y + t) = s IsPrefixOf t ;
+
+    (x + s) IsPrefixOf (y + t) = false ;
+  s IsSuffixOf t = Reverse(s) IsPrefixOf Reverse(t) ;
+  s Includes <> = true ;
+  <> Includes (y + t) = false ;
+  t IsPrefixOf (x + s) =>
+    (x + s) Includes t = true ;
+
+    (x + s) Includes t = s Includes t ;
+  s IsSubStrOf t = t Includes s ;
+
+endtype
+
+

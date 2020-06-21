@@ -1,0 +1,432 @@
+#! /bin/sh
+
+##############################################################################
+#                                E X P . O P E N 
+#-----------------------------------------------------------------------------
+#   INRIA Rhone-Alpes / VASY
+#   655, avenue de l'Europe
+#   38330 MONTBONNOT ST MARTIN cedex
+#-----------------------------------------------------------------------------
+#   Module             :       exp.open
+#   Auteurs            :       Hubert Garavel et Frederic Lang
+#   Version            :       1.87
+#   Date               :       2019/07/11 21:03:49
+##############################################################################
+
+set -e
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP"/com/arch`
+CC=$CADP/src/com/cadp_cc
+
+BIN=$CADP/bin.$ARCH
+SRC=$CADP/src/open_caesar
+
+EXPBIN=${EXPOPEN:-$CADP}/bin.$ARCH
+EXPFILE=""                              # specification file spec.exp
+EXPCODE=""                              # generated file spec.c
+EXPOBJECT=""                            # object generate file spec.o
+EXP_NET_OPTION=""                       # for -network option
+
+EXP2C=$EXPBIN/exp2c
+
+# -----------------------------------------------------------------------------
+# messages
+
+EXPOPEN_MESSAGE () {
+
+if [ "$EXPOPEN_SILENT" -eq 0 ]
+then
+	echo "$COMMAND: $@"
+fi
+}
+
+# -----------------------------------------------------------------------------
+
+EXPOPEN_ERROR () {
+
+echo 2>&1 "$COMMAND: $@"
+exit 1
+}
+
+# -----------------------------------------------------------------------------
+
+IN_CURRENT_DIRECTORY() {
+DIR=`dirname "$1"`
+if test ! -d "$DIR"
+then
+	# file $1 does not exist (in a non-existing directory)
+	echo 0
+elif test "`(cd \"$DIR\" ; pwd)`" = "`pwd`"
+then
+	# file $1 is in the current directory
+	echo 1
+else
+	# file $1 is not in the current directory
+	echo 0
+fi
+}
+
+# -----------------------------------------------------------------------------
+
+# phase 1: parsing the exp options
+
+EXPFLAGS=""
+DFLAG=""
+
+EXPOPEN_SILENT=0
+# 1 iff -silent
+
+while true 
+do
+	if test $# -lt 1
+	then 
+		EXPOPEN_ERROR "missing EXP filename argument"
+	fi
+	case "$1" in
+	-case | -deadpreserving | -history | -inline | -interfaceuser | \
+	-nocheck | -unparse | -branching | -strong | -weaktrace | \
+	-ccs | -csp | -elotos | -lotos | -mcrl | -rate | -prob)
+		EXPFLAGS="$EXPFLAGS $1"
+		shift
+		;;
+	-ratebranching)
+		EXPFLAGS="$EXPFLAGS -rate -branching"
+		EXPOPEN_MESSAGE "option -ratebranching is deprecated, using -rate -branching instead"
+		shift
+		;;
+	-labels | -info | -depend)
+		EXP_LABEL_INFO_OPTION="$1"
+		shift
+		;;
+	-debug)
+		EXPFLAGS="$EXPFLAGS $1"
+		DFLAG="-DDEBUG"
+		shift
+		;;
+	-silent)
+		EXPOPEN_SILENT=1
+		shift
+		;;
+	-verbose)
+		EXPOPEN_SILENT=0
+		shift
+		;;
+	-network)
+		shift
+		case "$1" in
+		pep | fc2 | tina | txt | nupn)
+			EXP_NET_OPTION="$1"
+			;;
+		*)
+			EXPOPEN_ERROR "option -network should be followed by one of \"pep\", \"fc2\", \"tina\", or \"txt\""
+			;;
+		esac
+		shift
+		;;
+	-interface)
+		EXPFLAGS="$EXPFLAGS $1"
+		shift
+		if test "$1"
+		then
+			EXPFLAGS="$EXPFLAGS \"$1\""
+			shift
+		else
+			EXPOPEN_ERROR "argument expected after option -interface"
+		fi
+		;;
+	-hidden | -termination | -coaction)
+		EXPFLAGS="$EXPFLAGS $1"
+		EXPOPTION=$1
+		shift
+		if test $# -eq 0
+		then
+			EXPOPEN_ERROR "option $EXPOPTION should be followed by a string"
+		fi
+		EXPFLAGS="$EXPFLAGS \"$1\""
+		shift
+		;;
+	-version)
+		eval $EXP2C -version
+		exit 0
+		;;
+	-*)
+		EXPOPEN_ERROR "unknown option $1"
+		;;
+	*)
+		break
+		;;
+	esac
+done
+
+# phase 2: parsing the EXP filename (the value of $FILE may contain spaces)
+
+if test "$OPEN_CAESAR_SOURCE" = ""
+then
+	# here, $OPEN_CAESAR_SOURCE has not been set by fsp.open
+	OPEN_CAESAR_SOURCE="$1"
+	export OPEN_CAESAR_SOURCE
+fi
+
+FILE=`dirname "$1"`/`"$CADP"/src/com/cadp_basename "$1" .exp`
+if test $# -lt 1
+then
+	EXPOPEN_ERROR "missing .exp filename argument"
+fi
+shift
+
+if test ! -f "$FILE.exp"
+then
+	EXPOPEN_ERROR "file \`\`$FILE.exp'' does not exist"
+	exit 1
+fi
+
+if test `IN_CURRENT_DIRECTORY "$1"` = "0"
+then
+	EXPOPEN_ERROR "file \`\`$FILE.exp'' is not in the current directory"
+	exit 1
+fi
+
+EXPFILE=`basename "$FILE"`.exp
+
+# phase 3a: calling exp2c with -network option if requested
+
+if test "$EXP_NET_OPTION" != ""
+then
+	eval $EXP2C -network $EXP_NET_OPTION $EXPFLAGS "$EXPFILE"
+	exit 0
+fi
+
+# phase 3b: calling exp2c with -depend, -labels, or -info option if requested
+
+if test "$EXP_LABEL_INFO_OPTION" != ""
+then
+	eval $EXP2C $EXP_LABEL_INFO_OPTION $EXPFLAGS "$EXPFILE"
+	exit 0
+fi
+
+# phase 3c: parsing the options for cc(1) and preparing other options
+
+CPPFLAGS="-I. -I$CADP/incl -I$CADP/src/open_caesar"
+CFLAGS=""
+LDFLAGS="-L$EXPBIN -lexp_open -L$CADP/bin.$ARCH -lcaesar -lBCG_IO -lBCG"
+
+while true
+do
+	if test $# -lt 1
+	then
+		EXPOPEN_ERROR "missing user program filename (.a, .c, or .o) argument"
+	fi
+	case "$1" in
+		-[DI]* ) CPPFLAGS="$CPPFLAGS $1"
+			 shift
+			 ;;
+		-[lL]* ) LDFLAGS="$LDFLAGS $1"
+			 shift
+			 ;;
+		-* ) CFLAGS="$CFLAGS $1"
+		     shift
+		     ;;
+		*) break
+		   ;; 
+	esac
+done
+
+# phase 4: parsing the ``.c'', ``.o'' or ``.a'' filename, possibly looking in
+#          $SRC or $BIN if the file is not present in the current directory
+
+NAME=$1
+shift
+
+case "$NAME" in
+	*.c )	
+		if test -f "$NAME"
+		then
+			PROG="$NAME"
+		elif test -f "$SRC/$NAME"
+		then
+			PROG="$SRC/$NAME"
+		else
+			EXPOPEN_ERROR "file \`\`$NAME'' does not exist"
+		fi
+		;;
+
+	*.o | *.a )
+		if test -f "$NAME"
+		then
+			PROG="$NAME"
+		elif test -f "$BIN/$NAME"
+		then
+			PROG="$BIN/$NAME"
+		else
+			EXPOPEN_ERROR "file \`\`$NAME'' does not exist"
+		fi
+		;;
+
+	* )
+		if test -f "$NAME.c"
+		then
+			PROG="$NAME.c"
+		elif test -f "$SRC/$NAME.c"
+		then
+			PROG="$SRC/$NAME.c"
+		elif test -f "$NAME.a"
+		then
+			PROG="$NAME.a"
+		elif test -f "$BIN/$NAME.a"
+		then
+			PROG="$BIN/$NAME.a"
+		elif test -f "$NAME.o"
+		then
+			PROG="$NAME.o"
+		elif test -f "$BIN/$NAME.o"
+		then
+			PROG="$BIN/$NAME.o"
+		else
+			EXPOPEN_ERROR "cannot locate \`\`$NAME''"
+		fi
+esac
+
+if test "$PROG" != "$NAME"
+then
+	EXPOPEN_MESSAGE "using \`\`$PROG''"
+fi
+
+# phase 5: C file generation and compilation, from the exp file
+# the values of $EXPCODE, $EXPFILE, and $EXPOBJECT may contain spaces
+
+EXPCODE=`basename "$FILE"`.c
+EXPOBJECT=`basename "$FILE"`.o
+
+EXPOPEN_MESSAGE "generating $EXPCODE ..." #generate code from spec.exp
+eval $EXP2C $EXPFLAGS "$EXPFILE"
+
+EXPOPEN_MESSAGE "compiling $EXPCODE ..." #compile generated code spec.c
+echo "$CC $CFLAGS $DFLAG -c -I$CADP/incl -o $EXPOBJECT $EXPCODE"
+$CC $CFLAGS $DFLAG -c -I$CADP/incl -o "$EXPOBJECT" "$EXPCODE"
+
+# phase 6: updating compiler options, if necessary
+
+case "$PROG" in
+
+	*.c )
+		CPPFLAGS_AUX=`grep '@(#)CPPFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		CFLAGS_AUX=`grep '@(#)CFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		LDFLAGS_AUX=`grep '@(#)LDFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		LD_LIBRARY_PATH_AUX=`grep '@(#)LD_LIBRARY_PATH' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		;;
+	*.o | *.a )
+		LC_CTYPE="C" ; export LC_CTYPE
+		CPPFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)CPPFLAGS' | sed -e 's/.*=//'`
+		CFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)CFLAGS' | sed -e 's/.*=//'`
+		LDFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)LDFLAGS' | sed -e 's/.*=//'`
+		LD_LIBRARY_PATH_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)LD_LIBRARY_PATH' | sed -e 's/.*=//'`
+		;;
+esac
+
+CPPFLAGS_AUX=`eval echo $CPPFLAGS_AUX`
+if test "$CPPFLAGS_AUX" != ""
+then
+	CPPFLAGS="$CPPFLAGS $CPPFLAGS_AUX"
+fi
+
+CFLAGS_AUX=`eval echo $CFLAGS_AUX`
+if test "$CFLAGS_AUX" != ""
+then
+	CFLAGS="$CFLAGS $CFLAGS_AUX"
+fi
+
+LDFLAGS_AUX=`eval echo $LDFLAGS_AUX`
+if test "$LDFLAGS_AUX" != ""
+then
+	LDFLAGS="$LDFLAGS $LDFLAGS_AUX"
+fi
+
+# remove -lm if present in $LDFLAGS (-lm will be added later by cadp_flags)
+LDFLAGS=`echo "$LDFLAGS" | sed -e 's/[ ]-lm[ ]/ /g' | sed -e 's/[ ]-lm$//g'` 
+
+# add link edit flags provided by cadp_flags
+LDFLAGS="$LDFLAGS `$CADP/src/com/cadp_flags`"
+
+LD_LIBRARY_PATH_AUX=`eval echo $LD_LIBRARY_PATH_AUX`
+if test "$LD_LIBRARY_PATH_AUX" != ""
+then
+	case $ARCH in
+		macOS | mac86 | mac64 )
+			# this only works in absence of System Integrity Protection
+			DYLD_LIBRARY_PATH="$LD_LIBRARY_PATH_AUX:$DYLD_LIBRARY_PATH"
+			export DYLD_LIBRARY_PATH
+			;;
+		* )
+			LD_LIBRARY_PATH="$LD_LIBRARY_PATH_AUX:$LD_LIBRARY_PATH"
+			export LD_LIBRARY_PATH
+			;;
+	esac
+fi
+
+# phase 7: compilation and link edition of $PROG
+case "$PROG" in
+	*.c )
+		EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .c`
+		echo "$CC $CPPFLAGS $CFLAGS -c $PROG -o $EXEC.o"
+		$CC $CPPFLAGS $CFLAGS -c "$PROG" -o "$EXEC.o"
+		echo "$CC $CFLAGS $EXEC.o $EXPOBJECT -o $EXEC $LDFLAGS" 
+		$CC $CFLAGS "$EXEC.o" "$EXPOBJECT" -o "$EXEC" $LDFLAGS 
+		;;
+	*.o )
+		EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .o`
+		echo "$CC $CFLAGS $PROG $EXPOBJECT -o $EXEC $LDFLAGS" 
+		$CC $CFLAGS "$PROG" "$EXPOBJECT" -o "$EXEC" $LDFLAGS 
+		;;
+	*.a )
+		EXEC=`"$CADP"/src/com/cadp_basename $PROG .a`
+		echo "$CC $CFLAGS $PROG $EXPOBJECT -o $EXEC $LDFLAGS" 
+		$CC $CFLAGS "$PROG" "$EXPOBJECT" -o "$EXEC" $LDFLAGS 
+esac
+
+# phase 8: backward compatibility and version management
+
+CADP_LIB=`cadp_lib libcaesar.a libexp_open.a "$PROG"`
+export CADP_LIB
+
+
+# recording the command-line for OCIS
+ 
+OPEN_CAESAR_COMMAND="$0 $*"
+export OPEN_CAESAR_COMMAND
+
+# recording the graph module for EVALUATOR 4.*
+
+OPEN_CAESAR_GRAPH="$EXPOBJECT $EXPBIN/libexp_open.a"
+export OPEN_CAESAR_GRAPH
+
+# updating $EXEC to cope with macOS System Integrity Protection
+case $ARCH in
+	macOS | mac86 | mac64 )
+		$CADP/src/com/cadp_dylib "$ARCH" "$EXEC"
+		;;
+esac
+
+# phase 9: program execution (here, "$@" denotes the arguments, if any, to
+# be passed to the program, and $# denotes the number of these arguments)
+
+if test "$#" -eq 0
+then
+	EXPOPEN_MESSAGE "running \`\`$EXEC'' for \`\`$FILE.exp''"
+else
+	EXPOPEN_MESSAGE "running \`\`$EXEC $@'' for \`\`$FILE.exp''"
+fi
+
+# for benchmarking, $CADP_TIME can be set to /bin/time, etc.
+${CADP_TIME:-} ./"$EXEC" "$@"
+
+# phase 10: cleaning
+
+if test "$DFLAG" != "-DDEBUG"
+then
+	rm -f "$EXPCODE"
+	rm -f "$EXPOBJECT"
+	rm -f "$EXEC.o"
+fi
+exit 0
+

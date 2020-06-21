@@ -1,0 +1,31 @@
+module SIEVE is
+
+!nat_sup 30
+
+channel NAT_CHANNEL is 
+   (NAT) 
+end channel
+
+process GENERATOR [RIGHT: NAT_CHANNEL] (in var CUR: NAT) is
+   while CUR <= 31 loop
+      RIGHT (CUR);
+      CUR := CUR + 1
+   end loop;
+   stop
+end process
+
+process UNIT [LEFT, RIGHT, OUTPUT: NAT_CHANNEL] is
+   var P, N: NAT in
+      LEFT (?P) where P != 0;
+      OUTPUT (P);
+      loop
+         LEFT (?N);
+         if (N mod P) != 0 then
+            RIGHT (N)
+         end if
+      end loop
+   end var
+end process
+
+end module
+

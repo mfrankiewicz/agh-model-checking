@@ -1,0 +1,203 @@
+module PROTOCOL (TYPES, CHANNELS, CLIENT) is
+
+-------------------------------------------------------------------------------
+
+function MAX : Nat is
+    return 3 -- maximum number of retries
+end function
+
+-------------------------------------------------------------------------------
+
+process MAIN [INPUT : InputChannel, Output : OutputChannel] is
+    hide T1, T2 : SignalChannel,
+        SEND_K, REC_K : KChannel,
+        SEND_L, REC_L, LOST : NullChannel,
+        SYNC : SignalChannel
+    in
+        par
+            INPUT -> SENDING_CLIENT [INPUT]
+            ||
+            INPUT, SEND_K, REC_L, T1, SYNC -> S [INPUT, SEND_K, REC_L, T1, SYNC]
+            ||
+            T1, LOST -> T1 [T1, LOST]
+            ||
+            REC_K, SEND_L, T2 -> R [OUTPUT, REC_K, SEND_L, T2]
+            ||
+            T2, SYNC -> T2 [T2, SYNC]
+            ||
+            SEND_K, REC_K, SEND_L, REC_L, LOST ->
+                par
+                    K [SEND_K, REC_K, LOST]
+                ||
+                    L [SEND_L, REC_L, LOST]
+                end par
+        end par
+    end hide
+end process
+
+-------------------------------------------------------------------------------
+
+process S [INPUT : InputChannel, SEND_K : KChannel, REC_L : NullChannel, T1, SYNC : SignalChannel] is
+    var ALT : Bool,
+        INIT : Bool,
+        M : Msg,
+        L : Nat,
+        RETRY : Nat
+    in
+        ALT := false;
+        M := {};    -- not strictly needed, currently required by LNT2LOTOS
+        L := 0;     -- not strictly needed, currently required by LNT2LOTOS
+        RETRY := 0; -- not strictly needed, currently required by LNT2LOTOS
+        INIT := true;
+        loop
+            case INIT in
+                true ->
+                    INPUT (?M);
+                    L := length (M);
+                    if L > 0 then
+                        RETRY := 0;
+                        INIT := false
+                    end if
+              | false ->
+                    T1 (START);
+                    SEND_K ((length (M) == L), (length (M) == 1), ALT, head (M));
+                    select
+                        REC_L;
+                        T1 (RESET);
+                        ALT := not (ALT);
+                        if length (M) == 1 then
+                            INPUT (I_OK);
+                            INIT := true
+                        else
+                            assert length (M) > 1;
+                            M := tail (M);
+                            RETRY := 0
+                        end if 
+                    []
+                        T1 (TIMEOUT);
+                        if RETRY < MAX then
+                            RETRY := RETRY + 1
+                        else
+                            INPUT (confirm (M));
+                            SYNC (S_READY);
+                            SYNC (R_READY);
+                            ALT := not (ALT);
+                            INIT := true
+                        end if
+                    end select
+            end case
+        end loop
+    end var
+end process
+
+-------------------------------------------------------------------------------
+
+process T1 [T1 : SignalChannel, LOST : NullChannel] is
+    loop
+        T1 (START);
+        select
+            T1 (RESET)
+        []
+            LOST;
+            T1 (TIMEOUT)
+        end select
+    end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process K [SEND_K, REC_K : KChannel, LOST : NullChannel] is
+    loop
+        var FST, LST, ALT : Bool, D : Data in
+            SEND_K (?FST, ?LST, ?ALT, ?D);
+            select
+                REC_K (FST, LST, ALT, D)
+            []
+                LOST
+            end select
+        end var
+    end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process R [OUTPUT : OutputChannel, REC_K : KChannel, SEND_L : NullChannel, T2 : SignalChannel] is
+    var FST : Bool,
+        LST : Bool,
+        ALT : Bool,
+        INIT : Bool,
+        D : Data
+    in
+        INIT := true;
+        LST := false; -- not strictly needed, currently required by LNT2LOTOS
+        ALT := false; -- not strictly needed, currently required by LNT2LOTOS
+        loop
+            case INIT in
+                true -> 
+                    REC_K (?FST, ?LST, ?ALT, ?D) where FST == true;
+                    OUTPUT (D, indication (FST, LST));
+                    T2 (START);
+                    SEND_L;
+                    ALT := not (ALT);
+                    INIT := false
+             | false ->
+                    select
+                        REC_K (?FST, ?LST, ALT, ?D);
+                        T2 (RESET);
+                        OUTPUT (D, indication (FST, LST));
+                        T2 (START);
+                        SEND_L;
+                        ALT := not (ALT)
+                    []
+                        REC_K (?any Bool, ?LST, not (ALT), ?any Data);
+                        SEND_L
+                    []
+                        T2 (TIMEOUT);
+                        if not (LST) then
+                           OUTPUT (I_NOK)
+                        end if;
+                        T2 (R_READY);
+                        INIT := true
+                    end select
+            end case
+        end loop
+    end var
+end process
+
+-------------------------------------------------------------------------------
+
+process T2 [T2, SYNC : SignalChannel] is
+    loop
+        select
+            T2 (START);
+            select
+                T2 (RESET)
+            []
+                SYNC (S_READY);
+                T2 (TIMEOUT);
+                T2 (R_READY);
+                SYNC (R_READY)
+            end select
+        []
+            SYNC (S_READY);
+            SYNC (R_READY)
+        end select
+    end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process L [SEND_L, REC_L, LOST : NullChannel] is
+    loop
+        SEND_L;
+        select
+            REC_L
+        []
+            LOST
+        end select
+    end loop
+end process
+
+-------------------------------------------------------------------------------
+
+end module

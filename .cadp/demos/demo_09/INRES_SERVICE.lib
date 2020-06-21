@@ -1,0 +1,22 @@
+
+type ISDUType is
+sorts ISDU (*! implementedby ISDU comparedby CMP_ISDU
+               iteratedby ENUM_FIRST_ISDU and ENUM_NEXT_ISDU
+               printedby PRINT_ISDU *)
+opns   data1 (*! implementedby DATA1 constructor *): -> ISDU
+        (* data2 to data5 have been suppressed *)
+endtype (* ISDUType *)
+
+type InresSpType is ISDUType
+sorts SP (*! implementedby SP comparedby CMP_SP
+             iteratedby ENUM_FIRST_SP and ENUM_NEXT_SP printedby PRINT_SP *)
+opns ICONreq (*! implementedby ICONREQ constructor *),
+     ICONind (*! implementedby ICONIND constructor *),
+     ICONresp (*! implementedby ICONRESP constructor *),
+     ICONconf(*! implementedby ICONCONF constructor *),
+     IDISreq (*! implementedby IDISREQ constructor *),
+     IDISind (*! implementedby IDISIND constructor *),
+     IDATreq (*! implementedby IDATREQ constructor *),
+     IDATind (*! implementedby IDATIND constructor *) : -> SP
+
+endtype (* InresSpType *)

@@ -1,0 +1,63 @@
+
+(*---------------------------------------------------------------------------*)
+(* Action predicates *)
+
+macro OnHook (Subscriber) =
+    { S !(Subscriber) of nat !"ONH" }
+end_macro
+
+macro OffHook (Subscriber) =
+    { S !(Subscriber) of nat !"OFFH" ?any }
+end_macro
+
+macro OffHook (Subscriber, Id) =
+    { S !(Subscriber) of nat !"OFFH" !(Id) }
+end_macro
+
+macro SignalOn (Subscriber) =
+    { S !(Subscriber) of nat ?any !"ON" }
+end_macro
+
+macro SignalOff (Subscriber) =
+    { S !(Subscriber) of nat ?any !"OFF" }
+end_macro
+
+macro SignalOn (Subscriber, Tone) =
+    { S !(Subscriber) of nat !(Tone) !"ON" }
+end_macro
+
+macro SignalOff (Subscriber, Tone) =
+    { S !(Subscriber) of nat !(Tone) !"OFF" }
+end_macro
+
+macro SignalAny (Subscriber, Tone) =
+    (SignalOn (Subscriber, Tone) or SignalOff (Subscriber, Tone))
+end_macro
+
+macro ToneOn (Subscriber) =
+    { S !(Subscriber) of nat ?Signal:string !"ON"
+      where nth (Signal, length (Signal)) = 'T'
+    }
+end_macro
+
+macro Dial (Caller, Callee) =
+    { S !(Caller) of nat !"DIAL" !(Callee) of nat }
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* F must hold every time the second subscriber has no active signals.
+ * There are 6 kinds of signals: DIALT, ERRORT, RINGS, RINGT, BUSYT,
+ * and SPEECHCONN. *)
+
+macro NO_2_TONES_ACTIVE (F) =
+    nu Active (nb_tones:nat := 0) . (
+        ((nb_tones = 0) implies (F))
+        and
+        [ SignalOff (2) ] ((nb_tones > 0) and Active (nb_tones - 1))
+        and
+        [ SignalOn (2) ]  ((nb_tones < 6) and Active (nb_tones + 1))
+        and
+        [ not (SignalOn (2) or SignalOff (2)) ] Active (nb_tones)
+    )
+end_macro
+

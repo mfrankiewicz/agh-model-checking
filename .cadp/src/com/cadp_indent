@@ -1,0 +1,338 @@
+#! /bin/sh
+
+###############################################################################
+#                       	C A D P
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_indent
+#   Auteur              :       Hubert GARAVEL
+#   Version             :       1.70
+#   Date                :       2019/08/28 13:01:08
+##############################################################################
+
+# This shell-script invokes the C pretty-printer and attempts at solving
+# various functionality and portability problems:
+#
+# (1) The versions of "indent" available on various platforms do not have the
+#     same set of options, nor the same extensions for backup files (~ or .BAK)
+#
+# (2) On certain platforms (e.g., Solaris and MacOS X), backup files are
+#     created in the current directory, whereas on other platforms (e.g.,
+#     Linux), backup are created in the same directory as the corresponding
+#     source C files.
+#
+# (3) On Solaris, "indent" is not installed by default, but only bundled with
+#     the (optional) C compiler
+#
+# (4) On Solaris (sun4, sun5, etc.), "indent" often crashes, producing a core
+#     file and leaving the source C file truncated abruptly; in other cases
+#     (sol86, etc.), no core dump occurs, but the indented C file becomes
+#     abnormally large due to a bug (sometimes, "indent" terminates leaving a
+#     huge file, in other cases, it seems to run forever until the disk space
+#     gets saturated).
+#
+# (5) On iX86, some versions of "indent" are known to be buggy and corrupt the
+#     source C files to be indented.
+#
+# Warning: in spite of our efforts, the results of formatting may be slightly
+# different accross different platforms
+#
+# Note: some versions of "indent" do not return a meaningful error code (exit
+# status) upon termination
+
+# ----------------------------------------------------------------------------
+
+CHECK_INDENT() {
+	# recherche d'un indenteur disponible dans $PATH
+	I="indent"
+	WHICH_I=`"$CADP"/src/com/cadp_which "$I"`
+	if [ "$WHICH_I" = "$I" ]
+	then
+		# cadp_which n'a pas trouve' l'indenteur dans $PATH
+		echo "$COMMAND: cannot find \`\`indent''"
+		echo "$BLANK file \`\`$FILE'' will not be formatted"
+		exit 1
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+COMMAND="cadp_indent"
+BLANK="            "
+
+ARCH=`"$CADP"/com/arch`
+
+COMMON_OPTIONS="-di5 -i5 -lp -nip -pcs -npsl"
+
+GNU_ONLY_OPTIONS="-ncdb -l360 -lc78"
+
+FILE="$1"
+if [ ! -f "$FILE" ]
+then
+	echo "$COMMAND: cannot find file \`\`$FILE''"
+	exit 1
+fi
+
+DIRNAME=`dirname "$FILE"`
+if [ "$DIRNAME" != . ]
+then
+	# to avoid portability issues with location of backup files
+	echo "$COMMAND: must be invoked from directory \`\`$DIRNAME''"
+	exit 1
+fi
+
+case $ARCH in
+	sun3 | sun4 )
+		INDENT="/bin/indent '$FILE' $COMMON_OPTIONS > /dev/null 2> /dev/null"
+		;;
+
+	sun5 | sun64 | sol86 | sol64 )
+		# on complete le $PATH de maniere plausible avec la
+		# localisation usuelle de l'indenteur C de Sun et/ou
+		# de l'indenteur GNU
+		PATH="$PATH:/opt/SUNWspro/bin:/usr/bin:/usr/local/bin:/opt/gnu/bin"
+		export PATH
+		CHECK_INDENT
+		# ici, on est certain que "indent" est disponible dans le path
+		CADP_INDENT="indent"
+
+		# test pour determiner si on a affaire a l'indenteur Sun ou GNU
+		BANNER=`$CADP_INDENT --version 2> /dev/null`
+
+		if [ $? != 0 -a "@$BANNER" = "@" ]
+		then
+			# l'indenteur Sun ne connait pas l'option --version :
+			# il n'affiche rien sur stdout et renvoie le code d'erreur 1
+			INDENT="$CADP_INDENT '$FILE' $COMMON_OPTIONS > /dev/null 2> /dev/null"
+		else
+			# l'indenteur GNU connait l'option --version :
+			# il affiche une banniere "GNU indent ..." et renvoie un code d'erreur
+			# 0 (anciennes versions) ou 1 (versions 2.2.11, 2.2.12, etc.)
+			INDENT="$CADP_INDENT -orig $GNU_ONLY_OPTIONS $COMMON_OPTIONS '$FILE'"
+			SIMPLE_BACKUP_SUFFIX=".BAK"
+			export SIMPLE_BACKUP_SUFFIX
+		fi
+		;;
+
+	iX86 | x64 | ia64 | win32 | macOS | mac86 | mac64 )
+		PATH="$PATH:/usr/bin:/c/gnuwin32/bin"
+		export PATH
+		CHECK_INDENT
+		# ici, on est certain que "indent" est disponible dans le path
+		CADP_INDENT="indent"
+
+		case $ARCH in
+			iX86 )
+				VERSION=`($CADP_INDENT --version 2> /dev/null) | sed 's/GNU.indent.//'`
+				case "$VERSION" in
+				2.2.[01234] )
+					echo "$COMMAND: the program \`\`/usr/bin/indent'' version $VERSION has bugs"
+					echo "$BLANK (it may corrupt C code instead of formatting it properly)"
+					echo "$BLANK please, upgrade to indent version 2.2.5 or higher"
+					echo "$BLANK see http://rpmfind.net/linux/RPM to obtain the package"
+					echo "$BLANK file \`\`$FILE'' will not be formatted"
+					exit 1
+					;;
+				esac
+				;;
+			mac86 | mac64 )
+				VERSION="`/usr/bin/uname -r`"
+				case "$VERSION" in
+				   10.* )
+				   # sous Snow Leopard (uname -r = 10.0.0 ;
+				   # sw_vers = 10.6 et 10.6.1), la commande
+				   # /usr/bin/indent fait segmentation fault
+				   # On ne sait pas quand cette erreur sera
+				   # corrigee
+				   # On choisit de ne rien faire (ne pas
+				   # formatter le fichier $FILE et ne pas
+				   # emettre de message d'erreur) en sachant
+				   # que "tst" a emis un message approprie
+				   exit 1
+				   ;;
+				esac
+				;;
+		esac
+		if [ $ARCH = "macOS" -o $ARCH = "mac86" -o $ARCH = "mac64" ]
+		then
+			ORIG=""
+		else
+			ORIG="-orig"
+		fi
+		SIMPLE_BACKUP_SUFFIX=".BAK"
+		export SIMPLE_BACKUP_SUFFIX
+		INDENT="$CADP_INDENT $ORIG $GNU_ONLY_OPTIONS $COMMON_OPTIONS '$FILE'"
+		;;
+
+	* )
+		echo "$COMMAND: unknown architecture $ARCH"
+		echo "$BLANK file \`\`$FILE'' will not be formatted"
+		exit 1
+		;;
+esac
+
+# ----------------------------------------------------------------------------
+
+# before launching the indent command, we use the "ulimit" shell builtin to
+# set up a double limit in CPU time (after 10 seconds, a timeout will occur)
+# and file size (the indented C file should not become more than N times larger
+# than the source C file). We also disable the creation of core files.
+
+case "$ARCH" in
+	sun3 | sun4 | sun5 | sun64 | sol86 | sol64 )
+		case "`uname -r`" in
+			5.11 )
+				# Solaris 11
+				# - "ulimit -f" takes a file size either in
+				# 512-byte blocks (with "sh" and "ksh88")
+				# or blocks (with "ksh") : since /bin/sh is a
+				# link to ksh93, the semantics is most unclear
+				# - "ls -sL" returns file size in ZFS blocks
+				# (128 kilobytes by default, but depends on
+				# the filesystem)
+				# we just keep "ulimit -f" to its current value
+				MAXIMUM_FILE_SIZE=`ulimit -f`
+				;;
+			* )
+				# former Solaris versions up to Solaris 10
+				# - "ulimit -f" takes a file size in 512-byte
+				# blocks
+				# - "ls -sL" is no longer used: it returns file
+				# size in blocks; on Solaris 10 file systems,
+				# blocks were kilobytes, but when dealing with
+				# ZFS file systems mounted using NFS, it may
+				# return ZFS blocks if the "ls" command is run
+				# from a script shell
+				FILE_SIZE_IN_BYTES=`wc -c "$FILE" | sed -e 's/^[ ]*//' | cut -d' ' -f1`
+				FILE_SIZE_IN_KILOBYTES=`expr \( $FILE_SIZE_IN_BYTES + 1023 \) / 1024`
+				MAXIMUM_FILE_SIZE=`expr 4 \* $FILE_SIZE_IN_KILOBYTES`
+				# the value of 4 above was determined empirically
+				# on sol86 (the value of 2, although logical, was
+				# found to be too small)
+		esac
+		;;
+	iX86 | x64 | ia64 | win32 )
+		# "ulimit -f" takes a file size in  512-byte blocks
+		# "ls -skL" returns file size in kilobytes
+		# but "ls -s" will not be used because on Debian Squeeze, it
+		# sometimes returns 0 for a non-empty file (e.g., if certain
+		# locale variables are set to "C"); "du -sk" suffers from the
+		# same problem; for this reason, we use "wc -c" instead
+		FILE_SIZE_IN_BYTES=`wc -c "$FILE" | cut -d' ' -f1`
+		FILE_SIZE_IN_KILOBYTES=`expr \( $FILE_SIZE_IN_BYTES + 1023 \) / 1024`
+		MAXIMUM_FILE_SIZE=`expr 4 \* $FILE_SIZE_IN_KILOBYTES`
+		;;
+	macOS | mac86 | mac64 )
+		case "$VERSION" in
+			8.* | 9.* | 10.* | 11.* | 12.* | 13.* )
+				# for all versions of Mac OS X between "Tiger"
+				# (8.*) et "Mavericks (13.*) :
+				# "ulimit -f" takes a file size in  1024-byte
+				# blocks
+				# "ls -skL" returns file size in kilobytes
+				FILE_SIZE_IN_KILOBYTES=`ls -skL "$FILE" | sed -e 's/^[ ]*//' | cut -d' ' -f1`
+				MAXIMUM_FILE_SIZE=`expr 8 \* $FILE_SIZE_IN_KILOBYTES`
+				;;
+			* )
+				# on recent OS X versions after Yosemite (14.*)
+				# "ulimit -f" seems to abort even if the file
+				# size is below the specified threshold : to
+				# avoid the issue, "ulimit -f" is deactivated
+				MAXIMUM_FILE_SIZE=unlimited
+		esac
+		;;
+	* )
+		echo "$COMMAND: unknown architecture $ARCH"
+		echo "$BLANK file \`\`$FILE'' will not be formatted"
+		exit 1
+		;;
+esac
+
+# ----------------------------------------------------------------------------
+
+# we now launch indent
+
+eval "( ulimit -c 0 ; ulimit -f $MAXIMUM_FILE_SIZE ; ulimit -t 10 ; $INDENT )" > /dev/null 2> /dev/null
+
+# ----------------------------------------------------------------------------
+
+if [ $? != 0 ]
+then
+	# execution of indent failed
+	echo "$COMMAND: the program \`\`indent'' failed"
+	echo "$BLANK file \`\`$FILE'' will not be formatted"
+	mv "$FILE.BAK" "$FILE"
+	exit 1
+fi
+
+# execution of indent completed properly
+
+rm -f "$FILE".BAK
+
+if [ "$SIMPLE_BACKUP_SUFFIX" = "" ]
+then
+	case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+		# here, we are using the Solaris indent : to solve a bug
+		# (that exists, at least in Solaris Studio 12.2), we replace
+		# all '\f' (Ctrl-L) characters by '\n' (Ctrl-M) characters
+		INDENT_TMP=`"$CADP"/src/com/cadp_temporary $COMMAND`
+		/usr/bin/tr '\f' '\n' < "$FILE" > $INDENT_TMP
+		mv $INDENT_TMP "$FILE"
+	esac
+
+elif [ "$SIMPLE_BACKUP_SUFFIX" = ".BAK" ]
+then
+	# here, we know that we are using GNU indent ; we refine the
+	# indentation by applying an awk script mimicking the effect
+	# of Solaris indent on multi-line comments
+	if [ "$ARCH" = win32 ]
+	then
+		DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+		case "$DETAILED_ARCH" in
+			win32-cygnus | win64-cygnus )
+				# we are using Cygwin: we skip the rest of
+				# this script to avoid intermittent errors
+				# (the forthcoming "mv" command would fail
+				# randomly with a "Device or resource busy"
+				# message)
+				exit 0
+				;;
+			* )
+				# we are not using Cygwin: we continue
+				;;
+		esac
+	fi
+	AWK_SCRIPT=`"$CADP"/src/com/cadp_temporary $COMMAND .awk`
+	cat > "$AWK_SCRIPT" << \EOF
+# if a line starts with /* and does not contain */
+# => we move /* to the previous line
+($1 ~ /^\/\*/) && ($0 !~ /\*\//) { $1 = "" ; printf ("/*\n *%s\n", $0) ; next }
+# if a line ends with */ and does not contain /*
+# => we move */ to the next line
+($NF ~ /\*\/$/) && ($0 !~ /\/\*/) { $NF = "" ; printf (" %s\n */\n", $0) ; next }
+# all other lines are preserved
+{ printf ("%s\n", $0) }
+EOF
+	awk -f "$AWK_SCRIPT" "$FILE" > "$FILE.BAK"
+	rm -f "$AWK_SCRIPT"
+
+	case "$ARCH" in
+	mac86 | mac64 )
+		# similar to the above case of Solaris, we replace all '\f'
+		# (Ctrl-L) characters by '\n' (Ctrl-M) characters
+		/usr/bin/tr '\f' '\n' < "$FILE.BAK" > "$FILE"
+		;;
+	* )
+		mv "$FILE".BAK "$FILE"
+		;;
+	esac
+fi
+
+exit 0
+

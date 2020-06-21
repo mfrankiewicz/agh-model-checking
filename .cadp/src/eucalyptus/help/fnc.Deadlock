@@ -1,0 +1,6 @@
+Deadlock prints the set of deadlock states (sinks) contained in
+a LOTOS description, a Labelled Transition System or a network of 
+communicating Labelled Transition Systems.
+ 
+
+EUCALYPTUS Reference Manual. Last updated 2013/09/02 16:54:54.

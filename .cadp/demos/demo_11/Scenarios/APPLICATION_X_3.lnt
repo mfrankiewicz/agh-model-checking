@@ -1,0 +1,34 @@
+module APPLICATION (TYPES) is
+
+-- application with one main task forking N/2 slaves that each fork 2 slaves
+
+process EXECUTE [ST, MSG: any]
+                (id: Pid, j: Job_Desc, in out s: Job_Desc_Stack) is
+  case get_PC (j) of PC in
+    DONT_CARE_1_1 ->
+      MASTER [ST, MSG]
+             (DONT_CARE, DONT_CARE_1_1,
+              DONT_CARE_2_1, DONT_CARE, NatToInt (N div 2),
+              DONT_CARE_1_2, ID, !?S)
+  | DONT_CARE_1_2 ->
+      LEAF [MSG] (DONT_CARE, DONT_CARE_1_2, ID)
+  | DONT_CARE_2_1 ->
+      MASTER [ST, MSG]
+             (DONT_CARE, DONT_CARE_2_1,
+              DONT_CARE_3, DONT_CARE, 2 of Int,
+              DONT_CARE_2_2, ID, !?S)
+  | DONT_CARE_2_2 ->
+      LEAF [MSG] (DONT_CARE, DONT_CARE_2_2, ID)
+  | DONT_CARE_3 ->
+      SLAVE [MSG] (DONT_CARE, DONT_CARE_3, ID, get_Index (J))
+  | any -> null -- to avoid a warning from lnt2lotos
+  end case
+end process
+
+process HOST_APPLI[HOST: any] is
+  HOST (HOST_JOB (DONT_CARE_1_1, DONT_CARE));
+  stop
+end process
+
+end module
+

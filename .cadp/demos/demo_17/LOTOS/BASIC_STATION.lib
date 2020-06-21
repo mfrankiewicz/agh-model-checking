@@ -1,0 +1,18 @@
+process STATION [OPEN, CLOSE, PRED, SUCC] (Ai:ADDR, INIT:BOOL) : noexit :=
+   [INIT = true] ->
+      PRIVILEGE [OPEN, CLOSE, PRED, SUCC] (Ai)
+   []
+   [INIT= false] ->
+      PRED !TOKEN;
+         PRIVILEGE [OPEN, CLOSE, PRED, SUCC] (Ai)
+endproc
+
+process PRIVILEGE [OPEN, CLOSE, PRED, SUCC] (Ai:ADDR) : noexit :=
+   SUCC !TOKEN;
+      STATION [OPEN, CLOSE, PRED, SUCC] (Ai, false)
+   []
+   OPEN !Ai;
+      CLOSE !Ai;
+         SUCC !TOKEN;
+            STATION [OPEN, CLOSE, PRED, SUCC] (Ai, false)
+endproc

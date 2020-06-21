@@ -1,0 +1,32 @@
+(*============================================================================
+ "STOCKS.lib"
+         The orders library for the process-oriented description; adapted from
+         the Kenneth J. Turner description to support each case described by
+         Mihaela Sighireanu
+ *============================================================================*)
+
+(*-----------------------------------------------------------------------------
+ Stock process parameterized by M_a and a product reference prd
+ *----------------------------------------------------------------------------*)
+ process Stock_a [Deposit, Withdraw] (m_a:Amount, prd:Product, amt:Amount) : noexit :=
+    Deposit !prd ?newamt:Amount [(newamt le m_a) and (newamt gt 0)];
+    Stock_a [Deposit, Withdraw] (m_a, prd, amt + newamt)
+  []
+    Withdraw !prd ?newamt:Amount [(newamt le m_a) and (newamt le amt)];
+    Stock_a [Deposit, Withdraw] (m_a, prd, amt - newamt)
+  endproc (* Stock_a *)
+
+(*-----------------------------------------------------------------------------
+ Stock process for prd=0
+ *----------------------------------------------------------------------------*)
+  process Stock_p0 [Deposit, Withdraw] (m_a:Amount) : noexit :=
+        Stock_a [Deposit, Withdraw] (m_a, 0 of Product, 0 of Amount)
+  endproc (* Stock_p0 *)
+
+(*-----------------------------------------------------------------------------
+ Stock process for prd=1
+ *----------------------------------------------------------------------------*)
+  process Stock_p1 [Deposit, Withdraw] (m_a:Amount) : noexit :=
+    Stock_a [Deposit, Withdraw] (m_a, Succ (0) of Product, 0 of Amount)
+  endproc (* Stock_p1 *)
+

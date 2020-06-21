@@ -1,0 +1,115 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_x11
+#   Auteurs             :       D. Bergamini, N. Descoubes et Hubert Garavel
+#   Version             :       1.9
+#   Date                :       2017/11/08 15:12:32
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+# $cadp is a local variable used only within this shell
+
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	cadp=$CADP_INSTALLATOR
+	# do not assign $CADP here, this would confuse installator
+elif test "$CADP" != ""
+then
+	cadp="$CADP"
+else
+	echo "$COMMAND: neither \$CADP nor \$CADP_INSTALLATOR is defined in the environment"
+	exit 1
+fi
+
+ARCH=`"$cadp"/com/arch`
+
+case $ARCH in
+
+macOS | mac86 | mac64 )
+	LOCK=/tmp/.X0-lock
+	if test ! -f $LOCK
+	then
+		# X11 n'a pas ete demarre : il faut le faire
+
+		# verification preliminaire pour savoir si X11 a ete installe
+		if test -d /Applications/X11.app -o -d /Applications/Utilities/X11.app
+		then
+			# Mac OS X version < 10.8 "Mountain Lion"
+			APP_X11=X11
+		elif test -d /Applications/Utilities/XQuartz.app
+		then
+			# Mac OS X version >= 10.8 "Mountain Lion"
+			APP_X11=XQuartz
+		else
+			echo "$COMMAND: neither X11 nor XQuartz seem to be installed on this machine"
+			exit 1
+		fi
+
+		# test ou construction du fichier .xinitrc
+		if test -f $HOME/.xinitrc
+		then
+			# l'utilisateur a son propre .xinitrc : on le preserve
+			XINITRC=""
+		elif test -f /private/etc/X11/xinit/xinitrc
+		then
+			# cas de MacOS X 10.4 "Tiger"
+			XINITRC="/private/etc/X11/xinit/xinitrc"
+		elif test -f /usr/X11/lib/X11/xinit/xinitrc
+		then
+			# cas de MacOS X 10.5 "Leopard" .. 10.8 "Mountain Lion"
+			XINITRC="/usr/X11/lib/X11/xinit/xinitrc"
+		else
+			echo "$COMMAND: cannot find xinitrc"
+			echo "please, report this problem to cadp@inria.fr"
+			exit 1
+		fi
+		if [ "$XINITRC" != "" ]
+		then
+			# on fabrique un .xinitrc qui n'ouvre pas de xterm
+			cat $XINITRC | grep -v "\<xterm\>" > $HOME/.xinitrc
+		fi
+
+		# lancement de X11
+		open -a $APP_X11
+		if test $? -ne 0
+		then
+			echo "$COMMAND: cannot launch X11"
+			exit 1
+		fi
+
+		# boucle d'attente pour que X11 ait effectivement demarre
+		while true
+		do
+			if test -f $LOCK
+			then
+				# le fichier $LOCK vient d'etre cree
+				break
+			fi	
+		done
+		# par precaution, on attend encore un peu
+		sleep 2
+
+		# le positionnement de $DISPLAY et $PATH doit obligatoirement
+		# se faire dans le shell appelant cadp_x11
+	fi
+	;;
+
+* )
+	echo "$COMMAND: unexpected architecture $ARCH"
+	exit 1
+	;;
+esac
+
+exit 0
+

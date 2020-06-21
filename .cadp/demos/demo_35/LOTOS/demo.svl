@@ -1,0 +1,28 @@
+
+% DEFAULT_PROCESS_FILE="summation.lotos"
+
+(* 
+ * generation and minimisation of the state graph corresponding to the
+ * summation algorithm with 6 processes ; the result is a trace which is
+ * automatically converted into the SEQ format
+ *)
+
+"summation.seq" = branching reduction of generation of
+   hide all but REPORT in
+      par START #2, ANSWER #2 in
+         P_INIT [START, ANSWER, REPORT] (0 of Identity)
+      || P_INIT [START, ANSWER, REPORT] (1 of Identity)
+      || P_INIT [START, ANSWER, REPORT] (2 of Identity)
+      || P_INIT [START, ANSWER, REPORT] (3 of Identity)
+      || P_INIT [START, ANSWER, REPORT] (4 of Identity)
+      || P_INIT [START, ANSWER, REPORT] (5 of Identity)
+      end par
+   end hide;
+
+(* 
+ * display of the result stored in "summation.seq": the sum of weights
+ * is the offer of the REPORT gate 
+ *)
+
+% SVL_SHOW_FILE "summation.seq"
+

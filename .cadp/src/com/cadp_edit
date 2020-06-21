@@ -1,0 +1,141 @@
+#! /bin/sh 
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_edit
+#   Auteur              :       Aldo MAZZILLI et Hubert GARAVEL
+#   Version             :       1.31
+#   Date                :       2019/11/02 11:17:10
+##############################################################################
+
+# ce shell-script peut etre appele sans argument lorsqu'il s'agit de lancer
+# un editeur sans nom de fichier specifie
+
+COMMAND=`basename "$0"`
+
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	CADP="$CADP_INSTALLATOR"
+	# do not export $CADP here
+fi
+ 
+ARCH=`"$CADP"/com/arch`
+
+#-----------------------------------------------------------------------------
+
+CREATE_TERMINAL_WINDOW() {
+	# l'argument $1 est le chemin d'acces vers $EDITOR
+	# les arguments suivants sont les arguments a passer a $EDITOR
+	XTERM=`"$CADP"/src/com/cadp_xterm -default`
+	if [ "$XTERM" = "" ]
+	then
+		# on ne sait pas ouvrir de fenetre terminal
+		eval "$@"
+	else
+		# lancement d'une fenetre $XTERM appelant l'editeur
+		OPTION=`"$CADP"/src/com/cadp_xterm -option`	
+		$XTERM $XTERM_OPTIONS $OPTION "$@"
+	fi
+}
+
+#-----------------------------------------------------------------------------
+
+if [ "$EDITOR" = "" ]
+then
+        case $ARCH in
+                sun3 | sun4 | sun5 | sun64 | sol86 | sol64 )
+			EDITOR="vi"
+			;;
+                iX86 | x64 | ia64 )
+			# editeur par defaut
+			EDITOR="vi"
+			# recherche d'un editeur disponible
+			for N in pluma gedit kate mousepad leafpad kwrite jedit nedit vim gvim vi
+			do
+				WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+				if [ "$WHICH_N" != "$N" ]
+				then
+					# cadp_which a trouve' un editeur et
+					# renvoye' le chemin d'acces complet
+					EDITOR="$N"
+					break
+				fi
+			done
+			;;
+                win32 )
+                        EDITOR="write.exe"
+			# Sous win32-cygnus et win64-cygnus, on dispose de
+			# "vi" et "vim"
+			# Sous win32-msys, on dispose de "vim" mais pas de "vi"
+			;;
+		macOS | mac86 | mac64 )
+			EDITOR="open"
+			# ne plus mettre TextEdit, car "tst" effectue un appel
+			# "cadp_which $EDITOR" qui echoue, TextEdit n'etant pas
+			# un nom d'application present dans $PATH
+			;;
+                * )
+                        echo "$COMMAND: unknown architecture $ARCH"
+			exit 1
+			;;
+	esac
+fi
+
+if [ "$1" = "-default" ]
+then
+	"$CADP"/src/com/cadp_which "$EDITOR"
+	exit 0
+fi
+
+case `"$CADP"/src/com/cadp_basename "$EDITOR" .exe` in
+	emacs | gedit | gvim | jedit | kate | kwrite | leafpad | mousepad | nedit | notepad | pluma | textedit | xedit | xemacs )
+		# Ces editeurs ouvrent leur propre fenetre
+		"$EDITOR" "$@"
+		;;
+	wordpad | write )
+		# Ces editeurs ouvrent leur propre fenetre.
+		# On doit prendre en compte le fait que Wordpad/Write ne 
+		# comprend pas les noms de fichiers commencant par un '/'
+		# (il doit prendre ce '/' initial pour une option Windows)
+		# La solution est de faire un "cd" dans le repertoire
+		if test $# = 0
+		then
+			"$EDITOR"
+		else
+			for ARG in "$@"
+			do
+				DIRNAME=`dirname "$ARG"`
+				BASENAME=`basename "$ARG"`
+				(cd "$DIRNAME"; "$EDITOR" "$BASENAME")
+			done
+		fi
+		;;
+	open )
+		if [ $ARCH = "macOS" -o $ARCH = "mac86" -o $ARCH = "mac64" ]
+		then
+			# sur MacOS, "open" (avec l'option -e) lance TextEdit
+			# qui ouvre sa propre fenetre
+			open -e "$@"
+		else
+			# cas d'un editeur inconnu qui porterait le nom "open"
+			# on reproduit le comportement par defaut ci-dessous
+			CREATE_TERMINAL_WINDOW "$EDITOR" "$@"
+		fi
+		;;
+        * )
+		# Par defaut, on ouvre une fenetre pour les editeurs restants
+		# (ce qui est le cas, notamment, de vi et vim)
+		CREATE_TERMINAL_WINDOW "$EDITOR" "$@"
+		;;
+esac
+
+exit 0
+

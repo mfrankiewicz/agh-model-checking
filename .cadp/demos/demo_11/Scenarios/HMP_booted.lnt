@@ -1,0 +1,29 @@
+module HMP (CONFIGURATION, APPLICATION, DTD) is
+
+process MAIN [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG,
+              DTD_SCHEDULE_HOST_REQUESTS, DTD_DISPATCH_DUP, HOST: any] is
+   par HOST in
+      par HOST, BOOT in
+         ENCORE [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG,
+                 DTD_SCHEDULE_HOST_REQUESTS, DTD_DISPATCH_DUP, HOST]
+      ||
+         Force_Boot [BOOT, HOST]
+      end par
+   ||
+      HOST_APPLI [HOST]
+   end par
+end process
+
+process Force_Boot [BOOT, HOST: any] is
+   var i:Nat in
+      for i := 0 while i < N by i := i+1 loop
+         BOOT (?any Pid, ?any Extension)
+      end loop
+   end var;
+   loop
+      HOST (?any Host_Job)
+   end loop
+end process
+
+end module
+

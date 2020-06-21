@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GtkSourceView version 3 definitions for the RBC language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.3:RBC+1.17:SECT -->
+<language id="rbc" _name="RBC" version="2.0" _section="Sources">
+
+   <metadata>
+      <property name="mimetypes">text/x-rbc</property>
+      <property name="globs">*.rbc</property>
+      <property name="line-comment-start">#</property>
+   </metadata>
+
+   <styles>
+      <style id="comment"  _name="Comment"       map-to="def:comment"/>
+      <style id="keyword"  _name="Keyword"       map-to="def:keyword"/>
+      <style id="operator" _name="Operator"      map-to="def:operator"/>
+   </styles>
+
+   <default-regex-options case-sensitive="true"/>
+
+   <definitions>
+      <context id="line-comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+         <start>#</start>
+      </context>
+
+      <context id="keyword" style-ref="keyword">
+         <keyword>alternation_free</keyword>
+         <keyword>equation_length</keyword>
+         <keyword>false_constant_ratio</keyword>
+         <keyword>local_variable_ratio</keyword>
+         <keyword>number_of_blocks</keyword>
+         <keyword>number_of_variables</keyword>
+         <keyword>or_variable_alternation</keyword>
+         <keyword>or_variable_ratio</keyword>
+         <keyword>shape</keyword>
+         <keyword>sign</keyword>
+         <keyword>solve_mode</keyword>
+         <keyword>strategy</keyword>
+         <keyword>unique_resolution</keyword>
+         <keyword>variable_ratio</keyword>
+      </context>
+
+      <context id="operator" style-ref="operator">
+         <match extended="true">
+            \[ | \] | = | \.\.
+         </match>
+      </context>
+
+      <context id="rbc" class="no-spell-check">
+         <include>
+            <context ref="line-comment"/>
+            <context ref="keyword"/>
+            <context ref="operator"/>
+         </include>
+      </context>
+
+   </definitions>
+</language>

@@ -1,0 +1,85 @@
+(******************************************************************************
+ *             Sequentially consistent, distributed cache memory
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module       :       PJ_SSVAR_EPS.lnt
+ *   Authors      :       A. Kriouile, W. Serwe, and H. Garavel
+ *   Version      :       1.2
+ *   Date         :       2016/08/01 11:48:49
+ *****************************************************************************)
+
+-- The action sync is used in order to make all the actions (separated by [])
+-- in fact atomic; otherwise there are (internal) states in which some of the
+-- choices are not available; partially this is due to the fact that some
+-- actions synchronise all processes (mw), some 2 of them (mr)
+-- and some can be executed by a single process (cl, r, w, ..)
+
+-- The structure of the process PJ is the same as that of PI except that
+-- there are no message via the diagnostic port "diag": initially synchronize
+-- with everybody on sync; then repeat for ever synchronize on one of the
+-- possible actions (either as a sender, a receiver or "let pass") and then
+-- synchronize on sync.
+
+-- In this module, the abstraction from all local variables of process P(ind)
+-- is done by hand by eliminating them from the program. This is much more
+-- efficient with the version of CAESAR used in the 90s.
+
+-- In all local actions (not in mw) the paramenter el:ELEM is uniformly
+-- forced to be "eps", as all transitions can take place with none or with 
+-- all possible values of el. However, due to artificial synchronisation
+-- of all processes on all actions (also local ones), the elimination of
+-- a parameter would imply the obligation to change the description of the
+-- other processes.
+
+module PJ_SSVAR_EPS (TYPES_COMMON) is
+
+process PJ [sync                 : NONE, 
+            w, r, mw, cu, mr, cl : INDEX_ELEM_CHANNEL] (ind : index) is
+   var el : ELEM, j : INDEX in
+      loop
+         sync;
+         select
+            -- WRITE
+            w (ind, eps)
+          []
+            -- READ
+            r (ind, eps)
+          []
+            -- MEMORY_WRITE
+            el := any ELEM;
+            mw (ind, el) where datum (ind, el)
+          []
+            -- mw from another process
+            mw (?j, ?any ELEM) where not (j == ind)
+          []
+            -- CACHE_UPDATE
+            cu (ind, eps)
+          []
+            -- MEMORY_READ
+            mr (ind, eps)
+          []
+            -- CLEAR_CACHE
+            cl (ind, eps)
+          []
+            -- PASSIVE SYNCHRONISATIONS
+            -- synchronizes all processes on all actions in order to guarantee 
+            -- the update of the variables directly after each step
+            r (?j, ?any ELEM) where not(j == ind)
+          []
+            w (?j, ?any ELEM) where not (j == ind)
+          []
+            cu (?j, ?any ELEM) where not (j == ind)
+          []
+            mr (?j, ?any ELEM) where not (j == ind)
+          []
+            cl (?j, ?any ELEM) where not (j == ind)
+         end select
+      end loop
+   end var
+end process
+
+end module

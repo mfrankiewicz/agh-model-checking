@@ -1,0 +1,379 @@
+(*
+ * This LOTOS description is derived from the original specification of
+ * the MAA standard in LOTOS, written by Harold B. Munster.
+ *
+ * It was adapted by Hubert Garavel and Philippe Turlier, who introduced
+ * necessary changes in order to turn it into an executable LOTOS description,
+ * and to get it compiled using the CAESAR.ADT compiler. In 2017, this LOTOS
+ * description was revised and simplified by Hubert Garavel and Lina Marsso.
+ *)
+
+specification MAA: noexit
+
+library
+   X_NATURAL, BIT, BOOLEAN, OCTET, OCTETVALUES
+endlib
+
+(* ------------------------------------------------------------------------- *)
+
+type Block is Boolean, Bit, Octet
+   sorts
+      Block (*! implementedby BLOCK printedby PRINT_BLOCK *)
+
+   opns
+      Block (*! implementedby BUILD_BLOCK constructor *) :
+         Octet, Octet, Octet, Octet -> Block
+
+      _eq_ (*! implementedby EQUAL_BLOCK *) : Block, Block -> Bool
+
+      AND : Block, Block -> Block
+      OR  : Block, Block -> Block
+      XOR : Block, Block -> Block
+      CYC : Block -> Block
+
+      ADD      (*! implementedby ADD external *)      : Block, Block -> Block
+      CAR      (*! implementedby CAR external *)      : Block, Block -> Block
+      HIGH_MUL (*! implementedby HIGH_MUL external *) : Block, Block -> Block
+      LOW_MUL  (*! implementedby LOW_MUL external *)  : Block, Block -> Block
+
+   eqns
+
+   ofsort Bool
+   forall X, Y : Block
+
+      X eq X = true;
+      X eq Y = false; (* assuming priority between equations *)
+
+   ofsort Block
+   forall O1, O2, O3, O4, P1, P2, P3, P4 : Octet
+
+      AND (Block (O1, O2, O3, O4), Block (P1, P2, P3, P4)) =
+         Block (O1 and P1, O2 and P2, O3 and P3, O4 and P4);
+
+      OR (Block (O1, O2, O3, O4), Block (P1, P2, P3, P4)) =
+         Block (O1 or P1, O2 or P2, O3 or P3, O4 or P4);
+
+      XOR (Block (O1, O2, O3, O4), Block (P1, P2, P3, P4)) =
+         Block (O1 xor P1, O2 xor P2, O3 xor P3, O4 xor P4);
+
+   ofsort Block
+   forall B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+          B9,  B10, B11, B12, B13, B14, B15, B16,
+          B17, B18, B19, B20, B21, B22, B23, B24,
+          B25, B26, B27, B28, B29, B30, B31, B32 : Bit
+
+      CYC (Block (Octet (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8),
+                  Octet (B9,  B10, B11, B12, B13, B14, B15, B16),
+                  Octet (B17, B18, B19, B20, B21, B22, B23, B24),
+                  Octet (B25, B26, B27, B28, B29, B30, B31, B32))) =
+         Block (Octet (B2,  B3,  B4,  B5,  B6,  B7,  B8,  B9),
+                Octet (B10, B11, B12, B13, B14, B15, B16, B17),
+                Octet (B18, B19, B20, B21, B22, B23, B24, B25),
+                Octet (B26, B27, B28, B29, B30, B31, B32, B1));
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type Pairs is Block
+   sorts
+      Pair,
+      TwoPairs,
+      ThreePairs
+
+   opns
+      Pair (*! constructor *) : Block, Block -> Pair
+      TwoPairs (*! constructor *) : Pair, Pair -> TwoPairs
+      ThreePairs (*! constructor *) : Pair, Pair, Pair -> ThreePairs
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type Message is Block, Natural
+   sorts
+      Message (*! implementedby MESSAGE *)
+
+   opns
+      nil (*! implementedby NIL_MESSAGE constructor *) : -> Message
+      _++_ (*! implementedby PLUS_MESSAGE constructor *) :
+         Block, Message  -> Message
+
+      Reverse (*! implementedby REVERSE external *) : Message  -> Message
+      (* Reverse is not invoked in "maa.lotos" but in "main.c" *)
+      (* for efficiency reason, Reverse is implemented directly in C *)
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type Functions is Block, OctetValues, Pairs
+   opns
+      A_CONSTANT : -> Block
+      B_CONSTANT : -> Block
+      C_CONSTANT : -> Block
+      D_CONSTANT : -> Block
+
+      FIX1 : Block -> Block
+      FIX2 : Block -> Block
+
+      MUL1     : Block, Block -> Block
+      MUL1_UL  : Block, Block -> Block
+      MUL1_SC  : Block, Block -> Block
+
+      MUL2     : Block, Block -> Block
+      MUL2_UL  : Block, Block -> Block
+      MUL2_DEL : Block, Block, Block -> Block
+      MUL2_FL  : Block, Block -> Block
+      MUL2_SC  : Block, Block -> Block
+
+      MUL2A    : Block, Block -> Block
+      MUL2A_UL : Block, Block -> Block
+      MUL2A_DL : Block, Block -> Block
+      MUL2A_SC : Block, Block -> Block
+
+      NeedAdjust : Octet -> Bool
+      AdjustCode : Octet -> Bit
+      Adjust     : Octet, Octet -> Octet
+
+      PAT        : Block, Block -> Octet
+      BYT        : Block, Block -> Pair
+      AuxBYT     : Block, Block, Octet -> Pair
+
+   eqns
+
+   ofsort Block
+
+      A_CONSTANT = Block (x02, x04, x08, x01);
+      B_CONSTANT = Block (x00, x80, x40, x21);
+      C_CONSTANT = Block (xBF, xEF, x7F, xDF);
+      D_CONSTANT = Block (x7D, xFE, xFB, xFF);
+
+   ofsort Block
+   forall X : Block
+
+      FIX1 (X) = AND (OR (X, A_CONSTANT), C_CONSTANT);
+      FIX2 (X) = AND (OR (X, B_CONSTANT), D_CONSTANT);
+
+   ofsort Block
+   forall X, Y, U, L, S, C : Block
+
+      MUL1 (X, Y)    = MUL1_UL (HIGH_MUL (X, Y), LOW_MUL (X, Y));
+      MUL1_UL (U, L) = MUL1_SC (ADD (U, L), CAR (U, L));
+      MUL1_SC (S, C) = ADD (S, C);
+
+   ofsort Block
+   forall X, Y, U, L, D, F, E, S, C : Block
+
+      MUL2 (X, Y)        = MUL2_UL (HIGH_MUL (X, Y), LOW_MUL (X, Y));
+      MUL2_UL (U, L)     = MUL2_DEL (ADD (U, U), CAR (U, U), L);
+      MUL2_DEL (D, E, L) = MUL2_FL (ADD (D, ADD (E, E)), L);
+      MUL2_FL (F, L)     = MUL2_SC (ADD (F, L), CAR (F, L));
+      MUL2_SC (S, C)     = ADD (S, ADD (C, C));
+
+   ofsort Block
+   forall X, Y, U, L, D, S, C : Block
+
+      MUL2A (X, Y)    = MUL2A_UL (HIGH_MUL (X, Y), LOW_MUL (X, Y));
+      MUL2A_UL (U, L) = MUL2A_DL (ADD (U, U), L);
+      MUL2A_DL (D, L) = MUL2A_SC (ADD (D, L), CAR (D, L));
+      MUL2A_SC (S, C) = ADD (S, ADD (C, C));
+
+   ofsort Bool
+   forall O: Octet
+
+      NeedAdjust (O) = (O eq x00) or (O eq xFF);
+
+   ofsort Bit
+   forall O: Octet
+
+      NeedAdjust (O)       => AdjustCode (O) = 1;
+      not (NeedAdjust (O)) => AdjustCode (O) = 0;
+
+   ofsort Octet
+   forall O, P: Octet
+
+      NeedAdjust (O)       => Adjust (O, P) = O xor P;
+      not (NeedAdjust (O)) => Adjust (O, P) = O;
+
+   ofsort Octet
+   forall X, Y: Block, O1, O2, O3, O4, O5, O6, O7, O8: Octet
+
+      PAT (Block (O1, O2, O3, O4), Block (O5, O6, O7, O8)) =
+         Octet (AdjustCode (O1), AdjustCode (O2),
+                AdjustCode (O3), AdjustCode (O4),
+                AdjustCode (O5), AdjustCode (O6),
+                AdjustCode (O7), AdjustCode (O8));
+
+   ofsort Pair
+   forall B1, B2, B3, B4, B5, B6, B7, B8 : Bit,
+          O1, O2, O3, O4, O5, O6, O7, O8: Octet,
+          J, K : Block
+
+      BYT (J, K) = AuxBYT (J, K, PAT (J, K));
+
+      AuxBYT (Block (O1, O2, O3, O4), Block (O5, O6, O7, O8),
+              Octet (B1, B2, B3, B4, B5, B6, B7, B8)) =
+         Pair (Block (Adjust (O1, Octet (0, 0, 0, 0, 0, 0, 0, B1)),
+                      Adjust (O2, Octet (0, 0, 0, 0, 0, 0, B1, B2)),
+                      Adjust (O3, Octet (0, 0, 0, 0, 0, B1, B2, B3)),
+                      Adjust (O4, Octet (0, 0, 0, 0, B1, B2, B3, B4))),
+               Block (Adjust (O5, Octet (0, 0, 0, B1, B2, B3, B4, B5)),
+                      Adjust (O6, Octet (0, 0, B1, B2, B3, B4, B5, B6)),
+                      Adjust (O7, Octet (0, B1, B2, B3, B4, B5, B6, B7)),
+                      Adjust (O8, Octet (B1, B2, B3, B4, B5, B6, B7, B8))));
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type Prelude is Functions
+   opns
+      Q                            : Octet -> Block
+      SQUARE                       : Block -> Block
+      J1_2, J1_4, J1_6, J1_8       : Block -> Block
+      J2_2, J2_4, J2_6, J2_8       : Block -> Block
+      K1_2, K1_4, K1_5, K1_7, K1_9 : Block -> Block
+      K2_2, K2_4, K2_5, K2_7, K2_9 : Block -> Block
+      H4, H6, H8, H0, H7, H9       : Block -> Block
+      H5                           : Block, Octet -> Block
+      Prelude    : Block, Block -> ThreePairs
+      AuxPrelude : Pair, Octet -> ThreePairs
+
+   eqns
+
+   ofsort Block
+   forall P: Octet
+
+      Q (P) = SQUARE (ADD (Block (x00, x00, x00, P),
+                           Block (x00, x00, x00, x01)));
+
+   ofsort Block
+   forall B: Block
+
+      SQUARE (B) = LOW_MUL (B, B);
+
+   ofsort Block
+   forall J: Block
+
+      J1_2 (J) = MUL1 (J, J);
+      J1_4 (J) = MUL1 (J1_2 (J), J1_2 (J));
+      J1_6 (J) = MUL1 (J1_2 (J), J1_4 (J));
+      J1_8 (J) = MUL1 (J1_2 (J), J1_6 (J));
+      J2_2 (J) = MUL2 (J, J);
+      J2_4 (J) = MUL2 (J2_2 (J), J2_2 (J));
+      J2_6 (J) = MUL2 (J2_2 (J), J2_4 (J));
+      J2_8 (J) = MUL2 (J2_2 (J), J2_6 (J));
+
+   ofsort Block
+   forall K: Block
+
+      K1_2 (K) = MUL1 (K, K);
+      K1_4 (K) = MUL1 (K1_2 (K), K1_2 (K));
+      K1_5 (K) = MUL1 (K, K1_4 (K));
+      K1_7 (K) = MUL1 (K1_2 (K), K1_5 (K));
+      K1_9 (K) = MUL1 (K1_2 (K), K1_7 (K));
+      K2_2 (K) = MUL2 (K, K);
+      K2_4 (K) = MUL2 (K2_2 (K), K2_2 (K));
+      K2_5 (K) = MUL2 (K, K2_4 (K));
+      K2_7 (K) = MUL2 (K2_2 (K), K2_5 (K));
+      K2_9 (K) = MUL2 (K2_2 (K), K2_7 (K));
+
+   ofsort Block
+   forall J, K: Block, P: Octet
+
+      H4 (J)    = XOR (J1_4 (J), J2_4 (J));
+      H6 (J)    = XOR (J1_6 (J), J2_6 (J));
+      H8 (J)    = XOR (J1_8 (J), J2_8 (J));
+
+      H0 (K)    = XOR (K1_5 (K), K2_5 (K));
+      H5 (K, P) = MUL2 (H0 (K), Q (P));
+      H7 (K)    = XOR (K1_7 (K), K2_7 (K));
+      H9 (K)    = XOR (K1_9 (K), K2_9 (K));
+
+   ofsort ThreePairs
+   forall J, K: Block, P: Octet
+
+      Prelude (J, K) = AuxPrelude (BYT (J, K), PAT (J, K));
+
+   ofsort ThreePairs
+   forall J, K: Block, P: Octet
+
+      AuxPrelude (Pair (J, K), P) =
+         ThreePairs (BYT (H4 (J), H5 (K, P)),
+                     BYT (H6 (J), H7 (K)),
+                     BYT (H8 (J), H9 (K)));
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type MAA is Prelude, Message
+   opns
+      ComputeXY : Pair, Block, Block -> Pair
+      MainLoop  : TwoPairs, Block -> TwoPairs
+      ComputeZ  : TwoPairs -> Block
+      Coda      : TwoPairs, Pair -> Block
+      255       (*! implementedby N255 external *) : -> Nat
+
+      MAC      (*! implementedby MAC *) : Block, Block, Message -> Block
+      MAAstart : ThreePairs, Message -> Block
+      MAA      : Message, Nat, TwoPairs, Pair, Pair, Pair -> Block
+      MAAjump  : Message, Block, Pair, Pair, Pair -> Block
+
+   eqns
+
+   ofsort Pair
+   forall X, Y, M, E: Block
+
+      ComputeXY (Pair (X, Y), M, E) =
+         Pair (MUL1  (XOR (X, M), FIX1 (ADD (XOR (Y, M), E))),
+               MUL2A (XOR (Y, M), FIX2 (ADD (XOR (X, M), E))));
+
+   ofsort TwoPairs
+   forall XY: Pair, B, V, W: Block
+
+      MainLoop (TwoPairs (XY, Pair (V, W)), B) =
+         TwoPairs (ComputeXY (XY, B, XOR (CYC (V), W)), Pair (CYC (V), W));
+
+   ofsort Block
+   forall X, Y: Block, VW: Pair
+
+      ComputeZ (TwoPairs (Pair (X, Y), VW)) = XOR (X, Y);
+
+   ofsort Block
+   forall XYVW: TwoPairs, S, T: Block
+
+      Coda (XYVW, Pair (S, T)) = ComputeZ (MainLoop (MainLoop (XYVW, S), T));
+
+   ofsort Block
+   forall J, K : Block, M: Message
+
+      MAC (J, K, M) = MAAstart (Prelude (J, K), M);
+
+   ofsort Block
+   forall X0Y0, V0W, ST : Pair, M: Message
+
+      MAAstart (ThreePairs (X0Y0, V0W, ST), M) =
+         MAA (M, 255, TwoPairs (X0Y0, V0W), X0Y0, V0W, ST);
+
+   ofsort Block
+   forall X0Y0, V0W, ST : Pair, XYVW: TwoPairs, B : Block, N: Nat, M: Message
+
+      MAA (nil, N, XYVW, X0Y0, V0W, ST) = Coda (XYVW, ST);
+      MAA (B ++ M, 0, XYVW, X0Y0, V0W, ST) =
+         MAAjump (M, Coda (MainLoop (XYVW, B), ST), X0Y0, V0W, ST);
+      MAA (B ++ M, succ (N), XYVW, X0Y0, V0W, ST) =
+         MAA (M, N, MainLoop (XYVW, B), X0Y0, V0W, ST);
+
+   ofsort Block
+   forall X0Y0, V0W, ST : Pair, B, Z : Block, M: Message
+
+      MAAjump (nil, Z, X0Y0, V0W, ST) = Z;
+      MAAjump (B ++ M, Z, X0Y0, V0W, ST) =
+         MAA (B ++ M, 255, MainLoop (TwoPairs (X0Y0, V0W), Z), X0Y0, V0W, ST);
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+behaviour
+
+    stop
+
+endspec
+

@@ -1,0 +1,39 @@
+
+(* Architecture of the turntable system *)
+
+   (
+      (
+         hide TT1, TT2, TT3, TurnOn, D1, D2, DUpDown, DOnOff,
+              C1, C2, COnOff, T1, T2, TUpDown in
+         (
+            (
+               TT [TT1, TT2, TT3, TurnOn, ADD, REM, MU] (false, false, false, false)
+               |[TT1, TT2, TT3, TurnOn]|
+               TTC [TT1, TT2, TT3, TurnOn, INF, CMD]
+            )
+            |||
+            (
+               D [D1, D2, DUpDown, DOnOff, MU] (false, true)   (* off and up *)
+               |[D1, D2, DUpDown, DOnOff]|
+               DC [D1, D2, DUpDown, DOnOff, INF, CMD]
+            )
+            |||
+            (
+               C [C1, C2, COnOff] (false)                      (* unlocked *)
+               |[C1, C2, COnOff]|
+               CC [C1, C2, COnOff, INF, CMD]
+            )
+            |||
+            (
+               T [T1, T2, TUpDown, MU] (true)                      (* up *)
+               |[T1, T2, TUpDown]|
+               TC [T1, T2, TUpDown, INF, CMD]
+            )
+         )
+      )
+      |[INF, CMD]|
+      MC [REQ, INF, CMD, LAMBDA, NU] (false, false, false, false, false)
+   )
+   |[REQ, ADD, REM]|
+   Env [REQ, ADD, REM, ERR]
+

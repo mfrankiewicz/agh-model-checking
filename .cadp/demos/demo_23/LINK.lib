@@ -1,0 +1,362 @@
+(* ------------------------------------------------------------------------- *)
+
+   process Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                 (n: Nat, id: Nat, buffer: SIG_TUPLE)
+                 : noexit
+   :=
+   [is_void (buffer)] ->
+       LDreq !id ?dest: Nat ?c: HEADER ?d: DATA;
+          Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                (n, id, quadruple (dhead,
+                                   sig (destsig (dest)),
+                                   sig (headersig (c, crc (c))),
+                                   sig (datasig (d, crc (d)))))
+   []
+   [not (is_void (buffer))] ->
+       PAreq !id !fair;
+          Link1 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+   []
+   PDind !id ?p: SIGNAL;
+      ([eq (p, Start)] ->
+           Link4 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+       []
+       [not (eq (p, Start))] ->
+           Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+      )
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Link1 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+              (n: Nat, id: Nat, buffer: SIG_TUPLE)
+              : noexit
+:=
+   PAcon !id !won; Link2req [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+   []
+   PAcon !id !lost; Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link2req [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                    (n: Nat, id: Nat, buffer: SIG_TUPLE)
+                    : noexit
+   :=
+   PCind !id; PDreq !id !Start;
+   PCind !id; PDreq !id !first (buffer);
+   PCind !id; PDreq !id !second (buffer);
+   PCind !id; PDreq !id !third (buffer);
+   PCind !id; PDreq !id !fourth (buffer);
+   PCind !id; PDreq !id !End;
+   ([getdest (second (buffer)) eq n] ->
+        LDcon !id !broadsent; Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, void)
+    []
+    [not (getdest (second (buffer)) eq n)] ->
+        Link3 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, void)
+   )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+(* ------------------------------------------------------------------------- *)
+
+process Link3 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+              (n: Nat, id: Nat, buffer: SIG_TUPLE)
+              : noexit
+:=
+   PDind !id ?p: SIGNAL;
+      ([eq (p, Prefix)] ->
+           Link3 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+       []
+       [eq (p, Start)] ->
+           Link3RA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+       []
+       [eq (p, subactgap)] ->
+           LDcon !id !ackmiss;
+              Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+       []
+       [not (eq (p, Prefix) or eq (p, Start) or eq (p, subactgap))] ->
+            LDcon !id !ackmiss;
+               LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, n)
+      )
+endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link3RA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                   (n: Nat, id: Nat, buffer: SIG_TUPLE)
+                   : noexit
+   :=
+   PDind !id ?a: SIGNAL;
+      ([is_physig (a)] ->
+           ([eq (a, subactgap)] ->
+                LDcon !id !ackmiss;
+                   Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+            []
+            [not (eq (a, subactgap))] ->
+                LDcon !id !ackmiss;
+                   LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, n)
+           )
+       []
+       [not (is_physig (a))] ->
+           Link3RE [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, a)
+      )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link3RE [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                   (n: Nat, id: Nat, buffer: SIG_TUPLE, a: SIGNAL)
+                   : noexit
+   :=
+   PDind !id ?e: SIGNAL;
+      ([valid_ack (a) and (eq (e, End) or eq (e, Prefix))] ->
+           LDcon !id !ackrec (getack (a));
+              LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, n)
+       []
+       [not (valid_ack (a) and (eq (e, End) or eq (e, Prefix)))] ->
+           ([eq (e, subactgap)] ->
+                LDcon !id !ackmiss;
+                   Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+            []
+            [not (eq (e, subactgap))] ->
+                LDcon !id !ackmiss;
+                   LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, n)
+           )
+      )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+(* ------------------------------------------------------------------------- *)
+
+process Link4 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+              (n: Nat, id: Nat, buffer: SIG_TUPLE)
+              : noexit
+:=
+   PDind !id ?dh: SIGNAL;
+      ([is_physig (dh)] ->
+           ([eq (dh, subactgap)] ->
+                Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+            []
+            [not (eq (dh, subactgap))] ->
+                LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, n)
+           )
+       []
+       [not (is_physig (dh))] ->
+           Link4DH [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+      )
+endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link4DH [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                   (n: Nat, id: Nat, buffer: SIG_TUPLE)
+                   : noexit
+   :=
+   PDind !id ?dest: SIGNAL;
+   ([is_dest (dest)] ->
+        ([getdest (dest) eq id] ->
+             PAreq !id !immediate;
+                Link4RH [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, id)
+         []
+         [getdest (dest) eq n] ->
+             Link4RH [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, n)
+         []
+         [(getdest (dest) ne n) and (getdest (dest) ne id)] ->
+             LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, n)
+         )
+    []
+    [not (is_dest (dest))] ->
+        ([eq (dest, subactgap)] ->
+             Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+         []
+         [not (eq (dest, subactgap))] ->
+             LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, n)
+        )
+   )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link4RH [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                   (n: Nat, id: Nat, buffer: SIG_TUPLE, dest: Nat)
+                   : noexit
+   :=
+   PDind !id ?h: SIGNAL;
+      ([valid_hpart (h)] ->
+           Link4RD [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, dest, h)
+       []
+       [not (valid_hpart (h))] ->
+           LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, dest)
+      )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link4RD [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                   (n: Nat, id: Nat, buffer: SIG_TUPLE, dest: Nat, h: SIGNAL)
+                   : noexit
+   :=
+   PDind !id ?d: SIGNAL;
+      ([is_data (d)] ->
+           Link4RE [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, dest, h, d)
+       []
+       [not (is_data (d))] ->
+           LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, dest)
+      )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link4RE [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                   (n: Nat, id: Nat, buffer: SIG_TUPLE, dest: Nat, h: SIGNAL, d: SIGNAL)
+                   : noexit
+   :=
+   PDind !id ?e: SIGNAL;
+      ([eq (e, End) or eq (e, Prefix)] ->
+           ([dest eq id] ->
+                Link4DRec [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, h, d)
+            []
+            [not (dest eq id)] ->
+                Link4BRec [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, h, d)
+           )
+       []
+       [not (eq (e, End) or eq (e, Prefix))] ->
+           LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, dest)
+      )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link4DRec [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                     (n: Nat, id: Nat, buffer: SIG_TUPLE, h: SIGNAL, d: SIGNAL)
+                     : noexit
+   :=
+   ([eq (getdcrc (d), check)]->
+        LDind !id !good (gethead (h), getdata (d));
+           PAcon !id !won;
+           Link5 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+    []
+    [not (eq (getdcrc (d), check))] ->
+        LDind !id !dcrc_err (gethead (h));
+           PAcon !id !won;
+           Link5 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+   )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link4BRec [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                     (n: Nat, id: Nat, buffer: SIG_TUPLE, h: SIGNAL, d: SIGNAL)
+                     : noexit
+   :=
+   ([eq (getdcrc (d), check)] ->
+        LDind !id !broadrec (gethead (h), getdata (d));
+           Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+    []
+    [not (eq (getdcrc (d), check))] ->
+        Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+   )
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Link5 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+              (n: Nat, id: Nat, buffer: SIG_TUPLE)
+              : noexit
+:=
+   (LDres !id ?a: ACK ?b: BOC;
+       Link6 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+             (n, id, buffer, sig (acksig (a, crc (a))), b)
+    []
+    PCind !id;
+       PDreq !id !Prefix;
+       Link5 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+   )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Link6 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+              (n: Nat, id: Nat, buffer: SIG_TUPLE, p: SIGNAL, b: BOC)
+              : noexit
+:=
+   PCind !id; PDreq !id !Start;
+   PCind !id; PDreq !id !p;
+   PCind !id;
+      ([eq (b, release)] ->
+           PDreq !id !End;
+              Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+       []
+       [not (eq (b, release))] ->
+           PDreq !id !Prefix;
+              Link7 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Link7 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+              (n: Nat, id: Nat, buffer: SIG_TUPLE)
+              : noexit
+:=
+   (PCind !id;
+       PDreq !id !Prefix;
+       Link7 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+    []
+    LDreq !id ?dest: Nat ?c: HEADER ?d: DATA;
+       Link2resp [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                 (n, id, buffer, quadruple (dhead, sig (destsig (dest)),
+                                            sig (headersig (c, crc (c))),
+                                            sig (datasig (d, crc (d)))))
+   )
+endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Link2resp [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                     (n: Nat, id: Nat, buffer: SIG_TUPLE, p: SIG_TUPLE)
+                     : noexit
+   :=
+   PCind !id; PDreq !id !Start;
+   PCind !id; PDreq !id !first (p);
+   PCind !id; PDreq !id !second (p);
+   PCind !id; PDreq !id !third (p);
+   PCind !id; PDreq !id !fourth (p);
+   PCind !id; PDreq !id !End;
+   ([getdest (second (p)) eq n] ->
+        LDcon !id !broadsent;
+           Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+    []
+    [getdest (second (p)) ne n] ->
+        Link3 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+   )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+(* ------------------------------------------------------------------------- *)
+
+process LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind]
+                (n: Nat, id: Nat, buffer: SIG_TUPLE, dest: Nat)
+                : noexit
+:=
+   (PDind !id ?p: SIGNAL;
+       ([eq (p, subactgap)] ->
+            Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+        []
+        [not (eq (p, subactgap))] ->
+            LinkWSA [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer, dest)
+       )
+    []
+    [dest eq id] ->
+         PAcon !id !won;
+            PCind !id;
+            PDreq !id !End;
+            Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (n, id, buffer)
+    )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+

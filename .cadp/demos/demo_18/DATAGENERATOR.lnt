@@ -1,0 +1,48 @@
+module DATAGENERATOR (TYPES, CHANNELS) is
+
+-------------------------------------------------------------------------------
+
+process DataGenerator [DI:DInChannel, DO:DOutChannel, CO:COutChannel] is
+
+   var l:EnvList in
+      l := {};
+      loop
+         select
+            var e : Env in
+                DI (?any PortNo, ?e, ?any RouteNo) where not (e IsIn l);
+                l := insert (e, l)
+            end var
+        []
+            var e : Env in
+                DO (?any PortNo, ?e);
+                l := remove (e, l)
+            end var
+        []
+            var el:EnvList in
+               select
+                  el := {}
+               []
+                  el := {0 of Env}
+               []
+                  el := {1 of Env}
+               []
+                  el := {0 of Env, 1 of Env}
+               []
+                  el := {1 of Env, 0 of Env}
+               end select;
+               CO (?any Bool, el);
+               while el != {} loop
+                  l := remove (head (el), l);
+                  el := tail (el)
+               end loop
+            end var
+        end select
+      end loop
+   end var
+
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

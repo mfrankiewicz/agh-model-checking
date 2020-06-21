@@ -1,0 +1,134 @@
+
+(*===========================================================================*)
+(* General action predicates *)
+
+(* Arbitrations *)
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Device i requires access to the bus *)
+
+macro ASK_0 () =
+    'ARB !WIRE (TRUE.*)'
+end_macro
+
+macro ASK_1 () =
+    'ARB !WIRE ([^,]*, TRUE.*)'
+end_macro
+
+macro ASK_2 () =
+    'ARB !WIRE ([^,]*, [^,]*, TRUE.*)'
+end_macro
+
+macro ASK_3 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, TRUE.*)'
+end_macro
+
+macro ASK_4 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, [^,]*, TRUE.*)'
+end_macro
+
+macro ASK_5 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, [^,]*, [^,]*, TRUE.*)'
+end_macro
+
+macro ASK_6 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, [^,]*, [^,]*, [^,]*, TRUE.*)'
+end_macro
+
+macro ASK_7 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, [^,]*, [^,]*, [^,]*, [^,]*, TRUE.*)'
+end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device requires access to the bus *)
+
+macro ASK_any () =
+    'ARB !WIRE (.*TRUE.*)'
+end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* No device requires access to the bus *)
+
+macro NO_ASK () =
+    "ARB !WIRE (FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE)"
+end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Device i gets access to the bus *)
+
+macro WIN_0 () =
+    'ARB !WIRE (TRUE[^T]*)'
+end_macro
+
+macro WIN_1 () =
+    'ARB !WIRE ([^,]*, TRUE[^T]*)'
+end_macro
+
+macro WIN_2 () =
+    'ARB !WIRE ([^,]*, [^,]*, TRUE[^T]*)'
+end_macro
+
+macro WIN_3 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, TRUE[^T]*)'
+end_macro
+
+macro WIN_4 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, [^,]*, TRUE[^T]*)'
+end_macro
+
+macro WIN_5 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, [^,]*, [^,]*, TRUE[^T]*)'
+end_macro
+
+macro WIN_6 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, [^,]*, [^,]*, [^,]*, TRUE[^T]*)'
+end_macro
+
+macro WIN_7 () =
+    'ARB !WIRE ([^,]*, [^,]*, [^,]*, [^,]*, [^,]*, [^,]*, [^,]*, TRUE[^T]*)'
+end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device gets access to the bus *)
+
+macro WIN_any () =
+    'ARB !WIRE (.*TRUE.*)'
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Commands *)
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Device i receives a command *)
+
+macro CMD_num (i) = "CMD !" # i  end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device receives a command *)
+
+macro CMD_any () = 'CMD !.*' end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device between 0 and i receives a command *)
+
+macro CMD_0_i (i) = 'CMD ![0-' # i # ']' end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Reconnections *)
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Device i sends a reconnect *)
+
+macro REC_num (i) = "REC !" # i  end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device sends a reconnect *)
+
+macro REC_any () = 'REC !.*' end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device between 0 and i sends a reconnect *)
+
+macro REC_0_i (i) = 'REC ![0-' # i # ']' end_macro
+
+(*===========================================================================*)

@@ -1,0 +1,13 @@
+
+specification EXPERIMENT_19 [OPEN, CLOSE, 
+   PRED1, SUCC1, PRED2, SUCC2, PRED3, SUCC3] : noexit
+ 
+behaviour
+
+   library NETWORK_WITHOUT_CRASHES endlib
+
+where
+
+   library DATA, LINK_5, CHANG_ROBERTS_STATION_REVISION_1 endlib
+
+endspec

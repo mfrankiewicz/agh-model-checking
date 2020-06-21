@@ -1,0 +1,55 @@
+(* all processes are defined in file "odp.lotos" *)
+
+% DEFAULT_PROCESS_FILE="odp.lotos"
+
+(*
+ * generation of the state space of the whole system
+ *
+ * the state space of the trader is generated using an interface that
+ * takes into account the environment constraints imposed on the trader by
+ # three of the four objects
+ *)
+
+"odp.bcg" = generation of leaf strong reduction of
+   hide all but WORK in
+      par EXPORT, IMPORT in
+         (refined abstraction Object_1, Object_2, Object_3
+	    using "Trader_Alphabet" of "Trader")
+      ||
+         par WORK #2 in 
+            Object_1
+         || Object_2
+         || Object_3
+         || Object_4
+         end par
+      end par;
+
+(*
+ * we verify that the system has no livelock before minimizing it modulo
+ * branching bisimulation (which eliminates livelocks) 
+ *)
+
+"livelock.bcg" = livelock of "odp.bcg";
+
+"odp.bcg" = branching reduction of "odp.bcg";
+
+(* 
+ * we verify that in every state, every object can eventually execute
+ * the services of which it is a client
+ *)
+
+"diag.bcg" = verify "prop.mcl" in "odp.bcg";
+
+(*
+ * we verify that each object executes the expected services independently of
+ * the other services; the verification is done on-the-fly
+ *)
+
+% for I in 1 2 3 4
+% do
+	"diag.seq" = branching comparison
+		total rename "WORK !.* !.* \(!.*\)" -> "WORK \1" in
+       			total hide all but "WORK !.* !O$I !.*" in "odp.bcg"
+      		== 
+		"Object_${I}_Service";
+% done

@@ -1,0 +1,29 @@
+(******************************************************************************
+ * From any reachable state, it is possible to reach each action in the
+ * following list:
+ *	'WORK !.* !O1 !S1',
+ *	'WORK !.* !O2 !S3',
+ *	'WORK !.* !O3 !S1',
+ *	'WORK !.* !O3 !S2',
+ *	'WORK !.* !O4 !S2', and
+ *	'WORK !.* !O4 !S3'
+ * This property expresses that all requested services can be provided.
+ *****************************************************************************)
+
+[true*] (
+   (<true* . 'WORK !.* !O1 !S1'> true)
+   and
+   (<true* . 'WORK !.* !O2 !S3'> true)
+   and
+   (<true* . 'WORK !.* !O3 !S1'> true)
+   and
+   (<true* . 'WORK !.* !O3 !S2'> true)
+   and
+   (<true* . 'WORK !.* !O4 !S2'> true)
+   and
+   (<true* . 'WORK !.* !O4 !S3'> true)
+   and
+   (<true* . 'WORK !.* !O4 !S4'> true)
+   and
+   (<true* . 'WORK !.* !O4 !S5'> true)
+)

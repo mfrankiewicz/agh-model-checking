@@ -1,0 +1,42 @@
+module APPLICATION (TYPES) is
+
+-- application with eleven main tasks:
+-- one don't care, three bitstreams, seven vectors
+
+process EXECUTE [ST, MSG: any]
+                (id: Pid, j: Job_Desc, in out s: Job_Desc_Stack) is
+  access ST; -- to avoid a warning from lnt2lotos
+  s := s; -- to avoid a warning from lnt2lotos
+  case get_PC (j) of PC in
+    DONT_CARE_1 -> LEAF [MSG] (DONT_CARE, DONT_CARE_1, ID)
+  | BITSTREAM_1 -> LEAF [MSG] (BITSTREAM, BITSTREAM_1, ID)
+  | BITSTREAM_2 -> LEAF [MSG] (BITSTREAM, BITSTREAM_2, ID)
+  | BITSTREAM_3 -> LEAF [MSG] (BITSTREAM, BITSTREAM_3, ID)
+  | VECTOR_1    -> LEAF [MSG] (VECTOR, VECTOR_1, ID)
+  | VECTOR_2    -> LEAF [MSG] (VECTOR, VECTOR_2, ID)
+  | VECTOR_3    -> LEAF [MSG] (VECTOR, VECTOR_3, ID)
+  | VECTOR_4    -> LEAF [MSG] (VECTOR, VECTOR_4, ID)
+  | VECTOR_5    -> LEAF [MSG] (VECTOR, VECTOR_5, ID)
+  | VECTOR_6    -> LEAF [MSG] (VECTOR, VECTOR_6, ID)
+  | VECTOR_7    -> LEAF [MSG] (VECTOR, VECTOR_7, ID)
+  | any -> null -- to avoid a warning from lnt2lotos
+  end case
+end process
+
+process HOST_APPLI [HOST: any] is
+  HOST (HOST_JOB (DONT_CARE_1, DONT_CARE));
+  HOST (HOST_JOB (BITSTREAM_1, BITSTREAM));
+  HOST (HOST_JOB (VECTOR_1, VECTOR));
+  HOST (HOST_JOB (VECTOR_2, VECTOR));
+  HOST (HOST_JOB (BITSTREAM_2, BITSTREAM));
+  HOST (HOST_JOB (VECTOR_3, VECTOR));
+  HOST (HOST_JOB (VECTOR_4, VECTOR));
+  HOST (HOST_JOB (BITSTREAM_3, BITSTREAM));
+  HOST (HOST_JOB (VECTOR_5, VECTOR));
+  HOST (HOST_JOB (VECTOR_6, VECTOR));
+  HOST (HOST_JOB (VECTOR_7, VECTOR));
+  stop
+end process
+
+end module
+

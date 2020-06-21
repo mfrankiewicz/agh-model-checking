@@ -1,0 +1,71 @@
+# This file is a customization file for a2ps
+# Style sheet for EXP
+# $Id#
+
+style EXP is
+
+written by "Syntax Editor Configuration Tool <cadp@inria.fr>"
+version is 2.6
+
+documentation is
+ "This style is designed to fontify the EXP language"
+end documentation
+
+alphabets are
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+
+keywords in Keyword_strong are
+   all,
+   any,
+   behavior,
+   behaviour,
+   but,
+   comm,
+   cut,
+   "end",
+   gate,
+   hide,
+   "in",
+   par,
+   prio,
+   rename,
+   using
+end keywords
+
+keywords in Keyword are
+   ccs,
+   csp,
+   elotos,
+   lotos,
+   mcrl,
+   label,
+   multiple,
+   partial,
+   single,
+   total
+end keywords
+
+operators in Keyword_strong are
+   [,
+   ],
+   {,
+   },
+   >,
+   =,
+   |,
+   "/",
+   *,
+   #,
+   _,
+   -> \rightarrow
+end operators
+
+sequences are
+   "(*" Comment "*)",
+   "--" Comment,
+   C-char,
+   C-string
+end sequences
+
+end style
+

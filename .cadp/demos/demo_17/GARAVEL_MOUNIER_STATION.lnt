@@ -1,0 +1,52 @@
+module GARAVEL_MOUNIER_STATION (DATA) is
+
+process STATION [OPEN, CLOSE, CRASH:ACCESS, PRED, SUCC:PORT] (Ai:ADDR, INIT:BOOL) is
+   use INIT;
+   disrupt
+      -- election phase
+      var B:BOOL in
+         B := true;
+         loop
+            select
+               -- timeout: start an election
+               SUCC (CLAIM, Ai, B)
+            []
+               PRED (TOKEN);
+               PRIVILEDGE [OPEN, CLOSE, SUCC] (Ai);
+               B := not (B)
+            []
+               var Aj:ADDR, B0:BOOL in
+                  PRED (CLAIM, ?Aj, ?B0);
+                  if Ai < Aj then
+                     null
+                  elsif Ai > Aj then
+                     SUCC (CLAIM, Aj, B0)
+                  elsif (B0 == B) then
+                     PRIVILEDGE [OPEN, CLOSE, SUCC] (Ai);
+                     B := not (B)
+                  end if
+               end var
+            end select
+         end loop
+      end var
+   by
+      -- failure phase
+      CRASH (Ai);
+      loop
+         select
+            PRED (TOKEN);
+            SUCC (TOKEN)
+         []
+            var Aj:ADDR, B:BOOL in
+               PRED (CLAIM, ?Aj, ?B) where Ai != Aj;
+               SUCC (CLAIM, Aj, B)
+            end var
+         []
+            PRED (CLAIM, Ai, ?any BOOL)
+         end select
+      end loop
+   end disrupt
+end process
+
+end module
+

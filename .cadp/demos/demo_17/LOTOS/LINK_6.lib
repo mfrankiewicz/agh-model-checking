@@ -1,0 +1,15 @@
+process LINK [INPUT, OUTPUT] : noexit :=
+   INPUT !TOKEN;
+      OUTPUT !TOKEN;
+         LINK [INPUT, OUTPUT]	
+   []
+   INPUT !TOKEN;
+      LINK [INPUT, OUTPUT]	
+   []
+   INPUT !CLAIM ?Ai:ADDR ?B:BOOL;
+      OUTPUT !CLAIM !Ai !B;
+         LINK [INPUT, OUTPUT]   
+   []
+   INPUT !CLAIM ?Ai:ADDR ?B:BOOL;
+      LINK [INPUT, OUTPUT]   
+endproc

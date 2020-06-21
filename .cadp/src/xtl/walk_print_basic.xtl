@@ -1,0 +1,40 @@
+(****************************************************************
+ * @(#)walk_print_basic.xtl - 2017/11/22 - Hubert Garavel
+ *
+ * Definition of printing macros for walk.xtl to produce a
+ * minimal output.
+ ****************************************************************)
+
+(****************************************************************
+ *  WALK__PRINT_EDGE(E:edge):action
+ *  Report edge E in a found trace.
+ *****************************************************************)
+
+macro WALK__PRINT_EDGE(E) =
+  (print((E) of edge) fby newline())
+end_macro
+
+macro WALK__PRINT_STATE(S) =
+  nop
+end_macro
+
+macro WALK__PRINT_LOOP(N) =
+  nop
+end_macro
+
+macro WALK__PRINT_FOUND() =
+  nop
+end_macro
+
+macro WALK__PRINT_NOTFOUND() =
+  nop
+end_macro
+
+macro WALK__PRINT_DEADLOCK(S) =
+  nop
+end_macro
+
+macro WALK__PRINT_NONDTM(E1,E2) =
+  nop
+end_macro
+

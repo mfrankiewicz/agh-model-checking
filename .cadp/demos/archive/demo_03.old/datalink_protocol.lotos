@@ -1,0 +1,75 @@
+specification Datalink [Get, Give] : noexit
+
+   library Datalink endlib
+
+behaviour
+
+   hide Timeout, Send, Receive in
+      (
+         (
+         Transmitter [Get, Timeout, Send, Receive] (0 of SeqNum)
+         |||
+         Receiver [Give, Send, Receive] (0 of SeqNum)
+         )
+      |[Timeout, Send, Receive]|
+         Line [Timeout, Send, Receive]
+      )
+
+where
+
+(* ======================================================================== *)
+
+   process Transmitter [Get, Timeout, Send, Receive] (Seq1:SeqNum) : noexit :=
+      Get ?Data1:BitString;
+         Sending [Timeout, Send, Receive] (Seq1, Data1) >>
+            Transmitter [Get, Timeout, Send, Receive] (Inc (Seq1))
+
+   where
+
+(* ------------------------------------------------------------------------ *)
+
+      process Sending [Timeout, Send, Receive] (Seq:SeqNum, Data:BitString) : exit :=
+         Send !Info !Seq !Data;
+            (
+            Receive !Ack !Inc (Seq) !Empty;
+               exit
+            []
+            Timeout;
+               Sending [Timeout, Send, Receive] (Seq, Data)
+            )
+      endproc
+   endproc
+
+(* ======================================================================== *)
+
+   process Receiver [Give, Send, Receive] (Exp:SeqNum) : noexit :=
+      Receive !Info ?Rec:SeqNum ?Data3:BitString;
+         (
+         [Rec = Exp] ->
+            Give !Data3;
+               Send !Ack !Inc(Rec) !Empty;
+                  Receiver [Give, Send, Receive] (Inc (Exp))
+         []
+         [Inc (Rec) = Exp] ->
+            Send !Ack !Inc (Rec) !Empty;
+               Receiver [Give, Send, Receive] (Exp)
+         )
+   endproc
+
+(* ======================================================================== *)
+
+   process Line [Timeout, Send, Receive] : noexit :=
+      Send ?F:FrameType ?Seq2:SeqNum ?Data2:BitString;
+         (
+         Receive !F !Seq2 !Data2;
+            Line [Timeout, Send, Receive]
+         []
+         i;
+            Timeout;
+               Line [Timeout, Send, Receive]
+         )
+   endproc
+
+(* ======================================================================== *)
+
+endspec

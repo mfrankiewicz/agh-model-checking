@@ -1,0 +1,91 @@
+module TYPES is
+
+-------------------------------------------------------------------------------
+
+type NUM is 
+   range 0..7 of NAT with "==", "<>", "<"
+end type
+
+channel NUM is (NUM) end channel
+
+-------------------------------------------------------------------------------
+
+type TABLE is
+   array [0..7] of NAT
+end type
+
+-------------------------------------------------------------------------------
+
+function ZERO : TABLE is
+   return TABLE (0) -- i.e., TABLE (0, 0, 0, 0, 0, 0, 0, 0)
+end function
+
+-------------------------------------------------------------------------------
+
+function ZERO_0127 : TABLE is
+   return TABLE (0, 0, 0, 8, 8, 8, 8, 0)
+   -- this constant is used to inform the controller that only devices
+   -- 0, 1, 2, 7 are present on the SCSI bus; initializing the queue
+   -- size of the other devices to their maximal limit, i.e. 8, prevents
+   -- the controller from considering these other devices, since the
+   -- controller believes that these devices' input queues are full
+end function
+
+-------------------------------------------------------------------------------
+
+type WIRE is
+   !implementedby "WIRE"
+   !iteratedby "FIRST_WIRE", "NEXT_WIRE"
+   array [0..7] of BOOL
+end type
+
+channel WIRE is (WIRE) end channel
+
+-------------------------------------------------------------------------------
+
+function ACCESS_WIRE (W: WIRE, N : NAT) : BOOL is
+   !implementedby "ACCESS_WIRE" -- for external access from the .fnt file only
+   return W [N]
+end function
+
+-------------------------------------------------------------------------------
+
+function MAKE_WIRE (B0, B1, B2, B3, B4, B5, B6, B7 : BOOL) : WIRE is
+   !implementedby "MAKE_WIRE" -- for external access from the .fnt file only
+   return WIRE (B0, B1, B2, B3, B4, B5, B6, B7)
+end function
+
+-------------------------------------------------------------------------------
+
+function C_PASS (W : WIRE, N : NUM) : BOOL is
+   return not (W [NAT (N)])
+end function
+
+-------------------------------------------------------------------------------
+
+function C_WIN (W : WIRE, N : NUM) : BOOL is
+   var
+      M : NAT
+   in
+      if not (W [NAT (N)]) then
+         return FALSE
+      end if;
+      for M := NAT (N) + 1 while M <= 7 by M := M + 1 loop
+         if W [M] then
+            return FALSE
+         end if
+      end loop;
+      return TRUE
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function C_LOSS (W : WIRE, N : NUM) : BOOL is
+   return not (C_PASS (W, N)) and not (C_WIN (W, N))
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

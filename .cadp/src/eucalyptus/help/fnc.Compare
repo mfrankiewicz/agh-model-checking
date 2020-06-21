@@ -1,0 +1,15 @@
+Compare allows the comparison of two Labelled Transition systems 
+according to various equivalences or preorder relations (e.g., strong
+equivalence, branching bisimulation, observation equivalence, etc.). 
+
+The result is either TRUE if both Labelled Transition Systems are 
+equivalent, or FALSE if  they are not. In this case, a diagnostic
+is produced, which consists of one several discriminating sequences 
+is produced.
+
+This functionality can also be used to compare ``on the fly'' a network 
+of communicating Labelled Transition systems to another Labelled Transition 
+system.
+ 
+
+EUCALYPTUS Reference Manual. Last updated 2018/05/23 12:43:42.

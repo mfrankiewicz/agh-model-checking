@@ -1,0 +1,17 @@
+(* compositional generation of the LOTOS specification *)
+
+% DEFAULT_PROCESS_FILE="cache.lotos"
+
+"cache.bcg" = root leaf strong reduction of
+    (
+        (
+            AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_1)
+            |||
+            AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_2)
+            |||
+            AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_3)
+        )
+        |[GET_LINE_STATUS, PUT_LINE_STATUS]|
+        REMOTE_DIRECTORY [GET_LINE_STATUS, PUT_LINE_STATUS] (S0, S0, S0, AGENT_1, AGENT_2, AGENT_3)
+    );
+

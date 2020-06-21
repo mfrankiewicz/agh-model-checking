@@ -1,0 +1,21 @@
+module NETWORK_WITH_CRASHES (DATA) is
+
+process NETWORK [OPEN, CLOSE, CRASH:ACCESS,
+                 PRED1, PRED2, PRED3, SUCC1, SUCC2, SUCC3:PORT] is
+   par
+      PRED1, SUCC1 -> STATION [OPEN, CLOSE, CRASH, PRED1, SUCC1] (A1, true)
+   ||
+      PRED2, SUCC2 -> STATION [OPEN, CLOSE, CRASH, PRED2, SUCC2] (A2, false)
+   ||
+      PRED3, SUCC3 -> STATION [OPEN, CLOSE, CRASH, PRED3, SUCC3] (A3, false)
+   ||
+      SUCC1, PRED2 -> LINK [SUCC1, PRED2]
+   ||
+      SUCC2, PRED3 -> LINK [SUCC2, PRED3]
+   ||
+      SUCC3, PRED1 -> LINK [SUCC3, PRED1]
+   end par
+end process
+
+end module
+

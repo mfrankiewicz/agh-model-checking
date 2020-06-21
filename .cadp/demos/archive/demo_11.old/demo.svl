@@ -1,0 +1,78 @@
+
+(*********************************************************************
+ * The rel/REL protocol is divided into five processes:              *
+ *        - Crash_Transmitter                                        *
+ *        - Fail_Receiver1                                           *
+ *        - Fail_Receiver2                                           *
+ *        - Receiver_Thread1                                         *
+ *        - Receiver_Thread2                                         *
+ *********************************************************************)
+
+(*
+ * This SVL script performs the following operations.
+ * 
+ * First, for each of these five processes, the corresponding LTS is 
+ * generated and reduced modulo strong equivalence. The reduced LTSs 
+ * are then composed together using LOTOS parallel and hiding operators.
+ * The parallel composition of the minimized processes is referred as 
+ * "rel_rel.exp".
+ *
+ * Then, the following verifications are automatically performed:
+ *
+ * 1) Check for deadlocks
+ * 
+ * 2) Check for livelocks
+ * 
+ * 3) Reduce modulo branching bisimulation the LTS corresponding to
+ *    "rel_rel.exp" after hiding all labels of the form "GET !2 *" and
+ *    "CRASH !*"
+ * 
+ * 4) Compare the resulting LTS with the two service properties
+ *)
+
+% DEFAULT_PROCESS_FILE="rel_rel.lotos"
+
+"rel_rel.exp" = leaf strong reduction of 
+    hide R_T1, R_T2, R1, R2, DEPOSE1, DEPOSE2 in
+        (
+            CRASH_TRANSMITTER
+            |[R_T1, R_T2]|
+            (
+                (
+                    RECEIVER_THREAD1
+                    |[R_T1, R1, R2, GET, CRASH, DEPOSE1]|
+                    FAIL_RECEIVER1
+                )
+                |[R1, R2]|
+                (
+                    RECEIVER_THREAD2
+                    |[R_T2, R1, R2, GET, CRASH, DEPOSE2]|
+                    FAIL_RECEIVER2
+                )
+            )
+        );
+
+(* Check for deadlocks *)
+
+"rel_rel_dead.seq" = deadlock of "rel_rel.exp";
+
+(* Check for livelocks *)
+
+"rel_rel_live.bcg" = livelock of "rel_rel.exp";
+
+(* 
+ * Reduce modulo branching bisimulation the LTS corresponding to "rel_rel.exp"
+ * after hiding all labels of the form "GET !2 *" and "CRASH !*"
+ *)
+
+"rel_rel_branching.bcg" = branching reduction of
+	total hide "GET !2 .*", "CRASH .*" in "rel_rel.exp" ;
+
+(* Compare the resulting LTS with the two service properties *)
+
+"rel_rel_service_1.seq" = safety comparison
+	"rel_rel_branching.bcg" == "service_1.aut";
+
+"rel_rel_service_2.seq" = tau*.a comparison
+	"rel_rel_branching.bcg" == "service_2.aut";
+

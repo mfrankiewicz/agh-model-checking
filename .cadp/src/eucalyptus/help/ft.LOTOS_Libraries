@@ -1,0 +1,13 @@
+                           LOTOS LIBRARIES
+
+  LOTOS libraries contain abstract data type definitions to be
+  imported in LOTOS programs using the ``library ... endlib'' directive.
+  These libraries are contained in files with suffix ``.lib''. See
+  the LOTOS manual page for additional information.
+
+  The CAESAR and CAESAR.ADT compilers use predefined ``.lib'' libraries
+  located in the directory $CADP/lib. For some of these libraries, a
+  corresponding handwritten implementation in C is provided in the
+  directory $CADP/incl.
+ 
+EUCALYPTUS Reference Manual. Last updated 2019/01/12 15:59:18.

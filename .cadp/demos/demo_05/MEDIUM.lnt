@@ -1,0 +1,68 @@
+(*
+ * This bounded FIFO medium can discard messages or store them in its queue
+ * upon receiving them. It can also send the first message in its queue
+ * whenever the recipient is ready to receive it.
+ *)
+
+(*
+ * Module definition and inclusion of dependencies:
+ * - MESSAGES: type and function definitions for the messages exchanged
+ *             between the two TFTP protocol entities.
+ * - LOCAL_CONSTANTS: contains the definition of MAX_QUEUE_ELEMENTS().
+ * - QUEUE: type and function definitions for the queue.
+ *)
+
+module MEDIUM (MESSAGES, LOCAL_CONSTANTS, QUEUE) is
+
+-------------------------------------------------------------------------------
+
+process MEDIUM [RECEIVE, SEND, EVENT : any, 
+                raise BAD_INDEX, BAD_VALUE, NOT_FOUND : none] is
+   var
+      Q : QUEUE
+   in
+      (* Queue is initialized as empty *)
+      Q := EMPTY_QUEUE;
+      loop
+         select
+           var
+              M : MESSAGE
+           in
+               (*
+                * Reception of a message if it is valid. The IS_VALID
+                * function is used to contrain the accepted values
+                * for the messages so as to reduced the size of the
+                * state space during generation.
+                *)
+               RECEIVE (?M) where IS_VALID [BAD_INDEX] (M) ;
+               select
+                  (* If the queue is not full then the message can be added *)
+                  only if (SIZE (Q) < MAX_QUEUE_ELEMENTS ()) then
+                     i; Q := ENQUEUE (M, Q)
+                  end if
+               []
+                  (*
+                   * The message can be lost at any time. If the queue is full,
+                   * it is the only option
+                   *)
+                  EVENT (!LOSS)
+               end select
+            end var
+         []
+            (*
+             * If the queue is not empty, then the medium can send
+             * the first message from the queue.
+             *)
+            only if (SIZE (Q) > 0) then
+               SEND (!NTH [BAD_VALUE, NOT_FOUND] (1, Q));
+               Q := REMOVE [BAD_VALUE, NOT_FOUND] (1, Q)
+            end if
+         end select
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

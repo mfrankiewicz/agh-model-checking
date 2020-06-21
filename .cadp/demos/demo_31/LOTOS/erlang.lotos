@@ -1,0 +1,33 @@
+specification ERLANG [A, R] (N:NAT) : noexit 
+
+(*
+ * ERLANG [A, R] (N) performs an infinite repetition of the sequence of
+ * (N+1) actions consisting of N actions R followed by one action A
+ *)
+
+(* --------------------------------------------------------------------------*)
+
+library BOOLEAN, NATURAL endlib
+
+behaviour
+
+   BUS [A, R] (0, N)
+
+where 
+
+(* --------------------------------------------------------------------------*)
+
+process BUS [A, R] (M, N:NAT): noexit :=
+   [M = N] ->
+      A;
+          BUS [A, R] (0, N)
+   []
+   [M < N] ->
+      R;
+          BUS [A, R] (M + 1, N)
+endproc
+
+(* --------------------------------------------------------------------------*)
+
+endspec
+

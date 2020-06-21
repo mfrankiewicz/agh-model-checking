@@ -1,0 +1,104 @@
+
+(*---------------------------------------------------------------------------*)
+
+library BOOLEAN endlib
+
+(*---------------------------------------------------------------------------*)
+
+type RICH_BOOLEAN is BOOLEAN
+   opns
+      _==_, _<>_ : BOOL, BOOL -> BOOL
+   eqns
+      forall B1, B2:BOOL
+      ofsort BOOL
+         B1 == B1 = true;
+	 B1 == B2 = false;
+      ofsort BOOL
+         B1 <> B2 = not (B1 == B2);
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type FRAME is 
+   sorts FRM
+   opns
+      TOKEN (*! constructor *) : -> FRM
+      CLAIM (*! constructor *) : -> FRM
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type STATE is BOOLEAN
+   sorts STATE
+   opns 
+        ALPHA (*! constructor *),
+        BETA (*! constructor *),
+        GAMMA (*! constructor *) : -> STATE
+        _==_, _<>_ : STATE, STATE -> BOOL
+   eqns
+      forall S1, S2:STATE
+      ofsort BOOL
+         S1 == S1 = true;
+         S1 == S2 = false;
+      ofsort BOOL
+         S1 <> S2 = not (S1 == S2);
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type ADDRESS is BOOLEAN
+   sorts ADDR
+   opns
+      A1 (*! constructor *) : -> ADDR
+      A2 (*! constructor *) : -> ADDR
+      A3 (*! constructor *) : -> ADDR
+      _==_, _<>_, _<_, _>_, _<=_, _>=_ : ADDR, ADDR -> BOOL
+   eqns
+      (* with priority *)
+      forall Ai, Aj:ADDR
+      ofsort BOOL
+         Ai == Ai = true;
+         Ai == Aj = false;
+      ofsort BOOL
+         Ai <> Aj = not (Ai == Aj);
+      ofsort BOOL
+         Ai < Aj = (Ai <= Aj) and (Ai <> Aj);
+      ofsort BOOL
+         A1 <= Aj = true;
+         Ai <= A1 = false;
+         A2 <= Aj = true;
+         Ai <= A2 = false;
+         A3 <= Aj = true;
+      ofsort BOOL
+         Ai > Aj = Aj < Ai;
+      ofsort BOOL
+         Ai >= Aj = Aj <= Ai;
+endtype 
+
+(*---------------------------------------------------------------------------*)
+
+type ADDR_SET is Boolean, ADDRESS
+   sorts
+      ADDR_SET 
+   opns
+      {} (*! constructor *) : -> ADDR_SET
+      _+_ (*! constructor *) : ADDR_SET, ADDR -> ADDR_SET
+      _-_ : ADDR_SET, ADDR -> ADDR_SET
+      _isin_ : ADDR, ADDR_SET  -> Bool
+      WHOLE_SET : -> ADDR_SET
+   eqns
+      forall X, Y:ADDR, S:ADDR_SET
+         ofsort ADDR_SET
+            {} - X = {};
+            X == Y => (S + Y) - X = S;
+            X <> Y => (S + Y) - X = (S - X) + Y;
+         ofsort Bool
+            X isin {} = falSe;
+            X == Y => X isin (S + Y) = true;
+            X <> Y => X isin (S + Y) = X isin S;
+         ofsort ADDR_SET
+            WHOLE_SET = {} + A1 + A2 + A3;
+endtype
+
+(*---------------------------------------------------------------------------*)
+

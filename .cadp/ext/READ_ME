@@ -1,0 +1,27 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains various configuration files for using CADP in
+connection with text editors and pretty-printers. These files are not
+required for using CADP, but they can be helpful.
+
+These configuration files are designed for the languages and formats
+supported by the CADP tools. The contents are the following:
+
+ - a2ps: configuration files for the GNU a2ps software, which converts
+   text into PostScript (see http://www.gnu.org/software/a2ps).
+
+ - emacs: configuration files for the Emacs and XEmacs text editors.
+
+ - gtk3: configuration files for GtkSourceView 3.0 editors (including gedit).
+
+ - jedit: configuration files for the jEdit text editor.
+
+ - latex-listings: configuration files for the LaTeX "listings" package.
+
+ - nano: configuration files for the Nano text editor.
+
+ - npp: configuration files for the Notepad++ text editor.
+
+ - vim: configuration files for the Vim text editor.
+

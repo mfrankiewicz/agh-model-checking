@@ -1,0 +1,20 @@
+type Enum is Boolean
+   sorts
+      Enum (*! implementedby ENUM comparedby CMP_ENUM
+               iteratedby FIRST_ENUM and NEXT_ENUM printedby PRINT_ENUM *)
+   opns
+      C1   (*! implementedby C1 constructor *),
+      C2   (*! implementedby C2 constructor *),
+      C3   (*! implementedby C3 constructor *),
+      C4   (*! implementedby C4 constructor *),
+      ... : -> Enum
+      _eq_ (*! implementedby EQ_ENUM *),
+      _ne_ (*! implementedby NE_ENUM *) : Enum, Enum -> Bool
+   eqns
+      forall s1, s2 : Enum
+      ofsort Bool
+         s1 eq s1 = true;
+         s1 eq s2 = false; (* assuming priority between equations *)
+      ofsort Bool
+         s1 ne s2  =  not (s1 eq s2);
+endtype

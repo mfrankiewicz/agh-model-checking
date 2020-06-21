@@ -1,0 +1,88 @@
+(******************************************************************************
+ *             Sequentially consistent, distributed cache memory
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module       :       PI_SSOUT_FONC_T_NDET.lnt
+ *   Authors      :       A. Kriouile, W. Serwe, and Hubert Garavel
+ *   Version      :       1.2
+ *   Date         :       2016/01/08 11:47:53
+ *****************************************************************************)
+
+-- contains the functional version with non-deterministic tail on buffer Inn
+
+-- on buffer Out, tail (dequeue) is always deterministic as every element can
+-- be written at most once
+
+module PI_SSOUT_FONC_T_NDET (TYPES_COMMON) is
+
+process PI [diag                 : BUF_NAT_CHANNEL, 
+            sync                 : NONE, 
+            w, r, mw, cu, mr, cl : INDEX_ELEM_CHANNEL] (ind : index) is
+   var el : ELEM, j : INDEX, C : MEM_OF_ELEM, Inn : BUF_OF_ELEM in 
+      C := empt_m;
+      Inn := empt_b;
+      loop
+         sync;
+         select
+            -- for DEBUGGING
+            only if Inn == overflow then 
+               diag (overflow, 1 of NAT)
+            end if
+            -- end DEBUGGING
+          []
+            el := any ELEM;
+            w (ind, el) where datum (ind, el)
+          []
+            el := any ELEM;
+            r (ind, el) where ok (C, el) and (true and empty_true (Inn))
+          []
+            el := any ELEM;
+            mw (ind, el) where datum (ind, el);
+            Inn := Enqueue (Inn, el, true)
+          []
+            mw (?j, ?el) where not (j == ind);
+            Inn := Enqueue (Inn, el, false)
+          []
+            el := any ELEM;
+            select 
+               cu (ind, el) where first (Inn, el);
+               C := Insert (C, el)
+             []
+               cu (ind, el)
+                  where first (Inn, el) and
+                        not (((el == eps) or (Inn == overflow)) or empty (Inn));
+               C := Insert (C, el);
+               Inn := Dequeue (Inn)
+            end select
+          []
+            -- the condition "not (ok (C, el)) and NotIn (Inn, el)" is added
+            -- in order to have a bit less idle transitions
+            mr (ind, ?el) where not (ok (C, el)) and NotIn (Inn, el);
+            Inn := Enqueue (Inn, el, false)
+          []
+            -- the condition "not (el == eps)" is only added to have a bit less
+            -- idle transitions
+            el := any ELEM;
+            cl (ind, el) where ok (C, el) and not (el == eps);
+            C := cl (C, el)
+          []
+            -- passive synchros when other processes are active
+            r (?j, ?any ELEM) where not (j == ind)
+          []
+            w (?j, ?any ELEM) where not (j == ind)
+          []
+            cu (?j, ?any ELEM) where not (j == ind)
+          []
+            mr (?j, ?any ELEM) where not (j == ind)
+          []
+            cl (?j, ?any ELEM) where not (j == ind)
+         end select
+      end loop
+   end var
+end process (* PI *)
+
+end module

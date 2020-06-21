@@ -1,0 +1,192 @@
+(*
+ * Step 1: Compositional Generation
+ * --------------------------------
+ * The rel/REL protocol is divided into four processes:
+ *	- Crash_Transmitter
+ *	- Receiver_Node (instance 1)
+ *	- Receiver_Node (instance 2)
+ *	- Receiver_Node (instance 3)
+ *
+ * Since the LTSs corresponding to the Receiver nodes are too large to
+ * be generated from the LOTOS specification we adopt the following strategy:
+ *
+ * - The Crash Transmitter node is generated, and then reduced modulo strong 
+ *   bisimulation (terminal reduction).  
+ *
+ * - For each Receiver node, a restricted LTS is generated with respect to 
+ *   the context constraints provided by its environment (the Transmitter
+ *   and the other Receiver nodes). Such "user-given" constraints are described
+ *   by the LOTOS specifications "r?_interface.lotos" files. These restricted 
+ *   LTSs are then reduced modulo strong bisimulation.
+ *
+ * - Restricted LTS associated to each Receiver node are composed each other, 
+ *   each parallel composition being also restricted with respect to the 
+ *   context constraints provided by the Transmitter. The LTS resulting of 
+ *   these compositions is then reduced modulo strong bisimulation.
+ *
+ * - Finally, the LTS associated to the Transmitter is generated, reduced
+ *   modulo strong bisimulation and composed with the one associated to the
+ *   Receiver nodes composition. Correcteness of the user-given constraints
+ *   is checked on this last composition.
+ *
+ * This results in an LTS named "rel_rel.bcg".
+ *)
+
+% DEFAULT_PROCESS_FILE="rel_rel.lotos"
+
+"crash_trans.bcg" = strong reduction of CRASH_TRANSMITTER;
+
+"rel_rel.bcg" = strong reduction of generation of 
+   leaf strong reduction of
+      hide R_T1, R_T2, R_T3, R12, R13, R21, R23, R31, R32  in
+         (
+            (
+               (
+                  (Receiver_Node [R_T1, R21, R31, R12, R13, GET, CRASH] (1)
+                   -||? "r1_interface.lotos")
+               |[R12, R21, R13, R31]|
+                  (
+                     (Receiver_Node [R_T2, R12, R32, R21, R23, GET, CRASH] (2)
+                      -||? "r2_interface.lotos")
+                  |[R23, R32]|
+                     (Receiver_Node [R_T3, R13, R23, R31, R32, GET, CRASH] (3)
+                      -||? "r3_interface.lotos")
+                  ) -|[R_T2, R_T3]| "crash_trans.bcg"
+               ) -|[R_T1, R_T2, R_T3]| "crash_trans.bcg"
+            ) 
+            |[R_T1, R_T2, R_T3]| 
+            "crash_trans.bcg"
+         );
+
+-------------------------------------------------------------------------------
+
+(*
+ * Step 2: Verification
+ * --------------------
+ * Two requirements, named FIFO and ATOMICITY, can be verified on
+ * "rel_rel.bcg".
+ *)
+
+property FIFO
+    "Messages are received in the order they have been sent"
+is
+    (*
+     * This property is verified by equivalence checking, using BISIMULATOR
+     * to compare (modulo safety equivalence) the LTS "rel_rel.bcg" and the
+     * LTS produced from the LOTOS specification "spec_fifo.lotos", hiding
+     * all labels but ones of the form "GET *".
+     *)
+    "fifo.seq" = safety comparison 
+        (hide all but GET in "rel_rel.bcg") == generation of "spec_fifo.lotos";
+    expected TRUE
+end property
+
+% DEFAULT_MCL_LIBRARIES=standard.mcl
+
+property ATOMICITY
+    "Whenever a functioning Receiver receives a message, then every other"
+    "functioning Receiver eventually does."
+is
+    (* This property is verified by model checking, first using a series 
+     * of 3x3 dataless formulas (checked by EVALUATOR 3) and then one single
+     * value-passing formula (checked by EVALUATOR 4). Precisely, one verifies
+     * that, for each message m, for each i in {1, 2, 3}, there exists no
+     * sequence such that Receiver i gets the message and:
+     *  - neither another Receiver j gets the message,
+     *  - nor another Receiver j crashes,
+     *  - nor Receiver i crashes.
+     *)
+
+    -- dataless formula #1 for message 1 and receiver 1
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !1" or "GET !1 !1"))* ] (
+            [ "GET !2 !1" ] INEVITABLE ('CRASH ![12]' or "GET !1 !1")
+            and
+            [ "GET !3 !1" ] INEVITABLE ('CRASH ![13]' or "GET !1 !1")
+        );
+     expected TRUE;
+
+    -- dataless formula #2 for message 1 and receiver 2
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !2" or "GET !2 !1"))* ] (
+            [ "GET !1 !1" ] INEVITABLE ('CRASH ![21]' or "GET !2 !1")
+            and
+            [ "GET !3 !1" ] INEVITABLE ('CRASH ![23]' or "GET !2 !1")
+        );
+     expected TRUE;
+
+    -- dataless formula #3 for message 1 and receiver 3
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !3" or "GET !3 !1"))* ] (
+            [ "GET !1 !1" ] INEVITABLE ('CRASH ![31]' or "GET !3 !1")
+            and
+            [ "GET !2 !1" ] INEVITABLE ('CRASH ![32]' or "GET !3 !1")
+        );
+    expected TRUE;
+
+    -- dataless formula #4 for message 2 and receiver 1
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !1" or "GET !1 !2"))* ] (
+            [ "GET !2 !2" ] INEVITABLE ('CRASH ![12]' or "GET !1 !2")
+            and
+            [ "GET !3 !2" ] INEVITABLE ('CRASH ![13]' or "GET !1 !2")
+        );
+    expected TRUE;
+
+    -- dataless formula #5 for message 2 and receiver 2
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !2" or "GET !2 !2"))* ] (
+            [ "GET !1 !2" ] INEVITABLE ('CRASH ![21]' or "GET !2 !2")
+            and
+            [ "GET !3 !2" ] INEVITABLE ('CRASH ![23]' or "GET !2 !2")
+        );
+    expected TRUE;
+
+    -- dataless formula #6 for message 2 and receiver 3
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !3" or "GET !3 !2"))* ] (
+            [ "GET !1 !2" ] INEVITABLE ('CRASH ![31]' or "GET !3 !2")
+            and
+            [ "GET !2 !2" ] INEVITABLE ('CRASH ![32]' or "GET !3 !2")
+        );
+    expected TRUE;
+
+    -- dataless formula #7 for message 3 and receiver 1
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !1" or "GET !1 !3"))* ] (
+            [ "GET !2 !3" ] INEVITABLE ('CRASH ![12]' or "GET !1 !3")
+            and
+            [ "GET !3 !3" ] INEVITABLE ('CRASH ![13]' or "GET !1 !3")
+        );
+    expected TRUE;
+
+    -- dataless formula #8 for message 3 and receiver 2
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !2" or "GET !2 !3"))* ] (
+            [ "GET !1 !3" ] INEVITABLE ('CRASH ![21]' or "GET !2 !3")
+            and
+            [ "GET !3 !3" ] INEVITABLE ('CRASH ![23]' or "GET !2 !3")
+        );
+    expected TRUE;
+
+    -- dataless formula #9 for message 3 and receiver 3
+    "rel_rel.bcg" |= with evaluator3
+        [ (not ("CRASH !3" or "GET !3 !3"))* ] (
+            [ "GET !1 !3" ] INEVITABLE ('CRASH ![31]' or "GET !3 !3")
+            and
+            [ "GET !2 !3" ] INEVITABLE ('CRASH ![32]' or "GET !3 !3")
+        );
+    expected TRUE;
+
+    -- value-passing formula (a single formula is needed)
+    "rel_rel.bcg" |= with evaluator4
+	forall i, m:nat among { 1 ... 3 } .
+	[ (not ({ CRASH !i } or { GET !i !m }))* .
+	  { GET ?j:nat !m where j <> i } ]
+            INEVITABLE ({ CRASH ?k:nat where (k = i) or (k = j) } or
+                        { GET !i !m });
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+

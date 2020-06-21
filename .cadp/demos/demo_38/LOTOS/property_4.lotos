@@ -1,0 +1,69 @@
+(******************************************************************************
+ *             D A T A    E N C R Y P T I O N    S T A N D A R D
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	property_4.lotos
+ *   Auteur		:	Wendelin SERWE
+ *   Version		:	1.5
+ *   Date		: 	2015/08/21 11:11:11
+ *****************************************************************************)
+
+specification PROPERTY_4 [CRYPT, SUBKEY] : noexit
+
+   library
+      BOOLEAN, NATURAL
+   endlib
+
+   type T is NATURAL
+      opns
+         14 : -> NAT
+      eqns
+         ofsort NAT
+            14 = SUCC (SUCC (SUCC (SUCC (SUCC (9)))))
+   endtype
+
+behaviour
+
+(**
+ * process describing a loop starting with a synchronization on gate CRYPT,
+ * followed by 16 synchronization on gate SUBKEY, where the synchronization
+ * on CRYPT corresponding to the next iteration can already appear after
+ * 14 synchronizations on SUBKEY.
+ * this process is used to verify the presence of 16 iterations in the DES.
+ *)
+   CRYPT;
+      SIXTEEN_ITERATIONS [CRYPT, SUBKEY]
+
+where
+
+   process SIXTEEN_ITERATIONS [CRYPT, SUBKEY] : noexit :=
+      FOURTEEN_ITERATIONS [SUBKEY] (0)
+      >>
+      (
+         SUBKEY;
+            SUBKEY;
+               exit
+         |||
+         CRYPT;
+            exit
+      )
+      >>
+      SIXTEEN_ITERATIONS [CRYPT, SUBKEY]
+   endproc
+
+   process FOURTEEN_ITERATIONS [SUBKEY] (N:NAT) : exit :=
+      [N = 14] ->
+         exit
+      []
+      [N < 14] ->
+         SUBKEY;
+            FOURTEEN_ITERATIONS [SUBKEY] (N + 1)
+   endproc
+
+endspec
+
+(* ------------------------------------------------------------------------- *)

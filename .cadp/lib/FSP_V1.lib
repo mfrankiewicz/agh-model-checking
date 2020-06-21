@@ -1,0 +1,64 @@
+
+(* ------------------------------------------------------------------------- *)
+
+(* This library is used by the fsp2lotos translator *)
+
+(* ------------------------------------------------------------------------- *)
+
+type Integer is
+
+sorts
+   Int (*! implementedby ADT_INT comparedby ADT_CMP_INT 
+           iteratedby ADT_ENUM_FIRST_INT and ADT_ENUM_NEXT_INT
+           printedby ADT_PRINT_INT external *)
+
+opns
+   _==_ (*! implementedby ADT_EQ_INT external *),
+   _<>_ (*! implementedby ADT_NE_INT external *),
+   _<_ (*! implementedby ADT_LT_INT external *),
+   _<=_ (*! implementedby ADT_LE_INT external *),
+   _>_ (*! implementedby ADT_GT_INT external *),
+   _>=_ (*! implementedby ADT_GE_INT external *) : Int, Int -> Int
+   _div_ (*! implementedby ADT_DIV_INT external *),
+   _mod_ (*! implementedby ADT_MOD_INT external *) : Int, Int -> Int
+   false (*! implementedby ADT_FALSE_INT external *),
+   true (*! implementedby ADT_TRUE_INT external *) : -> Int
+   not (*! implementedby ADT_NOT_INT external *) : Int -> Int
+   _and_ (*! implementedby ADT_AND_INT external *),
+   _or_ (*! implementedby ADT_OR_INT external *) : Int, Int -> Int
+   _bor_ (*! implementedby ADT_BOR_INT external *),
+   _bxor_ (*! implementedby ADT_BXOR_INT external *),
+   _band_ (*! implementedby ADT_BAND_INT external *) : Int, Int -> Int
+   _shiftl_ (*! implementedby ADT_SHIFTL_INT external *),
+   _shiftr_ (*! implementedby ADT_SHIFTR_INT external *) : Int, Int -> Int
+   - (*! implementedby ADT_OPP_INT external *) : Int -> Int
+   _+_  (*! implementedby ADT_PLUS_INT external *),
+   _-_  (*! implementedby ADT_MINUS_INT external *),
+   _*_  (*! implementedby ADT_MULT_INT external *) : Int, Int -> Int
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type Label is Integer, Symbol
+
+sorts Label
+
+opns
+   _._ (*! constructor *) : Symbol, Label -> Label
+   _._ (*! constructor *) : Int, Label -> Label
+   Nil (*! constructor *) : -> Label
+   _==_ (*! implementedby ADT_EQ_LABEL *) : Label, Label -> Int
+   _<>_ (*! implementedby ADT_NE_LABEL *) : Label, Label -> Int
+
+eqns
+   forall l1, l2 : Label
+
+   ofsort Int
+   l1 == l1 = true;
+   l1 == l2 = false; (* assuming priority *)
+
+   l1 <> l2 = not (l1 == l2);
+endtype
+
+(* ------------------------------------------------------------------------- *)
+

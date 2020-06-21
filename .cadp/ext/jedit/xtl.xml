@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- jedit definitions for the XTL language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.4:XTL+1.5:SECT -->
+
+<MODE>
+  <PROPS>
+    <PROPERTY NAME="commentStart" VALUE="(*"/>
+    <PROPERTY NAME="commentEnd" VALUE="*)"/>
+    <PROPERTY NAME="lineComment" VALUE=""/>
+  </PROPS>
+
+  <RULES IGNORE_CASE="FALSE" HIGHLIGHT_DIGITS="TRUE">
+    <!-- Comments -->
+    <SPAN TYPE="COMMENT1" DELEGATE="COMMENT">
+      <BEGIN>(*</BEGIN>
+      <END>*)</END>
+    </SPAN>
+
+    <!-- Standard Operators -->
+    <SEQ TYPE="OPERATOR">...</SEQ>
+    <SEQ TYPE="OPERATOR">|&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">&lt;|</SEQ>
+    <SEQ TYPE="OPERATOR">-&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">@</SEQ>
+    <SEQ TYPE="OPERATOR">_</SEQ>
+
+    <KEYWORDS>
+      <!-- Reserved Words -->
+      <KEYWORD1>among</KEYWORD1>
+      <KEYWORD1>any</KEYWORD1>
+      <KEYWORD1>apply</KEYWORD1>
+      <KEYWORD1>assert</KEYWORD1>
+      <KEYWORD1>case</KEYWORD1>
+      <KEYWORD1>current</KEYWORD1>
+      <KEYWORD1>def</KEYWORD1>
+      <KEYWORD1>else</KEYWORD1>
+      <KEYWORD1>else_if</KEYWORD1>
+      <KEYWORD1>end_assert</KEYWORD1>
+      <KEYWORD1>end_case</KEYWORD1>
+      <KEYWORD1>end_def</KEYWORD1>
+      <KEYWORD1>end_exists</KEYWORD1>
+      <KEYWORD1>end_flag</KEYWORD1>
+      <KEYWORD1>end_for</KEYWORD1>
+      <KEYWORD1>end_forall</KEYWORD1>
+      <KEYWORD1>end_func</KEYWORD1>
+      <KEYWORD1>end_if</KEYWORD1>
+      <KEYWORD1>end_include</KEYWORD1>
+      <KEYWORD1>end_let</KEYWORD1>
+      <KEYWORD1>end_library</KEYWORD1>
+      <KEYWORD1>end_macro</KEYWORD1>
+      <KEYWORD1>end_type</KEYWORD1>
+      <KEYWORD1>end_use</KEYWORD1>
+      <KEYWORD1>exists</KEYWORD1>
+      <KEYWORD1>flag</KEYWORD1>
+      <KEYWORD1>for</KEYWORD1>
+      <KEYWORD1>forall</KEYWORD1>
+      <KEYWORD1>from</KEYWORD1>
+      <KEYWORD1>func</KEYWORD1>
+      <KEYWORD1>if</KEYWORD1>
+      <KEYWORD1>in</KEYWORD1>
+      <KEYWORD1>include</KEYWORD1>
+      <KEYWORD1>let</KEYWORD1>
+      <KEYWORD1>library</KEYWORD1>
+      <KEYWORD1>macro</KEYWORD1>
+      <KEYWORD1>of</KEYWORD1>
+      <KEYWORD1>otherwise</KEYWORD1>
+      <KEYWORD1>select</KEYWORD1>
+      <KEYWORD1>then</KEYWORD1>
+      <KEYWORD1>to</KEYWORD1>
+      <KEYWORD1>type</KEYWORD1>
+      <KEYWORD1>use</KEYWORD1>
+      <KEYWORD1>when</KEYWORD1>
+      <KEYWORD1>where</KEYWORD1>
+      <KEYWORD1>while</KEYWORD1>
+
+      <!-- Standard Library Sorts -->
+      <KEYWORD2>action</KEYWORD2>
+      <KEYWORD2>boolean</KEYWORD2>
+      <KEYWORD2>natural</KEYWORD2>
+      <KEYWORD2>number</KEYWORD2>
+      <KEYWORD2>integer</KEYWORD2>
+      <KEYWORD2>real</KEYWORD2>
+      <KEYWORD2>character</KEYWORD2>
+      <KEYWORD2>string</KEYWORD2>
+      <KEYWORD2>raw</KEYWORD2>
+      <KEYWORD2>edge</KEYWORD2>
+      <KEYWORD2>edgeset</KEYWORD2>
+      <KEYWORD2>label</KEYWORD2>
+      <KEYWORD2>labelset</KEYWORD2>
+      <KEYWORD2>state</KEYWORD2>
+      <KEYWORD2>stateset</KEYWORD2>
+
+      <!-- Constants -->
+      <KEYWORD3>empty</KEYWORD3>
+      <KEYWORD3>false</KEYWORD3>
+      <KEYWORD3>full</KEYWORD3>
+      <KEYWORD3>nop</KEYWORD3>
+      <KEYWORD3>null</KEYWORD3>
+      <KEYWORD3>number_of_edges</KEYWORD3>
+      <KEYWORD3>number_of_labels</KEYWORD3>
+      <KEYWORD3>number_of_states</KEYWORD3>
+      <KEYWORD3>true</KEYWORD3>
+
+      <!-- Pragmas -->
+      <MARKUP>!assignedby</MARKUP>
+      <MARKUP>!comparedby</MARKUP>
+      <MARKUP>!enumeratedby</MARKUP>
+      <MARKUP>!implementedby</MARKUP>
+      <MARKUP>!printedby</MARKUP>
+
+      <!-- Standard Library Functions -->
+      <FUNCTION>and</FUNCTION>
+      <FUNCTION>and_then</FUNCTION>
+      <FUNCTION>card</FUNCTION>
+      <FUNCTION>comp</FUNCTION>
+      <FUNCTION>diff</FUNCTION>
+      <FUNCTION>div</FUNCTION>
+      <FUNCTION>extract</FUNCTION>
+      <FUNCTION>fby</FUNCTION>
+      <FUNCTION>iff</FUNCTION>
+      <FUNCTION>implies</FUNCTION>
+      <FUNCTION>includes</FUNCTION>
+      <FUNCTION>init</FUNCTION>
+      <FUNCTION>insert</FUNCTION>
+      <FUNCTION>inter</FUNCTION>
+      <FUNCTION>length</FUNCTION>
+      <FUNCTION>mod</FUNCTION>
+      <FUNCTION>not</FUNCTION>
+      <FUNCTION>or</FUNCTION>
+      <FUNCTION>or_else</FUNCTION>
+      <FUNCTION>out</FUNCTION>
+      <FUNCTION>pred</FUNCTION>
+      <FUNCTION>print</FUNCTION>
+      <FUNCTION>printf</FUNCTION>
+      <FUNCTION>replace</FUNCTION>
+      <FUNCTION>source</FUNCTION>
+      <FUNCTION>succ</FUNCTION>
+      <FUNCTION>target</FUNCTION>
+      <FUNCTION>union</FUNCTION>
+      <FUNCTION>visible</FUNCTION>
+
+    </KEYWORDS>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>'</BEGIN>
+      <END>'</END>
+    </SPAN>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>"</BEGIN>
+      <END>"</END>
+    </SPAN>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>`</BEGIN>
+      <END>`</END>
+    </SPAN>
+
+  </RULES>
+
+  <RULES SET="INQUOTE" DEFAULT="LITERAL1" ESCAPE="\">
+    <!-- no rules -->
+  </RULES>
+
+  <RULES SET="COMMENT" DEFAULT="COMMENT1" IGNORE_CASE="TRUE">
+    <!-- no rules -->
+  </RULES>
+
+</MODE>
+

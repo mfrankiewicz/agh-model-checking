@@ -1,0 +1,246 @@
+#! /bin/sh 
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_postscript
+#   Auteur              :       Aldo MAZZILLI et Hubert GARAVEL
+#   Version             :       1.46
+#   Date                :       2018/10/16 15:34:15
+##############################################################################
+
+COMMAND=`basename "$0"`
+ 
+ARCH=`"$CADP"/com/arch`
+
+if [ "$CADP_PS_VIEWER" = "" ]
+then
+	case $ARCH in
+		sun3 | sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 )
+			# On complete le $PATH de maniere plausible pour
+			# essayer de localiser "ghostview"
+			PATH="$PATH:/usr/bin/X11:/usr/local/bin"
+			export PATH
+
+			# valeur par defaut
+			CADP_PS_VIEWER="ghostview"
+
+			# recherche d'un visualisateur disponible
+			for N in ghostview gv ggv kghostview atril evince
+			do
+				WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+				if [ "$WHICH_N" != "$N" ]
+				then
+					# cadp_which a trouve' le visualisateur
+					# et renvoye' le chemin d'acces complet
+					CADP_PS_VIEWER="$N"
+					break	
+				fi
+			done
+			;;
+
+		win32 )
+			# sous Windows, il peut y avoir :
+			# - soit Gsview en version 32 bits (gsview32.exe)
+			# - soit Gsview en version 64 bits (gsview64.exe)
+			# - soit Evince (evince.exe)
+
+			# On complete le $PATH pour permettre eventuellement
+			# l'acces gsview??.exe s'il est installe. On suppose
+			# que l'installation est par defaut dans le repertoire
+			# C:\gstools\gsview (versions 2.x) ou 
+			# C:\Program Files\gstools (version 2.7) ou
+			# C:\Ghostgum\gsview\bin (versions 3.x) ou 
+			# C:\Program Files\Ghostgum\gsview (version 4.x) ou
+			# C:\Program Files\gs\Ghostgum\gsview (version 4.9) ou
+			# C:\Program Files\Ghostgum\gsview (version 5.0)
+
+			ROOT=`"$CADP"/src/com/cadp_path -root`
+
+			PATH="$PATH:$ROOT/gstools/gsview:$ROOT/Program Files/gstools:$ROOT/Ghostgum/gsview:$ROOT/Program Files/Ghostgum/gsview:$ROOT/Program Files/gs/Ghostgum/gsview"
+
+			# On complete le $PATH pour permettre eventuellement
+			# l'acces a evince.exe. On suppose que l'installation
+			# a lieu dans "/Program Files" ou "/Program Files (x86)"
+
+			if [ -d "$ROOT/Program Files"/Evince-*/bin ]
+			then
+				PATH="$PATH:"`echo "$ROOT/Program Files"/Evince-*/bin`
+
+			fi
+			if [ -d "$ROOT/Program Files (x86)"/Evince-*/bin ]
+			then
+				PATH="$PATH:"`echo "$ROOT/Program Files (x86)"/Evince-*/bin`
+			fi
+			if [ -d "$ROOT"/Users/$USER/AppData/Local/Apps/Evince-*/bin ]
+			then
+				# Evince est installe seulement pour $USER
+				PATH="$PATH:"`echo $ROOT/Users/$USER/AppData/Local/Apps/Evince-*/bin`
+			fi
+			export PATH
+
+			# recherche d'un visualisateur disponible
+			for N in gsview32.exe gsview64.exe evince.exe
+			do
+				WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+				if [ "$WHICH_N" != "$N" ]
+				then
+					# cadp_which a trouve' le visualisateur
+					# et renvoye' le chemin d'acces complet
+					CADP_PS_VIEWER="$N"
+					break	
+                                fi
+			done
+			;;
+
+		macOS | mac86 | mac64 )
+			if [ "$CADP_PS_VIEWER" = "" ]
+			then
+				case `uname -r` in
+					7.* | 8.* | 9.* )
+						# version Mac OS X <= 10.5
+						CADP_PS_VIEWER="gv"
+
+						# extending $PATH for X11
+						PATH="$PATH:/usr/X11R6/bin:/usr/bin/X11:/usr/local/bin/X11"
+						# extending $PATH for gv
+						PATH="$PATH:/usr/local/bin:/opt/local/bin:/sw/bin"
+						export PATH
+						;;
+					10.* | 11.* )
+						# version Mac OS X = 10.6 or 10.7
+						CADP_PS_VIEWER="Preview"
+
+						# extending $PATH for Preview
+						PATH="$PATH:/Applications/Preview.app/Contents/MacOS"
+						export PATH
+						;;
+					* )
+						# version Mac OS X >= 10.8
+						# on ne peut plus appeler Preview
+						# directement apres avoir change
+						# le $PATH car l'outil Preview
+						# se crashe (sous MacOS X 10.8)
+						CADP_PS_VIEWER="open"
+						;;
+				esac
+			fi
+			;;
+
+		* )
+            		echo "$COMMAND: unknown architecture $ARCH"
+			exit 1 ;;
+	esac
+fi
+
+# cas de l'option -default
+
+if [ "$1" = "-default" ]
+then
+	"$CADP"/src/com/cadp_which "$CADP_PS_VIEWER"
+	exit 0
+fi
+
+# cas de l'option -remove
+
+REMOVE=
+if [ "$1" = "-remove" ]
+then
+	REMOVE=1	
+	shift
+fi
+
+# on regarde si le fichier a afficher est compresse (suffixe ".ps.Z") ou non
+# (suffixe ".ps"). Dans le 1er cas, on le decompresse vers un fichier ".ps"
+# temporaire qui sera affiche' par $CADP_PS_VIEWER. 
+
+# dans tous les cas, on est oblige de decomposer le nom du fichier a afficher
+# en deux (repertoire + fichier) car "gsview32.exe" n'accepte pas les noms de
+# fichiers commencant par '/' (il prend le '/' pour une option Windows).
+
+UNCOMPRESS=
+case "$1" in 
+	*.ps.Z )
+		UNCOMPRESS=1
+		PS_FILE=`"$CADP"/src/com/cadp_temporary $COMMAND .ps`
+		$CADP/src/com/cadp_zip -d "$1" > "$PS_FILE"
+		DIRECTORY=`dirname $PS_FILE`
+		FILE=`basename $PS_FILE`
+		# assert $PS_FILE = $DIRECTORY/$FILE
+		;;
+
+	*.ps )
+		DIRECTORY=`dirname "$1"`
+		FILE=`basename "$1"`
+		;;
+
+	* )
+		echo "$COMMAND: non-PostScript file $1"
+		exit 1
+esac
+
+# sous MacOS, on doit eventuellement lancer le serveur X11 (sauf si l'on
+# utilise la commande standard "Preview" de MacOS X)
+
+if [ \( $ARCH = "macOS" -o $ARCH = "mac86" -o $ARCH = "mac64" \) -a "$CADP_PS_VIEWER" != "Preview" -a "$CADP_PS_VIEWER" != "open" ]
+then
+	# starting X11 if needed
+	"$CADP"/src/com/cadp_x11 || exit 1
+
+	# setting $DISPLAY if needed
+	if test "$DISPLAY" = ""
+	then
+		DISPLAY=:0
+		export DISPLAY
+	fi
+
+	# extending $PATH to access X11 applications
+	PATH="$PATH:/usr/X11R6/bin:/usr/bin/X11:/usr/local/bin/X11"
+	export PATH
+fi
+
+# il est possible que $DIRECTORY et $FILE contiennent des espaces
+
+cd "$DIRECTORY"
+"$CADP_PS_VIEWER" "$FILE" 2>/dev/null
+EXIT_CODE=$?
+
+# la redirection des messages d'erreur vers /dev/null est indispensable
+# car certains outils (comme "gv") emettent divers messages a propos de
+# la "colormap" et ces messages sont repris par Tcl/Tk qui ouvre une
+# fenetre specialement pour eux. 
+
+if [ "$REMOVE" = 1 -o "$UNCOMPRESS" = 1 ]
+then
+	if [ \( $ARCH = "mac86" -o $ARCH = "mac64" \) -a "$CADP_PS_VIEWER" = "open" ]
+	then
+		# sous MacOS (au moins 10.8.5 "Mountain Lion", et aussi
+		# 10.9 "Mavericks", et peut-etre meme avant), "open"
+		# termine immediatement et rend la main avant meme
+		# que l'application "Preview" n'ait lu le fichier a
+		# afficher ; si on efface ce fichier tout de suite,
+		# alors "Preview" n'aura pas le temps de le lire ;
+		# l'option -W de "open" resoud ce probleme, mais en
+		# cree un autre, car "open" ne rend plus la main
+		# tant que l'utilisateur n'a pas quitte l'application
+		# toute entiere (non pas en fermant la fenetre mais
+		# en cliquant sur Quit dans le menu de l'application) ;
+		# la seule solution raisonnable semble d'attendre un
+		# delai assez long (pour permettre a Preview de lire
+		# le fichier) puis de l'effacer au terme de ce delai
+		# afin de ne pas laisser les temporaires s'accumuler
+		( sleep 60 ; rm "$FILE" ) &
+	else
+		rm "$FILE"
+	fi
+fi
+
+# on renvoie le code de retour de la commande $CADP_PS_VIEWER
+exit $EXIT_CODE
+

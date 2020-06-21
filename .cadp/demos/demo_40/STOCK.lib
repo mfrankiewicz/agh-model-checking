@@ -1,0 +1,46 @@
+(******************************************************************************
+ * STOCK.lib: 
+ * stocks held by suppliers and stores in the stock management example
+ * Products are represented by natural numbers, and a store is a set of pairs
+ * (p, n) meaning that n items of product number p are available
+ *****************************************************************************)
+
+type STOCK is
+   NATURAL, BOOLEAN
+   sorts Stock
+   opns 
+        (* constructors: the set is implemented as a list *)
+        empty (*! constructor *) : -> Stock
+        cons  (*! constructor *) : Nat, Nat, Stock -> Stock
+        (* operations *)
+        isAvailable : Nat, Nat, Stock -> Bool
+        decrease    : Nat, Nat, Stock -> Stock
+        increase    : Nat, Nat, Stock -> Stock
+        extract     : Stock -> Nat
+   eqns
+      (* Each operation is defined by three equations, describing a recurisve
+       * traversal of the list. The first equation describes the terminal case,
+       * the second corresponds to the handling of the case where the product
+       * has been found, and the third equation describes the recursive call
+       *)
+      forall id, id1, id2 : Nat,
+             q, q1, q2 : Nat,
+             s : Stock
+      ofsort Bool
+         isAvailable (id, q, empty) = false;
+         isAvailable (id1, q1, cons (id1, q2, s)) = (q2 >= q1);
+         isAvailable (id1, q1, cons (id2, q2, s)) = isAvailable (id1, q1, s);
+      ofsort Stock
+         (* decrease(id, q, empty) is undefined and raises an error *)
+         decrease (id1, q1, cons (id1, q2, s)) = cons (id1, q2 - q1, s);
+         decrease (id1, q1, cons (id2, q2, s)) = decrease (id1, q1, s);
+      ofsort Stock
+         (* increase(id, q, empty) is undefined and raises an error *)
+         increase (id1, q1, cons (id1, q2, s)) = cons (id1, q1 + q2, s);
+         increase (id1, q1, cons (id2, q2, s)) = increase (id1, q1, s);
+      ofsort Nat
+         extract (empty) = 0;
+         (* default product zero *)
+         extract (cons (id, 0, s)) = id;
+         extract (cons (id, q, s)) = extract (s);
+endtype

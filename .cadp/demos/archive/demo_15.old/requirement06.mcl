@@ -1,0 +1,11 @@
+
+(*****************************************************************************
+ * Requirement 6
+ * A subscriber can only OnHook after he has performed an offhook.
+ *****************************************************************************)
+
+[
+ ((nil | true*) . "S !1 !ONH" . (not 'S !1 !OFFH ![AB]SUBSC')* . "S !1 !ONH") |
+ ((nil | true*) . "S !2 !ONH" . (not 'S !2 !OFFH ![AB]SUBSC')* . "S !2 !ONH")
+] false
+

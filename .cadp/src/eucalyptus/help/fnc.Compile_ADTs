@@ -1,0 +1,6 @@
+Compile ADTs is used to translate the Abstract Data Types contained
+in a LOTOS description into executable C code using the CAESAR.ADT
+tool 
+ 
+
+EUCALYPTUS Reference Manual. Last updated 2013/09/02 16:54:54.

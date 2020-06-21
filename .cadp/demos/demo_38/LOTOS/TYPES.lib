@@ -1,0 +1,472 @@
+(******************************************************************************
+ *             D A T A    E N C R Y P T I O N    S T A N D A R D
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	TYPES.lib
+ *   Auteur		:	Wendelin SERWE
+ *   Version		:	1.10
+ *   Date		: 	2015/09/15 16:00:00
+ *****************************************************************************)
+
+(* ------------------------------------------------------------------------- *)
+(* exclusive-or operation on (abstract or concrete) bits *)
+
+type EXTENDED_BIT is BIT
+   opns _xor_ : BIT, BIT -> BIT
+   eqns
+      forall B1, B2 : BIT
+      ofsort BIT
+         B1 xor B1 = 0;
+         B1 xor B2 = 1; (* assuming decreasing priority between equations *)
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data types for counting the iterations of the algorithm *)
+
+type ITERATION_AS_RENAMED_NAT is NATURAL renamedby
+   sortnames ITERATION for NAT
+endtype
+
+type ITERATION is BOOLEAN, ITERATION_AS_RENAMED_NAT
+   opns 15   : -> ITERATION
+        16   : -> ITERATION
+        17   : -> ITERATION
+        NEXT : ITERATION -> ITERATION
+        LAST : ITERATION -> BOOL
+   eqns
+      forall IT : ITERATION
+      ofsort ITERATION
+         15 = Succ (Succ (Succ (Succ (Succ (Succ (9))))));
+         16 = Succ (15);
+         17 = Succ (16);
+      ofsort ITERATION
+         NEXT (IT) = (IT + 1) mod 17;
+      ofsort BOOL
+         LAST (IT) = IT == 16;
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data type for the control signals used for the multiplexers *)
+
+type PHASE is BOOLEAN, ITERATION
+   sorts PHASE
+   opns F (*! constructor *) : -> PHASE (* first iteration *)
+        N (*! constructor *) : -> PHASE (* intermediate iteration *)
+        L (*! constructor *) : -> PHASE (* last iteration *)
+        _==_ : PHASE, PHASE -> BOOL
+        MUX_DATA : ITERATION -> PHASE
+        MUX_K    : ITERATION -> PHASE
+        DMUX_K   : ITERATION -> PHASE
+   eqns
+      forall IT : ITERATION,
+             P, P1, P2 : PHASE
+      ofsort BOOL
+         F  == F  = true;
+         N  == N  = true;
+         L  == L  = true;
+         P1 == P2 = false;
+      ofsort PHASE
+         MUX_DATA (0)  = F;
+         (IT == 16) => MUX_DATA (IT) = L;
+         MUX_DATA (IT) = N;
+      ofsort PHASE
+         MUX_K (0)  = F;
+         MUX_K (IT) = N;
+      ofsort PHASE
+         (IT == 15) => DMUX_K (IT) = L;
+         DMUX_K (IT) = N;
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data type for the controlling the behavior of the shift register *)
+
+type SHIFT is BOOLEAN, ITERATION
+   sorts SHIFT
+   opns NO  (*! constructor *) : -> SHIFT (* no shift *)
+        LS1 (*! constructor *) : -> SHIFT (* 1 left shift *)
+        LS2 (*! constructor *) : -> SHIFT (* 2 left shifts *)
+        RS1 (*! constructor *) : -> SHIFT (* 1 right shift *)
+        RS2 (*! constructor *) : -> SHIFT (* 2 right shifts *)
+        _==_ : SHIFT, SHIFT -> BOOL
+        SHIFT_CODE : ITERATION, BOOL -> SHIFT
+   eqns
+      forall IT : ITERATION,
+             S, S1, S2 : SHIFT
+      ofsort BOOL
+         NO  == NO  = true;
+         LS1 == LS1 = true;
+         LS2 == LS2 = true;
+         RS1 == RS1 = true;
+         RS2 == RS2 = true;
+         S1  == S2  = false;
+      ofsort SHIFT
+         (IT == 0)  => SHIFT_CODE (IT, false) = NO;
+         (IT == 1)  => SHIFT_CODE (IT, false) = RS1;
+         (IT == 8)  => SHIFT_CODE (IT, false) = RS1;
+         (IT == 15) => SHIFT_CODE (IT, false) = RS1;
+         SHIFT_CODE (IT, false) = RS2;
+         (IT == 0)  => SHIFT_CODE (IT, true) = LS1;
+         (IT == 1)  => SHIFT_CODE (IT, true) = LS1;
+         (IT == 8)  => SHIFT_CODE (IT, true) = LS1;
+         (IT == 15) => SHIFT_CODE (IT, true) = LS1;
+         SHIFT_CODE (IT, true) = LS2;
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data type for 4-bit vectors *)
+
+type BIT4 is EXTENDED_BIT
+   sorts BIT4 (*! implementedby ADT_BIT4 *)
+   opns
+      MK_4 (*! implementedby MK_4 constructor *) : BIT, BIT, BIT, BIT -> BIT4
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data type for 6-bit vectors *)
+
+type BIT6 is EXTENDED_BIT
+   sorts BIT6
+   opns
+      MK_6 (*! constructor *) : BIT, BIT, BIT, BIT, BIT, BIT -> BIT6
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data type for 32-bit vectors *)
+
+type BIT32 is EXTENDED_BIT, BIT4
+   sorts BIT32
+   opns
+      MK_32 (*! constructor *) : BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT 
+                                 -> BIT32
+      (* bitwise xor *)
+      XOR : BIT32, BIT32 -> BIT32
+      (* concatenation of eight 4-bit vectors to form a 32-bit vector *)
+      MK_32 : BIT4, BIT4, BIT4, BIT4, BIT4, BIT4, BIT4, BIT4 -> BIT32
+   eqns
+      forall A1,  A2,  A3,  A4,  A5,  A6,  A7,  A8,
+             A9,  A10, A11, A12, A13, A14, A15, A16,
+             A17, A18, A19, A20, A21, A22, A23, A24,
+             A25, A26, A27, A28, A29, A30, A31, A32,
+             B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+             B9,  B10, B11, B12, B13, B14, B15, B16,
+             B17, B18, B19, B20, B21, B22, B23, B24,
+             B25, B26, B27, B28, B29, B30, B31, B32: BIT
+      ofsort BIT32
+         XOR (MK_32 (A1,  A2,  A3,  A4,  A5,  A6,  A7,  A8,
+                     A9,  A10, A11, A12, A13, A14, A15, A16,
+                     A17, A18, A19, A20, A21, A22, A23, A24,
+                     A25, A26, A27, A28, A29, A30, A31, A32),
+              MK_32 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                     B9,  B10, B11, B12, B13, B14, B15, B16,
+                     B17, B18, B19, B20, B21, B22, B23, B24,
+                     B25, B26, B27, B28, B29, B30, B31, B32)) =
+         MK_32 (A1  xor B1,  A2  xor B2,  A3  xor B3,  A4  xor B4,
+                A5  xor B5,  A6  xor B6,  A7  xor B7,  A8  xor B8,
+                A9  xor B9,  A10 xor B10, A11 xor B11, A12 xor B12,
+                A13 xor B13, A14 xor B14, A15 xor B15, A16 xor B16,
+                A17 xor B17, A18 xor B18, A19 xor B19, A20 xor B20, 
+                A21 xor B21, A22 xor B22, A23 xor B23, A24 xor B24,
+                A25 xor B25, A26 xor B26, A27 xor B27, A28 xor B28,
+                A29 xor B29, A30 xor B30, A31 xor B31, A32 xor B32);
+      ofsort BIT32
+         MK_32 (MK_4 (B1,  B2,  B3,  B4),   MK_4 (B5,  B6,  B7,  B8),
+                MK_4 (B9,  B10, B11, B12),  MK_4 (B13, B14, B15, B16),
+                MK_4 (B17, B18, B19, B20),  MK_4 (B21, B22, B23, B24),
+                MK_4 (B25, B26, B27, B28),  MK_4 (B29, B30, B31, B32)) =
+         MK_32 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                B9,  B10, B11, B12, B13, B14, B15, B16,
+                B17, B18, B19, B20, B21, B22, B23, B24,
+                B25, B26, B27, B28, B29, B30, B31, B32);
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data type for 48-bit vectors *)
+
+type BIT48 is EXTENDED_BIT, BIT6
+   sorts BIT48
+   opns
+      MK_48 (*! constructor *) : BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT 
+                                 -> BIT48
+      (* bitwise xor *)
+      XOR : BIT48, BIT48 -> BIT48
+      (* eight projection functions from 48-bit vectors to 6-bit vectors *)
+       1TO6  : BIT48 -> BIT6
+       7TO12 : BIT48 -> BIT6
+      13TO18 : BIT48 -> BIT6
+      19TO24 : BIT48 -> BIT6
+      25TO30 : BIT48 -> BIT6
+      31TO36 : BIT48 -> BIT6
+      37TO42 : BIT48 -> BIT6
+      43TO48 : BIT48 -> BIT6
+   eqns
+      forall A1,  A2,  A3,  A4,  A5,  A6,  A7,  A8,
+             A9,  A10, A11, A12, A13, A14, A15, A16,
+             A17, A18, A19, A20, A21, A22, A23, A24,
+             A25, A26, A27, A28, A29, A30, A31, A32,
+             A33, A34, A35, A36, A37, A38, A39, A40,
+             A41, A42, A43, A44, A45, A46, A47, A48,
+             B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+             B9,  B10, B11, B12, B13, B14, B15, B16,
+             B17, B18, B19, B20, B21, B22, B23, B24,
+             B25, B26, B27, B28, B29, B30, B31, B32,
+             B33, B34, B35, B36, B37, B38, B39, B40,
+             B41, B42, B43, B44, B45, B46, B47, B48: BIT
+      ofsort BIT48
+         XOR (MK_48 (A1,  A2,  A3,  A4,  A5,  A6,  A7,  A8,
+                     A9,  A10, A11, A12, A13, A14, A15, A16,
+                     A17, A18, A19, A20, A21, A22, A23, A24,
+                     A25, A26, A27, A28, A29, A30, A31, A32,
+                     A33, A34, A35, A36, A37, A38, A39, A40,
+                     A41, A42, A43, A44, A45, A46, A47, A48),
+              MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                     B9,  B10, B11, B12, B13, B14, B15, B16,
+                     B17, B18, B19, B20, B21, B22, B23, B24,
+                     B25, B26, B27, B28, B29, B30, B31, B32,
+                     B33, B34, B35, B36, B37, B38, B39, B40,
+                     B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_48 (A1  xor B1,  A2  xor B2,  A3  xor B3,  A4 xor B4, 
+                A5  xor B5,  A6  xor B6,  A7  xor B7,  A8 xor B8,
+                A9  xor B9,  A10 xor B10, A11 xor B11, A12 xor B12,
+                A13 xor B13, A14 xor B14, A15 xor B15, A16 xor B16,
+                A17 xor B17, A18 xor B18, A19 xor B19, A20 xor B20,
+                A21 xor B21, A22 xor B22, A23 xor B23, A24 xor B24,
+                A25 xor B25, A26 xor B26, A27 xor B27, A28 xor B28,
+                A29 xor B29, A30 xor B30, A31 xor B31, A32 xor B32,
+                A33 xor B33, A34 xor B34, A35 xor B35, A36 xor B36,
+                A37 xor B37, A38 xor B38, A39 xor B39, A40 xor B40, 
+                A41 xor B41, A42 xor B42, A43 xor B43, A44 xor B44,
+                A45 xor B45, A46 xor B46, A47 xor B47, A48 xor B48);
+      ofsort BIT6
+         1TO6   (MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_6 (B1, B2, B3, B4, B5, B6);
+      ofsort BIT6
+         7TO12  (MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_6 (B7, B8, B9, B10, B11, B12);
+      ofsort BIT6
+         13TO18 (MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_6 (B13, B14, B15, B16, B17, B18);
+      ofsort BIT6
+         19TO24 (MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_6 (B19, B20, B21, B22, B23, B24);
+      ofsort BIT6
+         25TO30 (MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_6 (B25, B26, B27, B28, B29, B30);
+      ofsort BIT6
+         31TO36 (MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_6 (B31, B32, B33, B34, B35, B36);
+      ofsort BIT6
+         37TO42 (MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_6 (B37, B38, B39, B40, B41, B42);
+      ofsort BIT6
+         43TO48 (MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48)) =
+         MK_6 (B43, B44, B45, B46, B47, B48);
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data type for 56-bit vectors *)
+
+type BIT56 is EXTENDED_BIT
+   sorts BIT56
+   opns
+      MK_56 (*! constructor *) : BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+                                 BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT 
+                                 -> BIT56
+      (* left and right shift functions *)
+      LSHIFT : BIT56 -> BIT56
+      RSHIFT : BIT56 -> BIT56
+   eqns
+      forall B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+             B9,  B10, B11, B12, B13, B14, B15, B16,
+             B17, B18, B19, B20, B21, B22, B23, B24,
+             B25, B26, B27, B28, B29, B30, B31, B32,
+             B33, B34, B35, B36, B37, B38, B39, B40,
+             B41, B42, B43, B44, B45, B46, B47, B48,
+             B49, B50, B51, B52, B53, B54, B55, B56,
+             B57, B58, B59, B60, B61, B62, B63, B64: BIT
+      ofsort BIT56
+         LSHIFT (MK_56 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48,
+                        B49, B50, B51, B52, B53, B54, B55, B56)) =
+         MK_56 (B2,  B3,  B4,  B5,  B6,  B7,  B8,  B9,
+                B10, B11, B12, B13, B14, B15, B16, B17,
+                B18, B19, B20, B21, B22, B23, B24, B25,
+                B26, B27, B28, B1,  B30, B31, B32, B33,
+                B34, B35, B36, B37, B38, B39, B40, B41,
+                B42, B43, B44, B45, B46, B47, B48, B49,
+                B50, B51, B52, B53, B54, B55, B56, B29);
+      ofsort BIT56
+         RSHIFT (MK_56 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48,
+                        B49, B50, B51, B52, B53, B54, B55, B56)) =
+         MK_56 (B28, B1,  B2,  B3,  B4,  B5,  B6,  B7,  
+                B8,  B9,  B10, B11, B12, B13, B14, B15, 
+                B16, B17, B18, B19, B20, B21, B22, B23, 
+                B24, B25, B26, B27, B56, B29, B30, B31, 
+                B32, B33, B34, B35, B36, B37, B38, B39, 
+                B40, B41, B42, B43, B44, B45, B46, B47, 
+                B48, B49, B50, B51, B52, B53, B54, B55);
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* data type for 64-bit vectors *)
+
+type BIT64 is EXTENDED_BIT, BIT4, BIT32
+   sorts 
+      BIT64 (*! implementedby ADT_BIT64 printedby ADT_PRINT_BIT64 *)
+   opns
+      MK_64 (*! implementedby MK_64 constructor *) : 
+            BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+            BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+            BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+            BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+            BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+            BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+            BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT,
+            BIT, BIT, BIT, BIT, BIT, BIT, BIT, BIT -> BIT64
+      (* concatenation of sixteen 4-bit vectors to form a 64-bit vector *)
+      MK_64 (*! implementedby CONCAT_BIT4 *) :
+            BIT4, BIT4, BIT4, BIT4, BIT4, BIT4, BIT4, BIT4,
+            BIT4, BIT4, BIT4, BIT4, BIT4, BIT4, BIT4, BIT4 -> BIT64
+      (* concatenation of two 32-bit vectors to a 64-bit vector *)
+      MK_64 : BIT32, BIT32 -> BIT64
+      (* two projection functions from 64-bit vectors to 32-bit vectors *)
+       1TO32 : BIT64 -> BIT32
+      33TO64 : BIT64 -> BIT32
+   eqns
+      forall B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+             B9,  B10, B11, B12, B13, B14, B15, B16,
+             B17, B18, B19, B20, B21, B22, B23, B24,
+             B25, B26, B27, B28, B29, B30, B31, B32,
+             B33, B34, B35, B36, B37, B38, B39, B40,
+             B41, B42, B43, B44, B45, B46, B47, B48,
+             B49, B50, B51, B52, B53, B54, B55, B56,
+             B57, B58, B59, B60, B61, B62, B63, B64: BIT
+      ofsort BIT64
+         MK_64 (MK_4 (B1,  B2,  B3,  B4),   MK_4 (B5,  B6,  B7,  B8),
+                MK_4 (B9,  B10, B11, B12),  MK_4 (B13, B14, B15, B16),
+                MK_4 (B17, B18, B19, B20),  MK_4 (B21, B22, B23, B24),
+                MK_4 (B25, B26, B27, B28),  MK_4 (B29, B30, B31, B32),
+                MK_4 (B33, B34, B35, B36),  MK_4 (B37, B38, B39, B40),
+                MK_4 (B41, B42, B43, B44),  MK_4 (B45, B46, B47, B48),
+                MK_4 (B49, B50, B51, B52),  MK_4 (B53, B54, B55, B56),
+                MK_4 (B57, B58, B59, B60),  MK_4 (B61, B62, B63, B64)) =
+         MK_64 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                B9,  B10, B11, B12, B13, B14, B15, B16,
+                B17, B18, B19, B20, B21, B22, B23, B24,
+                B25, B26, B27, B28, B29, B30, B31, B32,
+                B33, B34, B35, B36, B37, B38, B39, B40,
+                B41, B42, B43, B44, B45, B46, B47, B48,
+                B49, B50, B51, B52, B53, B54, B55, B56,
+                B57, B58, B59, B60, B61, B62, B63, B64);
+      ofsort BIT64
+         MK_64 (MK_32 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                       B9,  B10, B11, B12, B13, B14, B15, B16,
+                       B17, B18, B19, B20, B21, B22, B23, B24,
+                       B25, B26, B27, B28, B29, B30, B31, B32),
+                MK_32 (B33, B34, B35, B36, B37, B38, B39, B40,
+                       B41, B42, B43, B44, B45, B46, B47, B48,
+                       B49, B50, B51, B52, B53, B54, B55, B56,
+                       B57, B58, B59, B60, B61, B62, B63, B64)) =
+         MK_64 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                B9,  B10, B11, B12, B13, B14, B15, B16,
+                B17, B18, B19, B20, B21, B22, B23, B24,
+                B25, B26, B27, B28, B29, B30, B31, B32,
+                B33, B34, B35, B36, B37, B38, B39, B40,
+                B41, B42, B43, B44, B45, B46, B47, B48,
+                B49, B50, B51, B52, B53, B54, B55, B56,
+                B57, B58, B59, B60, B61, B62, B63, B64);
+      ofsort BIT32
+         1TO32  (MK_64 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48,
+                        B49, B50, B51, B52, B53, B54, B55, B56,
+                        B57, B58, B59, B60, B61, B62, B63, B64)) =
+         MK_32 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                B9,  B10, B11, B12, B13, B14, B15, B16,
+                B17, B18, B19, B20, B21, B22, B23, B24,
+                B25, B26, B27, B28, B29, B30, B31, B32);
+      ofsort BIT32
+         33TO64 (MK_64 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+                        B9,  B10, B11, B12, B13, B14, B15, B16,
+                        B17, B18, B19, B20, B21, B22, B23, B24,
+                        B25, B26, B27, B28, B29, B30, B31, B32,
+                        B33, B34, B35, B36, B37, B38, B39, B40,
+                        B41, B42, B43, B44, B45, B46, B47, B48,
+                        B49, B50, B51, B52, B53, B54, B55, B56,
+                        B57, B58, B59, B60, B61, B62, B63, B64)) =
+         MK_32 (B33, B34, B35, B36, B37, B38, B39, B40,
+                B41, B42, B43, B44, B45, B46, B47, B48,
+                B49, B50, B51, B52, B53, B54, B55, B56,
+                B57, B58, B59, B60, B61, B62, B63, B64);
+endtype
+
+(* ------------------------------------------------------------------------- *)
+

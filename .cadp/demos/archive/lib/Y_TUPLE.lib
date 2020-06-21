@@ -1,0 +1,26 @@
+type ThreeTuple is Element1, Element2, Element3, Boolean
+   sorts
+      ThreeTuple (*! implementedby THREETUPLE comparedby CMP_THREETUPLE
+                     printedby PRINT_THREETUPLE *)
+   opns
+      Tuple  (*! implementedby TUPLE constructor *) : Element1, Element2, Element3 -> ThreeTuple
+      First  (*! implementedby FIRST *) : ThreeTuple -> Element1
+      Second (*! implementedby SECOND *) : ThreeTuple -> Element2
+      Third  (*! implementedby THIRD *) : ThreeTuple -> Element3
+      _eq_   (*! implementedby EQ_TUPLE *),
+      _ne_   (*! implementedby NE_TUPLE *) : ThreeTuple, ThreeTuple -> Bool  
+   eqns
+      forall x1, y1 : Element1, x2, y2 : Element2, x3, y3 : Element3, t1, t2 : ThreeTuple
+      ofsort Element1
+         First (Tuple (x1, x2, x3)) = x1;
+      ofsort Element2
+         Second (Tuple (x1, x2, x3)) = x2;
+      ofsort Element3
+         Third (Tuple (x1, x2, x3)) = x3;
+      ofsort Bool
+         Tuple (x1, x2, x3) eq Tuple (x1, x2, x3)  =  true;
+         x1 ne y1  =>  Tuple (x1, x2, x3) eq Tuple (y1, y2, y3)  =  false;
+         x2 ne y2  =>  Tuple (x1, x2, x3) eq Tuple (y1, y2, y3)  =  false;
+         x3 ne y3  =>  Tuple (x1, x2, x3) eq Tuple (y1, y2, y3)  =  false;
+         t1 ne t2  =  not (t1 eq t2);
+endtype

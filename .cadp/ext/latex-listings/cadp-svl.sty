@@ -1,0 +1,32 @@
+%% Listings definitions for the SVL language
+%% produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+%% version 1.8:SVL+1.8:SECT
+
+\lstdefinelanguage{SVL}
+{
+   morekeywords=[1]{abstraction,all,bag,branching,but,chaos,
+                    check,comparison,cut,deadlock,divbranching,end,
+                    expected,fifo,gate,generation,hide,in,
+                    is,label,labels,leaf,livelock,multiple,
+                    node,observational,of,par,partial,prio,
+                    probabilistic,property,reduction,refined,rename,result,
+                    root,safety,single,smart,stochastic,stop,
+                    strong,sync,tau-compression,tau-confluence,tau-divergence,tau*.a,
+                    total,trace,user,using,verify,weak,
+                    with},
+   morekeywords=[2]{\%},
+   morekeywords=[3]{acyclic,bdd,bfs,dfs,fly,std},
+   morekeywords=[4]{FALSE,TRUE},
+   morekeywords=[5]{aldebaran,bcg_min,bcg_cmp,bisimulator,evaluator,evaluator3,
+                    evaluator4,exhibitor,fc2tools,reductor,xtl},
+   otherkeywords={[,],\{,\},>,=,
+                    :,\#,?,==,>=,<=,
+                    |=,->,||,|[,]|,-||,
+                    -|[,|||,-|||},
+   alsoletter={-*.\%},
+   sensitive=true,
+   morecomment=[l]{--},
+   morecomment=[s]{(*}{*)},
+   morestring=[b]{'},
+   morestring=[b]{"}
+}[keywords,comments,strings]

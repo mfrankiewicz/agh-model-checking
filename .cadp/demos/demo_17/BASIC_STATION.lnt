@@ -1,0 +1,17 @@
+module BASIC_STATION (DATA) is
+
+process STATION [OPEN, CLOSE:ACCESS, PRED, SUCC:PORT] (Ai:ADDR,
+                                                       in var INIT:BOOL) is
+   loop
+      if INIT then
+         PRIVILEDGE [OPEN, CLOSE, SUCC] (Ai);
+         INIT := false
+      else
+         PRED (TOKEN);
+         PRIVILEDGE [OPEN, CLOSE, SUCC] (Ai)
+      end if
+   end loop
+end process
+
+end module
+

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GtkSourceView version 3 definitions for the SVL language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.8:SVL+1.17:SECT -->
+<language id="svl" _name="SVL" version="2.0" _section="Sources">
+
+   <metadata>
+      <property name="mimetypes">text/x-svl</property>
+      <property name="globs">*.svl</property>
+      <property name="line-comment-start">--</property>
+      <property name="block-comment-start">(*</property>
+      <property name="block-comment-end">*)</property>
+   </metadata>
+
+   <styles>
+      <style id="comment"  _name="Comment"       map-to="def:comment"/>
+      <style id="string"   _name="String"        map-to="def:string"/>
+      <style id="pragma"   _name="Preprocessor"  map-to="def:preprocessor"/>
+      <style id="keyword"  _name="Keyword"       map-to="def:keyword"/>
+      <style id="type"     _name="Data Type"     map-to="def:type"/>
+      <style id="constant" _name="Boolean value" map-to="def:boolean"/>
+      <style id="function" _name="Function"      map-to="def:builtin"/>
+      <style id="operator" _name="Operator"      map-to="def:operator"/>
+   </styles>
+
+   <default-regex-options case-sensitive="true"/>
+
+   <definitions>
+      <context id="line-comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+         <start>--</start>
+      </context>
+
+      <context id="block-comment" style-ref="comment" class="comment" class-disabled="no-spell-check">
+         <start>\(\*</start>
+         <end>\*\)</end>
+         <include>
+            <context ref="block-comment"/>
+         </include>
+      </context>
+
+      <context id="single-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>'</start>
+         <end>'</end>
+      </context>
+
+      <context id="double-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>"</start>
+         <end>"</end>
+      </context>
+
+      <context id="pragma" style-ref="pragma">
+         <match>%.*</match>
+      </context>
+
+      <context id="keyword" style-ref="keyword">
+         <keyword>abstraction</keyword>
+         <keyword>all</keyword>
+         <keyword>bag</keyword>
+         <keyword>branching</keyword>
+         <keyword>but</keyword>
+         <keyword>chaos</keyword>
+         <keyword>check</keyword>
+         <keyword>comparison</keyword>
+         <keyword>cut</keyword>
+         <keyword>deadlock</keyword>
+         <keyword>divbranching</keyword>
+         <keyword>end</keyword>
+         <keyword>expected</keyword>
+         <keyword>fifo</keyword>
+         <keyword>gate</keyword>
+         <keyword>generation</keyword>
+         <keyword>hide</keyword>
+         <keyword>in</keyword>
+         <keyword>is</keyword>
+         <keyword>label</keyword>
+         <keyword>labels</keyword>
+         <keyword>leaf</keyword>
+         <keyword>livelock</keyword>
+         <keyword>multiple</keyword>
+         <keyword>node</keyword>
+         <keyword>observational</keyword>
+         <keyword>of</keyword>
+         <keyword>par</keyword>
+         <keyword>partial</keyword>
+         <keyword>prio</keyword>
+         <keyword>probabilistic</keyword>
+         <keyword>property</keyword>
+         <keyword>reduction</keyword>
+         <keyword>refined</keyword>
+         <keyword>rename</keyword>
+         <keyword>result</keyword>
+         <keyword>root</keyword>
+         <keyword>safety</keyword>
+         <keyword>single</keyword>
+         <keyword>smart</keyword>
+         <keyword>stochastic</keyword>
+         <keyword>stop</keyword>
+         <keyword>strong</keyword>
+         <keyword>sync</keyword>
+         <keyword>tau-compression</keyword>
+         <keyword>tau-confluence</keyword>
+         <keyword>tau-divergence</keyword>
+         <keyword>tau\*.a</keyword>
+         <keyword>total</keyword>
+         <keyword>trace</keyword>
+         <keyword>user</keyword>
+         <keyword>using</keyword>
+         <keyword>verify</keyword>
+         <keyword>weak</keyword>
+         <keyword>with</keyword>
+      </context>
+
+      <context id="type" style-ref="type">
+         <keyword>acyclic</keyword>
+         <keyword>bdd</keyword>
+         <keyword>bfs</keyword>
+         <keyword>dfs</keyword>
+         <keyword>fly</keyword>
+         <keyword>std</keyword>
+      </context>
+
+      <context id="constant" style-ref="constant">
+         <keyword>FALSE</keyword>
+         <keyword>TRUE</keyword>
+      </context>
+
+      <context id="function" style-ref="function">
+         <keyword>aldebaran</keyword>
+         <keyword>bcg_min</keyword>
+         <keyword>bcg_cmp</keyword>
+         <keyword>bisimulator</keyword>
+         <keyword>evaluator</keyword>
+         <keyword>evaluator3</keyword>
+         <keyword>evaluator4</keyword>
+         <keyword>exhibitor</keyword>
+         <keyword>fc2tools</keyword>
+         <keyword>reductor</keyword>
+         <keyword>xtl</keyword>
+      </context>
+
+      <context id="operator" style-ref="operator">
+         <match extended="true">
+            \[ | \] | { | } | &gt; | = | \: | # | \? | == | &gt;= | &lt;= | \|= | -&gt; | \|\| | \|\[ | \]\| | -\|\| | -\|\[ | \|\|\| | -\|\|\|
+         </match>
+      </context>
+
+      <context id="svl" class="no-spell-check">
+         <include>
+            <context ref="line-comment"/>
+            <context ref="block-comment"/>
+            <context ref="single-quoted-string"/>
+            <context ref="double-quoted-string"/>
+            <context ref="keyword"/>
+            <context ref="type"/>
+            <context ref="constant"/>
+            <context ref="function"/>
+            <context ref="operator"/>
+         </include>
+      </context>
+
+   </definitions>
+</language>

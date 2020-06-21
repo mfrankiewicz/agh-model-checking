@@ -1,0 +1,11 @@
+module LINK_1 (DATA) is
+
+process LINK [INPUT, OUTPUT:PORT] is
+   loop
+      INPUT (TOKEN);
+      OUTPUT (TOKEN)
+   end loop
+end process
+
+end module
+

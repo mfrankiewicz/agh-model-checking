@@ -1,0 +1,78 @@
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeucarc_standard
+#   Auteurs             :       Jean-Michel FRUME, Hubert GARAVEL, 
+#				Mark JORGENSEN, Aldo MAZZILLI et Moez CHERIF
+#   Version             :       1.32
+#   Date                :       2013/09/18 13:09:01
+##############################################################################
+
+# ne pas definir ici la valeur de $Xeucarc_Version (cette variable sera
+# eventuellement affectuee dans le fichier $Xeucarc_File, s'il existe)
+
+set Screen_Background 				Use_Default_Background
+
+set File_Display				Display_with_Icons
+
+set File_Sorting 				Sort_by_Dates
+
+set Status(Kind_Directory)			Visible
+set Status(Kind_Makefile)			Visible
+set Status(Kind_Lotos)				Visible
+set Status(Kind_Lotos_Library)			Visible
+set Status(Kind_SVL)				Visible
+set Status(Kind_Composition_Expression)		Visible
+set Status(Kind_Error)				Visible
+set Status(Kind_Labelled_Transitions_System)	Visible
+set Status(Kind_Execution_Sequence)		Visible
+set Status(Kind_Mu_Calculus_Formula)		Visible
+set Status(Kind_Hide_Rename)			Visible
+set Status(Kind_C_Programs)			Visible
+set Status(Kind_Xtl)                            Visible
+set Status(Kind_Expanded_Xtl)                   Visible
+set Status(Kind_Postscript)			Visible
+set Status(Kind_PDF)				Visible
+set Status(Kind_Fsp)				Visible
+set Status(Kind_Lnt)				Visible
+set Status(Kind_Core)                           Hidden
+set Status(Kind_Object_Files)                   Hidden
+set Status(Kind_BCG_Dynamic_Libraries)          Hidden
+set Status(Kind_SVL_Temporary_Files)		Transparent
+set Status(Kind_Other)				Visible
+
+set Bg_Color                                     #EEFFFF
+set Fg_Color                                     black
+set Title_Color                                  #FFFF33
+set Menubar_Bg_Color                             #63b8ff
+set File_Icon_Bg_Color                           #63b8ff
+set File_Icon_Fg_Color                           black
+set Dir_Icon_Bg_Color                            #FFFF33
+set Dir_Icon_Fg_Color                            black
+set Radio_Select_Color                           red
+set Check_Select_Color                           green
+set Disabled_Buttons_Color                       grey
+set Cadre_Color                                  black
+
+set Xterm_Options                              "-geometry 80x40"
+
+set Screen_Width                                1004
+set Screen_Height                               760
+set Screen_MinWidth				750
+set Screen_MinHeight				160
+set Screen_X_Position				0
+set Screen_Y_Position 				0
+
+set Files_Associations(.htm) 		$env(CADP)/src/com/cadp_web
+set Files_Associations(.html) 		$env(CADP)/src/com/cadp_web
+set Files_Associations(.log)		$env(CADP)/src/com/cadp_edit
+set Files_Associations(.pdf)		$env(CADP)/src/com/cadp_pdf
+set Files_Associations(.ps)		$env(CADP)/src/com/cadp_postscript
+set Files_Associations(.txt)		$env(CADP)/src/com/cadp_edit
+

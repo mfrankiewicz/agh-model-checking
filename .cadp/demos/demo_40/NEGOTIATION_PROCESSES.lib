@@ -1,0 +1,196 @@
+(******************************************************************************
+ * NEGOTATION_PROCESSES.lib:
+ * Process definitions for the example application modeling an online book 
+ * auction system described in [Salaun-Ferrara-Chirichiello-04]
+ *****************************************************************************)
+
+(* A requester is a client. It starts the controller which is responsible for
+ * the negotiation with adequate parameters and it waits for an answer.
+ * Parameters are the identifier of the book, the initial price to propose, the
+ * invariant to respect, the function to compute values to propose.
+ *)
+process Requester [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+                  (ref : Nat,
+                   pi : Nat,
+                   inv : Inv,
+                   computfct : Comp) : exit :=
+   Controller [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (ref, pi, inv, computfct)
+   >> accept status : Bool in
+   exit
+endproc
+
+(* --------------------------------------------------------------------------- *)
+
+(* The controller process sends a request to a provider to verify that store has
+ * available copies of the book. Depending on the reply, it starts the subprocess
+ * NegotiateC in charge of the negotiation rounds or it recalls its again to try
+ * another bookstore.
+ * Parameters are those transmitted by the client/requester.
+ *)
+process Controller [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+                   (ref : Nat,
+                    pi : Nat,
+                    inv : Inv,
+                    computfct : Comp) : exit (Bool) :=
+   request !ref;
+      reply ?b : Bool;
+         (
+            (
+               [b] ->
+                  NegotiateC [order, refusal, sendpriceP, sendpriceR, givingup] (pi, inv, computfct)
+               >> accept status : Bool in
+               (
+                  [not (status)] ->
+                     (* failure case *)
+                     Controller [request, reply, order, refusal, sendpriceP, sendpriceR, givingup] (ref, pi, inv, computfct)
+                  []
+                  [status] ->
+                     (* case of a successful order *)
+                     exit (true)
+               )
+            )
+            []
+            (
+               [not (b)] ->
+                  (* let us try another bookstore *)
+                  Controller [request, reply, order, refusal, sendpriceP, sendpriceR, givingup] (ref, pi, inv, computfct)
+            )
+         )
+   []
+   (* The controller stops the nego (or no satisfactory answers). *)
+   exit (false)
+endproc
+
+(* --------------------------------------------------------------------------- *)
+
+(* This process deals with the negotiation rounds on behalf of the Controller.
+ * It proposes prices or receives prices and depending on the value of its
+ * invariant for each price it refuses or orders the book.
+ * It uses a simple strategy: it buys as soon as the price satifies its required
+ * invariant.
+ * It is based on the assumption that each participant proposes values towards
+ * the other party, that is to say, that a provider lowers the value, and that a
+ * requester rises the value.
+ *)
+process NegotiateC [order, refusal, sendpriceP, sendpriceR, givingup]
+                   (curp : Nat,
+                    inv : Inv,
+                    computfct : Comp) : exit (Bool) :=
+   sendpriceP ?p : Nat;
+      (
+         [conform (p, inv)] ->
+            order;
+               exit (true)
+         []
+         [not (conform (p, inv))] ->
+            refusal;
+               NegotiateC [order, refusal, sendpriceP, sendpriceR, givingup]
+                          (curp, inv, computfct)
+      )
+   []
+   [conform (curp, inv)] ->
+      sendpriceR !curp;
+         (
+            order;
+               exit (true)
+            []
+            refusal;
+               NegotiateC [order, refusal, sendpriceP, sendpriceR, givingup]
+                          (compute (curp, computfct), inv, computfct)
+         )
+   []
+   givingup;
+      (* The client/requester stops because results not satisfactory. *)
+      exit (false)
+endproc
+
+(* =========================================================================== *)
+
+(* A provider waits for some requests. Then, it tests if the book belongs to its
+ * base. If it is the case, it launches its negotiating subprocess. Otherwise, it
+ * calls itself recursively.
+ * Parameters are the bookstore, the function to compute the initial value to
+ * propose, and the function to compute the other values.
+ *)
+process Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+                 (bs : BookStore,
+                  initfct : Comp,
+                  computfct : Comp) : exit :=
+   request ?r : Nat;
+      reply !isAvailable (r, bs);
+         (
+            (
+               [isAvailable (r, bs)] ->
+                  NegotiateP [order, refusal, sendpriceP, sendpriceR, givingup]
+                             (compute (retrievePrice (r, bs), initfct),
+                              retrieveInv (r, bs),
+                              computfct)
+               >> accept status : Bool in
+               (
+                  [not (status)] ->
+                     Provider [request, reply, order, refusal,
+                               sendpriceP, sendpriceR, givingup]
+                              (bs, initfct, computfct)
+                  []
+                  [status] ->
+                     Provider [request, reply, order, refusal,
+                               sendpriceP, sendpriceR, givingup]
+                              (decrease (r, 1, bs), initfct, computfct)
+               )
+            )
+            []
+            (
+               [not (isAvailable (r, bs))] ->
+                  Provider [request, reply, order, refusal,
+                            sendpriceP, sendpriceR, givingup]
+                           (bs, initfct, computfct)
+            )
+         )
+   []
+   exit
+endproc
+
+(* --------------------------------------------------------------------------- *)
+
+(* This process deals with the negotiation rounds on behalf of a provider; it is
+ * complementary to the process NegotiatieC introduced above.
+ * Let us remind that the provider as the client can propose values.
+ *)
+process NegotiateP [order, refusal, sendpriceP, sendpriceR, givingup]
+                   (curprice : Nat,
+                    inv : Inv,
+                    computfct : Comp) : exit (Bool) :=
+   [conform (curprice, inv)] ->
+      sendpriceP !curprice;
+         (
+            order;
+               exit (true)
+            []
+            refusal;
+               NegotiateP [order, refusal, sendpriceP, sendpriceR, givingup]
+                          (compute (curprice, computfct), inv, computfct)
+         )
+   []
+   [not (conform (curprice, inv))] ->
+      (* The provider stops because it is impossible to reach an agreement *)
+      exit (false)
+   []
+   sendpriceR ?p : Nat;
+      (
+         [conform (p, inv)] ->
+            order;
+               exit (true)
+         []
+         [not (conform (p, inv))] ->
+            refusal;
+               NegotiateP [order, refusal, sendpriceP, sendpriceR, givingup]
+                          (curprice, inv, computfct)
+      )
+   []
+   givingup;
+      (* Stops because the client stops too *)
+      exit (false)
+endproc
+
+(* --------------------------------------------------------------------------- *)

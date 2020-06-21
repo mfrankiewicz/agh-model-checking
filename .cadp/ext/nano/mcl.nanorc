@@ -1,0 +1,28 @@
+## Nano syntax file for the MCL language
+## Produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+## Version 1.8:MCL+1.3:SECT
+
+syntax "MCL" "\.mcl$"
+
+## Keywords
+icolor brightblue "\<(among|any|case|choice|continue|do|else|elsif|end|end_library|end_macro|exists|exit|export|for|forall|from|if|in|let|library|loop|macro|mu|nil|nu|of|on|repeat|step|tau|then|to|until|where|while)\>"
+
+## Basic Types
+icolor magenta "\<(bool|nat|natset|int|real|char|string)\>"
+
+## Constants
+icolor yellow "\<(false|true)\>"
+
+## Functions
+icolor blue "\<(abs|and|concat|diff|empty|equ|implies|index|insert|isin|isalnum|isalpha|isdigit|islower|isupper|isxdigit|inter|length|not|nth|or|prefix|remove|rindex|sign|substr|succ|suffix|tolower|toupper|union|xor)\>"
+
+## Operators
+icolor blue "\+|-|=|!|\/|^|%|\||<|>|\[|\]|@|\*|\?|<>|<=|>=|->|-\|"
+
+## Strings
+color red "'[^']*'"
+color red ""[^"]*""
+
+## Comments
+color green start="\(\*" end="\*\)"
+

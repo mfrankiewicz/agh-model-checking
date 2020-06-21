@@ -1,0 +1,89 @@
+(* scenario with four processes and two elements e1 and e2 *)
+
+(*---------------------------------------------------------------------------*)
+
+(** TYPE INDEX **)
+(* contains exactly as many elements as processes in the system *)
+type INDEX is BOOLEAN
+
+sorts index
+
+opns
+     1 (*! constructor *),
+     2  (*! constructor *),
+     3 (*! constructor *),
+     4 (*! constructor *) : ->  index
+     _eq_ : index,index -> Bool
+
+eqns forall x,y : index
+    ofsort Bool
+      x eq x  = true;
+      x eq y  = false;
+
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+(** TYPE ELEM **)
+(* elements represent pairs (address, datum); as in the abstract program the
+   actual addresses or data are not needed , it is sufficient to have functions
+   "first" telling if two elements have the same component "address"
+   "datum" telling which element can be written by which process
+   defines also the value max_card used in the definition of the buffer type which is
+   in general the same as the number of non-empty elements in ELEM
+*)
+type ELEM is BOOLEAN, INDEX, NATURAL
+
+sorts elem
+
+opns
+     eps (*! constructor *),
+     e1  (*! constructor *) : -> elem
+     e2  (*! constructor *) : -> elem
+
+     max_Card  :  -> NAT  (* number of non-empty elements in ELEM ; used in the
+				  definition of the type BUFFER *)
+     _eq_ : elem,elem -> Bool   (* equality *)
+     _less_ : elem,elem -> Bool   (* an arbitrary order between elements diff eps
+                                     in order to have a normal form of sets and
+                                    memories; needed only if at least two elem
+				    different eps *)
+     first : elem,elem -> Bool  (* expresses that two elements (may) have the
+                                    same address component *)
+     datum : index,elem -> Bool    (* element may be written by process
+				      with a given index *)
+
+eqns forall x,y : elem
+
+    ofsort NAT
+      max_Card = 2;
+
+    ofsort Bool
+      x eq x  = true;
+      x eq y  = false;
+
+  (*  less, first used only between elements different eps;
+      less is just a lexical order to construct sets and memories in a normal form*)
+      e1 less e2 = true;
+      e2 less e1 = false;
+
+      first(x,x) = true;
+      first(eps,x) = true;
+      first(x,eps) = true;
+       (* else *) first(x,y) = false;
+
+      datum(1,eps) = true;
+       (* else *) datum(1,x) = false;
+      datum(2,eps) = true;
+       (* else *) datum(2,x) = false;
+      datum(3,eps) = true;
+      datum(3,e1) =true;
+       (* else *) datum(3,x) = false;
+      datum(4,eps) = true;
+      datum(4,e2) =true;
+       (* else *) datum(4,x) = false;
+
+endtype
+
+(*---------------------------------------------------------------------------*)
+

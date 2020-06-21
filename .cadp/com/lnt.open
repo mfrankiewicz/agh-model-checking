@@ -1,0 +1,489 @@
+#! /bin/sh
+
+##############################################################################
+#				L N T . O P E N
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module		: lnt.open
+#   Auteurs		: Gideon SMEDING, Wendelin SERWE, Hubert GARAVEL
+#   Version		: 1.106
+#   Date		: 2020/05/21 09:13:30
+##############################################################################
+
+set -e # script fails if a command exits with non-zero exit status
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP"/com/arch`
+
+LNT_LOCATION=${LNT_LOCATION:-$CADP}
+
+LPP="$LNT_LOCATION"/bin.$ARCH/lpp
+LNT_DEPEND="$LNT_LOCATION"/bin.$ARCH/lnt_depend
+LNT2LOTOS="$LNT_LOCATION"/bin.$ARCH/lnt2lotos
+LNT_NAME="$LNT_LOCATION"/src/com/lnt_name
+
+REMOVE_FILES=0
+# do not remove files until $PREFIX and $LNTGEN are defined
+
+# -----------------------------------------------------------------------------
+
+CLEAN_EXIT ()
+{
+	# remove files and exit
+	set +e # complete execution even if a deletion fails
+	if [ $REMOVE_FILES -eq 1 -a $LNTOPEN_DEBUG -eq 0 ]
+	then
+		# $PREFIX and $LNTGEN are defined and we are not in debug mode
+		rm -r -f "$LNTGEN"
+		if [ "$LNTOPEN_TRANSLATE_ONLY" != 1 ]
+		then
+			"$CADP"/src/com/cadp_delete "$PREFIX.lotos" "generated.by.lnt2lotos"
+			"$CADP"/src/com/cadp_delete "$PREFIX.f" "generated.by.lnt2lotos"
+			"$CADP"/src/com/cadp_delete "$PREFIX.t" "generated.by.lnt2lotos"
+			for MODULE in $DEPENDENCY_TREE
+			do
+				# we move the .lib, .t, and .f files generated
+				# for $MODULE ; following the conventions of
+				# Caesar/Caesar.adt, all lower case letters
+				# must be turned into uppercase
+				"$CADP"/src/com/cadp_delete `"$LNT_NAME" -lib $MODULE` "generated.by.lnt2lotos"
+				"$CADP"/src/com/cadp_delete `"$LNT_NAME" -f $MODULE` "generated.by.lnt2lotos"
+				"$CADP"/src/com/cadp_delete `"$LNT_NAME" -t $MODULE` "generated.by.lnt2lotos"
+			done
+			"$CADP"/src/com/cadp_delete "$PREFIX.h" "generated.by.caesar.adt"
+			"$CADP"/src/com/cadp_delete "$PREFIX.c" "generated.by.caesar"
+		fi
+	fi
+	exit $1
+}
+
+# -----------------------------------------------------------------------------
+
+LNTOPEN_MESSAGE ()
+{
+	if [ $LNTOPEN_VERBOSITY -ne 0 ]
+	then
+		echo ""
+		echo "$COMMAND: $@"
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+LNTOPEN_WARNING ()
+{
+	echo "$COMMAND: $@"
+}
+
+# -----------------------------------------------------------------------------
+
+LNTOPEN_ERROR ()
+{
+	echo "$COMMAND: $@"
+	CLEAN_EXIT 1
+}
+
+# -----------------------------------------------------------------------------
+
+trap 'CLEAN_EXIT 1' 1 2 3 13 14 15
+
+# -----------------------------------------------------------------------------
+
+# phase 1: parsing the options and flags
+
+LNTOPEN_DEBUG=0
+# 1 iff option -debug
+
+LNTOPEN_PIDLIST=0
+# 1 iff option -pidlist
+
+LNTOPEN_VERBOSITY=1
+# 0 iff option -silent; 1 if no option; 2 if option -verbose
+
+LNTOPEN_TRANSLATE_ONLY=0
+# 1 iff OPEN/CAESAR application program is "-"
+
+LPP_FLAGS=""
+LNT_FLAGS=""
+
+DEPENDENCY_TREE=""
+ROOT_PROCESS=""
+
+LOTOS_OPEN_FLAGS="-debug"
+# options for the call to lotos.open
+
+while true
+do
+	if [ $# -lt 1 ]
+	then
+		LNTOPEN_ERROR "missing LNT filename argument"
+	fi
+	case "$1" in
+		-version )
+			$LNT2LOTOS -version
+			exit 0
+			;;
+		-debug )
+			# undocumented option
+			# internal versions of lnt2lotos support -debug
+			LNTOPEN_DEBUG=1
+			shift
+			;;
+		-depend )
+			# lnt2lotos supports -depend
+			LNT_FLAGS="$LNT_FLAGS $1"
+			shift
+			;;
+		-force )
+			# lnt2lotos, lpp, and lotos.open support -force
+			LNT_FLAGS="$LNT_FLAGS $1"
+			LPP_FLAGS="$LPP_FLAGS $1"
+			LOTOS_OPEN_FLAGS="$LOTOS_OPEN_FLAGS $1"
+			shift
+			;;
+		-pidlist )
+			# undocumented option used by Eucalyptus
+			LNTOPEN_PIDLIST=1
+			LNT_FLAGS="$LNT_FLAGS $1"
+			shift
+			;;
+		-silent )
+			# lnt2lotos, lpp, and lotos.open support -silent
+			LNTOPEN_VERBOSITY=0
+			LOTOS_OPEN_FLAGS="$LOTOS_OPEN_FLAGS $1"
+			shift
+			;;
+		-verbose )
+			# lnt2lotos, lpp, and lotos.open support -verbose
+			LNTOPEN_VERBOSITY=2
+			LOTOS_OPEN_FLAGS="$LOTOS_OPEN_FLAGS $1"
+			shift
+			;;
+		-root )
+			# lnt2lotos option followed by one argument
+			if [ $# -lt 2 ]
+			then
+				LNTOPEN_ERROR "missing value for option $1"
+			fi
+			if [ "$ROOT_PROCESS" != "" ]
+			then
+				LNTOPEN_ERROR "at most one occurrence of option \`\`$1'' allowed"
+			fi
+			# processing argument of option -root
+			set +e
+			ROOT_PROCESS=`printf "%s" "$2" | lpp`
+			STATUS=$?
+			set -e
+			if [ $STATUS != 0 ]
+			then
+				LNTOPEN_WARNING "error processing -root option using lpp"
+				cat lpp.err
+				rm -f lpp.err
+				CLEAN_EXIT 1
+			fi
+			shift 2
+			;;
+		-strings )
+			# lnt2lotos option followed by one argument
+			if [ $# -lt 2 ]
+			then
+				LNTOPEN_ERROR "missing value for deprecated option $1"
+			fi
+			LNTOPEN_ERROR "option -strings is deprecated; use pragma \`\`!string_card $2'' instead"
+			shift 2
+			;;
+		-more )
+			# lpp, lnt2lotos, and lotos.open option followed by
+			# one argument
+			if [ $# -lt 2 ]
+			then
+				LNTOPEN_ERROR "missing value for option $1"
+			fi
+			LPP_FLAGS="$LPP_FLAGS $1 $2"
+			LNT_FLAGS="$LNT_FLAGS $1 $2"
+			LOTOS_OPEN_FLAGS="$LOTOS_OPEN_FLAGS $1 $2"
+			shift 2
+			;;
+		-cc | -trigger )
+			# lotos.open options followed by one argument
+			if [ $# -lt 2 ]
+			then
+				LNTOPEN_ERROR "missing value for option $1"
+			fi
+			LOTOS_OPEN_FLAGS="$LOTOS_OPEN_FLAGS $1 $2"
+			shift 2
+			;;
+		-* )
+			# all lotos.open options not followed by an argument
+			LOTOS_OPEN_FLAGS="$LOTOS_OPEN_FLAGS $1"
+			shift
+			;;
+		* )
+			break
+			;;
+	esac
+done
+
+if [ $LNTOPEN_DEBUG = 0 ]
+then
+	LPP_FLAGS="$LPP_FLAGS -silent"
+	LNT_FLAGS="$LNT_FLAGS -silent"
+else
+	# (1) we keep $LPP_FLAGS, $LNT_FLAGS, and $LOTOS_OPEN_FLAGS unchanged
+	# to get the default behaviour of lpp, lnt2lotos, and lotos.open;
+	# (2) for the moment, the -debug option of lnt2lotos only works
+	# for the CADP development team
+	LNT_FLAGS="$LNT_FLAGS -debug"
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 2: parsing the filename of the LNT module containing the main process
+
+if test "$OPEN_CAESAR_SOURCE" = ""
+then
+	# here, $OPEN_CAESAR_SOURCE has not been set by a calling tool
+	OPEN_CAESAR_SOURCE="$1"
+	export OPEN_CAESAR_SOURCE
+fi
+
+PREFIX=`"$CADP"/src/com/cadp_basename "$1" .lnt`
+DIRNAME=`dirname "$1"`
+FILE="$DIRNAME"/"$PREFIX"
+# note: the value of $FILE may contain spaces
+
+if [ ! -f "$FILE.lnt" ]
+then
+	LNTOPEN_ERROR "file \`\`$FILE.lnt'' does not exist"
+fi
+
+shift
+
+# -----------------------------------------------------------------------------
+
+# phase 3: setting LNTGEN
+
+if [ "$LNTGEN" != "" -a "$LNTOPEN_DEBUG" = 0 ]
+then
+	echo "$COMMAND: WARNING ignoring value of \`\`\$LNTGEN''"
+fi
+if [ "$LNTGEN" = "" -o "$LNTOPEN_DEBUG" = 0 ]
+then
+	LNTGEN=`"$CADP"/src/com/cadp_temporary -d $COMMAND`
+fi
+export LNTGEN
+
+REMOVE_FILES=1
+# $PREFIX and $LNTGEN are defined : allow removal by CLEAN_EXIT
+
+# -----------------------------------------------------------------------------
+
+# phase 4: handling option -pidlist
+
+if [ "$LNTOPEN_PIDLIST" -eq 1 ]
+then
+	# pre-processing of the main module
+	"$LPP" $LPP_FLAGS -silent "$FILE".lnt || CLEAN_EXIT 1
+
+	# calling lnt2lotos (option -pidlist is already in $LNT_FLAGS)
+	"$LNT2LOTOS" $LNT_FLAGS -silent "$LNTGEN"/"$PREFIX".lnt || CLEAN_EXIT 1
+
+	# cleanup: remove $LNTGEN directory
+	# assert: "$FILE.lnt" contains no syntax error (otherwise, lpp or
+	# lnt2lotos would have emitted an exit code that would have triggered
+	# the execution of "CLEAN_EXIT 1")
+	CLEAN_EXIT 0
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 5: handling the Open/Caesar application program (which can be "-")
+
+if [ $# -lt 1 ]
+then
+	LNTOPEN_ERROR "missing user program filename (.a, .c, or .o) argument"
+fi
+
+if [ "$1" = "-" ]
+then
+	LNTOPEN_TRANSLATE_ONLY=1
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 6a: computation of the dependency tree of included modules
+
+DEPENDENCY_TREE=`"$LNT_DEPEND" -modlist $FILE.lnt`
+
+# phase 6b: pre-processing and translation of all included LNT modules
+
+for MODULE in $DEPENDENCY_TREE
+do
+	LIBRARY=`"$LNT_NAME" -lib $MODULE`
+	MODULE=`"$LNT_NAME" -lnt $MODULE`
+	if [ "$LNTOPEN_TRANSLATE_ONLY" = 1 ]
+	then
+		TARGET=$LIBRARY
+	else
+		TARGET="$LNTGEN/$LIBRARY"
+	fi
+	LNTOPEN_MESSAGE "translating \`\`$MODULE'' to \`\`$TARGET'' ..."
+	# search for $MODULE in $DIRNAME or ${LNT_LOCATION:-$CADP}/lib
+	FULL_MODULE=`${LNT_LOCATION:-$CADP}/src/com/lnt_path "$DIRNAME" $MODULE` 2>&1 || CLEAN_EXIT 1
+	# apply the LPP preprocessor
+	"$LPP" $LPP_FLAGS "$FULL_MODULE" || CLEAN_EXIT 1
+
+	# translation of the module into a LOTOS library (.lib file)
+	"$LNT2LOTOS" $LNT_FLAGS -root module "$LNTGEN"/$MODULE || CLEAN_EXIT 1
+done
+
+# phase 6c: pre-processing and translation of the main module
+
+if [ "$LNTOPEN_TRANSLATE_ONLY" = 1 ]
+then
+	TARGET=$PREFIX.lotos
+else
+	TARGET="$LNTGEN/$PREFIX.lotos"
+fi
+LNTOPEN_MESSAGE "translating \`\`$PREFIX.lnt'' to \`\`$TARGET'' ..."
+"$LPP" $LPP_FLAGS "$FILE".lnt || CLEAN_EXIT 1
+
+# translation of the main module into a LOTOS specification (.lotos file)
+if [ "$ROOT_PROCESS" = "" ]
+then
+	# passing the "-root MAIN" option ensures an appropriate error message
+	# if the ".lnt" file does not contain a valid root process
+	"$LNT2LOTOS" $LNT_FLAGS -root MAIN "$LNTGEN"/"$PREFIX".lnt || CLEAN_EXIT 1
+	ROOT_OPTION_STATUS=none
+else
+	# here, lnt2lotos is invoked with "-root $ROOT_PROCESS" 
+	case "$ROOT_PROCESS" in
+	    *\[* | *\(* )
+		# here, $ROOT_PROCESS should have the form "P [...]" or
+		# "P (...)" or "P [...] (...)"
+		"$LNT2LOTOS" $LNT_FLAGS -root "$ROOT_PROCESS" "$LNTGEN"/"$PREFIX".lnt || CLEAN_EXIT 1
+		ROOT_OPTION_STATUS=complex
+		;;
+	    * )
+		# here, $ROOT_PROCESS should have the form "P"
+		# lnt2lotos is invoked with option "-root null" to
+		# ensure backward compatibility, namely to tolerate
+		# the case where process P has gates and is not
+		# defined in the principal module $PREFIX.lnt
+		"$LNT2LOTOS" $LNT_FLAGS -root null "$LNTGEN"/"$PREFIX".lnt || CLEAN_EXIT 1
+		ROOT_OPTION_STATUS=simple
+		;;
+	esac
+fi
+
+if [ ! -f "$LNTGEN/$PREFIX.lotos" -a -f "$LNTGEN/$PREFIX.lib" ]
+then
+	# here, the LNT specification is probably correct, otherwise the
+	# call to lnt2lotos would have exited with status 1 and the present
+	# script would have quitted consequently; but no ".lotos" file has
+	# been produced; instead a ".lib" file exists; we emit a (probably)
+	# helpful error message
+	LNTOPEN_ERROR "missing root process in \`\`$PREFIX.lnt'': no .lotos file generated"
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 7: converting the presence, if any, of "#define ADT_PRAGMA_NUMERAL n"
+# in $LNTGEN/$PREFIX.t (meaning that the LNT program contains a module pragma
+# "!num_bits" or "!num_card") into a "-numeral n" option passed to lotos.open
+
+set +e
+PRAGMA_NUMERAL=`grep ADT_PRAGMA_NUMERAL "$LNTGEN/$PREFIX.t" 2> /dev/null`
+set -e
+if [ "$PRAGMA_NUMERAL" != "" ]
+then
+	NUMERAL_VALUE=`echo "$PRAGMA_NUMERAL" | sed -e 's/#define ADT_PRAGMA_NUMERAL \(.*\)$/\1/'`
+	LOTOS_OPEN_FLAGS="$LOTOS_OPEN_FLAGS -numeral $NUMERAL_VALUE"
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 8: moving generated LOTOS files from $LNTGEN to the current directory
+
+# remove any preexisting .err file
+rm -f $PREFIX.err
+
+for MODULE in $DEPENDENCY_TREE
+do
+	# here, $MODULE.lnt is not the main .lnt file, but a sub-module that
+	# has been translated into a .lib file, a .f file and a .t file
+
+	# we move the .f file generated for $MODULE
+	MODULE_F=`"$LNT_NAME" -f "$LNTGEN"/$MODULE`
+	"$CADP"/src/com/cadp_replace "$LNTGEN"/$MODULE_F . "generated by lnt2lotos"
+
+	# we move the .t file generated for $MODULE
+	MODULE_T=`"$LNT_NAME" -t "$LNTGEN"/$MODULE`
+	"$CADP"/src/com/cadp_replace "$LNTGEN"/$MODULE_T . "generated by lnt2lotos"
+
+	# we move the .lib file generated for $MODULE ; following the
+	# conventions of Caesar/Caesar.adt, all lower case letters must be
+	# turned into uppercase
+	MODULE_LIB=`"$LNT_NAME" -lib "$LNTGEN"/$MODULE`
+	"$CADP"/src/com/cadp_replace "$LNTGEN"/$MODULE_LIB . "generated by lnt2lotos"
+
+	if [ -s "$LNTGEN"/$MODULE.err ]
+	then
+		# a .err file exists for $MODULE and is not empty: we append
+		# it to the global .err file
+		echo "*** errors in module \`\`$MODULE''" >> $PREFIX.err
+		echo "" >> $PREFIX.err
+		cat "$LNTGEN"/$MODULE.err >> $PREFIX.err
+		echo "" >> $PREFIX.err
+	fi
+done
+
+"$CADP"/src/com/cadp_replace "$LNTGEN/$PREFIX.lotos" . "generated by lnt2lotos"
+
+"$CADP"/src/com/cadp_replace "$LNTGEN/$PREFIX.f" . "generated by lnt2lotos"
+
+"$CADP"/src/com/cadp_replace "$LNTGEN/$PREFIX.t" . "generated by lnt2lotos"
+
+if [ -s "$LNTGEN/$PREFIX.err" ]
+then
+	# a .err file exists for the principal module and is not empty: we
+	# append it to the global .err file
+	echo "**** errors in module \`\`$PREFIX'' ****" >> $PREFIX.err
+	echo "" >> $PREFIX.err
+	cat "$LNTGEN/$PREFIX.err" >> $PREFIX.err
+	echo "" >> $PREFIX.err
+fi
+
+if [ "$LNTOPEN_TRANSLATE_ONLY" = 1 ]
+then
+	# stop here, without calling lotos.open
+	CLEAN_EXIT 0
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 9: executing lotos.open
+
+LNTOPEN_MESSAGE "calling lotos.open for \`\`$PREFIX.lotos'' ..."
+
+case "$ROOT_OPTION_STATUS" in
+	none )
+		lotos.open $LOTOS_OPEN_FLAGS -lnt "$LNT_LOCATION" "$PREFIX.lotos" "$@"
+	;;
+	complex )
+		lotos.open $LOTOS_OPEN_FLAGS -lnt "$LNT_LOCATION" -root - "$PREFIX.lotos" "$@"
+	;;
+	simple )
+		lotos.open $LOTOS_OPEN_FLAGS -lnt "$LNT_LOCATION" -root "$ROOT_PROCESS" "$PREFIX.lotos" "$@"
+	;;
+esac
+
+# -----------------------------------------------------------------------------
+
+# phase 10: removing files and exiting
+
+CLEAN_EXIT 0

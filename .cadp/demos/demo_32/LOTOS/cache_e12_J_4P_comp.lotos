@@ -1,0 +1,65 @@
+(* Susanne Graf cache_e12_J_4P_comp_2.lotos *)
+
+(* Scenario for the verification of property S4:
+   - 4 processes (two instances od PI, 2 instances of PJ, 
+   - two elements e1, e2 
+   - PI has no Out and AD and may not write any non empty elements
+   - PJ has Out and AD and one may write e1 and anothee e2
+*)
+
+(* One could complete by considering also the situation where e1 and e2 are
+   written by the same process (different from P1)
+*)
+
+(* Composition expression of the global cache memory system
+   functional non deterministic version
+   using adt definitions of ELEM_E12_4P.lib and
+   process definitions MEMORY_FONC_T, PI_SSOUT_FONC_T_NDET, and
+   PJ_SSVAR_EPS_OUT
+*)
+
+specification cache [diag, w, r, mw, cu, mr, cl] : noexit
+
+   library
+      BOOLEAN, NATURAL, TYPES_COMMON, ELEM_E12_4P
+   endlib
+
+behaviour
+
+   hide sync in
+      MEMORY_0 [sync, mw, mr]
+      |[sync, mw, mr]|
+      (
+         PI1 [diag, sync, w, r, mw, cu, mr, cl]
+         |[sync, mw, w, r, cu, mr, cl]|
+         PI2 [diag, sync, w, r, mw, cu, mr, cl]
+         |[sync, mw, w, r, cu, mr, cl]|
+         PJ3 [sync, w, r, mw, cu, mr, cl]
+         |[sync, mw, w, r, cu, mr, cl]|
+         PJ4 [sync, w, r, mw, cu, mr, cl]
+      )
+where
+   process MEMORY_0 [sync, mw, mr] : noexit :=
+      MEMORY [sync, mw, mr] (empt_m)
+   endproc
+
+   process PI1 [diag, sync, w, r, mw, cu, mr, cl] : noexit :=
+      PI [diag, sync, w, r, mw, cu, mr, cl] (1 of index, empt_m, empt_b)
+   endproc
+
+   process PI2 [diag, sync, w, r, mw, cu, mr, cl] : noexit :=
+      PI [diag, sync, w, r, mw, cu, mr, cl] (2 of index, empt_m, empt_b)
+   endproc
+
+   process PJ3 [sync, w, r, mw, cu, mr, cl] : noexit :=
+      PJ [sync, w, r, mw, cu, mr, cl] (3 of index, empt_s, empt_b)
+   endproc
+
+   process PJ4 [sync, w, r, mw, cu, mr, cl] : noexit :=
+      PJ [sync, w, r, mw, cu, mr, cl] (4 of index, empt_s, empt_b)
+   endproc
+
+   library
+      MEMORY_FONC_T, PI_SSOUT_FONC_T_NDET, PJ_SSVAR_EPS_OUT
+   endlib
+endspec

@@ -1,0 +1,9 @@
+(* -------------------------------------------------------------------------
+ * Because of intermediate transformations, source type information is
+ * lost. All attribute values are raw-data values.
+ * ------------------------------------------------------------------------- *)
+
+macro Site () = raw end_macro
+macro Val () = raw end_macro
+macro Addr () = raw end_macro
+

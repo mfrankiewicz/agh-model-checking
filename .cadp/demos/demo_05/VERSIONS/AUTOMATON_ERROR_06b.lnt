@@ -1,0 +1,400 @@
+module AUTOMATON is
+
+-------------------------------------------------------------------------------
+
+type STATE is
+   INIT_STATE,
+   (* Erreur 16 *)
+   HANDLE_RRQ_STATE,
+   (* Erreur 17 *)
+   HANDLE_WRQ_STATE,
+   SEND_DATA_STATE,
+   RECEIVE_DATA_STATE,
+   INITIATE_READ_STATE,
+   INITIATE_WRITE_STATE,
+   TERMINATION_STATE,
+   TERMINATION_LOOP_STATE
+   with "=="
+end type
+
+-------------------------------------------------------------------------------
+
+function TRANSITION (in CURRENT : STATE,
+                     in RECEIVE_RRQ,
+                        RECEIVE_OLD_RRQ,
+                        RECEIVE_WRQ,
+                        RECEIVE_OLD_WRQ,
+                        REQUEST_ACCEPTED,
+                        RECEIVE_DATA,
+                        RECEIVE_OLD_DATA,
+                        DATA_LENGTH_LT_512,
+                        EOF,
+                        RECEIVE_ACK,
+                        RECEIVE_ERROR,
+                        RECEIVE_INVALID_PACKET,
+                        APPLI_RRQ,
+                        APPLI_WRQ,
+                        TIMEOUT,
+                        MAX_RETRIES_REACHED,
+                        INTERNAL_ERROR : BOOL,
+                     out NEXT : STATE,
+                     out SEND_RRQ,
+                         RESEND_RRQ,
+                         SEND_WRQ,
+                         RESEND_WRQ,
+                         SEND_DATA,
+                         SEND_INIT_DATA,
+                         RESEND_DATA,
+                         SEND_ACK,
+                         SEND_INIT_ACK,
+                         RESEND_ACK,
+                         SEND_ERROR,
+                         ARM_TIMER,
+                         STOP_TIMER : BOOL) is
+   (* Init *)
+   SEND_RRQ := false;
+   RESEND_RRQ := false;
+   RESEND_ACK := false;
+   RESEND_DATA := false;
+   SEND_ERROR := false;
+   SEND_WRQ := false;
+   RESEND_WRQ := false;
+   SEND_INIT_DATA := false;
+   SEND_ACK := false;
+   SEND_DATA := false;
+   ARM_TIMER := false;
+   SEND_INIT_ACK := false;
+   STOP_TIMER := false;
+   NEXT := CURRENT;
+
+   case CURRENT in
+
+      INIT_STATE ->
+         if APPLI_RRQ then
+            SEND_RRQ := true;
+            ARM_TIMER := true;
+            NEXT := INITIATE_READ_STATE
+         elsif APPLI_WRQ then
+            SEND_WRQ := true;
+            ARM_TIMER := true;
+            NEXT := INITIATE_WRITE_STATE
+         elsif (RECEIVE_RRQ and not (REQUEST_ACCEPTED)) then
+            SEND_ERROR := true
+         elsif (RECEIVE_WRQ and not (REQUEST_ACCEPTED)) then
+            SEND_ERROR := true
+         (* Erreur 08 *)
+         elsif (RECEIVE_ERROR) then
+            null
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_DATA or RECEIVE_ACK) then
+            SEND_ERROR := true
+         elsif (RECEIVE_RRQ and REQUEST_ACCEPTED) then
+            SEND_INIT_DATA := true;
+            ARM_TIMER := true;
+            (* Erreur 16 *)
+            NEXT := HANDLE_RRQ_STATE
+         elsif (RECEIVE_WRQ and REQUEST_ACCEPTED) then
+            ARM_TIMER := true;
+            SEND_INIT_ACK := true;
+            (* Erreur 17 *)
+            NEXT := HANDLE_WRQ_STATE
+         end if
+
+      (* Erreur 16 *)
+   |  HANDLE_RRQ_STATE ->
+         if (RECEIVE_ACK and not (EOF)) then
+            SEND_DATA := true;
+            ARM_TIMER := true;
+            NEXT := SEND_DATA_STATE
+         elsif (RECEIVE_OLD_RRQ and not (MAX_RETRIES_REACHED)) then
+            RESEND_DATA := true;
+            ARM_TIMER := true
+         elsif (RECEIVE_OLD_RRQ and MAX_RETRIES_REACHED) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_RRQ or RECEIVE_WRQ) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and not (MAX_RETRIES_REACHED)) then
+            RESEND_DATA := true;
+            ARM_TIMER := true
+         elsif (EOF and RECEIVE_ACK) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_WRQ or RECEIVE_OLD_WRQ or
+                RECEIVE_RRQ) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (INTERNAL_ERROR) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and MAX_RETRIES_REACHED) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         end if
+
+      (* Erreur 17 *)
+   |  HANDLE_WRQ_STATE ->
+         if (RECEIVE_DATA and not (DATA_LENGTH_LT_512)) then
+            SEND_ACK := true;
+            ARM_TIMER := true;
+            NEXT := RECEIVE_DATA_STATE
+         elsif (RECEIVE_OLD_WRQ and not (MAX_RETRIES_REACHED)) then
+            RESEND_ACK := true;
+            ARM_TIMER := true
+         elsif (RECEIVE_OLD_WRQ and MAX_RETRIES_REACHED) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_RRQ or RECEIVE_WRQ) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and not (MAX_RETRIES_REACHED)) then
+            RESEND_ACK := true;
+            ARM_TIMER := true
+         elsif (DATA_LENGTH_LT_512 and RECEIVE_DATA) then
+            SEND_ACK := true;
+            ARM_TIMER := true;
+            NEXT := TERMINATION_STATE
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_RRQ or RECEIVE_WRQ or
+                RECEIVE_OLD_RRQ) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (INTERNAL_ERROR) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and MAX_RETRIES_REACHED) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         end if
+
+   |  SEND_DATA_STATE ->
+         if (RECEIVE_ACK and not (EOF)) then
+            SEND_DATA := true;
+            ARM_TIMER := true
+         elsif (TIMEOUT and not (MAX_RETRIES_REACHED)) then
+            RESEND_DATA := true;
+            ARM_TIMER := true
+         elsif (EOF and RECEIVE_ACK) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_WRQ or RECEIVE_RRQ or
+                RECEIVE_OLD_WRQ or RECEIVE_OLD_RRQ) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (INTERNAL_ERROR) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and MAX_RETRIES_REACHED) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         end if
+
+   |  RECEIVE_DATA_STATE ->
+         if (RECEIVE_DATA and not (DATA_LENGTH_LT_512)) then
+            SEND_ACK := true;
+            ARM_TIMER := true
+         (* Erreur 15a *)
+         elsif (RECEIVE_OLD_DATA and not (MAX_RETRIES_REACHED)) then
+            RESEND_ACK := true;
+            ARM_TIMER := true
+         (* Erreur 15a *)
+         elsif (RECEIVE_OLD_DATA and MAX_RETRIES_REACHED) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and not (MAX_RETRIES_REACHED)) then
+            RESEND_ACK := true;
+            ARM_TIMER := true
+         elsif (DATA_LENGTH_LT_512 and RECEIVE_DATA) then
+            SEND_ACK := true;
+            ARM_TIMER := true;
+            NEXT := TERMINATION_STATE
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_RRQ or RECEIVE_WRQ) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (INTERNAL_ERROR) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and MAX_RETRIES_REACHED) then
+            SEND_ERROR := true;
+            (* Erreur 03a *)
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         end if
+
+   |  INITIATE_READ_STATE ->
+         if (TIMEOUT and not (MAX_RETRIES_REACHED)) then
+            RESEND_RRQ := true;
+            ARM_TIMER := true
+         elsif (RECEIVE_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 09a *)
+         elsif (RECEIVE_WRQ or RECEIVE_RRQ) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 07a *)
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_ACK) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 06a *)
+         elsif (INTERNAL_ERROR) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and MAX_RETRIES_REACHED) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_DATA and not (DATA_LENGTH_LT_512)) then
+            SEND_ACK := true;
+            ARM_TIMER := true;
+            NEXT := RECEIVE_DATA_STATE
+         elsif (RECEIVE_DATA and DATA_LENGTH_LT_512) then
+            SEND_ACK := true;
+            ARM_TIMER := true;
+            NEXT := TERMINATION_STATE
+         end if
+
+   |  INITIATE_WRITE_STATE ->
+         if (TIMEOUT and not (MAX_RETRIES_REACHED)) then
+            RESEND_WRQ := true;
+            ARM_TIMER := true
+         elsif (RECEIVE_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 09b *)
+         elsif (RECEIVE_WRQ or RECEIVE_RRQ) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 07b *)
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_DATA) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT and MAX_RETRIES_REACHED) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_ACK) then
+            SEND_DATA := true;
+            ARM_TIMER := true;
+            NEXT := SEND_DATA_STATE
+         end if
+
+   |  TERMINATION_STATE ->
+         (* Erreur 13a *)
+         if (RECEIVE_RRQ and REQUEST_ACCEPTED) then
+            SEND_INIT_DATA := true;
+            ARM_TIMER := true;
+            NEXT := HANDLE_RRQ_STATE
+         (* Erreur 13b *)
+         elsif (RECEIVE_WRQ and REQUEST_ACCEPTED) then
+            ARM_TIMER := true;
+            SEND_INIT_ACK := true;
+            NEXT := HANDLE_WRQ_STATE
+         (* Erreur 13a *)
+         elsif (RECEIVE_RRQ and not (REQUEST_ACCEPTED)) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 13b *)
+         elsif (RECEIVE_WRQ and not (REQUEST_ACCEPTED)) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_ACK or RECEIVE_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_OLD_DATA and MAX_RETRIES_REACHED) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 06c *)
+         elsif (INTERNAL_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 15b *)
+         elsif (RECEIVE_OLD_DATA and not (MAX_RETRIES_REACHED)) then
+            RESEND_ACK := true;
+            ARM_TIMER := true;
+            NEXT := TERMINATION_LOOP_STATE
+         elsif (TIMEOUT) then
+            ARM_TIMER := true;
+            NEXT := TERMINATION_LOOP_STATE
+         end if
+
+   |  TERMINATION_LOOP_STATE ->
+         (* Erreur 13c *)
+         if (RECEIVE_RRQ and REQUEST_ACCEPTED) then
+            SEND_INIT_DATA := true;
+            ARM_TIMER := true;
+            NEXT := HANDLE_RRQ_STATE
+         (* Erreur 13d *)
+         elsif (RECEIVE_WRQ and REQUEST_ACCEPTED) then
+            ARM_TIMER := true;
+            SEND_INIT_ACK := true;
+            NEXT := HANDLE_WRQ_STATE
+         (* Erreur 13c *)
+         elsif (RECEIVE_RRQ and not (REQUEST_ACCEPTED)) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 13d *)
+         elsif (RECEIVE_WRQ and not (REQUEST_ACCEPTED)) then
+            SEND_ERROR := true;
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         (* Erreur 06d *)
+         elsif (INTERNAL_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (TIMEOUT) then
+            (* Erreur 03b *)
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_OLD_DATA and not (MAX_RETRIES_REACHED)) then
+            RESEND_ACK := true;
+            ARM_TIMER := true
+         elsif (RECEIVE_INVALID_PACKET or RECEIVE_ACK or RECEIVE_RRQ or
+                RECEIVE_WRQ or RECEIVE_ERROR) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         elsif (RECEIVE_OLD_DATA and MAX_RETRIES_REACHED) then
+            STOP_TIMER := true;
+            NEXT := INIT_STATE
+         end if
+
+   end case
+
+end function
+
+-------------------------------------------------------------------------------
+
+end module

@@ -1,0 +1,91 @@
+(******************************************************************************
+ *             Sequentially consistent, distributed cache memory
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module       :       cache_e12_J_4P_comp.lnt
+ *   Authors      :       A. Kriouile and W. Serwe
+ *   Version      :       1.1
+ *   Date         :       2016/01/08 11:29:41
+ *****************************************************************************)
+
+-- Scenario for the verification of property S4:
+-- * four processes (two instances of PI, two instances of PJ)
+-- * two elements e1 and e2 
+-- * PI has no Out and AD and may not write any non-empty elements
+-- * PJ has Out and AD and may write e1 and e2
+-- One could complete by considering also the situation where e1 and e2 are 
+-- written by the same process (different from PI)
+
+-- Composition expression of the global cache memory system
+-- using type and functions of ELEM_E12_4P.lnt
+-- and process definitions MEMORY_FONC_T, PI_SSOUT_FONC_T_NDET, and
+-- PJ_SSVAR_EPS_OUT
+
+module cache_e12_J_4P_comp (MEMORY_FONC_T, PI_SSOUT_FONC_T_NDET, PJ_SSVAR_EPS_OUT)
+is
+
+-------------------------------------------------------------------------------
+
+process MAIN [diag : BUF_NAT_CHANNEL,
+              w, r, mw, cu, mr, cl : INDEX_ELEM_CHANNEL] is
+   hide sync : NONE in
+      par sync, mw, mr in
+         MEMORY_0 [sync, mw, mr]
+       ||
+         par sync, mw, w, r, cu, mr, cl in
+            PI1 [diag, sync, w, r, mw, cu, mr, cl]
+          ||
+            PI2 [diag, sync, w, r, mw, cu, mr, cl]
+	  ||
+	    PJ3 [sync, w, r, mw, cu, mr, cl]
+	  ||
+	    PJ4 [sync, w, r, mw, cu, mr, cl]
+         end par
+      end par
+   end hide
+end process
+
+(*****************************************************************************
+ *
+ * Auxiliary processes required for compositional generation
+ *
+ *****************************************************************************)
+
+process MEMORY_0 [sync : NONE, mw, mr : INDEX_ELEM_CHANNEL] is
+   MEMORY [sync, mw, mr] (empt_m)
+end process
+
+-------------------------------------------------------------------------------
+
+process PI1 [diag : BUF_NAT_CHANNEL, sync : NONE,
+             w, r, mw, cu, mr, cl : INDEX_ELEM_CHANNEL] is
+   PI [diag, sync, w, r, mw, cu, mr, cl] (1 of INDEX)
+end process
+
+-------------------------------------------------------------------------------
+
+process PI2 [diag : BUF_NAT_CHANNEL, sync : NONE, 
+             w, r, mw, cu, mr, cl : INDEX_ELEM_CHANNEL] is
+   PI [diag, sync, w, r, mw, cu, mr, cl] (2 of INDEX)
+end process
+
+-------------------------------------------------------------------------------
+
+process PJ3 [sync : NONE, w, r, mw, cu, mr, cl : INDEX_ELEM_CHANNEL] is
+   PJ [sync, w, r, mw, cu, mr, cl] (3 of INDEX)
+end process
+
+-------------------------------------------------------------------------------
+
+process PJ4 [sync : NONE, w, r, mw, cu, mr, cl : INDEX_ELEM_CHANNEL] is
+   PJ [sync, w, r, mw, cu, mr, cl] (4 of INDEX)
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

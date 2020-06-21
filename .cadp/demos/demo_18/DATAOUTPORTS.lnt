@@ -1,0 +1,46 @@
+module DATAOUTPORTS (TYPES, CHANNELS) is
+
+-------------------------------------------------------------------------------
+
+process DataOutPorts [DO:DOutChannel, crep:PortChannel, 
+                      io:DOutChannel, timeout:TimeOutChannel] is
+
+   par
+      crep (0 of PortNo);
+      OutPort [DO, io, timeout] (0 of PortNo, {})
+   ||
+      crep (1 of PortNo);
+      OutPort [DO, io, timeout] (1 of PortNo, {})
+   end par
+
+end process
+
+-------------------------------------------------------------------------------
+
+process OutPort [DO, io:DOutChannel, timeout:TimeOutChannel]
+                (n:PortNo, in var l:EnvList) is
+
+   loop
+      select 
+         var e:Env in
+            io (n, ?e) where not (e IsIn l);
+            l := insert (e, l)
+         end var
+      []
+         only if l != {} then
+            select
+               DO (n, head (l))
+            []
+                timeout (n, head (l))
+            end select;
+            l := tail (l)
+         end if
+      end select
+   end loop
+
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

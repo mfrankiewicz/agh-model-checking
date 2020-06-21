@@ -1,0 +1,42 @@
+(******************************************************************************
+ *             Sequentially consistent, distributed cache memory
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module       :       cache_e1_I_fonc.lnt
+ *   Authors      :       A. Kriouile and W. Serwe
+ *   Version      :       1.1
+ *   Date         :       2016/01/08 11:29:13
+ *****************************************************************************)
+
+-- Scenario for the verification of property S1:
+-- * two processes, one element e1
+-- * PI is complete and writes e1
+-- * PJ has no local variable and may not write e1
+
+-- Composition expression of the global cache memory system
+-- using types and functions of ELEM_E1_I.lnt and
+-- process definitions MEMORY_FONC_T, PI_FONC_T_NDET, and PJ_SSVAR_EPS
+
+module cache_e1_I_fonc (MEMORY_FONC_T, PI_FONC_T_NDET, PJ_SSVAR_EPS) is
+
+process MAIN [diag : BUF_NAT_CHANNEL,
+              w, r, mw, cu, mr, cl : INDEX_ELEM_CHANNEL] is
+   hide sync : NONE in
+      par sync, mw, mr in
+         MEMORY [sync, mw, mr] (empt_m)
+       ||
+         par sync, mw, w, r, cu, mr, cl in
+            PI [diag, sync, w, r, mw, cu, mr, cl] (1 of INDEX)
+          ||
+            PJ [sync, w, r, mw, cu, mr, cl] (2 of INDEX)
+         end par
+      end par
+   end hide
+end process
+
+end module
+

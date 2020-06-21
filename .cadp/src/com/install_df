@@ -1,0 +1,45 @@
+#!/bin/sh
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       install_df
+#   Auteurs             :       Mark JORGENSEN, Aldo MAZZILLI, Hubert GARAVEL
+#				et David CHAMPELOVIER
+#   Version             :       1.16
+#   Date                :       2017/12/20 18:09:41
+##############################################################################
+
+ARCH=`"$CADP_INSTALLATOR/com/arch" -detailed`
+
+# l'argument $1 est cense est un nom de systeme de fichiers
+
+case $ARCH in
+        sun4 )
+                df "$1"
+                ;;
+        sun5 | sun64 | sol86 | sol64 | win32-msys | win32-uwin | win32-interix | macOS | mac86 | mac64 )
+		df -k "$1"
+                ;;
+	win32-cygnus | win64-cygnus | iX86 | iX86-64 | x64 | ia64 )
+		df -kP "$1"
+		# il faut absolument mettre l'option -P (Posix) sinon, a
+		# defaut, df peut afficher les statistiques d'un systeme de
+		# fichiers sur 3 lignes au lieu de 2 lorsque le nom du 
+		# systeme de fichiers est assez long
+		;;
+	win32-mks )
+		df -kP "$1"
+		;;
+        * )
+                echo "Unknown architecture"
+                exit 1
+                ;;
+esac
+

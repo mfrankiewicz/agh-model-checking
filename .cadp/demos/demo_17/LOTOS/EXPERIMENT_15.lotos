@@ -1,0 +1,15 @@
+
+specification EXPERIMENT_15 [OPEN, CLOSE, CRASH] : noexit 
+
+behaviour
+
+   hide PRED1, SUCC1, PRED2, SUCC2, PRED3, SUCC3 in
+
+   library NETWORK_WITH_CRASHES endlib
+
+where
+
+   library DATA, LINK_6, GARAVEL_MOUNIER_STATION endlib
+
+endspec
+

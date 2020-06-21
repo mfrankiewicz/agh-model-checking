@@ -1,0 +1,36 @@
+process DataGenerator [DI, DO, CO] : noexit :=
+
+ Generator [DI, DO, CO] (emptyl)
+
+where
+
+(* ====================================================================== *)
+
+process Generator [DI, DO, CO] (l:EnvList) : noexit :=
+
+  DI ?n:PortNo ?e:Env ?r:RouteNo [not (e IsIn l)] ;
+	Generator [DI, DO, CO] (insert (e, l))
+[]
+  DO ?n:PortNo ?e:Env ;
+	Generator [DI, DO, CO] (remove (e, l))
+[]
+  CO ?b:Bool !emptyl ;
+	Generator [DI, DO, CO] (l)
+[]
+  CO ?b:Bool !insert (0, emptyl) ;
+	Generator [DI, DO, CO] (remove (0, l))
+[]
+  CO ?b:Bool !insert (1, emptyl) ; 
+	Generator [DI, DO, CO] (remove (1, l))
+[]
+  CO ?b:Bool !insert (0, insert (1, emptyl)) ; 
+	Generator [DI, DO, CO] (remove (0, remove (1, l)))
+[]
+  CO ?b:Bool !insert (1, insert (0, emptyl)) ;
+	Generator [DI, DO, CO] (remove (1, remove (0, l)))
+endproc
+
+(* ====================================================================== *)
+
+endproc
+

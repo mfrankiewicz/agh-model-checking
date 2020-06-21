@@ -1,0 +1,29 @@
+module LOCAL_CONSTANTS is
+
+-------------------------------------------------------------------------------
+
+function MAX_QUEUE_ELEMENTS () : NAT is
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+
+function MAX_BLOCK_NUMBER () : INT is
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+
+function MAX_RETRIES_A () : NAT is
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+
+function MAX_RETRIES_B () : NAT is
+   return 4
+end function
+
+-------------------------------------------------------------------------------
+
+end module

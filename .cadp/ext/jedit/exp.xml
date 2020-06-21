@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- jedit definitions for the EXP language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 2.6:EXP+1.5:SECT -->
+
+<MODE>
+  <PROPS>
+    <PROPERTY NAME="commentStart" VALUE="(*"/>
+    <PROPERTY NAME="commentEnd" VALUE="*)"/>
+    <PROPERTY NAME="lineComment" VALUE="--"/>
+  </PROPS>
+
+  <RULES IGNORE_CASE="TRUE" HIGHLIGHT_DIGITS="TRUE">
+    <!-- Comments -->
+    <SPAN TYPE="COMMENT1" DELEGATE="COMMENT">
+      <BEGIN>(*</BEGIN>
+      <END>*)</END>
+    </SPAN>
+    <EOL_SPAN TYPE="COMMENT2">--</EOL_SPAN>
+
+    <!-- Standard Operators -->
+    <SEQ TYPE="OPERATOR">-&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">_</SEQ>
+    <SEQ TYPE="OPERATOR">#</SEQ>
+    <SEQ TYPE="OPERATOR">*</SEQ>
+    <SEQ TYPE="OPERATOR">/</SEQ>
+    <SEQ TYPE="OPERATOR">|</SEQ>
+    <SEQ TYPE="OPERATOR">=</SEQ>
+    <SEQ TYPE="OPERATOR">&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">}</SEQ>
+    <SEQ TYPE="OPERATOR">{</SEQ>
+    <SEQ TYPE="OPERATOR">]</SEQ>
+    <SEQ TYPE="OPERATOR">[</SEQ>
+
+    <KEYWORDS>
+      <!-- Reserved Words -->
+      <KEYWORD1>all</KEYWORD1>
+      <KEYWORD1>any</KEYWORD1>
+      <KEYWORD1>behavior</KEYWORD1>
+      <KEYWORD1>behaviour</KEYWORD1>
+      <KEYWORD1>but</KEYWORD1>
+      <KEYWORD1>comm</KEYWORD1>
+      <KEYWORD1>cut</KEYWORD1>
+      <KEYWORD1>end</KEYWORD1>
+      <KEYWORD1>gate</KEYWORD1>
+      <KEYWORD1>hide</KEYWORD1>
+      <KEYWORD1>in</KEYWORD1>
+      <KEYWORD1>par</KEYWORD1>
+      <KEYWORD1>prio</KEYWORD1>
+      <KEYWORD1>rename</KEYWORD1>
+      <KEYWORD1>using</KEYWORD1>
+
+      <!-- Standard Library Sorts -->
+      <KEYWORD2>ccs</KEYWORD2>
+      <KEYWORD2>csp</KEYWORD2>
+      <KEYWORD2>elotos</KEYWORD2>
+      <KEYWORD2>lotos</KEYWORD2>
+      <KEYWORD2>mcrl</KEYWORD2>
+
+      <!-- Standard Library Functions -->
+      <FUNCTION>label</FUNCTION>
+      <FUNCTION>multiple</FUNCTION>
+      <FUNCTION>partial</FUNCTION>
+      <FUNCTION>single</FUNCTION>
+      <FUNCTION>total</FUNCTION>
+
+    </KEYWORDS>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>'</BEGIN>
+      <END>'</END>
+    </SPAN>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>"</BEGIN>
+      <END>"</END>
+    </SPAN>
+
+  </RULES>
+
+  <RULES SET="INQUOTE" DEFAULT="LITERAL1" ESCAPE="\">
+    <!-- no rules -->
+  </RULES>
+
+  <RULES SET="COMMENT" DEFAULT="COMMENT1" IGNORE_CASE="TRUE">
+    <!-- no rules -->
+  </RULES>
+
+</MODE>
+

@@ -1,0 +1,414 @@
+
+(*
+ * Step 1:
+ * -------
+ * The LOTOS specification "turntable_par.lotos" which describes the turntable
+ * system equipped with a parallel controller is compared with a simpler
+ * version, equipped with a sequential controller, given in file
+ * "turntable_seq.lotos". To this aim, "turntable_seq.lotos" is first
+ * generated in BCG format in the file "tt_seq.bcg", and then
+ * "turntable_par.lotos" is compared on-the-fly with "tt_seq.bcg" modulo
+ * branching preorder using Bisimulator.
+ *)
+
+"tt_seq.bcg" = generation of "turntable_seq.lotos";
+
+"par_gt_seq.seq" = branching comparison
+	"turntable_par.lotos" >= "tt_seq.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 2:
+ * -------
+ * Satisfaction of several correctness properties (written in MCL V4) that
+ * characterize the desired behaviour of the system is checked on-the-fly
+ * using Evaluator on the system equipped first with the sequential, then
+ * with the parallel version of the controller.
+ *)
+
+
+% for VERSION in turntable_seq turntable_par
+% do
+
+-- default MCL libraries for properties PROP_01 to PROP_07
+% DEFAULT_MCL_LIBRARIES="standard.mcl"
+
+-------------------------------------------------------------------------------
+
+property PROP_01 (SPEC)
+    "After a product has been added and the table has rotated once, the master"
+    "controller cannot send a drill command before the clamp was locked."
+is
+    "$SPEC.lotos" |=
+	NEVER (
+	    true* . "INF !PRESENT" .
+	    (not "INF !TURNED")* . "INF !TURNED" .
+	    (not "INF !LOCKED")* . "CMD !DRILL"
+	);
+    expected TRUE
+end property
+
+check PROP_01 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_02 (SPEC)
+    "After a product has been drilled, the master controller cannot send"
+    "a turn command before the clamp was unlocked."
+is
+    "$SPEC.lotos" |=
+        NEVER (
+	    true* . "INF !DRILLED" .
+	    (not "INF !UNLOCKED")* . "CMD !TURN"
+	);
+    expected TRUE
+end property
+
+check PROP_02 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_03 (SPEC)
+    "After the clamp has been unlocked and the table has rotated once, the"
+    "master controller cannot send a turn command before a product was tested."
+is
+    "$SPEC.lotos" |=
+        NEVER (
+  	    true* . "INF !UNLOCKED" .
+	    (not "INF !TURNED")* . "INF !TURNED" .
+	    (not 'INF !TESTED.*')* . "CMD !TURN"
+	);
+    expected TRUE
+end property
+
+check PROP_03 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_04 (SPEC)
+    "After a product has been tested and the table has rotated once, the"
+    "master controller cannot send a turn command before the product was"
+    "delivered."
+is
+    "$SPEC.lotos" |=
+        NEVER (
+	    true* . 'INF !TESTED.*' .
+	    (not "INF !TURNED")* . "INF !TURNED" .
+	    (not "INF !ABSENT")* . "CMD !TURN"
+	);
+    expected TRUE
+end property
+
+check PROP_04 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_05 (SPEC)
+    "After a product has been delivered and the table has rotated once, the"
+    "master controller cannot send a turn command before a product was added."
+is
+    "$SPEC.lotos" |=
+	NEVER (
+	    true* . "INF !ABSENT" .
+	    (not "INF !TURNED")* . "INF !TURNED" .
+	    (not "INF !PRESENT")* . "CMD !TURN"
+	);
+    expected TRUE
+end property
+
+check PROP_05 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_06 (SPEC)
+    "Each time the testing device detects a good product, no error will be"
+    "signaled during the next processing cycle."
+is
+    "$SPEC.lotos" |=
+        NEVER (
+	    true* .
+	    "INF !TESTED !TRUE" .
+	    (not "INF !TURNED")* . "INF !TURNED" .
+	    (not "INF !TURNED")* . "ERR"
+	);
+    expected TRUE
+end property
+
+check PROP_06 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_07 (SPEC, RESULT)
+    "After the drilling and testing position of the turntable have been"
+    "filled, the master controller cannot send a testing command before"
+    "a drilling command"
+is
+    -- dataless formula
+    "$SPEC.lotos" |= with evaluator3
+        NEVER (
+            true* . "INF !PRESENT" .
+            true* . "INF !PRESENT" .
+            true* . "INF !PRESENT" .
+            true* .
+            "CMD !TEST" . (not "INF !TURNED")* . "CMD !DRILL"
+        );
+    expected "$RESULT";
+
+    -- value-passing formula
+    "$SPEC.lotos" |= with evaluator4
+	NEVER (
+	    (true* . "INF !PRESENT") { 3 } .
+	    true* .
+	    "CMD !TEST" . (not "INF !TURNED")* . "CMD !DRILL"
+	);
+    expected "$RESULT"
+end property
+
+% case $SPEC in
+%     turntable_seq )
+          -- the property should be true for the sequential version
+          check PROP_07 ("$VERSION", TRUE);
+%     ;;
+%     turntable_par )
+          -- the property should be false for the parallel version
+           check PROP_07 ("$VERSION", FALSE);
+%     ;;
+% esac
+
+-------------------------------------------------------------------------------
+
+-- default MCL libraries for properties PROP_08 to PROP_14
+% DEFAULT_MCL_LIBRARIES="actl.mcl"
+
+-------------------------------------------------------------------------------
+
+property PROP_08 (SPEC)
+    "Initially, the master controller eventually commands the addition of"
+    "products on all the slots of the turntable."
+is
+    -- dataless formula
+    "$SPEC.lotos" |= with evaluator3
+        AU_A_A (true, not ("CMD !TURN"), "REQ !ADD",
+            AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+                AU_A_A (true, not "CMD !TURN", "REQ !ADD",
+                    AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+                        AU_A_A (true, not "CMD !TURN", "REQ !ADD",
+                            AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+                                AU_A_A (true, not "CMD !TURN", "REQ !ADD", true)
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "$SPEC.lotos" |= with evaluator4
+	(* first addition *)
+	AU_A_A (true, not "CMD !TURN", "REQ !ADD",
+	    (* followed by three turns and three additions *)
+	    mu X (nb_add_turn:nat := 3) . (
+		(nb_add_turn > 0) implies
+		AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+		    AU_A_A (true, not "CMD !TURN", "REQ !ADD",
+			X (nb_add_turn - 1)))
+	    )
+	);
+    expected TRUE
+end property
+
+check PROP_08 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_09 (SPEC)
+    "Each time a product is added, it will be drilled after the next rotation"
+    "of the turntable."
+is
+    "$SPEC.lotos" |=
+	[ true* . "INF !PRESENT" ]
+	    AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+	        AU_A_A (true, not "CMD !TURN", "CMD !LOCK",
+	            AU_A_A (true, not "CMD !TURN", "CMD !DRILL",
+	                AU_A_A (true, not "CMD !TURN", "CMD !UNLOCK", true)
+	            )
+	        )
+	    );
+    expected TRUE
+end property
+
+check PROP_09 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_10 (SPEC)
+    "Each time the clamp is released, the corresponding product will be tested"
+    "after the next rotation of the turntable."
+is
+    "$SPEC.lotos" |=
+	[ true* . "INF !UNLOCKED" ]
+	    AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+	        AU_A_A (true, not "CMD !TURN", "CMD !TEST", true)
+	    );
+    expected TRUE
+end property
+
+check PROP_10 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_11 (SPEC)
+    "Each time a product is tested, it will be delivered after the next"
+    "rotation of the turntable."
+is
+    "$SPEC.lotos" |=
+	[ true* . 'INF !TESTED.*' ]
+	    AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+	        AU_A_A (true, not "CMD !TURN", 'REQ !REMOVE.*', true)
+	    );
+    expected TRUE
+end property
+
+check PROP_11 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_12 (SPEC)
+    "Each time a product is delivered, another one will be added after the"
+    "next rotation of the turntable."
+is
+    "$SPEC.lotos" |=
+	[ true* . "INF !ABSENT" ]
+	    AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+	        AU_A_A (true, not "CMD !TURN", "REQ !ADD", true)
+	    );
+    expected TRUE
+end property
+
+check PROP_12 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_13 (SPEC)
+    "Each command (resp. request) sent by the master controller to the devices"
+    "(resp. to the environment) is eventually followed by its acknowledgement"
+    "before the turntable has rotated."
+is
+    "$SPEC.lotos" |=
+	[ true* ] (
+	    [ "REQ !ADD" ]
+		AU_A_A (true, not "INF !TURNED", "INF !PRESENT", true)
+	    and
+	    [ "CMD !LOCK" ]
+		AU_A_A (true, not "INF !TURNED", "INF !LOCKED", true)
+	    and
+	    [ "CMD !DRILL" ]
+		AU_A_A (true, not "INF !TURNED", "INF !DRILLED", true)
+	    and
+	    [ "CMD !UNLOCK" ]
+		AU_A_A (true, not "INF !TURNED", "INF !UNLOCKED", true)
+	    and
+	    [ "CMD !TEST" ]
+		AU_A_A (true, not "INF !TURNED", 'INF !TESTED.*', true)
+	    and
+	    [ 'REQ !REMOVE.*' ]
+		AU_A_A (true, not "INF !TURNED", "INF !ABSENT", true)
+	    and
+	    [ "CMD !TURN" ]
+		AU_A_A (true, not "INF !TURNED", "INF !TURNED", true)
+	);
+    expected TRUE
+end property
+
+check PROP_13 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property PROP_14 (SPEC)
+    "Each time the testing device detects a faulty product, the error will be"
+    "eventually signaled during the next processing cycle."
+is
+    "$SPEC.lotos" |=
+	[ true* . "INF !TESTED !FALSE" ]
+	    AU_A_A (true, not "CMD !TURN", "CMD !TURN",
+	        AU_A_A (true, not "CMD !TURN", "ERR", true)
+	    );
+    expected TRUE
+end property
+
+check PROP_14 ("$VERSION");
+
+% done
+
+(* ========================================================================= *)
+
+(*
+ * Step 3:
+ * -------
+ * Performance evaluation of the turntable system equipped with the
+ * sequential and parallel version of the controller is performed using
+ * Determinator, Bcg_Min, and Bcg_Steady. The resulting file "turntable.ps"
+ * contains the graphical representation of the product delivery throughput.
+ *)
+
+"tt_par.bcg" = generation of "turntable_par.lotos";
+
+% REMOVE_DELAY=100.0
+
+% for CONTROLLER in "seq" "par"
+% do
+      % echo
+      % echo "*** Analyzing turntable with ${CONTROLLER} controller"
+
+      "tt_${CONTROLLER}_1.bcg" = branching reduction of
+          hide all but LAMBDA, MU, NU in
+              "tt_${CONTROLLER}.bcg";
+
+      % for PROCESSING_DELAY in 0.5 1.0 2.0
+      % do
+
+          % echo
+          % echo "+++ Processing delay ${PROCESSING_DELAY}"
+
+          % DATA="tt_${CONTROLLER}_${PROCESSING_DELAY}.thr"
+          % rm -f $DATA
+
+          % for LOAD in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+          % do
+                "tt_${CONTROLLER}_2.bcg" = total rename
+                      "LAMBDA"         -> "REMOVE; rate $REMOVE_DELAY",
+                      "NU"             -> "rate $LOAD",
+                      "MU !TURNED"     -> "TURN; rate $PROCESSING_DELAY",
+                      "MU !DRILLED"    -> "DRILL; rate $PROCESSING_DELAY",
+                      "MU !TESTED"     -> "TEST; rate $PROCESSING_DELAY"
+                    in "tt_${CONTROLLER}_1.bcg";
+
+                % bcg_open "tt_${CONTROLLER}_2.bcg" determinator "tt_${CONTROLLER}_3.bcg"
+                % bcg_info -size "tt_${CONTROLLER}_3.bcg"
+
+                (* check the absence of tau transitions *)
+                % bcg_info -hidden "tt_${CONTROLLER}_3.bcg"
+
+                (* compute throughput *)
+                % bcg_steady -thr -append $DATA "tt_${CONTROLLER}_3.bcg" LOAD=$LOAD
+          % done
+      % done
+% done
+
+(* calling Gnuplot to generate turntable.ps *)
+% gnuplot turntable.plot
+
+(* displaying the Postscript file generated by Gnuplot *)
+% "$CADP"/src/com/cadp_postscript turntable.ps
+
+(* cleanup *)
+% $CADP/src/com/cadp_rm determinator
+% for FILE in tt_*_*.bcg tt_*_*@1.o tt_*_*.thr turntable.ps
+% do
+%       SVL_RECORD_FOR_CLEAN "$FILE"
+% done
+
+(* ========================================================================= *)
+

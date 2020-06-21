@@ -1,0 +1,65 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains the following files:
+
+ - bes.ssh:         a2ps filter for the BES format
+ - lnt.ssh:         a2ps filter for the LNT language
+ - lotos.ssh:       a2ps filter for the LOTOS language
+ - mcl.ssh:         a2ps filter for the MCL language
+ - nupn.ssh:        a2ps filter for the NUPN format
+ - rbc.ssh:         a2ps filter for the RBC format
+ - svl.ssh:         a2ps filter for the SVL language
+ - xtl.ssh:         a2ps filter for the XTL language
+
+Note : Before CADP 2015-l (included), this directory used to contain two files:
+"lotos.ssh" and "lnt.ssh", two a2ps filters developed by Etienne Lantreibecq
+and Remi Herilier. Both files are superseded by the current files.
+
+How to use these files:
+-----------------------
+
+We assume that the GNU a2ps software, which converts text into PostScript is
+already installed on your machine (see http://www.gnu.org/software/a2ps).
+
+1) If you do not already have a ".a2ps" directory in your $HOME directory
+   create it.
+
+2) If your $HOME/.a2ps directory does not contain a file named "a2psrc",
+   create an empty file having this name.
+
+3) At the end of your $HOME/.a2ps/a2psrc file, append the following line
+      PrependLibraryPath: $CADP/ext/a2ps
+   where $CADP should be replaced by the absolute pathname of the directory
+   in which the CADP software is installed.
+
+4) If your $HOME/.a2ps directory does not contain a file named "sheets.map"
+   locate this file in the a2ps installation directory (e.g., by running the
+   command "locate a2ps/sheets/sheets.map") and copy it into $HOME/.a2ps.
+
+5) At the end of your $HOME/.a2ps/sheets.map, append the following lines:
+
+<<<<<<<<<<<<<<<<<<
+
+# BES files
+bes:     /*.bes/
+# EXP files
+exp:     /*.exp/
+# LOTOS files
+lotos:   /*.lotos/
+         /*.lib/
+# LNT files
+lnt:     /*.lnt/
+# MCL files
+mcl:     /*.mcl/
+# NUPN files
+nupn:    /*.nupn/
+# RBC files
+rbc:     /*.rbc/
+# SVL files
+svl:     /*.svl/
+# XTL files
+xtl:     /*.xtl/
+
+>>>>>>>>>>>>>>>>>>>
+

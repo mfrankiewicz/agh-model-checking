@@ -1,0 +1,1176 @@
+-------------------------------------------------------------------------------
+
+property PROP_01 (S, ID)
+    "The TFTP automaton has two output ports, arm_timer and stop_timer, that"
+    "respectively start and stop the timer used to decide when an incoming"
+    "message should be considered as lost. This property ensures that between"
+    "two consecutive stop_timer actions, there must be an arm_timer action."
+    "Otherwise said, it states that, from every reachable state (i.e., after"
+    "firing any sequence true* of transitions from the initial state), there"
+    "exists no sequence of transitions containing two stop_timer actions with"
+    "no arm_timer action in between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "ARM_TIMER_$ID", "STOP_TIMER_$ID" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |=
+        [
+          true* .
+          "STOP_TIMER_$ID" .
+          not ("ARM_TIMER_$ID")* .
+          "STOP_TIMER_$ID"
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_02 (S, ID)
+    "Between two consecutive arm_timer actions, there must be a stop_timer"
+    "action, a timeout, or a reception. This property ensures this by"
+    "guaranteeing that there exists no sequence of transitions containing two"
+    "arm_timer actions without a stop_timer, a timeout, or a reception in"
+    "between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "ARM_TIMER_$ID", "RECEIVE_$ID.*",
+            "STOP_TIMER_$ID", "TIMEOUT_$ID" in
+                "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |=
+        [
+          true* .
+          "ARM_TIMER_$ID" .
+          not ("STOP_TIMER_$ID" or "TIMEOUT_$ID" or 'RECEIVE_$ID.*')* .
+          "ARM_TIMER_$ID"
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_03 (S, ID)
+    "The timer cannot be active between two transfers. This property ensures"
+    "that there is no TIMER_ON_AFTER_REINIT_$ID action reachable."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "TIMER_ON_AFTER_REINIT_$ID" in
+            "SCENARIO_${S}_$ID.bcg"
+    end hide
+    |=
+        [ true* . "TIMER_ON_AFTER_REINIT_$ID" ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_04 (S, ID)
+    "A timeout cannot occur between a stop_timer action and an arm_timer"
+    "action. This property states that there is no sequence of transitions"
+    "in which a timeout can follow a stop_timer action without an arm_timer"
+    "action in between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may be reused in property PROP_29, which has
+    -- the same maximal hiding set
+    "P04_P29.bcg" = divbranching reduction of
+        total hide all but "ARM_TIMER_$ID", "STOP_TIMER_$ID", "TIMEOUT_$ID" in
+                "SCENARIO_${S}_$ID.bcg"
+        end hide;
+    % P04_P29_FLAG="$S$ID"
+    "P04_P29.bcg" |=
+        [
+          true* .
+          "STOP_TIMER_$ID" .
+          not ("ARM_TIMER_$ID")* .
+          "TIMEOUT_$ID"
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_05 (S, ID)
+    "A timeout cannot occur before the first message is sent. This property"
+    "ensures that there is no sequence of transitions in which a timeout"
+    "occurs before the first send action."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "SEND_$ID.*", "TIMEOUT_$ID" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |=
+        [ not ('SEND_$ID.*')* . "TIMEOUT_$ID" ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_06 (S, ID)
+    "An internal error must cause the transfer to abort. This property ensures"
+    "that there is no sequence of transitions in which a reception or a"
+    "transmission can occur after an internal error but before a"
+    "re-initialisation and/or the transmission of an error."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "INTERNAL_ERROR_$ID", "RECEIVE_$ID.*",
+            "REINIT_$ID", "SEND_$ID.*" in
+                "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |=
+        [
+          true* .
+          "INTERNAL_ERROR_$ID" .
+          not ("REINIT_$ID" or "SEND_$ID !ERROR")* .
+          'RECEIVE_$ID.*' or ('SEND_$ID.*' and not "SEND_$ID !ERROR")
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_07 (S, ID)
+    "An invalid packet must cause the transfer to abort. This property ensures"
+    "that there is no sequence of transitions in which a reception or a"
+    "transmission can occur after an invalid packet was received but before"
+    "a re-initialisation and/or the transmission of an error."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    smart divbranching reduction of
+        total hide all but "INVALID_PACKET_$ID", "RECEIVE_$ID.*",
+            "REINIT_$ID", "SEND_$ID.*" in
+                "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |=
+        [
+          true* .
+          "INVALID_PACKET_$ID" .
+          not ("REINIT_$ID" or "SEND_$ID !ERROR")* .
+          'RECEIVE_$ID.*' or ('SEND_$ID.*' and not "SEND_$ID !ERROR")
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_08 (S, ID)
+    "When a TFTP protocol entity receives an error, it must abort the current"
+    "transfer."
+is
+    -- formula not preserved by maximal hiding and divbranching reduction
+    "SCENARIO_$S.bcg" |=
+        [ true* . "RECEIVE_$ID !ERROR" . "SEND_$ID !ERROR" ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_09 (S, ID, REQ)
+    "If both protocol entities initiate a transfer at the same time, they must"
+    "abort upon receiving the other protocol entity's request, in particular,"
+    "when a transfer request (either read or write) is received after sending"
+    "a $REQ request. This property ensures that there exists no sequence of"
+    "transitions in which sending a $REQ request and receiving a request can"
+    "be followed by the transmission of a message until there has been a"
+    "re-initialisation (transfer succeeded or aborted)."
+is
+    -- formula not preserved by maximal hiding and divbranching reduction
+    "SCENARIO_$S.bcg" |=
+        [
+          true* .
+          'SEND_$ID !$REQ.*' .
+          true (* ARM_TIMER_$ID *) .
+          (
+            (
+              'RECEIVE_$ID !RRQ.*' .
+              not ("REINIT_$ID")* .
+              'SEND_$ID !DATA.*'
+            )
+            |
+            (
+              'RECEIVE_$ID !WRQ.*' .
+              not ("REINIT_$ID")* .
+              'SEND_$ID !ACK.*'
+            )
+          )
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_10 (S, ID)
+    "A process cannot switch from sending data fragments to sending"
+    "acknowledgements without having received a write request or sent a read"
+    "request. This property ensures that there is no sequence of transitions"
+    "in which sending a data fragment can be followed by sending an"
+    "acknowledgement without first either sending a read request or receiving"
+    "a write request in between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "RECEIVE_$ID !WRQ.*", "SEND_$ID !ACK.*",
+            "SEND_$ID !DATA.*", "SEND_$ID !RRQ.*" in
+                "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |=
+        [
+          true* .
+          'SEND_$ID !DATA.*' . 
+          not ('SEND_$ID !RRQ.*' or 'RECEIVE_$ID !WRQ.*')* .
+          'SEND_$ID !ACK.*'
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_11 (S, ID)
+    "A process cannot switch from sending acknowledgements to sending data"
+    "fragments without having received a read request or sent a write request."
+    "This property ensures that there is no sequence of transitions in which"
+    "sending an acknowledgement can be followed by sending a data fragment"
+    "without first either sending a write request or receiving a read request"
+    "in between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "RECEIVE_$ID !RRQ.*", "SEND_$ID !ACK.*",
+            "SEND_$ID !DATA.*", "SEND_$ID !WRQ.*" in
+                "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |=
+        [
+          true* .
+          'SEND_$ID !ACK.*' . 
+          not ('SEND_$ID !WRQ.*' or 'RECEIVE_$ID !RRQ.*')* .
+          'SEND_$ID !DATA.*'
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_12 (S, ID)
+    "In the case where TFTP protocol entity $ID is transferring a file, it"
+    "must be possible for its transfer to finish."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "SUCCESS_$ID" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |=
+        < true* . "SUCCESS_$ID" > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_13 (S, ID)
+    "During the dallying phase, it is possible to begin a new transfer upon"
+    "receiving a read or write request. This property states that for each"
+    "of the two phases (corresponding to waiting for two timeouts to occur"
+    "after sending the final acknowledgement), the reception of a request"
+    "before the timeout occurs can be answered."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "RECEIVE_$ID.*", "REINIT_$ID", "SEND_$ID !ACK.*",
+            "SEND_$ID !DATA.*", "TIMEOUT_$ID" in
+                "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |= with evaluator4
+        forall X:NAT among {0 ... 1} .
+          <
+            true* .
+            {RECEIVE_$ID !"DATA" ?N:NAT ?any !TRUE} .
+            not ({SEND_$ID !"ACK" !N})* .
+            {SEND_$ID !"ACK" !N} .
+            (
+              not (TIMEOUT_$ID or REINIT_$ID)* .
+              TIMEOUT_$ID
+            ) {X} .
+            not (TIMEOUT_$ID or REINIT_$ID)*
+          > (
+              <
+                {RECEIVE_$ID !"WRQ" ?any} .
+                not {RECEIVE_$ID ...}* .
+                {SEND_$ID !"ACK" !0 of Nat}
+              > true
+              or
+              <
+                {RECEIVE_$ID !"RRQ" ?any} .
+                not {RECEIVE_$ID ...}* .
+                {SEND_$ID !"DATA" !1 of Nat ...}
+              > true
+            );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_14 (S, ID)
+    "In order to avoid the Sorcerer's Apprentice bug, all re-sent"
+    "acknowledgements must be ignored. This property ensures that there exists"
+    "no sequence of transitions in which the same acknowledgement is answered"
+    "twice without an intervening re-initialisation."
+is
+    -- formula not preserved by maximal hiding and divbranching reduction
+    "SCENARIO_$S.bcg" |= with evaluator4
+        [
+          true* .
+          {RECEIVE_$ID !"ACK" ?N:NAT} .
+          {SEND_$ID !"DATA" !N+1 ...} .
+          not (REINIT_$ID or {RECEIVE_$ID !"ACK" !N})* .
+          {RECEIVE_$ID !"ACK" !N} .
+          {SEND_$ID !"DATA" !N+1 ...}
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+% DEFAULT_MCL_LIBRARIES="macros.mcl"
+
+property PROP_15 (S, ID)
+    "Re-sent data fragment can be acknowledged, to the limit set by the value"
+    "of the maximum number of retries. This property states that after a data"
+    "fragment is received, it can be received and acknowledged again (only"
+    "ARM_TIMER_$ID and STOP_TIMER_$ID actions can be performed by TFTP entity"
+    "$ID in the meantime) up to MIN_RETRIES_AB times (MIN_RETRIES_AB being"
+    "the minimum of MAX_RETRIES_A and MAX_RETRIES_B)."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    "SCENARIO_${S}_$ID.bcg"
+    |= with evaluator4
+        forall N:NAT among {1 ... FILE_SIZE_$ID()} .
+          <
+            true* .
+            {RECEIVE_$ID !"DATA" !N ...} .
+            (not ('.*_$ID.*') or '.*TIMER_$ID.*')* .
+            {SEND_$ID !"ACK" !N} .
+            (
+              (not ('.*_$ID.*') or 'SUCCESS_$ID' or '.*TIMER_$ID.*')* .
+              {RECEIVE_$ID !"DATA" !N ...} .
+              (not ('.*_$ID.*') or '.*TIMER_$ID.*')* .
+              {SEND_$ID !"ACK" !N} 
+            ) {MIN_RETRIES_AB ()}
+          > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_16 (S, ID)
+    "Every re-sent read request must be answered, to the limit set by the"
+    "value of the maximum number of retries. This property states that after"
+    "read request is received for the first time, it can be received and"
+    "answered again up to MIN_RETRIES_AB times."
+is
+    % case "$ID" in
+    % A) OTHER=B ;;
+    % B) OTHER=A ;;
+    % esac
+    -- formula not preserved by maximal hiding and divbranching reduction
+    "SCENARIO_$S.bcg" |= with evaluator4
+        [
+          not ({RECEIVE_$ID !"RRQ" ...} or ARM_TIMER_$OTHER)* .
+          {RECEIVE_$ID !"RRQ" ?N:NAT} .
+          not ({SEND_$ID !"DATA" ...} or ARM_TIMER_$OTHER)* .
+          {SEND_$ID !"DATA" !1 of NAT ...}
+        ]
+          <
+            (
+              not (REINIT_$ID  or {RECEIVE_$ID !"RRQ" !N})* .
+              {RECEIVE_$ID !"RRQ" !N} .
+              {SEND_$ID !"DATA" !1 of NAT ...}
+            ) {MIN_RETRIES_AB ()}
+          > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_17 (S, ID)
+    "Every write request must be acknowledged, to the limit set by the value"
+    "of the maximum number of retries. This property states that after a write"
+    "request is received for the first time, it can be received and answered"
+    "again up to MIN_RETRIES_AB times."
+is
+    % case "$ID" in
+    % A) OTHER=B ;;
+    % B) OTHER=A ;;
+    % esac
+    -- formula not preserved by maximal hiding and divbranching reduction
+    "SCENARIO_$S.bcg" |= with evaluator4
+        [
+          not ({RECEIVE_$ID !"WRQ" ...} or ARM_TIMER_$OTHER)* .
+          {RECEIVE_$ID !"WRQ" ?N:Nat} .
+          not ({SEND_$ID !"ACK" ...} or ARM_TIMER_$OTHER)* .
+          {SEND_$ID !"ACK" !0 of Nat}
+        ]
+          <
+            (
+              not (REINIT_$ID or {RECEIVE_$ID !"WRQ" !N})* .
+              {RECEIVE_$ID !"WRQ" !N} .
+              {SEND_$ID !"ACK" !0 of Nat}
+            ) {MIN_RETRIES_AB ()}
+          > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_18 (S, ID)
+    "An acknowledgement can be re-sent as many times as allowed by the value"
+    "of the maximum number of retries. This property states that after an"
+    "acknowledgement is sent for the first time, it can be sent again"
+    "(regardless of the reason) up to MAX_RETRIES_$ID times within the same"
+    "transfer."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may be reused in property PROP_19, which has
+    -- the same maximal hiding set
+    "P18_P19.bcg" = divbranching reduction of
+        total hide all but "SEND_$ID !ACK.*", ".*_$ID.*[WR]RQ.*" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide;
+    % P18_P19_FLAG="$S$ID"
+    "P18_P19.bcg" |= with evaluator4
+        forall N:NAT among {0 ... FILE_SIZE_$ID ()} .
+          [
+            not ('.*_$ID.*[WR]RQ.*' or {SEND_$ID !"ACK" !N})* .
+            {SEND_$ID !"ACK" !N}
+          ]
+            <
+              (
+                not ('.*_$ID.*[WR]RQ.*' or {SEND_$ID !"ACK" !N})* .
+                {SEND_$ID !"ACK" !N}
+              ) {MAX_RETRIES_$ID ()}
+            > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_19 (S, ID)
+    "An acknowledgement cannot be re-sent more times than allowed by the value"
+    "of the maximum number of retries. This property states that there is no"
+    "sequence of transitions in which sending the same acknowledgement can"
+    "occur more than MAX_RETRIES_$ID times within the same transfer."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may have already been generated in property
+    -- PROP_18, which has the same maximal hiding set
+    % if [ "$P18_P19_FLAG" != "$S$ID" ]
+    % then
+        "P18_P19.bcg" = divbranching reduction of
+            total hide all but "SEND_$ID !ACK.*", ".*_$ID.*[WR]RQ.*" in
+                "SCENARIO_${S}_$ID.bcg"
+            end hide;
+    % fi
+    "P18_P19.bcg" |= with evaluator4
+        forall N:NAT among {0 ... FILE_SIZE_$ID ()} .
+          [
+            true* .
+            {SEND_$ID !"ACK" !N} .
+            (
+              not ('.*_$ID.*[WR]RQ.*' or {SEND_$ID !"ACK" !N})* .
+              {SEND_$ID !"ACK" !N}
+            ) {MAX_RETRIES_$ID () + 1}
+          ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_20 (S, ID)
+    "A data fragment can be re-sent as many times as allowed by the value of"
+    "the maximum number of retries. This property states that after a data"
+    "fragment is sent for the first time, it can be sent again (regardless"
+    "of the reason) up to MAX_RETRIES_$ID times within the same transfer."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may be reused in property PROP_21, which has
+    -- the same maximal hiding set
+    "P20_P21.bcg" = divbranching reduction of
+        total hide all but "SEND_$ID !DATA.*", ".*_$ID.*[WR]RQ.*" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide;
+    % P20_P21_FLAG="$S$ID"
+    "P20_P21.bcg" |= with evaluator4
+        forall N:NAT among {1 ... FILE_SIZE_$ID ()} .
+          [ not ({SEND_$ID !"DATA" !N ...})* . {SEND_$ID !"DATA" !N ...} ]
+            <
+              (
+                not ('.*_$ID.*[WR]RQ.*' or {SEND_$ID !"DATA" !N ...})* .
+                {SEND_$ID !"DATA" !N ...}
+              ) {MAX_RETRIES_$ID ()}
+            > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_21 (S, ID)
+    "A data fragment cannot be re-sent more times than allowed by the value of"
+    "the maximum number of retries. This property states that there is no"
+    "sequence of transitions in which sending the same data fragment can"
+    "occur more than MAX_RETRIES_$ID times within the same transfer."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may have already been generated in property
+    -- PROP_20, which has the same maximal hiding set
+    % if [ "$P20_P21_FLAG" != "$S$ID" ]
+    % then
+        "P20_P21.bcg" = divbranching reduction of
+            total hide all but "SEND_$ID !DATA.*", ".*[WR]RQ.*" in
+                "SCENARIO_${S}_$ID.bcg"
+            end hide;
+    % fi
+    "P20_P21.bcg" |= with evaluator4
+        forall N:NAT among {1 ... FILE_SIZE_$ID ()} .
+          [
+            true* .
+            {SEND_$ID !"DATA" !N ...} .
+            (
+              not ('.*_$ID.*[WR]RQ.*' or {SEND_$ID !"DATA" !N ...})* .
+              {SEND_$ID !"DATA" !N ...}
+            ) {MAX_RETRIES_$ID () + 1}
+          ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_22 (S, ID)
+    "A read request can be re-sent as many times as allowed by the value of"
+    "the maximum number of retries. This property states that after a read"
+    "request is sent for the first time, it can be sent again (regardless"
+    "of the reason) up to MAX_RETRIES_$ID times within the same transfer."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may be reused in property PROP_23, which has
+    -- the same maximal hiding set
+    "P22_P23.bcg" = divbranching reduction of
+        total hide all but "REINIT_$ID", "SEND_$ID !RRQ.*" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide;
+    % P22_P23_FLAG="$S$ID"
+    "P22_P23.bcg" |= with evaluator4
+        [ not ({SEND_$ID !"RRQ" ...})* . {SEND_$ID !"RRQ" ?N:NAT} ]
+          <
+            (
+              not (REINIT_$ID or {SEND_$ID !"RRQ" !N}) * .
+              {SEND_$ID !"RRQ" !N}
+            ) {MAX_RETRIES_$ID ()}
+          > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_23 (S, ID)
+    "A read request cannot be re-sent more times than allowed by the value of"
+    "the maximum number of retries. This property states that there is no"
+    "sequence of transitions in which sending the same read request can occur"
+    "more than MAX_RETRIES_$ID without a re-initialisation."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may have already been generated in property
+    -- PROP_22, which has the same maximal hiding set
+    % if [ "$P22_P23_FLAG" != "$S$ID" ]
+    % then
+        "P22_P23.bcg" = divbranching reduction of
+            total hide all but "REINIT_$ID", "SEND_$ID !RRQ.*" in
+                "SCENARIO_${S}_$ID.bcg"
+            end hide;
+    % fi
+    "P22_P23.bcg" |= with evaluator4
+        [
+          true* .
+          {SEND_$ID !"RRQ" ?N:NAT} .
+          (
+            not (REINIT_$ID or {SEND_$ID !"RRQ" !N})* .
+            {SEND_$ID !"RRQ" !N}
+          ) {MAX_RETRIES_$ID () + 1}
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_24 (S, ID)
+    "A write request can be re-sent as many times as allowed by the value of"
+    "the maximum retries. This property states that after a write request is"
+    "sent for the first time, it can be sent again (regardless of the reason)"
+    "up to MAX_RETRIES_$ID times within the same transfer."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may be reused in property PROP_25, which has
+    -- the same maximal hiding set
+    "P24_P25.bcg" = divbranching reduction of
+        total hide all but "REINIT_$ID", "SEND_$ID !WRQ.*" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide;
+    % P24_P25_FLAG="$S$ID"
+    "P24_P25.bcg" |= with evaluator4
+        [ not ({SEND_$ID !"WRQ" ...})* . {SEND_$ID !"WRQ" ?N:NAT} ]
+          <
+            (
+              not (REINIT_$ID or {SEND_$ID !"WRQ" !N})* .
+              {SEND_$ID !"WRQ" !N}
+            ) {MAX_RETRIES_$ID ()}
+          > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_25 (S, ID)
+    "A write request cannot be re-sent more times than allowed by the value of"
+    "the maximum number of retries. This property states that there is no"
+    "sequence of transitions in which sending the same write request can occur"
+    "more than MAX_RETRIES_$ID without a re-initialisation."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may have already been generated in property
+    -- PROP_24, which has the same maximal hiding set
+    % if [ "$P24_P25_FLAG" != "$S$ID" ]
+    % then
+        "P24_P25.bcg" = divbranching reduction of
+            total hide all but "REINIT_$ID", "SEND_$ID !WRQ.*" in
+                "SCENARIO_${S}_$ID.bcg"
+            end hide;
+    % fi
+    "P24_P25.bcg" |= with evaluator4
+        [
+          true* .
+          {SEND_$ID !"WRQ" ?N:NAT} .
+          (
+            not (REINIT_$ID or {SEND_$ID !"WRQ" !N})* .
+            {SEND_$ID !"WRQ" !N}
+          ) {MAX_RETRIES_$ID () + 1}
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_26 (S, ID)
+    "Data fragments must be sent in proper order. This property states that"
+    "any data fragment numbered X cannot be followed by a data fragment"
+    "numbered Y, where Y < X, unless there has been a re-initialisation in"
+    "between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "REINIT_$ID", "SEND_$ID !DATA.*" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |= with evaluator4
+        [
+          true* .
+          {SEND_$ID !"DATA" ?X:NAT ...} .
+          not (REINIT_$ID)* .
+          {SEND_$ID !"DATA" ?Y:NAT ... where Y < X}
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_27 (S, ID)
+    "Between the transmission of two successive data fragments, there must be"
+    "the reception of the corresponding acknowledgement. This property states"
+    "that there is no sequence of transitions in which the transmission of a"
+    "data fragment numbered X can be followed by the transmission of a data"
+    "fragment numbered X+1 without the reception of the acknowledgement"
+    "numbered X in between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "RECEIVE_$ID !ACK.*", "SEND_$ID !DATA.*" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |= with evaluator4
+        [
+          true* .
+          {SEND_$ID !"DATA" ?X:NAT ?any !FALSE} .
+          not ({RECEIVE_$ID !"ACK" !X})* .
+          {SEND_$ID !"DATA" !X + 1 ...}
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_28 (S, ID)
+    "Between the transmission of two successive acknowledgements, there must"
+    "be the reception of the corresponding data fragment. This property states"
+    "that there is no sequence of transitions in which the transmission of an"
+    "acknowledgement numbered X can be followed by the transmission of an"
+    "acknowledgement numbered X+1 without the reception of the data fragment"
+    "numbered X+1 in between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    divbranching reduction of
+        total hide all but "RECEIVE_$ID !DATA.*", "SEND_$ID !ACK.*" in
+            "SCENARIO_${S}_$ID.bcg"
+        end hide
+    |= with evaluator4
+        [
+          true* .
+          {SEND_$ID !"ACK" ?X:NAT} .
+          not ({RECEIVE_$ID !"DATA" !X + 1 ...})* .
+          {SEND_$ID !"ACK" !X + 1}
+        ] false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_29 (S, ID)
+    "Bounded timeouts. This property states that there is no infinite"
+    "repetition of sequences starting with a stop_timer, eventually followed"
+    "by a timeout and finally by arm_timer, without a stop_timer or arm_timer"
+    "in between."
+is
+    -- formula preserved by maximal hiding and divbranching reduction
+    -- the following BCG file may have already been generated in property
+    -- PROP_04, which has the same maximal hiding set
+    % if [ "$P04_P29_FLAG" != "$S$ID" ]
+    % then
+        "P04_P29.bcg" = divbranching reduction of
+            total hide all but "ARM_TIMER_$ID", "STOP_TIMER_$ID",
+                "TIMEOUT_$ID" in
+                    "SCENARIO_${S}_$ID.exp"
+     end hide;
+    % fi
+    "P04_P29.bcg" |= with evaluator4
+        [
+          true* .
+          "STOP_TIMER_$ID" .
+          not ("STOP_TIMER_$ID" or "ARM_TIMER_$ID")* .
+          "TIMEOUT_$ID" .
+          not ("STOP_TIMER_$ID")* .
+          "ARM_TIMER_$ID"
+        ] -|;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+-- parsing the script arguments
+
+% SCENARIOS=
+% TFTP_VERSION=
+
+% while [ $# -gt 0 ]
+% do
+    % case "$1" in
+    % A | B | C | D | E )
+        % SCENARIOS="$SCENARIOS $1"
+        % shift
+    % ;;
+    % * )
+        % if [ -f "$1" ]
+        % then
+            % FILE="$1"
+        % elif [ -f "VERSIONS/$1" ]
+        % then
+            % FILE="VERSIONS/$1"
+        % else
+            % echo
+            % echo "ERROR: unknown parameter \"$1\""
+            % exit 1
+        % fi
+        % if [ "$TFTP_VERSION" = "" ]
+        % then
+            % TFTP_VERSION="$FILE"
+        % else
+            % echo
+            % echo "WARNING: parameter \"$FILE\" is ignored"
+        % fi
+        % shift
+    % ;;
+    % esac
+% done
+
+% if [ "$SCENARIOS" = "" ]
+% then
+    -- by default, SVL checks scenario A only
+    % SCENARIOS="A"
+% fi
+
+% if [ "$TFTP_VERSION" = "" ]
+% then
+    -- by default, SVL uses the corrected version of TFTP
+    % TFTP_VERSION="VERSIONS/AUTOMATON_FINAL.lnt"
+% fi
+
+% SVL_RECORD_FOR_SWEEP "AUTOMATON.lnt"
+% if [ "$TFTP_VERSION" != "AUTOMATON.lnt" ]
+% then
+    % echo
+    % echo "*** using $TFTP_VERSION ***"
+    % rm -f AUTOMATON.lnt
+    % cp -f $TFTP_VERSION AUTOMATON.lnt
+% fi
+
+-------------------------------------------------------------------------------
+
+% for S in $SCENARIOS
+% do
+
+    % echo
+    % echo "*** checking scenario $S ***"
+
+    % DEFAULT_PROCESS_FILE="SCENARIO_$S.lnt"
+
+    % for ID in A B
+    % do
+
+        "SENDER_$ID.bcg" = divbranching reduction of generation of
+            "SENDER_$ID" ["SEND_$ID"];
+
+        "RECEIVER_$ID.bcg" = divbranching reduction of generation of
+            "RECEIVER_$ID" ["RECEIVE_$ID"];
+
+        "interface_$ID.bcg" = branching reduction of generation of
+            par "SENDER_$ID.bcg" || "RECEIVER_$ID.bcg" end par;
+
+    % done
+
+    "SCENARIO_$S.exp" = leaf divbranching reduction of
+        single rename
+            -- flattening structured labels, for model checking
+            "!WRQ (\([^)]*\))" -> "!WRQ !\1",
+            "!RRQ (\([^)]*\))" -> "!RRQ !\1",
+            "!DATA (\([^,]*\), \([^,]*\), \([^)]*\))" -> "!DATA !\1 !\2 !\3",
+            "!ACK (\([^)]*\))" -> "!ACK !\1",
+            -- abbreviating complex labels, for readability
+            "EVENT_\([AB]\) !S_TIMER" -> "STOP_TIMER_\1",
+            "EVENT_\([AB]\) !A_TIMER" -> "ARM_TIMER_\1",
+            "EVENT_\([AB]\) !\([A-Z_]*\)" -> "\2_\1"
+        in
+            par
+                -- first instance of the TFTP : TFTP_A
+                SEND_A, RECEIVE_A ->
+                    gate hide GET_A, PUT_A in
+                        total rename "GET_A !SUCCESS.*" -> "SUCCESS_A" in
+                            TFTP_A [PUT_A, GET_A, RECEIVE_A, SEND_A, EVENT_A,
+                              END_OF_FILE, BAD_MESSAGE, BAD_INDEX, END_OF_LIST]
+                            -|[SEND_A, RECEIVE_A]|? "interface_A.bcg"
+                        end rename
+                    end hide
+            ||
+                -- second instance of the TFTP : TFTP_B
+                SEND_B, RECEIVE_B ->
+                    gate hide GET_B, PUT_B in
+                        total rename "GET_B !SUCCESS.*" -> "SUCCESS_B" in
+                            TFTP_B [PUT_B, GET_B, RECEIVE_B, SEND_B, EVENT_B,
+                              END_OF_FILE, BAD_MESSAGE, BAD_INDEX, END_OF_LIST]
+                            -|[SEND_B, RECEIVE_B]|? "interface_B.bcg"
+                        end rename
+                    end hide
+            ||
+                -- communication medium from TFTP_A to TFTP_B
+                SEND_A, RECEIVE_B ->
+                    MEDIUM [SEND_A, RECEIVE_B, EVENT_A,
+                            BAD_INDEX, BAD_VALUE, NOT_FOUND]
+            ||
+                -- communication medium from TFTP_B to TFTP_A
+                SEND_B, RECEIVE_A ->
+                    MEDIUM [SEND_B, RECEIVE_A, EVENT_B,
+                            BAD_INDEX, BAD_VALUE, NOT_FOUND]
+            ||
+                -- restriction to a subset of the RECEIVE_A actions
+                RECEIVE_A ->
+                    "RECEIVER_A.bcg"
+            ||
+                -- restriction to a subset of the RECEIVE_B actions
+                RECEIVE_B ->
+                    "RECEIVER_B.bcg"
+            ||
+                -- restricton to a subset of the SEND_A actions
+                SEND_A ->
+                    "SENDER_A.bcg"
+            ||
+                -- restricton to a subset of the SEND_B  actions
+                SEND_B ->
+                    "SENDER_B.bcg"
+            end par
+        end rename;
+
+    "SCENARIO_${S}.bcg" = divbranching reduction of
+        generation of "SCENARIO_$S.exp";
+
+    % for ID in A B
+    % do
+        "SCENARIO_${S}_$ID.bcg" = smart divbranching reduction of
+            total hide all but ".*_$ID.*" in "SCENARIO_$S.exp" end hide;
+    % done
+
+    (* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *)
+
+    % case $S in
+    % A )
+        -- scenario A
+        -- properties on events of TFTP entity A
+        check PROP_01 (A, A);
+        check PROP_02 (A, A);
+        check PROP_03 (A, A);
+        check PROP_04 (A, A);
+        check PROP_05 (A, A);
+        check PROP_06 (A, A);
+        check PROP_07 (A, A);
+        check PROP_08 (A, A);
+        check PROP_14 (A, A);
+        check PROP_20 (A, A);
+        check PROP_21 (A, A);
+        check PROP_24 (A, A);
+        check PROP_25 (A, A);
+        check PROP_26 (A, A);
+        check PROP_27 (A, A);
+        check PROP_29 (A, A);
+
+        -- properties on events of TFTP entity B
+        check PROP_01 (A, B);
+        check PROP_02 (A, B);
+        check PROP_03 (A, B);
+        check PROP_04 (A, B);
+        check PROP_05 (A, B);
+        check PROP_06 (A, B);
+        check PROP_07 (A, B);
+        check PROP_08 (A, B);
+        check PROP_15 (A, B);
+        check PROP_17 (A, B);
+        check PROP_18 (A, B);
+        check PROP_19 (A, B);
+        check PROP_28 (A, B);
+        check PROP_29 (A, B);
+    % ;;
+
+    (* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *)
+
+    % B )
+        -- scenario B
+        -- properties on events of TFTP entity A
+        check PROP_01 (B, A);
+        check PROP_02 (B, A);
+        check PROP_03 (B, A);
+        check PROP_04 (B, A);
+        check PROP_05 (B, A);
+        check PROP_06 (B, A);
+        check PROP_07 (B, A);
+        check PROP_08 (B, A);
+        check PROP_15 (B, A);
+        check PROP_18 (B, A);
+        check PROP_19 (B, A);
+        check PROP_22 (B, A);
+        check PROP_23 (B, A);
+        check PROP_28 (B, A);
+        check PROP_29 (B, A);
+
+        -- properties on events of TFTP entity B
+        check PROP_01 (B, B);
+        check PROP_02 (B, B);
+        check PROP_03 (B, B);
+        check PROP_04 (B, B);
+        check PROP_05 (B, B);
+        check PROP_06 (B, B);
+        check PROP_07 (B, B);
+        check PROP_08 (B, B);
+        check PROP_14 (B, B);
+        check PROP_16 (B, B);
+        check PROP_20 (B, B);
+        check PROP_21 (B, B);
+        check PROP_26 (B, B);
+        check PROP_27 (B, B);
+        check PROP_29 (B, B);
+    % ;;
+
+    (* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *)
+
+    % C )
+        -- scenario C
+        -- properties on events of TFTP entity A
+        check PROP_01 (C, A);
+        check PROP_02 (C, A);
+        check PROP_03 (C, A);
+        check PROP_04 (C, A);
+        check PROP_05 (C, A);
+        check PROP_06 (C, A);
+        check PROP_07 (C, A);
+        check PROP_08 (C, A);
+        check PROP_09 (C, A, WRQ);
+        check PROP_10 (C, A);
+        check PROP_11 (C, A);
+        check PROP_12 (C, A);
+        check PROP_14 (C, A);
+        check PROP_15 (C, A);
+        check PROP_17 (C, A);
+        check PROP_18 (C, A);
+        check PROP_19 (C, A);
+        check PROP_20 (C, A);
+        check PROP_21 (C, A);
+        check PROP_24 (C, A);
+        check PROP_25 (C, A);
+        check PROP_26 (C, A);
+        check PROP_27 (C, A);
+        check PROP_28 (C, A);
+        check PROP_29 (C, A);
+
+        -- properties on events of TFTP entity B
+        check PROP_01 (C, B);
+        check PROP_02 (C, B);
+        check PROP_03 (C, B);
+        check PROP_04 (C, B);
+        check PROP_05 (C, B);
+        check PROP_06 (C, B);
+        check PROP_07 (C, B);
+        check PROP_08 (C, B);
+        check PROP_09 (C, B, WRQ);
+        check PROP_10 (C, B);
+        check PROP_11 (C, B);
+        check PROP_12 (C, B);
+        check PROP_14 (C, B);
+        check PROP_15 (C, B);
+        check PROP_17 (C, B);
+        check PROP_18 (C, B);
+        check PROP_19 (C, B);
+        check PROP_20 (C, B);
+        check PROP_21 (C, B);
+        check PROP_24 (C, B);
+        check PROP_25 (C, B);
+        check PROP_26 (C, B);
+        check PROP_27 (C, B);
+        check PROP_28 (C, B);
+        check PROP_29 (C, B);
+    % ;;
+
+    (* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *)
+
+    % D )
+        -- scenario D
+        -- properties on events of TFTP entity A
+        check PROP_01 (D, A);
+        check PROP_02 (D, A);
+        check PROP_03 (D, A);
+        check PROP_04 (D, A);
+        check PROP_05 (D, A);
+        check PROP_06 (D, A);
+        check PROP_07 (D, A);
+        check PROP_08 (D, A);
+        check PROP_09 (D, A, RRQ);
+        check PROP_11 (D, A);
+        check PROP_12 (D, A);
+        check PROP_13 (D, A);
+        check PROP_15 (D, A);
+        check PROP_17 (D, A);
+        check PROP_18 (D, A);
+        check PROP_19 (D, A);
+        check PROP_22 (D, A);
+        check PROP_23 (D, A);
+        check PROP_28 (D, A);
+        check PROP_29 (D, A);
+
+        -- properties on events of TFTP entity B
+        check PROP_01 (D, B);
+        check PROP_02 (D, B);
+        check PROP_03 (D, B);
+        check PROP_04 (D, B);
+        check PROP_05 (D, B);
+        check PROP_06 (D, B);
+        check PROP_07 (D, B);
+        check PROP_08 (D, B);
+        check PROP_09 (D, B, WRQ);
+        check PROP_10 (D, B);
+        check PROP_12 (D, B);
+        check PROP_14 (D, B);
+        check PROP_16 (D, B);
+        check PROP_20 (D, B);
+        check PROP_21 (D, B);
+        check PROP_24 (D, B);
+        check PROP_25 (D, B);
+        check PROP_26 (D, B);
+        check PROP_27 (D, B);
+        check PROP_29 (D, B);
+    % ;;
+
+    (* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *)
+
+    % E )
+        -- scenario E
+        -- properties on events of TFTP entity A
+        check PROP_01 (E, A);
+        check PROP_02 (E, A);
+        check PROP_03 (E, A);
+        check PROP_04 (E, A);
+        check PROP_05 (E, A);
+        check PROP_06 (E, A);
+        check PROP_07 (E, A);
+        check PROP_08 (E, A);
+        check PROP_09 (E, A, RRQ);
+        check PROP_10 (E, A);
+        check PROP_11 (E, A);
+        check PROP_12 (E, A);
+        check PROP_13 (E, A);
+        check PROP_14 (E, A);
+        check PROP_15 (E, A);
+        check PROP_16 (E, A);
+        check PROP_18 (E, A);
+        check PROP_19 (E, A);
+        check PROP_20 (E, A);
+        check PROP_21 (E, A);
+        check PROP_22 (E, A);
+        check PROP_23 (E, A);
+        check PROP_26 (E, A);
+        check PROP_27 (E, A);
+        check PROP_28 (E, A);
+        check PROP_29 (E, A);
+
+        -- properties on events of TFTP entity B
+        check PROP_01 (E, B);
+        check PROP_02 (E, B);
+        check PROP_03 (E, B);
+        check PROP_04 (E, B);
+        check PROP_05 (E, B);
+        check PROP_06 (E, B);
+        check PROP_07 (E, B);
+        check PROP_08 (E, B);
+        check PROP_09 (E, B, RRQ);
+        check PROP_10 (E, B);
+        check PROP_11 (E, B);
+        check PROP_12 (E, B);
+        check PROP_13 (E, B);
+        check PROP_14 (E, B);
+        check PROP_15 (E, B);
+        check PROP_16 (E, B);
+        check PROP_18 (E, B);
+        check PROP_19 (E, B);
+        check PROP_20 (E, B);
+        check PROP_21 (E, B);
+        check PROP_22 (E, B);
+        check PROP_23 (E, B);
+        check PROP_26 (E, B);
+        check PROP_27 (E, B);
+        check PROP_28 (E, B);
+        check PROP_29 (E, B);
+    % ;;
+    % esac
+
+    (* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *)
+
+% done
+
+-------------------------------------------------------------------------------
+

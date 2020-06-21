@@ -1,0 +1,463 @@
+#!/bin/sh
+
+#-----------------------------------------------------------------------------
+#                        S V L
+#-----------------------------------------------------------------------------
+#   INRIA Rhone-Alpes / VASY
+#   655, avenue de l'Europe
+#   38330 MONTBONNOT ST MARTIN cedex
+#-----------------------------------------------------------------------------
+#   Module             :       svl
+#   Auteur             :       Frederic Lang
+#   Version            :       1.98
+#   Date               :       2019/04/16 11:10:19
+#-----------------------------------------------------------------------------
+
+SVL_COM_VERSION=2.9
+SVL_COM_ARCH=`"$CADP"/com/arch`
+
+#-----------------------------------------------------------------------------
+
+SVL_COMMAND=`basename "$0"`
+
+SVL_COM_RUN=
+SVL_COM_DEBUG=
+SVL_COM_SILENT=
+SVL_COM_SH_OPTIONS=
+SVL_COM_SCRIPT=
+SVL_COM_EXPAND=
+SVL_COM_IGNORE=
+SVL_COM_CASE=
+SVL_COM_SWEEP=
+SVL_COM_CLEAN=
+SVL_COM_FILENAME=
+SVL_COM_INDENT_LEVEL=3
+SVL_COM_VARIABLE_DEFINITIONS=
+
+#-----------------------------------------------------------------------------
+
+SVL_COM_HELP () {
+    echo "Usage:"
+    echo "$SVL_COMMAND <options> [ file[.svl] [<parameters>] ]"
+    echo "$SVL_COMMAND -script <options> [ file1[.svl] ] [ -output file2 ]"
+    echo "$SVL_COMMAND -expand [-case] [-indent \fIn\fP] [ file1[.svl] ] [ -output file2 ]"
+    echo "$SVL_COMMAND -clean [ file[.svl] ]"
+    echo "$SVL_COMMAND -sweep [ file[.svl] ]"
+    echo "$SVL_COMMAND -help"
+    echo "$SVL_COMMAND -version"
+    echo "where available <options> are:"
+    echo "-case, -debug, -ignore, -sh \"<sh-options>\", -silent, -v \"<var>=<value>\""
+    echo
+}
+
+#-----------------------------------------------------------------------------
+
+SVL_COM_ERROR () {
+    # $1 is the message to print
+    echo "$SVL_COMMAND: ERROR $1"
+    exit 1
+}
+
+#-----------------------------------------------------------------------------
+
+SVL_COM_WARNING () {
+    # $1 is the message to print
+    echo "$SVL_COMMAND: WARNING $1"
+}
+
+#-----------------------------------------------------------------------------
+
+SVL_COM_ERASE () {
+    # $1 is "clean" or "sweep" according to whether all generated files 
+    # or only temporary files must be deleted
+    case "$1" in
+    clean)
+	SVL_STRING_TO_GREP="svl clean info:"
+	;;
+    sweep)
+	SVL_STRING_TO_GREP="svl clean info: \[temporary\]"
+	;;
+    esac
+    if test ! "$SVL_COM_DEBUG"
+    then
+	if test -f "$SVL_COM_LOG_FILENAME"
+	then
+	    cat "$SVL_COM_LOG_FILENAME" |
+		grep "$SVL_STRING_TO_GREP" |
+		sed -e 's/svl clean info: \[.*\] \(.*\)/\1/' |
+		SVL_COM_REMOVE_ARGS_FROM_STDIN
+	    case "$1" in
+	    clean)
+		SVL_COMMANDS=`cat "$SVL_COM_LOG_FILENAME" |
+		    grep "svl clean command: " |
+		    sed -e 's/svl clean command: \(.*\)/\1/'`
+		SVL_COM_REMOVE "${SVL_COM_TARGET}.log" "${SVL_COM_TARGET}"
+		if [ "$SVL_COMMANDS" != "" ]
+		then
+			echo "$SVL_COMMANDS"| SVL_COM_EXECUTE_ARGS_FROM_STDIN
+		fi
+		;;
+	    sweep)
+		if test ! "$SVL_COM_SCRIPT" && test ! "$SVL_COM_EXPAND" 
+		then
+		    SVL_COM_REMOVE "${SVL_COM_TARGET}"
+		fi
+		;;
+	    esac
+	else
+	    SVL_COM_WARNING "cannot find file ${SVL_COM_TARGET}.log (no file has been removed)"
+	fi
+    fi
+}
+
+#-----------------------------------------------------------------------------
+
+SVL_COM_EXECUTE_ARGS_FROM_STDIN () {
+    # execute the commands found on stdin
+    while read SVL_TMP_COMMAND
+    do
+	echo "svl: executing \`\`$SVL_TMP_COMMAND''"
+	eval $SVL_TMP_COMMAND
+    done
+}
+
+#-----------------------------------------------------------------------------
+
+SVL_COM_REMOVE_ARGS_FROM_STDIN () {
+    # efface les fichiers qui sont listes sur la sortie standard
+    # cette fonction permet de traiter les noms de fichiers contenant des 
+    # espaces
+    while read SVL_TMP_FILE
+    do
+	SVL_COM_REMOVE "$SVL_TMP_FILE"
+    done
+}
+
+#-----------------------------------------------------------------------------
+
+SVL_COM_REMOVE () {
+    for SVL_FILE in "$@"
+    do
+	if test -f "$SVL_FILE"
+	then
+	    case "$SVL_FILE" in
+	    *.bcg) # On efface les librairies dynamiques des .bcg
+		SVL_DYNAMIC_LIB=`"$CADP"/src/com/cadp_basename "$SVL_FILE" .bcg`@1.o
+		if test -f "$SVL_DYNAMIC_LIB"
+		then
+		    SVL_COM_DELETE "$SVL_DYNAMIC_LIB"
+		fi
+	    esac
+	    SVL_COM_DELETE "$SVL_FILE"
+	fi
+    done
+}
+
+#-----------------------------------------------------------------------------
+
+SVL_COM_DELETE () {
+    "$CADP"/src/com/cadp_rm "$1"
+    if test "$SVL_COM_CLEAN" || test "$SVL_COM_SWEEP"
+    then
+	echo "$SVL_COMMAND: removed \"$1\""
+    fi
+}
+
+#-----------------------------------------------------------------------------
+
+IN_CURRENT_DIRECTORY() {
+DIR=`dirname "$1"`
+if test ! -d "$DIR"
+then
+	# file $1 does not exist (in a non-existing directory)
+	echo 0
+elif test "`(cd \"$DIR\" ; pwd)`" = "`pwd`"
+then
+	# file $1 is in the current directory
+	echo 1
+else
+	# file $1 is not in the current directory
+	echo 0
+fi
+}
+
+#-----------------------------------------------------------------------------
+
+# Parsing commands and options
+SVL_COM_STATE="command"
+
+SVL_COM_COMMAND=$1
+
+while [ "$SVL_COM_STATE" ]
+do
+    case "$SVL_COM_STATE" in
+    command)
+	case "$SVL_COM_COMMAND" in
+	-script) 
+	    shift
+	    SVL_COM_SCRIPT="y"
+	    SVL_COM_STATE="option";;
+	-expand) 
+	    shift
+	    SVL_COM_EXPAND="y"
+	    SVL_COM_STATE="case_indent_option";;
+	-clean)
+	    shift
+	    SVL_COM_CLEAN="y"
+	    SVL_COM_STATE="input";;
+	-sweep)
+	    shift
+	    SVL_COM_SWEEP="y"
+	    SVL_COM_STATE="input";;
+	-help) 
+	    shift
+	    SVL_COM_HELP
+	    SVL_COM_STATE="end";;
+	-version) 
+	    shift
+	    echo $SVL_COM_VERSION
+	    SVL_COM_STATE="end";;
+	script | expand | clean | sweep | help | version)
+	    if test ! -f "$SVL_COM_COMMAND.svl"
+	    then
+		SVL_COM_WARNING "there is no file called \"$SVL_COM_COMMAND.svl\" in the current directory"
+		SVL_COM_WARNING "interpreting parameter \"$SVL_COM_COMMAND\" as command -$SVL_COM_COMMAND instead"
+		SVL_COM_COMMAND="-$SVL_COM_COMMAND"
+	    else
+		SVL_COM_STATE="input"
+	    fi;;
+	*)
+	    SVL_COM_RUN="y"
+	    SVL_COM_STATE="option";;
+	esac;;
+    case_indent_option)
+	case "$1" in
+	-case)
+	    shift
+	    SVL_COM_CASE="y";;
+	-indent)
+	    shift
+	    if test "$1" != ""
+	    then
+		case "$1" in
+		[0-9]*)
+		    SVL_COM_INDENT_LEVEL="$1";;
+		*)
+		    SVL_COM_ERROR "unsigned number expected after -indent";;
+		esac
+		shift
+	    fi;;
+	*)
+	    SVL_COM_STATE="input";;
+	esac;;
+    option)
+	case "$1" in
+	-case)
+	    shift
+	    SVL_COM_CASE="y";;
+	-debug)
+	    shift
+	    SVL_COM_DEBUG="y";;
+	-ignore)
+	    shift
+	    SVL_COM_IGNORE="y";;
+	-sh)
+	    shift
+	    if test "$1" != "" 
+	    then
+		SVL_COM_SH_OPTIONS="$1"
+		shift
+	    fi;;
+	-silent)
+	    shift
+	    SVL_COM_SILENT="y";;
+	-v)
+	    shift
+	    if test ! "$1"
+	    then
+		SVL_COM_ERROR "variable definition expected after -v"
+	    fi
+	    case "$1" in
+	    *=*)
+		VARIABLE=`echo "$1" | cut -d = -f 1`
+		if [ "$VARIABLE" = "" -o \
+		     "`echo $VARIABLE | sed -e 's/[A-Za-z_0-9]//g'`" != "" ]
+		then
+		    SVL_COM_ERROR "``$1'' is not a well-formed shell variable definition"
+		fi
+		SVL_COM_VARIABLE_DEFINITIONS=`printf "$SVL_COM_VARIABLE_DEFINITIONS\n$1\n"`
+		shift
+		;;
+	    *)
+		SVL_COM_ERROR "argument \`\`$1'' following -v does not look like a variable definition"
+		;;
+	    esac
+	    ;;
+	*)
+	    SVL_COM_STATE="input";;
+	esac;;
+    input)
+	# Determining which svl file to compile or clean
+	if test ! "$1" || test "$1" = "-output"
+	then
+	    # Not on the command line, check in the current dir
+	    SVL_COM_NUMBER_OF_SVL_FILES=`2>/dev/null ls *.svl | wc -l`
+	    case `expr $SVL_COM_NUMBER_OF_SVL_FILES` in
+	    0)
+		SVL_COM_ERROR "there is no svl file in the current directory";;
+	    1)
+		SVL_COM_FILENAME="`ls *.svl`";;
+	    *)
+		SVL_COM_ERROR "there are too many svl files in the current directory";;
+	    esac
+	else
+	    # Specified on the command line
+	    SVL_COM_FILENAME="$1"
+	    shift
+	fi
+	case "$SVL_COM_FILENAME" in
+	    -script | -expand | -clean | -sweep | -help | -version)
+		SVL_COM_ERROR "command $SVL_COM_FILENAME is invalid in this position";;
+	    -case | -debug | -ignore | -indent | -sh | -silent)
+		SVL_COM_ERROR "option $SVL_COM_FILENAME is invalid in this position";;
+	    -*)
+		SVL_COM_ERROR "option $SVL_COM_FILENAME is unknown";;
+	    *)
+		SVL_COM_SVL_DIRNAME=`dirname "$SVL_COM_FILENAME"`
+		SVL_COM_SVL_FILENAME=`"$CADP"/src/com/cadp_basename "$SVL_COM_FILENAME" .svl`.svl
+		SVL_COM_LOG_FILENAME=`"$CADP"/src/com/cadp_basename "$SVL_COM_FILENAME" .svl`.log
+		if test `IN_CURRENT_DIRECTORY "$SVL_COM_SVL_DIRNAME/$SVL_COM_SVL_FILENAME"` = "0"
+		then
+		    SVL_COM_ERROR "file \"$SVL_COM_SVL_FILENAME\" is not in the current directory"
+		elif test ! -r "$SVL_COM_SVL_FILENAME"
+		then
+		    SVL_COM_ERROR "file \"$SVL_COM_SVL_FILENAME\" cannot be read"
+		fi;;
+	esac
+	if test "$SVL_COM_SCRIPT" || test "$SVL_COM_EXPAND"
+	then
+	    SVL_COM_STATE="output"
+	elif test "$SVL_COM_RUN"
+	then
+	    # next args are parameters to pass to the script
+	    break
+	else
+	    SVL_COM_STATE="end"
+	fi;;
+    output)
+	if test "$1" = "-output"
+	then
+	    shift
+	    if test "$1"
+	    then
+		SVL_COM_OUTPUT="$1"
+		shift
+	    else
+		SVL_COM_WARNING "there is no output file specified on the command line"
+		SVL_COM_WARNING "ignoring option -output"
+	    fi
+	fi
+	SVL_COM_STATE="end";;
+    end)
+	# Verification qu'il n'y a plus rien sur la ligne de commande
+	# sinon on l'ignore
+	if test "$*"
+	then
+	    SVL_COM_WARNING "parameters \"$*\" are ignored"
+	fi
+	break;;
+    esac
+done
+
+#-----------------------------------------------------------------------------
+
+# Cas des commandes -help et -version : c'est fini
+if test ! "$SVL_COM_SVL_FILENAME"
+then
+    exit 0
+fi
+
+#-----------------------------------------------------------------------------
+
+# Setting the name of the target script file
+if test ! "$SVL_COM_SCRIPT" && test ! "$SVL_COM_EXPAND"
+then
+    SVL_COM_TARGET=`"$CADP"/src/com/cadp_basename "$SVL_COM_SVL_FILENAME" .svl`
+else
+    SVL_COM_TARGET="$SVL_COM_OUTPUT"
+fi
+
+#-----------------------------------------------------------------------------
+
+# Sweeping if -sweep
+if test "$SVL_COM_SWEEP"
+then
+    SVL_COM_ERASE "sweep"
+    exit 0
+fi
+
+#-----------------------------------------------------------------------------
+
+# Cleaning if -clean
+if test "$SVL_COM_CLEAN"
+then
+    SVL_COM_ERASE "clean"
+    exit 0
+fi
+
+#-----------------------------------------------------------------------------
+
+# Calling svl_kernel for the appropriate architecture with parsed options
+"${SVL:-$CADP}"/bin.$SVL_COM_ARCH/svl_kernel \
+	"$SVL_COM_VERSION" \
+	"$SVL_COM_SVL_FILENAME" \
+	"$SVL_COM_TARGET" \
+	"$SVL_COM_DEBUG" \
+	"$SVL_COM_SILENT" \
+	"$SVL_COM_IGNORE" \
+	"$SVL_COM_CASE" \
+	"$SVL_COM_EXPAND" \
+	"$SVL_COM_INDENT_LEVEL" \
+	"$SVL_COM_SH_OPTIONS" \
+	"$SVL_COM_VARIABLE_DEFINITIONS"
+
+# Exiting with an error if svl_kernel was erroneous
+if test "$?" != "0"
+then
+    SVL_COM_ERASE "sweep"
+    SVL_COM_ERROR "exiting on compilation error"
+fi
+
+#-----------------------------------------------------------------------------
+
+# Script execution
+EXIT_STATUS=0
+if test "$SVL_COM_TARGET" && test ! "$SVL_COM_EXPAND"
+then
+    chmod +x "$SVL_COM_TARGET"
+    if test ! "$SVL_COM_SCRIPT"
+    then
+	sh $SVL_COM_SH_OPTIONS ./"$SVL_COM_TARGET" "$@"
+	# remaining parameters are considered as parameters of the script
+	EXIT_STATUS=$?
+    fi
+fi
+
+#-----------------------------------------------------------------------------
+
+# Sweeping and exiting
+if test ! "$SVL_COM_EXPAND" -a ! "$SVL_COM_SCRIPT"
+then
+    if test "$EXIT_STATUS" = 0
+    then
+	SVL_COM_ERASE "sweep"
+    else
+	echo "$SVL_COMMAND: intermediate files are kept for diagnostics"
+	echo "$SVL_COMMAND: run \`\`$SVL_COMMAND -sweep \"$SVL_COM_TARGET\"'' to erase"
+    fi
+fi
+
+exit $EXIT_STATUS
+
+#-----------------------------------------------------------------------------
+

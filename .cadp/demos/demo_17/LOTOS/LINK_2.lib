@@ -1,0 +1,8 @@
+process LINK [INPUT, OUTPUT] : noexit :=
+   INPUT !TOKEN;
+      OUTPUT !TOKEN;
+         LINK [INPUT, OUTPUT]	
+   []
+   INPUT !TOKEN;
+      LINK [INPUT, OUTPUT]	
+endproc

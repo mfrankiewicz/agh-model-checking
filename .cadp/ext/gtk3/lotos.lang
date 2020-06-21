@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GtkSourceView version 3 definitions for the LOTOS language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.7:LOTOS+1.17:SECT -->
+<language id="lotos" _name="LOTOS" version="2.0" _section="Sources">
+
+   <metadata>
+      <property name="mimetypes">text/x-lotos</property>
+      <property name="globs">*.lotos</property>
+      <property name="block-comment-start">(*</property>
+      <property name="block-comment-end">*)</property>
+   </metadata>
+
+   <styles>
+      <style id="comment"  _name="Comment"       map-to="def:comment"/>
+      <style id="pragma"   _name="Preprocessor"  map-to="def:preprocessor"/>
+      <style id="keyword"  _name="Keyword"       map-to="def:keyword"/>
+      <style id="type"     _name="Data Type"     map-to="def:type"/>
+      <style id="constant" _name="Boolean value" map-to="def:boolean"/>
+      <style id="function" _name="Function"      map-to="def:builtin"/>
+      <style id="operator" _name="Operator"      map-to="def:operator"/>
+   </styles>
+
+   <default-regex-options case-sensitive="false"/>
+
+   <definitions>
+      <context id="block-comment" style-ref="comment" class="comment" class-disabled="no-spell-check">
+         <start>\(\*</start>
+         <end>\*\)</end>
+         <include>
+            <context ref="block-comment"/>
+         </include>
+      </context>
+
+      <context id="pragma" style-ref="pragma">
+         <keyword>atomic</keyword>
+         <keyword>comparedby</keyword>
+         <keyword>constructor</keyword>
+         <keyword>enumeratedby</keyword>
+         <keyword>external</keyword>
+         <keyword>implementedby</keyword>
+         <keyword>iteratedby</keyword>
+         <keyword>printedby</keyword>
+      </context>
+
+      <context id="keyword" style-ref="keyword">
+         <keyword>accept</keyword>
+         <keyword>actualizedby</keyword>
+         <keyword>any</keyword>
+         <keyword>behaviour</keyword>
+         <keyword>behavior</keyword>
+         <keyword>choice</keyword>
+         <keyword>endlib</keyword>
+         <keyword>endproc</keyword>
+         <keyword>endspec</keyword>
+         <keyword>endtype</keyword>
+         <keyword>eqns</keyword>
+         <keyword>exit</keyword>
+         <keyword>for</keyword>
+         <keyword>forall</keyword>
+         <keyword>formaleqns</keyword>
+         <keyword>formalopns</keyword>
+         <keyword>formalsorts</keyword>
+         <keyword>hide</keyword>
+         <keyword>i</keyword>
+         <keyword>in</keyword>
+         <keyword>is</keyword>
+         <keyword>let</keyword>
+         <keyword>library</keyword>
+         <keyword>noexit</keyword>
+         <keyword>of</keyword>
+         <keyword>ofsort</keyword>
+         <keyword>opnnames</keyword>
+         <keyword>opns</keyword>
+         <keyword>par</keyword>
+         <keyword>process</keyword>
+         <keyword>renamedby</keyword>
+         <keyword>sortnames</keyword>
+         <keyword>sorts</keyword>
+         <keyword>specification</keyword>
+         <keyword>stop</keyword>
+         <keyword>type</keyword>
+         <keyword>using</keyword>
+         <keyword>where</keyword>
+      </context>
+
+      <context id="type" style-ref="type">
+         <keyword>BasicNaturalNumber</keyword>
+         <keyword>Bit</keyword>
+         <keyword>BitNatRepr</keyword>
+         <keyword>BitString</keyword>
+         <keyword>Bool</keyword>
+         <keyword>Boolean</keyword>
+         <keyword>DecDigit</keyword>
+         <keyword>DecNatRepr</keyword>
+         <keyword>DecString</keyword>
+         <keyword>HexDigit</keyword>
+         <keyword>HexNatRepr</keyword>
+         <keyword>HexString</keyword>
+         <keyword>NatRepresentations</keyword>
+         <keyword>Nat</keyword>
+         <keyword>NaturalNumber</keyword>
+         <keyword>OctDigit</keyword>
+         <keyword>Octet</keyword>
+         <keyword>OctetString</keyword>
+         <keyword>OctNatRepr</keyword>
+         <keyword>OctString</keyword>
+         <keyword>Set</keyword>
+         <keyword>String</keyword>
+      </context>
+
+      <context id="constant" style-ref="constant">
+         <keyword>false</keyword>
+         <keyword>true</keyword>
+      </context>
+
+      <context id="function" style-ref="function">
+         <keyword>and</keyword>
+         <keyword>Bit1</keyword>
+         <keyword>Bit2</keyword>
+         <keyword>Bit3</keyword>
+         <keyword>Bit4</keyword>
+         <keyword>Bit5</keyword>
+         <keyword>Bit6</keyword>
+         <keyword>Bit7</keyword>
+         <keyword>Bit8</keyword>
+         <keyword>Card</keyword>
+         <keyword>eq</keyword>
+         <keyword>ge</keyword>
+         <keyword>gt</keyword>
+         <keyword>iff</keyword>
+         <keyword>implies</keyword>
+         <keyword>Includes</keyword>
+         <keyword>Insert</keyword>
+         <keyword>Ints</keyword>
+         <keyword>IsIn</keyword>
+         <keyword>IsSubsetOf</keyword>
+         <keyword>le</keyword>
+         <keyword>Length</keyword>
+         <keyword>lt</keyword>
+         <keyword>Minus</keyword>
+         <keyword>NatNum</keyword>
+         <keyword>ne</keyword>
+         <keyword>not</keyword>
+         <keyword>NotIn</keyword>
+         <keyword>or</keyword>
+         <keyword>Remove</keyword>
+         <keyword>Reverse</keyword>
+         <keyword>Succ</keyword>
+         <keyword>Union</keyword>
+         <keyword>xor</keyword>
+      </context>
+
+      <context id="operator" style-ref="operator">
+         <match extended="true">
+            &lt; | &gt; | \+ | - | / | \* | ! | \? | ; | \*\* | == | &lt;&gt; | &lt;= | &gt;= | =&gt; | &gt;&gt; | \[&gt; | \|\| | \|\[ | \]\| | \[\] | \|\|\|
+         </match>
+      </context>
+
+      <context id="lotos" class="no-spell-check">
+         <include>
+            <context ref="block-comment"/>
+            <context ref="pragma"/>
+            <context ref="keyword"/>
+            <context ref="type"/>
+            <context ref="constant"/>
+            <context ref="function"/>
+            <context ref="operator"/>
+         </include>
+      </context>
+
+   </definitions>
+</language>

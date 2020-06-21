@@ -1,0 +1,32 @@
+(*****************************************************************************
+
+  "inv2d.lot"	K. J. Turner	14/12/97
+  
+  This LOTOS specification in data-oriented style describes case 2 of the
+  invoicing case study by Henri Habrias <habrias@irin.univ-nantes.fr>..
+ 
+  Modified by M. Sighireanu to obtain a parameterized description on the
+  maximal number of Reference (M_r), Product (M_p), Amount (M_a).
+
+  Case M_p=0, M_r=2, M_a=1
+ 
+*****************************************************************************)
+
+specification Invoicing [Request, Cancel, Deposit] : noexit 
+  
+  library
+    Boolean, NaturalNumber, DATAD
+  endlib
+
+  behaviour 
+
+	Invoice_p_r_a [Request, Cancel, Deposit]
+                (0 of Product, Succ (Succ (0)) of Reference, Succ (0) of Amount,
+                 NoOrders, NoStocks)
+
+  where
+  
+  library INVOICE endlib
+  
+endspec (* Invoicing *)
+  

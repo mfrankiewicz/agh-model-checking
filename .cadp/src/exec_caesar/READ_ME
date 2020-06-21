@@ -1,0 +1,4 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains various C programs to be used with EXEC/CAESAR.

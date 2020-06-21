@@ -1,0 +1,62 @@
+(* Master controller - sequential version *)
+
+process MC [REQ, INF, CMD, LAMBDA, NU] (p0, p1, p2, p3, tr:Bool) : noexit :=
+   (
+      [not (p0)] ->
+      (
+         NU; (* Markov delay inserted here *)
+         REQ !Add;
+            INF !Present;
+               exit (true)
+      )
+      []
+      [p0] ->
+         exit (p0)
+   )
+   >>
+   accept new_p0:Bool in
+   (
+      (
+         [p1] ->
+            CMD !Lock;
+               INF !Locked;
+                  CMD !Drill;
+                     INF !Drilled;
+                        CMD !Unlock;
+                           INF !Unlocked;
+                              exit
+         []
+         [not (p1)] ->
+            exit
+      )
+      >>
+      (
+         [p2] ->
+            CMD !Test;
+               INF !Tested ?r:Bool;
+                  exit (r)
+         []
+         [not (p2)] ->
+            exit (tr)
+      )
+      >>
+      accept new_tr:Bool in
+      (
+         (
+            [p3] ->
+               REQ !Remove !tr;
+                  LAMBDA; (* Markov delay inserted here *)
+                  INF !Absent;
+                     exit (false)
+            []
+            [not (p3)] ->
+               exit (p3)
+         )
+         >>
+         accept new_p3:Bool in
+            CMD !Turn;
+               INF !Turned;
+                  MC [REQ, INF, CMD, LAMBDA, NU] (new_p3, new_p0, p1, p2, new_tr)
+      )
+   )
+endproc

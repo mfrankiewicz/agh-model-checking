@@ -1,0 +1,164 @@
+specification CACHE_BENCHMARK [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] : noexit 
+
+library NATURAL endlib
+library BOOLEAN endlib
+
+type EVENT_T is BOOLEAN
+    sorts EVENT_T
+    opns
+	E1 (*! constructor *),
+	E2 (*! constructor *)
+	    : -> EVENT_T
+        _EQ_, _NE_ : EVENT_T, EVENT_T -> BOOL
+    eqns
+        forall X, Y : EVENT_T
+        ofsort BOOL (* EQ, NE *)
+            X EQ X = TRUE;
+            X EQ Y = FALSE;
+            X NE Y = NOT (X EQ Y);
+endtype (* EVENT_T *)
+
+type AGENT_T is BOOLEAN
+    sorts AGENT_T
+    opns
+        AGENT_1 (*! constructor *),
+	AGENT_2 (*! constructor *),
+	AGENT_3 (*! constructor *)
+	    : -> AGENT_T
+        _EQ_, _NE_ : AGENT_T, AGENT_T -> BOOL
+    eqns
+	forall X, Y : AGENT_T
+        ofsort BOOL (* EQ, NE *)
+            X EQ X = TRUE;
+            X EQ Y = FALSE;
+            X NE Y = NOT (X EQ Y);
+endtype (* AGENT_T *)
+
+type LINE_T is BOOLEAN, AGENT_T
+    sorts LINE_T
+    opns
+	L1 (*! constructor *),
+	L2 (*! constructor *),
+	L3 (*! constructor *)
+	    : -> LINE_T
+	ISLOCAL : LINE_T, AGENT_T -> BOOL
+	ISALLOWEDLINE : LINE_T -> BOOL
+        _EQ_, _NE_ : LINE_T, LINE_T -> BOOL
+    eqns
+        forall X,Y : LINE_T,
+	       Z : AGENT_T
+        ofsort BOOL (* EQ,NE *)
+            X EQ X = TRUE;
+            X EQ Y = FALSE;
+            X NE Y = NOT (X EQ Y);
+        ofsort BOOL (* ISLOCAL *)
+	    ISLOCAL (L1, AGENT_1) = TRUE;	
+	    ISLOCAL (L2, AGENT_2) = TRUE;	
+	    ISLOCAL (L3, AGENT_3) = TRUE;	
+	    ISLOCAL (X, Z) = FALSE;
+        ofsort BOOL (* ISALLOWEDLINE *)
+	    ISALLOWEDLINE (L1) = TRUE;	
+	    ISALLOWEDLINE (X) = FALSE;
+endtype (* LINE_T *)
+
+type STATUS_T is BOOLEAN, EVENT_T
+    sorts STATUS_T
+    opns
+        S0 (*! constructor *),  
+        S1 (*! constructor *), 
+        S2 (*! constructor *) 
+	    : -> STATUS_T
+        _EQ_, _NE_ : STATUS_T, STATUS_T -> BOOL
+    eqns
+        forall X, Y : STATUS_T
+        ofsort BOOL (* EQ, NE *)
+            X EQ X = TRUE;
+            X EQ Y = FALSE;
+            X NE Y = NOT (X EQ Y);
+endtype
+
+type NORMALISATION_T is STATUS_T, AGENT_T
+    opns 
+        NORMAL : STATUS_T, AGENT_T -> BOOL
+    eqns
+	forall STATUS : STATUS_T, AGENT : AGENT_T
+	ofsort BOOL (* NORMAL *) 
+	    NORMAL (STATUS, AGENT) = (STATUS EQ S2) OR (AGENT EQ AGENT_1);
+ 	 (* NORMAL (STATUS, AGENT) = TRUE; *)
+	 (* AGENT_1 = valeur par defaut *)
+endtype
+
+behaviour
+    (
+	AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_1)
+	|||
+	AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_2)
+	|||
+	AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_3)
+    )
+    |[GET_LINE_STATUS, PUT_LINE_STATUS]|
+    REMOTE_DIRECTORY [GET_LINE_STATUS, PUT_LINE_STATUS] (S0,S0,S0,AGENT_1,AGENT_2,AGENT_3)
+
+where 
+
+process REMOTE_DIRECTORY [GET_LINE_STATUS, PUT_LINE_STATUS] (SL1, SL2, SL3 : STATUS_T, AGL1, AGL2, AGL3 : AGENT_T) : noexit :=
+    (
+	GET_LINE_STATUS ?LINE:LINE_T ?STATUS:STATUS_T ?AGENT:AGENT_T [(((LINE EQ L1) AND (STATUS EQ SL1) AND (AGENT EQ AGL1)) OR ((LINE EQ L2) AND (STATUS EQ SL2) AND (AGENT EQ AGL2)) OR ((LINE EQ L3) AND (STATUS EQ SL3) AND (AGENT EQ AGL3))) AND NORMAL (STATUS, AGENT)];
+	    REMOTE_DIRECTORY [GET_LINE_STATUS, PUT_LINE_STATUS] (SL1, SL2, SL3, AGL1, AGL2, AGL3)
+	[]
+	PUT_LINE_STATUS ?LINE:LINE_T ?STATUS:STATUS_T ?AGENT:AGENT_T [NORMAL (STATUS, AGENT)];
+	    (
+		[LINE EQ L1] ->
+		    REMOTE_DIRECTORY [GET_LINE_STATUS, PUT_LINE_STATUS] (STATUS, SL2, SL3, AGENT, AGL2, AGL3)
+		[]
+		[LINE EQ L2] ->
+		    REMOTE_DIRECTORY [GET_LINE_STATUS, PUT_LINE_STATUS] (SL1, STATUS, SL3, AGL1, AGENT, AGL3)
+		[]
+		[LINE EQ L3] ->
+		    REMOTE_DIRECTORY [GET_LINE_STATUS, PUT_LINE_STATUS] (SL1, SL2, STATUS, AGL1, AGL2, AGENT) 
+	    )
+    )
+endproc
+
+process AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_ID : AGENT_T) : noexit :=
+    (
+	ACTION_EVENT !AGENT_ID ?EVENT:EVENT_T ?LINE:LINE_T [ISALLOWEDLINE (LINE)];
+	    (
+		GET_LINE_STATUS !LINE ?STATUS:STATUS_T ?AGENT:AGENT_T;
+		    (
+		        [EVENT EQ E1] ->
+			    (
+			        [ISLOCAL (LINE, AGENT_ID)] ->
+				    (
+				        [(STATUS EQ S0) OR (STATUS EQ S1)] ->
+					    PUT_LINE_STATUS !LINE !S1 !AGENT_ID;
+					        AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_ID) 
+				        []
+				        [STATUS EQ S2] ->
+				            (
+					        [AGENT EQ AGENT_ID] ->
+						    PUT_LINE_STATUS !LINE !S2 !AGENT_ID;
+						        AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_ID) 
+					        []
+					        [NOT (AGENT EQ AGENT_ID)] ->
+						    PUT_LINE_STATUS !LINE !S1 !AGENT_ID;
+						        AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_ID)
+					    )
+				    )
+			        []
+			        [NOT (ISLOCAL (LINE, AGENT_ID))] ->
+				    PUT_LINE_STATUS !LINE !S1 !AGENT_ID;
+				        AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_ID) 
+			    )
+		        []
+		        [EVENT EQ E2] ->
+			    PUT_LINE_STATUS !LINE !S2 !AGENT_ID;
+			        AGENT [ACTION_EVENT, GET_LINE_STATUS, PUT_LINE_STATUS] (AGENT_ID)
+		    )
+	    )
+    )
+endproc
+
+endspec
+
+

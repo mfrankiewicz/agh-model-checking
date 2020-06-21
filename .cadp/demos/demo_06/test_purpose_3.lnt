@@ -1,0 +1,98 @@
+module test_purpose_3 (test_purpose_common) is
+
+-------------------------------------------------------------------------------
+
+process Client [clientHello_c: CH,
+                serverHello_c: SH,
+                encryptedExtensions_c: EE,
+                certificateRequest_c: CR,
+                certificate_s_c: C] is
+
+  var alert: AlertType,
+      CH_p: CLientHello,
+      HRR_p: HelloRetryRequest,
+      is_helloRequest : bool in
+
+    -- Initialisation of variables
+    CH_p := ClientHello (T_NULL, undefined, T_NULL, {}, T_NULL, {});
+    HRR_p := HelloRetryRequest (T_NULL, {}, {});
+    is_helloRequest := false;
+
+    -- client key exchange
+    ClientHello_TP [clientHello_c] (is_helloRequest, !?CH_p, HRR_p, ?alert);
+    use alert;
+    serverHello_c (?any ServerHello);
+    encryptedExtensions_c (?any EncryptedExtensions);
+    -- Recv CertificateRequest
+    certificateRequest_c (?any CertificateRequest);
+    -- E. WAIT_Certificate
+    certificate_s_c (?any Certificate);
+    ClientHello_TP [clientHello_c] (is_helloRequest, !?CH_p, HRR_p, ?alert);
+    use CH_p;
+    use alert
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process Server [clientHello_c: CH,
+                serverHello_c: SH,
+                encryptedExtensions_c: EE,
+                certificateRequest_c: CR,
+                certificate_s_c: C,
+                alert_server_c: A] is
+
+  var alert: AlertType,
+      CH_p: CLientHello,
+      C_S_p: Certificate,
+      CR_p: CertificateRequest in
+
+    -- Initialisation of variables
+    alert := undefined;
+    use alert;
+    CR_p := CertificateRequest ({}, {});
+    C_S_p := Certificate ({}, {});
+
+    -- client key exchange
+    -- Rec ClientHello
+    -- B. RECVD_CH
+    clientHello_c (?CH_p);
+    ServerHello [serverHello_c];
+    EncryptedExtensions_TP [encryptedExtensions_c];
+    CertificateRequest_TP [certificateRequest_c];
+    Certificate_S_TP [certificate_s_c] (!?C_S_p, CH_p, CR_p);
+    use C_S_p;
+    clientHello_c (?any CLientHello);
+    alert := unexpected_message;
+    -- abort the handshake with an "unexpected_message" alert
+    alert_server_c (alert)
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process MAIN [clientHello_c: CH,
+              serverHello_c: SH,
+              encryptedExtensions_c: EE,
+              certificateRequest_c: CR,
+              certificate_s_c: C,
+              alert_server_c: A,
+              TP_ACCEPT: none] is
+  par
+    clientHello_c, serverHello_c, encryptedExtensions_c,
+    certificateRequest_c, certificate_s_c ->
+      Client [clientHello_c, serverHello_c, encryptedExtensions_c,
+              certificateRequest_c, certificate_s_c]
+  ||
+    clientHello_c, serverHello_c, encryptedExtensions_c,
+    certificateRequest_c, certificate_s_c ->
+      Server [clientHello_c, serverHello_c, encryptedExtensions_c,
+              certificateRequest_c, certificate_s_c, alert_server_c]
+  end par;
+  loop TP_ACCEPT end loop
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

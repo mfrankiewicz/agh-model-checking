@@ -1,0 +1,459 @@
+module TFTP (AUTOMATON, MESSAGES, FILES, REPOSITORY, LOCAL_CONSTANTS) is
+
+(*
+ * TFTP_PROCESS extract from the messages it receives on the gate RECEIVE the
+ * boolean input values it passes on to the TFTP automaton. The TFTP automaton
+ * then assigns booleans values to its output variables from which TFTP_PROCESS
+ * constructs a message that it sends on the gate SEND. The EVENT gate is used
+ * for displaying events as labels of transition in the generated graph. This
+ * is useful for verification purposes. This process takes one argument which
+ * indicates the maximum number of retries for a given message.
+ *)
+
+-------------------------------------------------------------------------------
+
+process TFTP_PROCESS [PUT, GET, RECEIVE, SEND, EVENT : any,
+                      raise BAD_INDEX, BAD_MESSAGE, END_OF_FILE : none]
+                     (MAX_RETRIES : NAT) is
+
+   (* Persistent values *)
+   var
+      CURRENT : STATE,
+      LAST_FRAGMENT : NAT,
+      FILE_NAME : NAT,
+      F : FILE,
+      RETRIES : NAT,
+      TIMER_ON, ACTIVE : BOOL
+   in
+
+      (* Initialization *)
+      CURRENT := INIT_STATE;
+      LAST_FRAGMENT := 0;
+      FILE_NAME := 0;
+      F := NIL;
+      RETRIES := 0;
+      TIMER_ON := false;
+      ACTIVE := false;
+
+      (* This should not happen *)
+      if (RETRIES > MAX_RETRIES) then
+         EVENT (!TOO_MANY_RETRIES)
+      end if;
+
+      while true loop
+         (* TFTP automaton input variables *) 
+         var
+            RECEIVE_RRQ, RECEIVE_OLD_RRQ, RECEIVE_WRQ,
+            RECEIVE_OLD_WRQ, REQUEST_ACCEPTED, RECEIVE_DATA,
+            RECEIVE_OLD_DATA, DATA_LENGTH_LT_512, EOF, RECEIVE_ACK,
+            RECEIVE_ERROR, RECEIVE_INVALID_PACKET, TIME_OUT,
+            MAX_RETRIES_REACHED, INT_ERROR, APPLI_WRQ, APPLI_RRQ : BOOL,
+            (* Local variables *)
+            NEW_FILE_NAME : NAT,
+            NEW_FILE : FILE,
+            RECEIVED_CHAR : CHAR,
+            NEW_ACTIVE : BOOL
+         in
+
+            (* Initialization of the TFTP automaton input variables *)
+            RECEIVE_RRQ := false;
+            RECEIVE_OLD_RRQ := false;
+            RECEIVE_WRQ := false;
+            RECEIVE_OLD_WRQ := false;
+            REQUEST_ACCEPTED := false;
+            RECEIVE_DATA := false;
+            RECEIVE_OLD_DATA := false;
+            DATA_LENGTH_LT_512 := false;
+            EOF := false;
+            RECEIVE_ACK := false;
+            RECEIVE_ERROR := false;
+            RECEIVE_INVALID_PACKET := false;
+            TIME_OUT := false;
+            MAX_RETRIES_REACHED := RETRIES == MAX_RETRIES;
+            INT_ERROR := false;
+            APPLI_WRQ := false;
+            APPLI_RRQ := false;
+
+            (* Initialization of the local variables *)
+            NEW_FILE_NAME := FILE_NAME;
+            NEW_FILE := F;
+            NEW_ACTIVE := ACTIVE;
+            RECEIVED_CHAR := '\x00';
+
+            select
+               var
+                  M : MESSAGE
+               in
+                  (* Reception of a message *)
+                  RECEIVE (?M) where IS_VALID [BAD_INDEX] (M);
+                  (*
+                   * If the message is a read request, then we extract
+                   * the filename to use it later on in the function.
+                   * If the filename is the same as the current filename,
+                   * it means that the request was resent and it is
+                   * automatically accepted. If not, then, the new file
+                   * is initialized to NIL and the request is
+                   * randomly accepted (or not).
+                   *)
+                  if IS_RRQ (M) then
+                     NEW_FILE_NAME := GET_FILE_NAME [BAD_MESSAGE] (M);
+                     if NEW_FILE_NAME == FILE_NAME then
+                        RECEIVE_OLD_RRQ := true;
+                        REQUEST_ACCEPTED := true
+                     else
+                        RECEIVE_RRQ := true;
+                        NEW_FILE := NIL of FILE;
+                        select
+                           REQUEST_ACCEPTED := true
+                        []
+                           EVENT (!REQUEST_REJECTED);
+                           REQUEST_ACCEPTED := false
+                        end select
+                     end if
+                  (*
+                   * If the message is a write request, then we extract
+                   * the filename to use it later on in the function.
+                   * If the filename is the same as the current filename,
+                   * it means that the request was resent and it is
+                   * automatically accepted. If not, then, the new file
+                   * is initialized to NIL and the request is
+                   * randomly accepted (or not).
+                   *)
+                  elsif IS_WRQ (M) then
+                     NEW_FILE_NAME := GET_FILE_NAME [BAD_MESSAGE] (M);
+                     if NEW_FILE_NAME == FILE_NAME then
+                        RECEIVE_OLD_WRQ := true;
+                        REQUEST_ACCEPTED := true
+                     else
+                        RECEIVE_WRQ := true;
+                        NEW_FILE := NIL of FILE;
+                        select
+                           REQUEST_ACCEPTED := true
+                        []
+                           EVENT (!REQUEST_REJECTED);
+                           REQUEST_ACCEPTED := false
+                        end select
+                     end if
+                  (*
+                   * If the message is a data fragment, then we extract
+                   * the three values it carries, the number of the fragment,
+                   * the character sent and the boolean flag that indicates
+                   * whether this is the last message. The character is stored
+                   * in a local variable for later use, the boolean flag sets
+                   * the value of the corresponding input variable of the TFTP
+                   * automaton and the fragment number helps us decide whether
+                   * the message received is a new one or the previous one.
+                   *)
+                  elsif IS_DATA (M) then
+                     RECEIVED_CHAR := GET_CHAR [BAD_MESSAGE] (M);
+                     RECEIVE_DATA := (LAST_FRAGMENT + 1) ==
+                                     GET_FRAGMENT [BAD_MESSAGE] (M);
+                     RECEIVE_OLD_DATA := LAST_FRAGMENT ==
+                                         GET_FRAGMENT [BAD_MESSAGE] (M);
+                     DATA_LENGTH_LT_512 := IS_LAST_FRAGMENT [BAD_MESSAGE] (M)
+                  (*
+                   * If the message received is an acknowledgement, then
+                   * we extract its fragment number to decide whether this
+                   * message acknowledges the last data fragment sent or if
+                   * it is a resent acknowledgement (in which case it is
+                   * discarded, see Apprentice Sorcerer's Bug).
+                   *)
+                  elsif IS_ACK (M) then
+                     if (NEW_ACTIVE and
+                         (LAST_FRAGMENT == GET_FRAGMENT [BAD_MESSAGE] (M))
+                          and not (FILE_NAME == 0)) then
+                        if LAST_FRAGMENT == SIZE (GET_FILE (FILE_NAME)) then
+                           PUT (!SUCCESS);
+                           (*
+                            * The transfer is not active anymore, this is used
+                            * to prevent any further PUT (!SUCCESS)
+                            *)
+                           NEW_ACTIVE := false
+                        end if
+                     end if;
+                     EOF := LAST_FRAGMENT == SIZE (F);
+                     RECEIVE_ACK := LAST_FRAGMENT ==
+                                    GET_FRAGMENT [BAD_MESSAGE] (M)
+                  (*
+                   * If the message received is an error, we set the
+                   * corresponding variable to true and render the transfer
+                   * inactive to end the communications with the USER
+                   * process.
+                   *)
+                  elsif IS_ERROR (M) then
+                     if ACTIVE then
+                        PUT (!ERROR of USER_MESSAGE)
+                     end if;
+                     RECEIVE_ERROR := true;
+                     NEW_ACTIVE := false
+                  end if
+               end var
+            []
+               (*
+                * If there is an ongoing transfer, an internal
+                * error can randomly occur.
+                *)
+               only if not (CURRENT == INIT_STATE) then
+                  EVENT (!INTERNAL_ERROR) ;
+                  INT_ERROR := true
+               end if
+            []
+               (*
+                * If there is an ongoing transfer, an invalid
+                * packet can randomly be received.
+                *)
+               only if not (CURRENT == INIT_STATE) then
+                  EVENT (!INVALID_PACKET) ;
+                  RECEIVE_INVALID_PACKET := true
+               end if
+            []
+               (*
+                * If there is no ongoing transfer, a read request
+                * from the USER process can be processed.
+                *)
+               only if CURRENT == INIT_STATE then
+                  GET (!READ, ?NEW_FILE_NAME);
+                  APPLI_RRQ := true;
+                  NEW_ACTIVE := true
+               end if
+            []
+               (*
+                * If there is no ongoing transfer, a write request
+                * from the USER process can be processed.
+                *)
+               only if CURRENT == INIT_STATE then
+                  GET (!WRITE, ?NEW_FILE, ?NEW_FILE_NAME);
+                  NEW_ACTIVE := true;
+                  APPLI_WRQ := true
+               end if
+            []
+               (*
+                * If the timer is active, then a timeout can randomly occur.
+                * If there is no ongoing transfer, an event must be
+                * triggered to capture the error during verification.
+                *)
+               only if TIMER_ON then
+                  if (CURRENT == INIT_STATE) then
+                     EVENT (!TIMER_ON_AFTER_REINIT);
+                     TIMER_ON := false
+                  else
+                     EVENT (!TIMEOUT of EVENTS);
+                     TIME_OUT := true;
+                     EOF := LAST_FRAGMENT == SIZE (F)
+                  end if
+               end if
+            end select;
+
+            (* TFTP automaton output variables *)
+            var
+               NEXT : STATE,
+               SEND_RRQ, RESEND_RRQ, SEND_WRQ, RESEND_WRQ, SEND_DATA,
+               SEND_INIT_DATA, RESEND_DATA, SEND_ACK, SEND_INIT_ACK,
+               RESEND_ACK, SEND_ERROR, ARM_TIMER, STOP_TIMER : BOOL
+            in
+
+               (* Transition function *)
+               eval TRANSITION (CURRENT, RECEIVE_RRQ, RECEIVE_OLD_RRQ,
+                  RECEIVE_WRQ, RECEIVE_OLD_WRQ, REQUEST_ACCEPTED,
+                  RECEIVE_DATA, RECEIVE_OLD_DATA, DATA_LENGTH_LT_512,
+                  EOF, RECEIVE_ACK, RECEIVE_ERROR, RECEIVE_INVALID_PACKET,
+                  APPLI_RRQ, APPLI_WRQ, TIME_OUT, MAX_RETRIES_REACHED,
+                  INT_ERROR, ?NEXT, ?SEND_RRQ, ?RESEND_RRQ, ?SEND_WRQ,
+                  ?RESEND_WRQ, ?SEND_DATA, ?SEND_INIT_DATA, ?RESEND_DATA,
+                  ?SEND_ACK, ?SEND_INIT_ACK, ?RESEND_ACK, ?SEND_ERROR,
+                  ?ARM_TIMER, ?STOP_TIMER);
+
+               (*
+                * The timer is active if it was active before and it is not
+                * ordered to stop or if it was inactive before and is ordered
+                * to start.
+                *)
+               TIMER_ON := (TIMER_ON and not (STOP_TIMER)) or
+                           (not (TIMER_ON) and ARM_TIMER);
+               (*
+                * If a read request must be sent or resent, then the fragment
+                * counter is set to 0, the filename is set to the
+                * filename passed on and so is the file. The number of retries
+                * is set to 0 (if SEND_RRQ) or incremented by 1 (RESEND_RRQ)
+                *)
+               if RESEND_RRQ or SEND_RRQ then
+                  LAST_FRAGMENT := 0 of Nat;
+                  FILE_NAME := NEW_FILE_NAME;
+                  F := NEW_FILE;
+                  ACTIVE := NEW_ACTIVE;
+                  if RESEND_RRQ then
+                     RETRIES := RETRIES + 1
+                  else
+                     RETRIES := 0
+                  end if;
+                  SEND (!RRQ (NEW_FILE_NAME))
+               (*
+                * If a write request must be sent or resent, then the fragment
+                * counter is set to 0, the filename is set to the
+                * filename passed on and so is the file. The number of retries
+                * is set to 0 (if SEND_WRQ) or incremented by 1 (RESEND_WRQ)
+                *)
+               elsif RESEND_WRQ or SEND_WRQ then
+                  LAST_FRAGMENT := 0 of Nat;
+                  FILE_NAME := NEW_FILE_NAME;
+                  F := NEW_FILE;
+                  ACTIVE := NEW_ACTIVE;
+                  if RESEND_WRQ then
+                     RETRIES := RETRIES + 1
+                  else
+                     RETRIES := 0
+                  end if;
+                  SEND (!WRQ (NEW_FILE_NAME))
+               (*
+                * If a new data fragment must be sent, then the fragment
+                * counter is incremented by one and the next character
+                * in the file is sent.
+                *)
+               elsif SEND_DATA then
+                  RETRIES := 0;
+                  SEND (!DATA (LAST_FRAGMENT + 1,
+                               NTH [BAD_INDEX] (NEW_FILE, LAST_FRAGMENT + 1),
+                               LAST_FRAGMENT + 1 == SIZE (NEW_FILE)));
+                  LAST_FRAGMENT := LAST_FRAGMENT + 1;
+                  FILE_NAME := NEW_FILE_NAME;
+                  ACTIVE := NEW_ACTIVE;
+                  F := NEW_FILE
+               (*
+                * If the first daga fragment must be sent, then the
+                * fragment counter is set to 0 and the first
+                * character of the file is sent.
+                *)
+               elsif SEND_INIT_DATA then
+                  if RECEIVE_RRQ then
+                     PUT (!READ, !NEW_FILE_NAME);
+                     GET (!WRITE, ?NEW_FILE)
+                  end if;
+                  RETRIES := 0;
+                  SEND (!DATA (1, FIRST [END_OF_FILE] (NEW_FILE),
+                        1 == SIZE (NEW_FILE)));
+                  LAST_FRAGMENT := 1;
+                  FILE_NAME := NEW_FILE_NAME;
+                  F := NEW_FILE;
+                  ACTIVE := NEW_ACTIVE
+               (*
+                * If the last data fragment must be resent, then
+                * it is resent and the retries counter is incremented
+                * by one.
+                *)
+               elsif RESEND_DATA then
+                  RETRIES := RETRIES + 1;
+                  SEND (!DATA (LAST_FRAGMENT,
+                               NTH [BAD_INDEX] (NEW_FILE, LAST_FRAGMENT),
+                               LAST_FRAGMENT == SIZE (NEW_FILE)));
+                  ACTIVE := NEW_ACTIVE;
+                  FILE_NAME := NEW_FILE_NAME;
+                  F := NEW_FILE
+               (*
+                * If an acknowledgement must be sent, then
+                * the fragment counter is incremented by one and
+                * the corresponding acknowledgement is sent.
+                *)
+               elsif SEND_ACK then
+                  RETRIES := 0;
+                  SEND (!ACK (LAST_FRAGMENT + 1));
+                  (*
+                   * If the data fragment received is the last one, then the
+                   * complete file must be forwarded to the USER process.
+                   * There are two possibilities. Either the transfer was
+                   * triggered by the USER process as a read request
+                   * (NEW_ACTIVE is set to true) in which case it is expecting
+                   * to receive a SUCCESS message containing the file, or the
+                   * transfer was triggered by a write request from the other
+                   * protocol (NEW_ACTIVE is set to false) entity, in which
+                   * case, a WRITE message must be sent to the USER process.
+                   *)
+                  if DATA_LENGTH_LT_512 then
+                     ACTIVE := false;
+                     if NEW_ACTIVE then
+                        PUT (!SUCCESS, !APPEND (NEW_FILE, RECEIVED_CHAR))
+                     else
+                        PUT (!WRITE, !APPEND (NEW_FILE, RECEIVED_CHAR),
+                             !NEW_FILE_NAME)
+                     end if
+                  end if;
+                  LAST_FRAGMENT := LAST_FRAGMENT + 1;
+                  FILE_NAME := NEW_FILE_NAME;
+                  F := APPEND (NEW_FILE, RECEIVED_CHAR)
+               (*
+                * If the initial acknowledgement must be sent, then
+                * the fragment counter is set to 0 and the corresponding
+                * acknowledgement is sent.
+                *)
+               elsif SEND_INIT_ACK then
+                  RETRIES := 0;
+                  SEND (!ACK (0));
+                  LAST_FRAGMENT := 0;
+                  FILE_NAME := NEW_FILE_NAME;
+                  ACTIVE := NEW_ACTIVE;
+                  F := NEW_FILE
+               (*
+                * If the previous acknowledgement must be resent, then
+                * it is resent and the retries counter is incremented.
+                *)
+               elsif RESEND_ACK then
+                  RETRIES := RETRIES + 1;
+                  SEND (!ACK (LAST_FRAGMENT));
+                  FILE_NAME := NEW_FILE_NAME;
+                  ACTIVE := NEW_ACTIVE;
+                  F := NEW_FILE
+               (*
+                * If an error must be sent, it is sent and if the transfer
+                * is still active (USER process not informed yet), then
+                * the USER process is sent an ERROR message.
+                *)
+               elsif SEND_ERROR then
+                  SEND (!ERROR of MESSAGE);
+                  if ACTIVE or NEW_ACTIVE then
+                     PUT (!ERROR of USER_MESSAGE)
+                  end if;
+                  if NEXT == INIT_STATE then
+                     EVENT (!REINIT)
+                  end if;
+                  ACTIVE := false;
+                  RETRIES := 0 of Nat;
+                  LAST_FRAGMENT := 0 of Nat;
+                  F := NIL of FILE;
+                  FILE_NAME := 0 of Nat
+               else
+                  (*
+                   * If the TFTP automaton reinitializes and the transfer is
+                   * active, then the USER process must be informed that
+                   * an error occured.
+                   *)
+                  if (NEXT == INIT_STATE) and NEW_ACTIVE then
+                     PUT (ERROR of USER_MESSAGE);
+                     ACTIVE := false
+                  else
+                     ACTIVE := NEW_ACTIVE
+                  end if
+               end if;
+               if (STOP_TIMER) then
+                  EVENT (!S_TIMER)
+               end if;
+               if (ARM_TIMER) then
+                  EVENT (!A_TIMER)
+               end if;
+               (* Reinitialization *)
+               if (not (CURRENT == INIT_STATE) and (NEXT == INIT_STATE)) then
+                  EVENT (REINIT);
+                  RETRIES := 0 of Nat;
+                  LAST_FRAGMENT := 0 of Nat;
+                  FILE_NAME := 0 of Nat;
+                  F := NIL of FILE
+               end if;
+               CURRENT := NEXT
+            end var
+         end var
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

@@ -1,0 +1,83 @@
+(******************************************************************************
+ *                     P R O D U C T I O N    C E L L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	DISPATCHER.lnt
+ *   Auteurs		:	Hubert GARAVEL and Wendelin SERWE
+ *   Version		:	1.7
+ *   Date		: 	2016/11/23 10:05:00
+ *****************************************************************************)
+
+module DISPATCHER (TYPES, CHANNELS) is
+
+-------------------------------------------------------------------------------
+
+process DISPATCHER [GET_STATUS: STATUS,
+                    G1: PRESS_POSITION,
+                    G2: ARM1_EXTENSION,
+                    G3: ARM2_EXTENSION,
+                    G6: ROBOT_ANGLE,
+                    G7: TABLE_POSITION,
+                    G8: TABLE_ANGLE,
+                    G9: CRANE_POSITION,
+                    G10: CRANE_HEIGHT,
+                    G12, G13: BOOL]
+                    (SEQUENTIAL: BOOL) is
+   -- this process receives inputs from the Tcl/Tk simulator and dispatches
+   -- them to the corresponding components of the controller process
+   var
+      S1, S2, S3, S7, S8, S10, S11, S13, S14: BOOL,
+      S4, S5, S6, S9, S12: REAL
+   in
+      loop
+         GET_STATUS (?S1, ?S2, ?S3, ?S4, ?S5, ?S6, ?S7, ?S8, ?S9, ?S10, ?S11,
+                     ?S12, ?S13, ?S14, ?any STRING);
+         if SEQUENTIAL then
+            -- inputs are dispatched to controller gates in sequential order,
+            -- which reduces the amount of nondeterminism, possibly making the 
+            -- specification easier to analyze
+            G1 (CONVERT_S1_S2_S3 (S1, S2, S3));    -- press position
+            G2 (CONVERT_S4 (S4));                  -- arm1 extension
+            G3 (CONVERT_S5 (S5));                  -- arm2 extension
+            G6 (CONVERT_S6 (S6));                  -- robot angle
+            G7 (CONVERT_S7_S8 (S7, S8));           -- table position
+            G8 (CONVERT_S9 (S9));                  -- table angle
+            G9 (CONVERT_S10_S11 (S10, S11));       -- crane position
+            G10 (CONVERT_S12 (S12));               -- crane height
+            G12 (S13);                             -- sensor feed belt
+            G13 (S14)                              -- sensor deposit belt
+         else
+            -- inputs are dispatched to controller gates in any order
+            par
+               G1 (CONVERT_S1_S2_S3 (S1, S2, S3))  -- press position
+             ||
+               G2 (CONVERT_S4 (S4))                -- arm1 extension
+             ||
+               G3 (CONVERT_S5 (S5))                -- arm2 extension
+             ||
+               G6 (CONVERT_S6 (S6))                -- robot angle
+             ||
+               G7 (CONVERT_S7_S8 (S7, S8))         -- table position
+             ||
+               G8 (CONVERT_S9 (S9))                -- table angle
+             ||
+               G9 (CONVERT_S10_S11 (S10, S11))     -- crane position
+             ||
+               G10 (CONVERT_S12 (S12))             -- crane height
+             ||
+               G12 (S13)                           -- sensor feed belt
+             ||
+               G13 (S14)                           -- sensor deposit belt
+            end par
+         end if
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module

@@ -1,0 +1,58 @@
++--------------+
+| Edge editing |
++--------------+
+
+BCG_EDIT knows four kinds of edges:
+
+     - straight edges
+     - symmetrical curved edges
+     - asymmetrical curved edges
+     - loops
+
+(see the BCG PostScript Format for more information).
+
+Modifying the shape of an edge
+------------------------------
+A single left button click on an edge (or its label) displays the control 
+points of the edge (except in the case of straight edges, for which
+there are no control points). 
+
+Using the first button, these control points can be moved in order 
+to change the appearance of the edge. For loops, there is a single
+control point, which allows to strecht the loop, and rotate it around 
+the vertex at once.
+
+A double left button click on these control points removes them. 
+
+Modifying the type of an edge
+-----------------------------
+The type of an edge can be changed. For example, a straight edge can be
+changed into a symmetrical curved edge or an asymmetrical curved edge. 
+
+A single right button click on an edge (or its label) opens a window 
+allowing to choose the type of the edge. You can either modify the type 
+or keep it unchanged by pressing the "Cancel" button.
+
+A single middle button click is a shortcut for transforming edges:
+
+     - on straight edge (or its label): 
+       the edge is changed into a symmetrical curved edge;
+
+     - on symmetrical curved edge (or its label): 
+       the edge is changed into a straight edge or a loop;
+
+     - on asymmetrical curved edge (or its label):
+       the edge is changed into a straight edge or a loop;
+
+     - on a loop (or its label):
+       the edge is changed into a symmetrical curved edge.
+
+Modifying the arrow scale factor
+--------------------------------
+This can be done by simultaneously pressing the <Control> key
+and clicking with the left button click on an edge (or its label).
+A dialog window opens, which allows to modify the scale of the
+edge's arrow.
+
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

@@ -1,0 +1,30 @@
+%% Listings definitions for the MCL language
+%% produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+%% version 1.8:MCL+1.8:SECT
+
+\lstdefinelanguage{MCL}
+{
+   morekeywords=[1]{among,any,case,choice,continue,do,
+                    else,elsif,end,end_library,end_macro,exists,
+                    exit,export,for,forall,from,if,
+                    in,let,library,loop,macro,mu,
+                    nil,nu,of,on,repeat,step,
+                    tau,then,to,until,where,while},
+   morekeywords=[2]{bool,nat,natset,int,real,char,
+                    string},
+   morekeywords=[3]{false,true},
+   morekeywords=[4]{abs,and,concat,diff,empty,equ,
+                    implies,index,insert,isin,isalnum,isalpha,
+                    isdigit,islower,isupper,isxdigit,inter,length,
+                    not,nth,or,prefix,remove,rindex,
+                    sign,substr,succ,suffix,tolower,toupper,
+                    union,xor},
+   otherkeywords={+,-,=,!,/,^,
+                    \%,|,<,>,[,],
+                    @,?,<>,<=,>=,->,
+                    -|},
+   sensitive=false,
+   morecomment=[s]{(*}{*)},
+   morestring=[b]{'},
+   morestring=[b]{"}
+}[keywords,comments,strings]

@@ -1,0 +1,106 @@
+(******************************************************************************
+ *                              E V A L U A T O R
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       actl.mcl
+ *   Auteurs            :       Mihaela SIGHIREANU and Radu MATEESCU
+ *   Version            :       1.7
+ *   Date               :       2014/12/05 14:42:12
+ *****************************************************************************)
+
+(*
+ * Action-based Computation Tree Logic (ACTL) [DeNicola-Vaandrager-90].
+ * 
+ * This file contains the definition in MCL of ACTL. Only the neXt time
+ * operators of ACTL are defined here, the temporal operators of ACTL being
+ * defined in the library actl_x.mcl (included below).
+ * 
+ * The logic is interpreted on an LTS M = (S, A, T, s0), where:
+ *   - S is the set of states
+ *   - A is the set of actions
+ *   - T included in S * A * S is the transition relation
+ *   - s0 in S is the initial state.
+ * The invisible action is denoted by tau. Visible actions are denoted by
+ * a1, a2, etc. Visible or invisible actions are denoted by b1, b2, etc.
+ * A transition (s1, b, s2) in T, also denoted by s1-b->s2, means that the
+ * system can move from state s1 to state s2 by performing action b.
+ * 
+ * The interpretation of an action formula Ai on A is denoted by [[Ai]],
+ * the subset of actions in A which satisfy Ai. The interpretation of a
+ * state formula P on M is denoted by [[P]], the subset of states in S
+ * which satisfy P.
+ * 
+ * The action formula A2 in the definitions below should respect the condition
+ * not (tau in [[A2]]), i.e., A2 may denote visible actions only, as required
+ * by the definition of ACTL.
+ * 
+ * References:
+ * 
+ * [DeNicola-Vaandrager-90] R. De Nicola and F. Vaandrager.
+ *   "Action versus State Based Logics for Transition Systems."
+ *   Semantics of Systems of Concurrent Processes, LNCS vol. 469, pp. 407-419.
+ *   Springer Verlag, 1990.
+ *)
+
+(* Temporal operators of ACTL\X *)
+
+library actl_x.mcl end_library
+
+(*===========================================================================*)
+(* Modal (neXt time) operators of ACTL *)
+
+(*
+ * EX_A2 P
+ *
+ * [[ EX_A2 P ]] =
+ *     { s | exists s-b->s' . (b in [[ A2 ]] and s' in [[ P ]]) }
+ *)
+
+macro EX_A (A2, P) =
+    < (A2) > (P)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * EX_tau P
+ *
+ * [[ EX_tau P ]] =
+ *     { s | exists s-tau->s' . s' in [[ P ]] }
+ *)
+
+macro EX_TAU (P) =
+    < tau > (P)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AX_A2 P
+ *
+ * [[ AX_A2 P ]] =
+ *     { s | exists s-b->s' . true and
+ *           forall s-b->s' . (b in [[ A2 ]] and s' in [[ P ]]) }
+ *)
+
+macro AX_A (A2, P) =
+    (< true > true and [ not (A2) ] false and [ (A2) ] (P))
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AX_tau P
+ *
+ * [[ AX_tau P ]] =
+ *     { s | exists s-tau->s' . true and
+ *           forall s-b->s' . (b = tau and s' in [[ P ]]) }
+ *)
+
+macro AX_TAU (P) =
+    (< true > true and [ not tau ] false and [ tau ] (P))
+end_macro
+
+(*---------------------------------------------------------------------------*)
+

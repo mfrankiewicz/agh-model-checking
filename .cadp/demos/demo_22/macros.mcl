@@ -1,0 +1,18 @@
+(* Basic predicates over actions *)
+
+(* Non critical sections *)
+macro NCS0 () = "NCS0" end_macro
+macro NCS1 () = "NCS1" end_macro
+
+(* Critical sections *)
+macro CS0 () = "CS0" end_macro
+macro CS1 () = "CS1" end_macro
+
+(* Request access to the critical sections *)
+macro REQ0 () = "F0 !WRITE !TRUE" end_macro
+macro REQ1 () = "F1 !WRITE !TRUE" end_macro
+
+(* Release the critical sections *)
+macro REL0 () = "F0 !WRITE !FALSE" end_macro
+macro REL1 () = "F1 !WRITE !FALSE" end_macro
+

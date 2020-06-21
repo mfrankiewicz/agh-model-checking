@@ -1,0 +1,37 @@
+module APPLICATION (TYPES) is
+
+-- application with one main task forking both 2*N_b bitstream subtasks and
+-- N_v+1 vector substasks (where N_b is the number of processors with
+-- bitstream extension, and N_v is the number of processors with vector
+-- extension)
+
+process EXECUTE [ST, MSG: any]
+                (id: Pid, j: Job_Desc, in out s: Job_Desc_Stack) is
+  case get_PC (j) of PC in
+    DONT_CARE_1_1 ->
+      MASTER [ST, MSG]
+             (DONT_CARE, DONT_CARE_1_1,
+              BITSTREAM_1, BITSTREAM, NatToInt (2 * NB_BITSTREAM_PROCESSORS),
+              DONT_CARE_1_2, ID, !?S)
+  | DONT_CARE_1_2 ->
+      MASTER [ST, MSG]
+             (DONT_CARE, DONT_CARE_1_2,
+              VECTOR_1, VECTOR, NatToInt (NB_VECTOR_PROCESSORS + 1),
+              DONT_CARE_1_3, ID, !?S)
+  | DONT_CARE_1_3 ->
+      LEAF [MSG] (DONT_CARE, DONT_CARE_1_3, ID)
+  | BITSTREAM_1 ->
+      SLAVE [MSG] (BITSTREAM, BITSTREAM_1, ID, get_Index (J))
+  | VECTOR_1 ->
+      SLAVE [MSG] (VECTOR, VECTOR_1, ID, get_Index (J))
+  | any -> null -- to avoid a warning from lnt2lotos
+  end case
+end process
+
+process HOST_APPLI [HOST: any] is
+  HOST (HOST_JOB (DONT_CARE_1_1, DONT_CARE));
+  stop
+end process
+
+end module
+

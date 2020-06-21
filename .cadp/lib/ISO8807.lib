@@ -1,0 +1,468 @@
+type Boolean
+is 
+sorts
+  Bool
+opns
+  true, false                 :                             -> Bool
+  not                         : Bool                        -> Bool
+  _and_, _or_, _xor_, _implies_, _iff_, _eq_, _ne_ : Bool, Bool -> Bool
+eqns
+forall 
+  x, y : Bool
+ofsort Bool
+  not(true) = false;
+  not(false) = true;
+  x and true = x;
+  x and false = false;
+  x or true = true;
+  x or false = x;
+  x xor y = x and not(y) or (y and not(x));
+  x implies y = y or not(x);
+  x iff y = x implies y and (y implies x);
+  x eq y = x iff y;
+  x ne y = x xor y
+endtype
+type FBoolean
+is 
+formalsorts
+  FBool
+formalopns
+  true                        :                             -> FBool
+  not                         : FBool                       -> FBool
+formaleqns
+forall 
+  x : FBool
+ofsort FBool
+  not(not(x)) = x
+endtype
+
+type Element
+is FBoolean
+formalsorts
+  Element
+formalopns
+  _eq_, _ne_                  : Element, Element            -> FBool
+formaleqns
+forall 
+  x, y : Element
+ofsort Element
+  x eq y => x = y
+ofsort FBool
+  x = y => x eq y = true;
+  x ne y = not(x eq y)
+endtype
+
+type Set
+is Element, Boolean, NaturalNumber
+sorts
+  Set
+opns
+  {}                          :                             -> Set
+  Insert, Remove              : Element, Set                -> Set
+  _IsIn_, _NotIn_             : Element, Set                -> Bool
+  _Union_, _Ints_, _Minus_    : Set, Set                    -> Set
+  _eq_, _ne_, _Includes_, _IsSubsetOf_ : Set, Set           -> Bool
+  Card                        : Set                         -> Nat
+eqns
+forall 
+  x, y : Element, s, t : Set
+ofsort Set
+  Insert(x, Insert(x, s)) = Insert(x, s);
+  Insert(x, Insert(y, s)) = Insert(y, Insert(x, s));
+  Remove(x, {}) = {};
+  x eq y => Remove(x, Insert(y, s)) = Remove(x, s);
+  x ne y => Remove(x, Insert(y, s)) = Insert(y, Remove(x, s));
+  {} Union s = s;
+  Insert(x, s) Union t = Insert(x, s Union t);
+  {} Ints s = {};
+  x IsIn t => Insert(x, s) Ints t = Insert(x, s Ints t);
+  x NotIn t => Insert(x, s) Ints t = s Ints t;
+  s Minus {} = s;
+  s Minus Insert(x, t) = Remove(x, s) Minus t
+ofsort Bool
+  x IsIn {} = false;
+  x eq y => x IsIn Insert(y, s) = true;
+  x ne y => x IsIn Insert(y, s) = x IsIn s;
+  x NotIn s = not(x IsIn s);
+  s Includes {} = true;
+  s Includes Insert(x, t) = x IsIn s and (s Includes t);
+  s IsSubsetOf t = t Includes s;
+  s eq t = s Includes t and (t Includes s);
+  s ne t = not(s eq t)
+ofsort Nat
+  Card({}) = 0;
+  x NotIn s => Card(Insert(x, s)) = Succ(Card(s))
+endtype
+
+type BasicNonEmptyString
+is Element
+formalsorts
+  NonEmptyString
+formalopns
+  String                      : Element                     -> NonEmptyString
+  _+_                         : Element, NonEmptyString     -> NonEmptyString
+endtype
+
+type RicherNonEmptyString
+is BasicNonEmptyString, NaturalNumber
+opns
+  _+_                         : NonEmptyString, Element     -> NonEmptyString
+  _++_                        : NonEmptyString, NonEmptyString -> NonEmptyString
+  Reverse                     : NonEmptyString              -> NonEmptyString
+  Length                      : NonEmptyString              -> Nat
+eqns
+forall 
+  s, t : NonEmptyString, x, y : Element
+ofsort NonEmptyString
+  String(x) + y = x + String(y);
+  x + s + y = x + (s + y);
+  String(x) ++ s = x + s;
+  x + s ++ t = x + (s ++ t);
+  Reverse(String(x)) = String(x);
+  Reverse(x + s) = Reverse(s) + x
+ofsort Nat
+  Length(String(x)) = Succ(0);
+  Length(x + s) = Succ(Length(s))
+endtype
+
+type NonEmptyString
+is RicherNonEmptyString, Boolean
+opns
+  _eq_, _ne_                  : NonEmptyString, NonEmptyString -> Bool
+eqns
+forall 
+  s, t : NonEmptyString, x, y : Element
+ofsort Bool
+  x eq y => String(x) eq String(y) = true;
+  x ne y => String(x) eq String(y) = false;
+  String(x) eq (y + s) = false;
+  x + s eq String(y) = false;
+  x eq y => x + s eq (y + t) = s eq t;
+  x ne y => x + s eq (y + t) = false;
+  s ne t = not(s eq t)
+endtype
+
+type String0
+is RicherNonEmptyString renamedby
+sortnames
+  String for NonEmptyString
+endtype
+
+type String1
+is String0
+opns
+  <>                          :                             -> String
+eqns
+forall 
+  s : String, x : Element
+ofsort String
+  String(x) = x + <>;
+  <> + x = x + <>;
+  <> ++ s = s;
+  Reverse(<>) = <>
+ofsort Nat
+  Length(<>) = 0
+endtype
+
+type String
+is String1, Boolean
+opns
+  _eq_, _ne_                  : String, String              -> Bool
+eqns
+forall 
+  s, t : String, x, y : Element
+ofsort Bool
+  <> eq <> = true;
+  <> eq (x + s) = false;
+  x + s eq <> = false;
+  x eq y => x + s eq (y + t) = s eq t;
+  x ne y => x + s eq (y + t) = false;
+  s ne t = not(s eq t)
+endtype
+
+type BasicNaturalNumber
+is 
+sorts
+  Nat
+opns
+  0                           :                             -> Nat
+  Succ                        : Nat                         -> Nat
+  _+_, _*_, _**_              : Nat, Nat                    -> Nat
+eqns
+forall 
+  m, n : Nat
+ofsort Nat
+  m + 0 = m;
+  m + Succ(n) = Succ(m) + n;
+  m * 0 = 0;
+  m * Succ(n) = m + (m * n);
+  m ** 0 = Succ(0);
+  m ** Succ(n) = m * (m ** n)
+endtype
+type NaturalNumber
+is BasicNaturalNumber, Boolean
+opns
+  _eq_, _ne_, _lt_, _le_, _ge_, _gt_ : Nat, Nat             -> Bool
+eqns
+forall 
+  m, n : Nat
+ofsort Bool
+  0 eq 0 = true;
+  0 eq Succ(m) = false;
+  Succ(m) eq 0 = false;
+  Succ(m) eq Succ(n) = m eq n;
+  m ne n = not(m eq n);
+  0 lt 0 = false;
+  0 lt Succ(n) = true;
+  Succ(n) lt 0 = false;
+  Succ(m) lt Succ(n) = m lt n;
+  m le n = m lt n or (m eq n);
+  m ge n = not(m lt n);
+  m gt n = not(m le n)
+endtype
+
+type NatRepresentations
+is HexNatRepr, DecNatRepr, OctNatRepr, BitNatRepr
+endtype
+
+type HexNatRepr
+is HexString
+opns
+  NatNum                      : HexString -> Nat
+eqns
+forall 
+  hs : HexString , h : HexDigit
+ofsort Nat
+  NatNum(Hex(h)) = NatNum (h);
+  NatNum(h + hs) = NatNum(h) * (Succ(NatNum(F)) ** Length(hs)) + NatNum(hs)
+endtype
+type HexString
+is NonEmptyString actualizedby HexDigit using
+sortnames
+  HexDigit for Element
+  Bool for FBool
+  HexString for NonEmptyString
+opnnames
+  Hex for String
+endtype
+type HexDigit
+is Boolean, NaturalNumber
+sorts
+  HexDigit
+opns
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F :          -> HexDigit
+  _eq_, _ne_, _lt_, _le_, _ge_, _gt_ : HexDigit, HexDigit   -> Bool
+  NatNum                      : HexDigit                    -> Nat
+eqns
+forall 
+  x, y : HexDigit
+ofsort Nat
+  NatNum(0) = 0;
+  NatNum(1) = Succ(NatNum(0));
+  NatNum(2) = Succ(NatNum(1));
+  NatNum(3) = Succ(NatNum(2));
+  NatNum(4) = Succ(NatNum(3));
+  NatNum(5) = Succ(NatNum(4));
+  NatNum(6) = Succ(NatNum(5));
+  NatNum(7) = Succ(NatNum(6));
+  NatNum(8) = Succ(NatNum(7));
+  NatNum(9) = Succ(NatNum(8));
+  NatNum(A) = Succ(NatNum(9));
+  NatNum(B) = Succ(NatNum(A));
+  NatNum(C) = Succ(NatNum(B));
+  NatNum(D) = Succ(NatNum(C));
+  NatNum(E) = Succ(NatNum(D));
+  NatNum(F) = Succ(NatNum(E))
+ofsort Bool
+  x eq y = NatNum(x) eq NatNum(y);
+  x ne y = NatNum(x) ne NatNum(y);
+  x lt y = NatNum(x) lt NatNum(y);
+  x le y = NatNum(x) le NatNum(y);
+  x ge y = NatNum(x) ge NatNum(y);
+  x gt y = NatNum(x) gt NatNum(y)
+endtype
+
+type DecNatRepr
+is NaturalNumber, DecString
+opns
+  NatNum                      : DecString -> Nat
+eqns
+forall 
+  ds : DecString , d : DecDigit
+ofsort Nat
+  NatNum(Dec(d)) = NatNum(d);
+  NatNum(d + ds) = NatNum(d) * (Succ(NatNum(9)) ** Length(ds)) + NatNum(ds)
+endtype
+
+type DecString
+is NonEmptyString actualizedby DecDigit using
+sortnames
+  DecDigit for Element
+  Bool for FBool
+  DecString for NonEmptyString
+opnnames
+  Dec for String
+endtype
+
+type DecDigit
+is NaturalNumber, Boolean
+sorts
+  DecDigit
+opns
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9:                             -> DecDigit
+  _eq_, _ne_, _lt_, _le_, _ge_, _gt_ : DecDigit, DecDigit   -> Bool
+  NatNum                      : DecDigit                    -> Nat
+eqns
+forall 
+  x, y : DecDigit
+ofsort Nat
+  NatNum(0) = 0;
+  NatNum(1) = Succ(NatNum(0));
+  NatNum(2) = Succ(NatNum(1));
+  NatNum(3) = Succ(NatNum(2));
+  NatNum(4) = Succ(NatNum(3));
+  NatNum(5) = Succ(NatNum(4));
+  NatNum(6) = Succ(NatNum(5));
+  NatNum(7) = Succ(NatNum(6));
+  NatNum(8) = Succ(NatNum(7));
+  NatNum(9) = Succ(NatNum(8))
+ofsort Bool
+  x eq y = NatNum(x) eq NatNum(y);
+  x ne y = NatNum(x) ne NatNum(y);
+  x lt y = NatNum(x) lt NatNum(y);
+  x le y = NatNum(x) le NatNum(y);
+  x ge y = NatNum(x) ge NatNum(y);
+  x gt y = NatNum(x) gt NatNum(y)
+endtype
+
+type OctNatRepr
+is OctString
+opns
+  NatNum                      : OctString -> Nat
+eqns
+forall 
+  os : OctString, o : OctDigit
+ofsort Nat
+  NatNum(Oct(o)) = NatNum(o);
+  NatNum(o + os) = NatNum(o) * (Succ(NatNum(7)) ** Length(os)) + NatNum(os)
+endtype
+
+type OctString
+is NonEmptyString actualizedby OctDigit using
+sortnames
+  OctDigit for Element
+  Bool for FBool
+  OctString for NonEmptyString
+opnnames
+  Oct for String
+endtype
+
+type OctDigit
+is NaturalNumber, Boolean
+sorts
+  OctDigit
+opns
+  0, 1, 2, 3, 4, 5, 6, 7      :                             -> OctDigit
+  _eq_, _ne_, _lt_, _le_, _ge_, _gt_ : OctDigit, OctDigit   -> Bool
+  NatNum                      : OctDigit                    -> Nat
+eqns
+forall 
+  x, y : OctDigit
+ofsort Nat
+  NatNum(0) = 0;
+  NatNum(1) = Succ(NatNum(0));
+  NatNum(2) = Succ(NatNum(1));
+  NatNum(3) = Succ(NatNum(2));
+  NatNum(4) = Succ(NatNum(3));
+  NatNum(5) = Succ(NatNum(4));
+  NatNum(6) = Succ(NatNum(5));
+  NatNum(7) = Succ(NatNum(6))
+ofsort Bool
+  x eq y = NatNum(x) eq NatNum(y);
+  x ne y = NatNum(x) ne NatNum(y);
+  x lt y = NatNum(x) lt NatNum(y);
+  x le y = NatNum(x) le NatNum(y);
+  x ge y = NatNum(x) ge NatNum(y);
+  x gt y = NatNum(x) gt NatNum(y)
+endtype
+
+type BitNatRepr
+is BitString
+opns
+  NatNum                      : BitString -> Nat
+eqns
+forall 
+  bs : BitString, b : Bit
+ofsort Nat
+  NatNum(Bit(b)) = NatNum(b);
+  NatNum(b + bs) = NatNum(b) * (Succ(NatNum(1)) ** Length(bs)) + NatNum(bs)
+endtype
+
+type BitString
+is NonEmptyString actualizedby Bit using
+sortnames
+  Bit for Element
+  Bool for FBool
+  BitString for NonEmptyString
+opnnames
+  Bit for String
+endtype
+
+type Bit
+is NaturalNumber, Boolean
+sorts
+  Bit
+opns
+  0, 1                        :                             -> Bit
+  _eq_, _ne_, _lt_, _le_, _ge_, _gt_ : Bit, Bit             -> Bool
+  NatNum                      : Bit                         -> Nat
+eqns
+forall 
+  x, y : Bit
+ofsort Nat
+  NatNum(0) = 0;
+  NatNum(1) = Succ(0)
+ofsort Bool
+  x eq y = NatNum(x) eq NatNum(y);
+  x ne y = NatNum(x) ne NatNum(y);
+  x lt y = NatNum(x) lt NatNum(y);
+  x le y = NatNum(x) le NatNum(y);
+  x ge y = NatNum(x) ge NatNum(y);
+  x gt y = NatNum(x) gt NatNum(y)
+endtype
+
+type Octet
+is Bit, Boolean
+sorts
+  Octet
+opns
+  Octet                       : Bit, Bit, Bit, Bit, Bit, Bit, Bit, Bit -> Octet
+  Bit1, Bit2, Bit3, Bit4, Bit5, Bit6, Bit7, Bit8 : Octet    -> Bit
+  _eq_, _ne_                  : Octet, Octet                -> Bool
+eqns
+forall 
+  b1, b2, b3, b4, b5, b6, b7, b8 : Bit, x, y : Octet
+ofsort Bit
+  Bit1(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) = b1;
+  Bit2(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) = b2;
+  Bit3(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) = b3;
+  Bit4(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) = b4;
+  Bit5(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) = b5;
+  Bit6(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) = b6;
+  Bit7(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) = b7;
+  Bit8(Octet(b1, b2, b3, b4, b5, b6, b7, b8)) = b8
+ofsort Bool
+  x eq y = Bit1(x) eq Bit1(y) and (Bit2(x) eq Bit2(y)) and (Bit3(x) eq Bit3(y)) and (Bit4(x) eq Bit4(y)) and (Bit5(x) eq Bit5(y)) and (Bit6(x) eq Bit6(y)) and (Bit7(x) eq Bit7(y)) and (Bit8(x) eq Bit8(y));
+  x ne y = not(x eq y)
+endtype
+
+type OctetString
+is String actualizedby Octet using
+sortnames
+  Octet for Element
+  Bool for FBool
+  OctetString for String
+opnnames
+  Octet for String
+endtype
+

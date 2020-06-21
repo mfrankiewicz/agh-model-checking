@@ -1,0 +1,94 @@
+
+specification CO4System [user,up1,down1,up2,down2,signal,OK] : noexit
+
+  library CO4_DATATYPES endlib
+  library Boolean, NaturalNumber endlib
+
+behaviour
+
+(
+  ( UserInput [user] [> exit )
+  |[user]|
+  KBHierarchy [user,up1,down1,up2,down2,signal]
+)
+>> Ring [OK]
+
+where
+
+  
+  process KBHierarchy [user,up1,down1,up2,down2,signal] : exit :=
+    (
+      ( 
+        InitIndividualKB [user,down1,up1,signal] (base1)
+        |||
+        InitIndividualKB [user,down1,up1,signal] (base2)
+      )
+      |[user,down1,up1]|
+      SerializeIndividualKB [user,down1,up1] 
+    )
+    |[up1,down1]|
+    ( hide down in InitQueue [down,down1] |[down]|
+      InitGroupKB [up1,down,down2,up2,signal] (base3) )
+    |[up2,down2]|
+    exit (* group has no parent *)
+  where
+
+    
+    process SerializeIndividualKB [user,parentin,parentout] : exit :=
+      exit
+      []
+      user ?b: BaseId ?act: UserAction ?b1: BaseId;
+      parentout !b ?b2: BaseId ?msg: Message;
+      SerializeIndividualKB [user,parentin,parentout]
+      []
+      user ?b: BaseId ?act: UserAction ?p1: Proposal;
+      parentout !b ?b2: BaseId ?msg: Message;
+      SerializeIndividualKB [user,parentin,parentout]
+      []
+      user ?b: BaseId ?act: UserAction ?r1 : Request;
+      parentout !b ?b2: BaseId ?msg: Message;
+      SerializeIndividualKB [user,parentin,parentout]
+      []
+      user ?b: BaseId ?act: UserAction ?r1: Request ?p1 : Proposal;
+      parentout !b ?b2: BaseId ?msg: Message;
+      SerializeIndividualKB [user,parentin,parentout]
+      []
+      parentin ?b1: BaseId ?b2: BaseId ?msg: Message;
+      SerializeIndividualKB [user,parentin,parentout]
+    endproc
+
+
+  endproc
+
+  
+  process UserInput [user] : noexit :=
+
+      user !base1 !doregister !base3;
+      user !base2 !doregister !base3;
+      user !base1 !doachieve !assert(square) + <>;
+      stop
+      |||
+      AllUserReply [user]
+
+  where
+
+    
+    process AllUserReply [user] : noexit :=
+    user ? b1 : BaseId !doaccept ?r1 : Request;
+    AllUserReply [user]
+    []
+    user ? b1 : BaseId !doreject ?r1 : Request;
+    AllUserReply [user]
+    []
+    user ? b1 : BaseId !dodeny ?r1 : Request;
+    AllUserReply [user]
+    endproc
+
+
+  endproc
+
+
+  library CO4_PROCESSES endlib
+
+endspec
+

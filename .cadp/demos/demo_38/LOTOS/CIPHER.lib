@@ -1,0 +1,217 @@
+(******************************************************************************
+ *             D A T A    E N C R Y P T I O N    S T A N D A R D
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	CIPHER.lib
+ *   Auteur		:	Wendelin SERWE
+ *   Version		:	1.4
+ *   Date		: 	2015/09/04 14:07:27
+ *****************************************************************************)
+
+(* processes implementing the cipher function according to figure 2 of [DES] *)
+
+(* ------------------------------------------------------------------------- *)
+(* CIPHER computes "P (Si (E (R) + K))" *)
+
+process CIPHER [K, R, PX] : noexit :=
+   hide ER,
+        IS1, IS2, IS3, IS4, IS5, IS6, IS7, IS8,
+        SO1, SO2, SO3, SO4, SO5, SO6, SO7, SO8
+   in
+      (
+         E [R, ER]
+         |[ER]|
+         XOR_48 [ER, K, IS1, IS2, IS3, IS4, IS5, IS6, IS7, IS8]
+      )
+      |[IS1, IS2, IS3, IS4, IS5, IS6, IS7, IS8]|
+      (
+         S1 [IS1, SO1]
+         |||
+         S2 [IS2, SO2]
+         |||
+         S3 [IS3, SO3]
+         |||
+         S4 [IS4, SO4]
+         |||
+         S5 [IS5, SO5]
+         |||
+         S6 [IS6, SO6]
+         |||
+         S7 [IS7, SO7]
+         |||
+         S8 [IS8, SO8]
+      )
+      |[SO1, SO2, SO3, SO4, SO5, SO6, SO7, SO8]|
+      P [SO1, SO2, SO3, SO4, SO5, SO6, SO7, SO8, PX]
+
+where
+
+(* ------------------------------------------------------------------------- *)
+(* E expands a 32-bit word to 48-bits using function E *)
+
+   process E [INPUT, OUTPUT] : noexit :=
+      INPUT ?I32:BIT32;
+         OUTPUT !E(I32);
+            E [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* XOR_48 asynchronously reads two 48-bit vectors and output the bitwise sum,
+ * splitted into eight 6-bit vectors *)
+
+   process XOR_48 [A, B, R1, R2, R3, R4, R5, R6, R7, R8] : noexit :=
+      (
+         A ? A48 : BIT48;
+            exit (A48, any BIT48)
+         |||
+         B ? B48 : BIT48;
+            exit (any BIT48, B48)
+      )
+      >> accept A48, B48 : BIT48 in
+      SPLIT [A, B, R1, R2, R3, R4, R5, R6, R7, R8] (XOR (A48, B48))
+   where
+      (* the auxiliary process avoids to compute XOR (A48, B48) eight times *)
+      process SPLIT [A, B, R1, R2, R3, R4, R5, R6, R7, R8]
+                    (I48 : BIT48) : noexit :=
+         (
+            R1 ! (1TO6   (I48)); exit
+            |||
+            R2 ! (7TO12  (I48)); exit
+            |||
+            R3 ! (13TO18 (I48)); exit
+            |||
+            R4 ! (19TO24 (I48)); exit
+            |||
+            R5 ! (25TO30 (I48)); exit
+            |||
+            R6 ! (31TO36 (I48)); exit
+            |||
+            R7 ! (37TO42 (I48)); exit
+            |||
+            R8 ! (43TO48 (I48)); exit
+         )
+         >>
+         XOR_48 [A, B, R1, R2, R3, R4, R5, R6, R7, R8]
+      endproc
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+   process S1 [INPUT, OUTPUT] : noexit := 
+      INPUT ?I6:BIT6;
+         OUTPUT !S1(I6);
+            S1 [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+   process S2 [INPUT, OUTPUT] : noexit := 
+      INPUT ?I6:BIT6;
+         OUTPUT !S2(I6);
+            S2 [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+   process S3 [INPUT, OUTPUT] : noexit := 
+      INPUT ?I6:BIT6;
+         OUTPUT !S3(I6);
+            S3 [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+   process S4 [INPUT, OUTPUT] : noexit := 
+      INPUT ?I6:BIT6;
+         OUTPUT !S4(I6);
+            S4 [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+   process S5 [INPUT, OUTPUT] : noexit := 
+      INPUT ?I6:BIT6;
+         OUTPUT !S5(I6);
+            S5 [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+   process S6 [INPUT, OUTPUT] : noexit := 
+      INPUT ?I6:BIT6;
+         OUTPUT !S6(I6);
+            S6 [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+   process S7 [INPUT, OUTPUT] : noexit := 
+      INPUT ?I6:BIT6;
+         OUTPUT !S7(I6);
+            S7 [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+
+   process S8 [INPUT, OUTPUT] : noexit := 
+      INPUT ?I6:BIT6;
+         OUTPUT !S8(I6);
+            S8 [INPUT, OUTPUT]
+   endproc
+
+(* ------------------------------------------------------------------------- *)
+(* P collects the results of the eight processes S_BOX_i (on INi) and outputs
+ * them in a single transition exit; the permutation P is applied in a second
+ * step when outputting the result on OUTPUT.
+ *
+ * the additional transition with gate exit could be removed by applying the
+ * permutation P in a subsequent process, namely XOR_32 *)
+
+   process P [IN1, IN2, IN3, IN4, IN5, IN6, IN7, IN8, OUTPUT] : noexit :=
+      (
+         IN1 ?I1:BIT4;
+            exit (I1,       any BIT4, any BIT4, any BIT4,
+                  any BIT4, any BIT4, any BIT4, any BIT4)
+         |||
+         IN2 ?I2:BIT4;
+            exit (any BIT4, I2,       any BIT4, any BIT4,
+                  any BIT4, any BIT4, any BIT4, any BIT4)
+         |||
+         IN3 ?I3:BIT4;
+            exit (any BIT4, any BIT4, I3,       any BIT4,
+                  any BIT4, any BIT4, any BIT4, any BIT4)
+         |||
+         IN4 ?I4:BIT4;
+            exit (any BIT4, any BIT4, any BIT4, I4,
+                  any BIT4, any BIT4, any BIT4, any BIT4)
+         |||
+         IN5 ?I5:BIT4;
+            exit (any BIT4, any BIT4, any BIT4, any BIT4,
+                  I5,       any BIT4, any BIT4, any BIT4)
+         |||
+         IN6 ?I6:BIT4;
+            exit (any BIT4, any BIT4, any BIT4, any BIT4,
+                  any BIT4, I6,       any BIT4, any BIT4)
+         |||
+         IN7 ?I7:BIT4;
+            exit (any BIT4, any BIT4, any BIT4, any BIT4,
+                  any BIT4, any BIT4, I7,       any BIT4)
+         |||
+         IN8 ?I8:BIT4;
+            exit (any BIT4, any BIT4, any BIT4, any BIT4,
+                  any BIT4, any BIT4, any BIT4, I8)
+      )
+      >> accept I1 : BIT4, I2 : BIT4, I3 : BIT4, I4 : BIT4, 
+                I5 : BIT4, I6 : BIT4, I7 : BIT4, I8 : BIT4 in
+      OUTPUT !P(MK_32(I1,I2,I3,I4,I5,I6,I7,I8));
+         P [IN1, IN2, IN3, IN4, IN5, IN6, IN7, IN8, OUTPUT]
+   endproc
+
+endproc
+
+(* ------------------------------------------------------------------------- *)
+

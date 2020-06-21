@@ -1,0 +1,23 @@
+(******************************************************************************
+ * LOCALSTORE.lib:
+ * Process definition for the stock management system [Chirichiello-Salaun-05]
+ *
+ * A local store can send requests to the central store. If a request succeeds,
+ * the local stock is updated.
+ * The interaction of a local store with its clients is not modeled: the local
+ * stock only increases.
+ *****************************************************************************)
+ 
+process LocalStore [request, ok, nok] (s : Stock) : noexit :=
+   request !extract (s) !5;
+      (
+         ok;
+            LocalStore [request, ok, nok] (increase (extract (s), 5, s))
+         []
+         nok;
+            LocalStore [request, ok, nok] (s)
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+

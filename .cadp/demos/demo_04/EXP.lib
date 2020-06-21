@@ -1,0 +1,42 @@
+   type EXP is
+      sorts EXP (*! implementedby EXP comparedby CMP_EXP
+                    printedby PRINT_EXP external *)
+      opns 0 (*! implementedby ZERO external *): -> EXP
+           X1 (*! implementedby X1 external *), 
+	   X2 (*! implementedby X2 external *), 
+	   X3 (*! implementedby X3 external *), 
+	   X4 (*! implementedby X4 external *), 
+	   X5 (*! implementedby X5 external *), 
+	   X6 (*! implementedby X6 external *), 
+	   X7 (*! implementedby X7 external *), 
+	   X8 (*! implementedby X8 external *), 
+	   X9 (*! implementedby X9 external *),
+           X10 (*! implementedby X10 external *),
+           X11 (*! implementedby X11 external *),
+           X12 (*! implementedby X12 external *),
+           X13 (*! implementedby X13 external *),
+           X14 (*! implementedby X14 external *),
+           X15 (*! implementedby X15 external *),
+           X16 (*! implementedby X16 external *),
+           X17 (*! implementedby X17 external *),
+           X18 (*! implementedby X18 external *),
+           X19 (*! implementedby X19 external *),
+           X20 (*! implementedby X20 external *),
+           X21 (*! implementedby X21 external *),
+           X22 (*! implementedby X22 external *),
+           X23 (*! implementedby X23 external *),
+           X24 (*! implementedby X24 external *),
+           X25 (*! implementedby X25 external *),
+           X26 (*! implementedby X26 external *) : -> EXP
+
+           W1 (*! implementedby W1 external *), 
+	   W2 (*! implementedby W2 external *), 
+	   W3 (*! implementedby W3 external *), 
+	   W4 (*! implementedby W4 external *), 
+	   W5 (*! implementedby W5 external *), 
+	   W6 (*! implementedby W6 external *), 
+	   W7 (*! implementedby W7 external *) : -> EXP
+
+           _+_ (*! implementedby Plus external *), 
+	   _*_ (*! implementedby Star external *) : EXP, EXP -> EXP
+   endtype

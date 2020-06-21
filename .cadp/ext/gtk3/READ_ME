@@ -1,0 +1,26 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains the following files:
+
+ - bes.lang:         GtkSourceView 3.0 syntax mode for the BES format
+ - exp.lang:         GtkSourceView 3.0 syntax mode for the EXP format
+ - lnt.lang:         GtkSourceView 3.0 syntax mode for the LNT language
+ - lotos.lang:       GtkSourceView 3.0 syntax mode for the LOTOS language
+ - mcl.lang:         GtkSourceView 3.0 syntax mode for the MCL language
+ - nupn.lang:        GtkSourceView 3.0 syntax mode for the NUPN format
+ - rbc.lang:         GtkSourceView 3.0 syntax mode for the RBC format
+ - svl.lang:         GtkSourceView 3.0 syntax mode for the SVL language
+ - xtl.lang:         GtkSourceView 3.0 syntax mode for the XTL language
+
+How to use these files:
+-----------------------
+
+Type the following shell commands:
+
+	mkdir -p $HOME/.local/share/gtksourceview-3.0/language-specs
+	ln -s $CADP/ext/gtk3/*.lang $HOME/.local/share/gtksourceview-3.0/language-specs
+
+where $CADP is the pathname of the directory in which the CADP software
+is installed on your machine.
+

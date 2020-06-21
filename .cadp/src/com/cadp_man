@@ -1,0 +1,101 @@
+#! /bin/sh
+
+###############################################################################
+#                               C A D P 
+#------------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#------------------------------------------------------------------------------
+#   Module              :       cadp_man
+#   Auteur              :       Hubert Garavel
+#   Version             :       1.2
+#   Date                :       2016/03/11 14:46:12
+###############################################################################
+
+# cette commande recherche si l'acces aux pages man de CADP est possible
+# sous Cygwin, ce n'est pas le cas par defaut a cause de la configuration
+# particuliere du fichier /etc/man_db.conf qui exclut l'acces aux pages
+# de la section "l" (locale)
+
+# -----------------------------------------------------------------------------
+
+COMMAND=`basename "$0"`
+
+ARCH=`"$CADP"/com/arch`
+
+if [ $ARCH != win32 ]
+then
+	# pour l'instant, le probleme ne se produit qu'avec Cygwin
+	echo "$COMMAND: this command is not designed for architecture $ARCH"
+	exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+MAN_CONFIG="/etc/man_db.conf"
+
+# - la variable $MANSECT (si elle est positionnee par l'utilisateur courant)
+#   donne la liste (specifique a l'utilisateur) des sections consultees
+#   par la commande "man"
+#
+# - le fichier $MAN_CONFIG donne la liste (commune a tous les utilisateurs
+#   qui n'ont pas positionne la variable $MANSECT) des sections consultees
+#   par la commande "man"
+
+if [ "$MANSECT" != "" ]
+then
+	# l'utilisateur a positionne $MANSECT
+	SECTIONS="$MANSECT"
+else
+	# l'utilisateur n'a pas positionne $MANSECT ; on extrait la liste
+	# des sections du fichier $MAN_CONFIG
+	SECTIONS=`grep "^SECTION" $MAN_CONFIG | sed -e 's/^SECTION[ \t]*//' | sed -e 's/ /:/g'`
+fi
+
+# -----------------------------------------------------------------------------
+
+case "$1" in
+	-check )
+		# renvoie OK ssi la section locale "l" est accessible
+		echo "$SECTIONS" | grep -s '\<l\>' > /dev/null
+		if [ $? = 0 ]
+		then
+			# section locale "l" incluse dans $SECTIONS
+			echo "OK"
+		else
+			# section locale "l" non incluse dans $SECTIONS
+			echo "KO"
+		fi
+		;;
+
+	-sections )
+		# renvoie une liste de sections incluant la section locale "l"
+		echo "$SECTIONS" | grep -s '\<l\>' > /dev/null
+		if [ $? = 0 ]
+		then
+			# section locale "l" deja incluse dans $SECTIONS
+			echo "$SECTIONS"
+		else
+			# section locale "l" non incluse dans $SECTIONS
+			echo "$SECTIONS" | grep -s '\<1\>' > /dev/null
+			if [ $? = 0 ]
+			then
+				# section "1" incluse dans $SECTIONS
+				echo "$SECTIONS" | sed -e 's/\<1\>/1:l/'
+			else
+				# cas etrange
+				echo "$SECTIONS:l"
+			fi
+		fi
+		;;
+
+	* )
+		echo "$COMMAND: invalid argument"
+		exit 1
+esac
+
+exit 0
+

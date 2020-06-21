@@ -1,0 +1,40 @@
+module ERRHANDLER (TYPES, CHANNELS) is
+
+-------------------------------------------------------------------------------
+
+process ErrHandler [cerri:NullChannel, derri:EnvChannel,
+                    timeout:TimeOutChannel, erro:NullChannel,
+                    CO:COutChannel] is
+
+   var b:Bool, e:Env, l:EnvList in
+      b := false;
+      l := {};
+      loop
+         select
+            cerri;
+            b := true
+         []
+            derri (?e);
+            if not (e IsIn l) then
+               l := insert (e, l)
+            end if
+         []
+            timeout (?any PortNo, ?e);
+            if not (e IsIn l) then
+               l := insert (e, l)
+            end if
+         []
+            erro;
+            CO (b, l);
+            b := false;
+            l := {}
+         end select
+      end loop
+   end var
+
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

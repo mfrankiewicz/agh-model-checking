@@ -1,0 +1,15 @@
+(*===========================================================================*)
+(* Constants *)
+
+(* Maximum message number in the specification *)
+
+def N () : natural = 4 end_def
+
+(*===========================================================================*)
+(* Basic predicates over actions *)
+
+macro isPUT (M) = EVAL_A (PUT !(M)) end_macro
+macro isGET (M) = EVAL_A (GET !(M)) end_macro
+
+(*===========================================================================*)
+

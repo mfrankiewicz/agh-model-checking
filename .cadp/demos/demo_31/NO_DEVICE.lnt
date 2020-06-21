@@ -1,0 +1,19 @@
+module NO_DEVICE (TYPES) is
+
+-------------------------------------------------------------------------------
+-- This process describes an empty device, that participates
+-- to every bus arbitration, but never requests bus access
+
+process NO_DEVICE [ARB : WIRE] (N : NUM) is
+   var
+      W : WIRE
+   in
+      loop
+	 ARB (?W) where C_PASS (W, N)
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module

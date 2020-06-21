@@ -1,0 +1,83 @@
+(* 
+   contains the functional version with non-deterministic tail on 
+   buffer Inn 
+
+   on buffer Out, tail (dequeue) is always deterministic as every element 
+   can be written at most once
+*)
+
+process PI [diag, sync, w, r, mw, cu, mr, cl] (ind:index,
+                                               AD:set_of_elem,
+                                               C:mem_of_elem,
+                                               Out, Inn : buf_of_elem) : noexit :=
+   sync;
+      (
+         (* for DEBUGGING *)
+         [Inn eq overflow] ->
+            diag !overflow !1 of NAT;
+               PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, C, Out, Inn)
+         []
+         [Out eq overflow] ->
+            diag !overflow !2 of NAT;
+               PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, C, Out, Inn)
+         (* end DEBUGGING *)
+         []
+         (
+            choice el:elem []
+               w !ind !el [notIsIn (Ad, el) and datum (ind, el)];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, Insert (AD, el), C, Enqueue (Out, el, false), Inn)
+         )
+         []
+         (
+            choice el:elem []
+               r !ind !el [ok (C, el) and (empty (Out) and empty_true (Inn))];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, C, Out, Inn)
+         )
+         []
+         (
+            choice el:elem []
+               (
+                  mw !ind !el [first (Out, el) and not (((el eq eps) or empty (Out)) or (Out eq overflow))];
+                     PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, C, Dequeue (Out), Enqueue (Inn, el, true))
+                  []
+                  mw !ind !el [first (Out, el) and ((Out eq overflow) or (el eq eps))];
+                     PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, C, Out, Enqueue (Inn, el, true))
+               )
+         )
+         []
+         mw ?j:index ?el:elem [not (j eq ind)];
+            PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, C, Out, Enqueue (Inn, el, false))
+         []
+         (
+            choice el:elem []
+               (
+                  cu !ind !el [first (Inn, el)];
+                     PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, Insert (C, el), Out, Inn)
+                  []
+                  cu !ind !el [first (Inn, el) and not (((el eq eps) or (Inn eq overflow)) or empty (Inn))];
+                     PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, Insert (C, el), Out, Dequeue (Inn))
+               )
+         )
+         []
+         (* the condition "not (ok (C, el)) and NotIn (Inn, el)" is added in order
+            to have a bit less idle transitions *)
+         mr !ind ?el:elem [not (ok (C, el)) and NotIn (Inn, el)];
+            PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, C, Out, Enqueue (Inn, el, false))
+         []
+         (* the condition "not (el eq eps)" is only added to have a bit less idle
+            transitions *)
+         (
+            choice el:elem []
+               cl !ind !el [ok (C, el) and not (el eq eps)];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, cl (C, el), Out, Inn)
+         )
+         []
+         (* passive synchros when other processes are active *)
+         (
+            choice G in [r, w, cu, mr, cl] []
+               G ?j:index ?el:elem [not (j eq ind)];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, AD, C, Out, Inn)
+         )
+      )
+endproc (* PI *)
+

@@ -1,0 +1,98 @@
+specification SYSTOLIC_CONVOLUTION_F [Y] : noexit behaviour
+   hide X in
+      (
+      GENERATOR [X]
+      |[X]|
+      ARRAY [X, Y] (W1, W2, W3, W4, W5, W6, W7)
+      )
+where
+
+(*---------------------------------------------------------------------------*)
+
+   library BOOLEAN, NATURAL, EXP endlib
+
+(*---------------------------------------------------------------------------*)
+
+   process GENERATOR [X] : noexit :=
+      X !X1;
+         X !X2;
+            X !X3;
+               X !X4;
+                  X !X5;
+                     X !X6;
+                        X !X7;
+                           X !X8;
+                              X !X9;
+                               X !X10;
+      X !X11;
+         X !X12;
+            X !X13;
+               X !X14;
+                  X !X15;
+                     X !X16;
+                        X !X17;
+                           X !X18;
+                              X !X19;
+                                 stop
+   endproc
+
+(*---------------------------------------------------------------------------*)
+
+   process ARRAY [X0, Y] (W1, W2, W3, W4, W5, W6, W7:EXP) : noexit :=
+      hide Y1, Y2, Y3, Y4, Y5, Y6, Y7 in
+         (
+         hide X1, X2, X3, X4, X5, X6, X7 in
+            (
+            CELL [X0, Y1, X1] (W7, 7)
+            |[X1]|
+            CELL [X1, Y2, X2] (W6, 6)
+            |[X2]|
+            CELL [X2, Y3, X3] (W5, 5)
+            |[X3]|
+            CELL [X3, Y4, X4] (W4, 4)
+            |[X4]|
+            CELL [X4, Y5, X5] (W3, 3)
+            |[X5]|
+            CELL [X5, Y6, X6] (W2, 2)
+            |[X6]|
+            CELL [X6, Y7, X7] (W1, 1)
+            )
+         |[Y1, Y2, Y3, Y4, Y5, Y6, Y7]|
+         ADDER [Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y]
+         )
+   where
+
+      (*---------------------------------------------------------------------*)
+
+      process CELL [X_IN, Y_OUT, X_OUT] (W:EXP, K:NAT) : noexit :=
+         [K gt 1] ->
+            X_IN ?X:EXP;
+               X_OUT !X;
+                  CELL [X_IN, Y_OUT, X_OUT] (W, K - 1)
+         []
+         [K eq 1] ->
+            X_IN ?X:EXP;
+               Y_OUT !(W * X);
+                  X_OUT !X;
+                     CELL [X_IN, Y_OUT, X_OUT] (W, 1)
+      endproc
+   
+      (*---------------------------------------------------------------------*)
+
+      process ADDER [IN1, IN2, IN3, IN4, IN5, IN6, IN7, OUT] : noexit :=
+         IN1 ?Y1:EXP;
+            IN2 ?Y2:EXP;
+               IN3 ?Y3:EXP;
+                  IN4 ?Y4:EXP; 
+                     IN5 ?Y5:EXP;
+                        IN6 ?Y6:EXP;
+                           IN7 ?Y7:EXP;
+                              OUT !(Y1 + Y2 + Y3 + Y4 + Y5 + Y6 + Y7);
+                     ADDER [IN1, IN2, IN3, IN4, IN5, IN6, IN7, OUT]
+      endproc
+
+      (*---------------------------------------------------------------------*)
+
+   endproc
+
+endspec

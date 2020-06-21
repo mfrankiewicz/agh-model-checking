@@ -1,0 +1,60 @@
+
+(*****************************************************************************
+ * Requirement 8
+ * For a given subscriber, only one tone or signal may be activated at a
+ * given time
+ *****************************************************************************)
+
+[ true* ] (
+    (* Subscriber 1 *)
+    (
+	< "S !1 !DIALT !ON" > true implies
+	[ 'S !1 .* !ON' and not "S !1 !DIALT !ON" ] false
+    ) and
+    (
+	< "S !1 !RINGT !ON" > true implies
+	[ 'S !1 .* !ON' and not "S !1 !RINGT !ON" ] false
+    ) and
+    (
+	< "S !1 !RINGS !ON" > true implies
+	[ 'S !1 .* !ON' and not "S !1 !RINGS !ON" ] false
+    ) and
+    (
+	< "S !1 !ERRORT !ON" > true implies
+	[ 'S !1 .* !ON' and not "S !1 !ERRORT !ON" ] false
+    ) and
+    (
+	< "S !1 !BUSYT !ON" > true implies
+	[ 'S !1 .* !ON' and not "S !1 !BUSYT !ON" ] false
+    ) and
+    (
+	< "S !1 !SPEECHCONN !ON" > true implies
+	[ 'S !1 .* !ON' and not "S !1 !SPEECHCONN !ON" ] false
+    ) and
+    (* Subscriber 2 *)
+    (
+	< "S !2 !DIALT !ON" > true implies
+	[ 'S !2 .* !ON' and not "S !2 !DIALT !ON" ] false
+    ) and
+    (
+	< "S !2 !RINGT !ON" > true implies
+	[ 'S !2 .* !ON' and not "S !2 !RINGT !ON" ] false
+    ) and
+    (
+	< "S !2 !RINGS !ON" > true implies
+	[ 'S !2 .* !ON' and not "S !2 !RINGS !ON" ] false
+    ) and
+    (
+	< "S !2 !ERRORT !ON" > true implies
+	[ 'S !2 .* !ON' and not "S !2 !ERRORT !ON" ] false
+    ) and
+    (
+	< "S !2 !BUSYT !ON" > true implies
+	[ 'S !2 .* !ON' and not "S !2 !BUSYT !ON" ] false
+    ) and
+    (
+	< "S !2 !SPEECHCONN !ON" > true implies
+	[ 'S !2 .* !ON' and not "S !2 !SPEECHCONN !ON" ] false
+    )
+)
+

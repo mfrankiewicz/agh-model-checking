@@ -1,0 +1,83 @@
+module BLOCK (BIT, OCTET) is
+
+type Block is
+   !implementedby "BLOCK"
+   !printedby "PRINT_BLOCK"
+   Block (O1, O2, O3, O4 : Octet) !implementedby "BUILD_BLOCK"
+   with "get", "==" !implementedby "EQUAL_BLOCK"
+end type
+
+-------------------------------------------------------------------------------
+
+function _==_ (O1, O2 : Octet) : Bool is
+   return eq (O1, O2)
+end function
+
+-------------------------------------------------------------------------------
+
+function _AND_ (X, Y : Block) : Block is
+   return Block (X.O1 and Y.O1, X.O2 and Y.O2, X.O3 and Y.O3, X.O4 and Y.O4)
+end function
+
+-------------------------------------------------------------------------------
+
+function _OR_ (X, Y : Block) : Block is
+   return Block (X.O1 or Y.O1, X.O2 or Y.O2, X.O3 or Y.O3, X.O4 or Y.O4)
+end function
+
+-------------------------------------------------------------------------------
+
+function _XOR_ (X, Y : Block) : Block is
+   return Block (X.O1 xor Y.O1, X.O2 xor Y.O2, X.O3 xor Y.O3, X.O4 xor Y.O4)
+end function
+
+-------------------------------------------------------------------------------
+
+function CYC (X : Block) : Block is
+   return Block (
+      Octet (X.O1.B2, X.O1.B3, X.O1.B4, X.O1.B5, X.O1.B6, X.O1.B7, X.O1.B8, X.O2.B1),
+      Octet (X.O2.B2, X.O2.B3, X.O2.B4, X.O2.B5, X.O2.B6, X.O2.B7, X.O2.B8, X.O3.B1),
+      Octet (X.O3.B2, X.O3.B3, X.O3.B4, X.O3.B5, X.O3.B6, X.O3.B7, X.O3.B8, X.O4.B1),
+      Octet (X.O4.B2, X.O4.B3, X.O4.B4, X.O4.B5, X.O4.B6, X.O4.B7, X.O4.B8, X.O1.B1))
+end function
+
+-------------------------------------------------------------------------------
+
+function ADD (X, Y : Block) : Block is
+   -- sum modulo 2^32 of X and Y
+   !implementedby "ADD"
+   !external
+   null
+end function
+
+-------------------------------------------------------------------------------
+
+function CAR (X, Y : Block) : Block is
+   -- carry of the sum of X and Y, result being either x00000000 or x00000001
+   !implementedby "CAR"
+   !external
+   null
+end function
+
+-------------------------------------------------------------------------------
+
+function HIGH_MUL (X, Y : Block) : Block is
+   -- 32 most significant bits of the product of X and Y
+   !implementedby "HIGH_MUL"
+   !external
+   null
+end function
+
+-------------------------------------------------------------------------------
+
+function LOW_MUL (X, Y : Block) : Block is
+   -- 32 least significant bits of the product of X and Y
+   !implementedby "LOW_MUL"
+   !external
+   null
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

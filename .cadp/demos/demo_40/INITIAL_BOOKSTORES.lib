@@ -1,0 +1,138 @@
+(******************************************************************************
+ * INITIAL_BOOKSTORES.lib: 
+ * Definitions of the initial stocks of all bookstores
+ *****************************************************************************)
+
+type INITIAL_BOOKSTORES is
+   BOOLEAN, NATURAL, EXTENDED_NATURAL, BOOK, BOOKSTORE
+   opns bs1  : -> BookStore
+        bs2  : -> BookStore
+        bs3  : -> BookStore
+        bs4  : -> BookStore
+        bs5  : -> BookStore
+        bs6  : -> BookStore
+        bs7  : -> BookStore
+        bs8  : -> BookStore
+        bs9  : -> BookStore
+        bs10 : -> BookStore
+   eqns
+      ofsort BookStore
+         (* The bookstore bs1 contains eight books; three copies of the first
+          * book are still available, and each copy of the first book should be
+          * sold for at least three euros *)
+         bs1 = addBS (book (0, 2, 6, true),  3, pMin3,
+               addBS (book (1, 4, 2, false), 8, pMin5,
+               addBS (book (2, 3, 6, true),  6, pMin4,
+               addBS (book (3, 3, 3, false), 7, pMin4,
+               addBS (book (4, 4, 7, true),  3, pMin4,
+               addBS (book (5, 5, 8, true),  3, pMin5,
+               addBS (book (6, 5, 3, true),  9, pMin6,
+               addBS (book (7, 3, 2, false), 3, pMin5,
+               emptyBS))))))));
+      ofsort BookStore
+         bs2 = addBS (book (0, 5, 2, true),   4, pMin4,
+               addBS (book (1, 4, 3, false),  0, pMin4,
+               addBS (book (2, 3, 6, true),   6, pMin4,
+               addBS (book (3, 3, 3, false),  7, pMin4,
+               addBS (book (4, 4, 7, true),   3, pMin4,
+               addBS (book (5, 5, 8, true),   3, pMin5,
+               addBS (book (6, 5, 3, true),   9, pMin6,
+               addBS (book (7, 3, 2, false),  3, pMin5,
+               addBS (book (8, 3, 6, true),   6, pMin4,
+               addBS (book (9, 3, 3, false),  7, pMin4,
+               addBS (book (10, 4, 7, true),  3, pMin4,
+               addBS (book (11, 5, 8, true),  3, pMin5,
+               addBS (book (12, 5, 3, true),  9, pMin6,
+               addBS (book (13, 3, 2, false), 3, pMin5,
+               addBS (book (14, 3, 6, true),  6, pMin4,
+               addBS (book (15, 3, 3, false), 7, pMin4, 
+               addBS (book (16, 4, 7, true),  3, pMin4, 
+               addBS (book (17, 5, 8, true),  3, pMin5, 
+               addBS (book (18, 5, 3, true),  9, pMin6,
+               addBS (book (19, 3, 2, false), 3, pMin5,
+               addBS (book (20, 3, 6, true),  6, pMin4,
+               addBS (book (21, 3, 3, false), 7, pMin4,
+               addBS (book (22, 4, 7, true),  3, pMin4, 
+               addBS (book (23, 5, 8, true),  3, pMin5,
+               addBS (book (24, 5, 3, true),  9, pMin6,
+               addBS (book (25, 3, 2, false), 3, pMin5,
+               emptyBS))))))))))))))))))))))))));
+      ofsort BookStore
+         bs3 = addBS (book (0, 4, 3, true),  0, pMin5,
+               addBS (book (1, 2, 4, false), 2, pMin5,
+               addBS (book (2, 3, 6, true),  6, pMin4,
+               addBS (book (3, 3, 3, false), 7, pMin4,
+               addBS (book (4, 4, 7, true),  3, pMin4,
+               addBS (book (5, 5, 8, true),  3, pMin5,
+               addBS (book (6, 5, 3, true),  9, pMin6,
+               addBS (book (7, 3, 2, false), 3, pMin5,
+               addBS (book (8, 3, 6, true),  6, pMin4,
+               addBS (book (9, 3, 3, false), 7, pMin4,
+               emptyBS))))))))));
+      ofsort BookStore
+         bs4 = addBS (book (1, 4, 5, false), 0, pMin4,
+               addBS (book (2, 3, 4, false), 2, pMin5,
+               emptyBS));
+      ofsort BookStore
+         bs5 = addBS (book (0, 4, 3, true),  0, pMin5,
+               addBS (book (1, 3, 4, false), 6, pMin4,
+               addBS (book (2, 3, 4, true),  2, pMin4,
+               addBS (book (4, 4, 7, false), 3, pMin4,
+               addBS (book (6, 5, 8, true),  3, pMin5,
+               addBS (book (9, 5, 3, true),  9, pMin6,
+               emptyBS))))));
+      ofsort BookStore
+         bs6 = addBS (book (1, 4, 5, true),   0, pMin4,
+               addBS (book (3, 2, 5, true),   2, pMin6,
+               addBS (book (4, 3, 4, false),  2, pMin5,
+               addBS (book (9, 3, 4, false),  2, pMin5,
+               addBS (book (13, 3, 2, false), 3, pMin5,
+               addBS (book (14, 3, 6, true),  6, pMin4,
+               addBS (book (15, 3, 3, false), 7, pMin4,
+               addBS (book (16, 4, 7, true),  3, pMin4,
+               addBS (book (17, 5, 8, true),  3, pMin5,
+               addBS (book (18, 5, 3, true),  9, pMin6,
+               addBS (book (19, 3, 2, false), 3, pMin5,
+               addBS (book (20, 3, 6, true),  6, pMin4,
+               addBS (book (21, 3, 3, false), 7, pMin4,
+               emptyBS)))))))))))));
+      ofsort BookStore
+         bs7 = addBS (book (0, 4, 3, true),  4, pMin4,
+               addBS (book (1, 3, 4, false), 6, pMin4,
+               addBS (book (4, 3, 4, false), 2, pMin5,
+               emptyBS)));
+      ofsort BookStore
+         bs8 = addBS (book (1, 4, 5, true),   0, pMin5,
+               addBS (book (3, 2, 5, true),   5, pMin6,
+               addBS (book (4, 3, 4, false),  2, pMin5,
+               addBS (book (6, 3, 4, false),  2, pMin4,
+               addBS (book (13, 4, 6, true),  5, pMin5,
+               addBS (book (14, 3, 6, true),  6, pMin4,
+               addBS (book (15, 3, 3, false), 7, pMin4,
+               addBS (book (16, 5, 6, false), 3, pMin4,
+               addBS (book (17, 5, 8, true),  3, pMin5,
+               addBS (book (18, 5, 3, true),  9, pMin6,
+               addBS (book (19, 3, 2, false), 3, pMin5,
+               addBS (book (20, 3, 6, false), 6, pMin4,
+               addBS (book (21, 3, 3, false), 7, pMin4,
+               emptyBS)))))))))))));
+      ofsort BookStore
+         bs9 = addBS (book (0, 4, 3, true),  0, pMin5,
+               addBS (book (1, 3, 4, false), 6, pMin4,
+               addBS (book (2, 3, 4, true),  2, pMin4,
+               addBS (book (4, 4, 7, false), 3, pMin4,
+               addBS (book (6, 5, 8, true),  3, pMin5,
+               addBS (book (9, 5, 3, true),  9, pMin6,
+               emptyBS))))));
+      ofsort BookStore
+         bs10 = addBS (book (0, 4, 3, true),   0, pMin5,
+                addBS (book (1, 3, 4, false),  6, pMin4,
+                addBS (book (2, 3, 4, true),   2, pMin4,
+                addBS (book (4, 4, 7, false),  3, pMin4,
+                addBS (book (6, 5, 8, true),   3, pMin5,
+                addBS (book (9, 5, 3, true),   9, pMin6,
+                addBS (book (12, 3, 6, true),  6, pMin4,
+                addBS (book (13, 3, 3, false), 7, pMin4,
+                addBS (book (14, 4, 7, true),  3, pMin4,
+                emptyBS)))))))));
+endtype

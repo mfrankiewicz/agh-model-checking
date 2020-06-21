@@ -1,0 +1,43 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains the following files:
+
+ - cadp.vimrc:      main entry point giving access to all CADP languages
+
+ - bes.vim:         Vim syntax mode for the BES format
+ - exp.vim:         Vim syntax mode for the EXP format
+ - lnt.vim:         Vim syntax mode for the LNT language
+ - lotos.vim:       Vim syntax mode for the LOTOS language
+ - mcl.vim:         Vim syntax mode for the MCL language
+ - nupn.vim:        Vim syntax mode for the NUPN format
+ - rbc.vim:         Vim syntax mode for the RBC format
+ - svl.vim:         Vim syntax mode for the SVL language
+ - xtl.vim:         Vim syntax mode for the XTL language
+
+These files were found to work properly with Vim 7.2 and 7.3.
+
+Notice that the local file "lotos.vim" supersedes the (older) syntax
+mode for LOTOS present in the official Vim distributions.
+
+How to use these files:
+-----------------------
+
+Type the following shell commands:
+
+	mkdir -p $HOME/.vim/syntax
+	ln -s $CADP/ext/vim/*.vim $HOME/.vim/syntax
+
+where $CADP is the pathname of the directory in which the CADP software
+is installed on your machine.
+
+Then, in your home directory, create a ".vimrc" file if it does not exist
+already. Insert the following line in this file:
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+source $CADP/ext/vim/cadp.vimrc
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+

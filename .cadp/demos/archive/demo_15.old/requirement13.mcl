@@ -1,0 +1,46 @@
+
+(*****************************************************************************
+ * Requirement 13
+ * If A-subscriber dials B-subscriber while A's dialtone is active, then
+ *       There should be a possibility of A's dial tone being deactivated.
+ *****************************************************************************)
+
+[ true* . "S !1 !DIALT !ON" . (not "S !1 !DIALT !OFF")* . "S !1 !DIAL !2" ] 
+    < (not "S !1 !DIALT !OFF")* . "S !1 !DIALT !OFF" > true
+
+and
+
+(*****************************************************************************
+ * Requirement 13.1
+ * If A-subscriber dials B-subscriber while A's dialtone is active, and B is
+ * onhooked, and B has no tones active, then
+ *       There should be a possibility of B's ring tone being activated.
+ *       There should be possibility of deactivating A's dialtone and
+ *       activating A's ringtone (no other tones should be activated).
+ *****************************************************************************)
+
+library macros.mcl end_library
+
+NO_2_TONES_ACTIVE (
+
+    [
+        (not ('S !2 .*T !ON'))* .
+        (
+            ("S !1 !DIALT !ON" .
+             (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF"))* .
+             "S !2 !ONH") |
+            ("S !2 !ONH" .
+             (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF"))* .
+             "S !1 !DIALT !ON")
+        ) .
+        (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF"))* .
+        "S !1 !DIAL !2"
+    ] (
+        < (not 'S !2 .*T !ON' )* . "S !2 !RINGS !ON" > true
+        and
+        < (not 'S !1 .*T !ON')* . "S !1 !DIALT !OFF" .
+          (not 'S !1 .*T !ON')* . "S !1 !RINGT !ON" > true
+    )
+
+)
+

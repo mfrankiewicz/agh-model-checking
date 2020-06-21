@@ -1,0 +1,81 @@
+(******************************************************************************
+ *             D A T A    E N C R Y P T I O N    S T A N D A R D
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	DES_SAMPLE.lotos
+ *   Auteur		:	Wendelin SERWE
+ *   Version		:	1.10
+ *   Date		: 	2015/09/04 14:09:17
+ *****************************************************************************)
+
+specification DES_SAMPLE [CRYPT, KEY, DATA, OUTPUT] : noexit
+
+   library
+      BOOLEAN, NATURAL, BIT_CONCRETE, TYPES,
+      PERMUTATION_FUNCTIONS, S_BOX_FUNCTIONS
+   endlib
+
+behaviour
+
+   DES [CRYPT, KEY, DATA, OUTPUT]
+   |[CRYPT, KEY, DATA, OUTPUT]|
+   ENVIRONMENT [CRYPT, KEY, DATA, OUTPUT]
+
+where
+
+   library
+      DES, CONTROLLER, KEY_PATH, DATA_PATH, CIPHER
+   endlib
+
+(* ------------------------------------------------------------------------- *)
+
+type CONSTANTS is BIT64
+   opns
+      (* frequently used sample data *)
+      C_01234567_89ABCDEF : -> BIT64
+      (* frequently used sample key *)
+      C_13345779_9BBCDFF1 : -> BIT64
+      (* result of ciphering C_01234567_89ABCDEF with C_13345779_9BBCDFF1 *)
+      C_85E81354_0F0AB405 : -> BIT64
+   eqns
+      ofsort BIT64
+         C_01234567_89ABCDEF =
+            MK_64 (0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 1, 0,  0, 0, 1, 1,
+                   0, 1, 0, 0,  0, 1, 0, 1,  0, 1, 1, 0,  0, 1, 1, 1,
+                   1, 0, 0, 0,  1, 0, 0, 1,  1, 0, 1, 0,  1, 0, 1, 1,
+                   1, 1, 0, 0,  1, 1, 0, 1,  1, 1, 1, 0,  1, 1, 1, 1);
+      ofsort BIT64
+         C_13345779_9BBCDFF1 =
+            MK_64 (0, 0, 0, 1,  0, 0, 1, 1,  0, 0, 1, 1,  0, 1, 0, 0,
+                   0, 1, 0, 1,  0, 1, 1, 1,  0, 1, 1, 1,  1, 0, 0, 1,
+                   1, 0, 0, 1,  1, 0, 1, 1,  1, 0, 1, 1,  1, 1, 0, 0,
+                   1, 1, 0, 1,  1, 1, 1, 1,  1, 1, 1, 1,  0, 0, 0, 1);
+      ofsort BIT64
+         C_85E81354_0F0AB405 =
+            MK_64 (1, 0, 0, 0,  0, 1, 0, 1,  1, 1, 1, 0,  1, 0, 0, 0,
+                   0, 0, 0, 1,  0, 0, 1, 1,  0, 1, 0, 1,  0, 1, 0, 0,
+                   0, 0, 0, 0,  1, 1, 1, 1,  0, 0, 0, 0,  1, 0, 1, 0,
+                   1, 0, 1, 1,  0, 1, 0, 0,  0, 0, 0, 0,  0, 1, 0, 1);
+endtype
+
+(* ------------------------------------------------------------------------- *)
+(* process simulating the environment in order to close the system, executing
+ * a single encryption of c_01234567_89abcdef with c_13345779_9BBCDFF1, and
+ * checking the output of the expected result *)
+
+   process ENVIRONMENT [CRYPT, KEY, DATA, OUTPUT] : noexit :=
+      CRYPT !true;
+      KEY !C_13345779_9BBCDFF1;
+      DATA !C_01234567_89ABCDEF;
+      (* cipher of C_01234567_89ABCDEF with C_13345779_9BBCDFF1 *)
+      OUTPUT !C_85E81354_0F0AB405;
+      stop
+   endproc
+
+endspec
+
+(* ------------------------------------------------------------------------- *)

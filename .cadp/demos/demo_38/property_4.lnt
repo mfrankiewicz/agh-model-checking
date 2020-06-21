@@ -1,0 +1,30 @@
+-------------------------------------------------------------------------------
+-- property_4.lnt -- 1.8 -- 2016/07/91 17:10:11 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module property_4 is
+
+-- process describing a loop starting with a synchronization on gate CRYPT,
+-- followed by 16 synchronization on gate SUBKEY, where the synchronization
+-- on CRYPT corresponding to the next iteration can already appear after
+-- 14 synchronizations on SUBKEY.
+-- this process is used to verify the presence of 16 iterations in the DES.
+
+process MAIN [CRYPT, SUBKEY: none] is
+   CRYPT;
+   loop
+      var IT: NAT in
+         for IT := 0 while IT < 14 by IT := IT + 1 loop
+            SUBKEY
+         end loop
+      end var;
+      par
+         SUBKEY; SUBKEY
+      ||
+         CRYPT
+      end par
+   end loop
+end process
+
+end module
+

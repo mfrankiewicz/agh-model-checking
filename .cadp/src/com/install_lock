@@ -1,0 +1,44 @@
+#!/bin/sh
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       install_lock
+#   Auteurs             :       Hubert Garavel et Nicolas Descoubes
+#   Version             :       1.4
+#   Date                :       2015/01/22 17:54:48
+##############################################################################
+
+# ce shell-script sert a savoir si le repertoire correspondant a son argument
+# $1 est modifiable ; on cherche a detecter le cas ou il existe un verrou 
+# ("lock") Windows sur ce repertoire, notamment parce qu'un programme contenu
+# dans ce repertoire serait en train de s'executer
+
+# il est appele par installator (depuis installator.tcl) et affiche
+# "END_SHELL_1" si le repertoire $1 est verrouille' et "END_SHELL_0" sinon
+
+ARCH=`"$CADP"/com/arch`
+
+case "$ARCH" in
+	win32 )
+		# sous Windows, on utilise le programme "check_lock.exe"
+		"$CADP"/src/installator/bin.win32/check_lock.exe "$1"
+		if [ $? -eq 0 ]
+		then
+			echo END_SHELL_0
+		else
+			echo END_SHELL_1
+		fi
+		;;
+	* )
+		echo END_SHELL_0
+		;;
+esac
+
+exit 0

@@ -1,0 +1,4 @@
+des (0, 3, 2)
+(0, "S !OT_BEGIN !TAIL", 1)
+(0, "S !OT_BEGIN !MIDDLE", 0)
+(1, "S !OT_END !TAIL", 0)

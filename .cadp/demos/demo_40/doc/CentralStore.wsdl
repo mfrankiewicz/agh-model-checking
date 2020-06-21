@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<definitions name="CentralStore"
+        targetNamespace="http://ourExamples.demo.com"
+        xmlns:tns="http://ourExamples.demo.com"
+        xmlns:plnk="http://schemas.xmlsoap.org/ws/2003/05/partner-link/"
+        xmlns="http://schemas.xmlsoap.org/wsdl/"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        >
+
+
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                          TYPE DEFINITION 
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->    
+    <types>  
+        <schema attributeFormDefault="qualified" 
+                elementFormDefault="qualified" 
+                targetNamespace="http://ourExamples.demo.com" 
+                xmlns="http://www.w3.org/2001/XMLSchema"
+                >
+                
+         <!-- element type for an order of a product -->
+         <!-- each order is identified by the id of the product to be requested and the 
+              number of pieces requested -->
+         <element name="ProductRequest">
+            <complexType>
+               <sequence>
+                  <element name="productId" type="xsd:string" />
+                  <element name="quantity"   type="xsd:int" />
+                </sequence>
+            </complexType>
+        </element>
+                  
+        <!-- element type for a response -->
+        <!-- the response can be true, if the product is available, or false if is not available -->
+        <element name="ProductResponse">
+            <complexType>
+               <sequence>
+                  <element name="response" type="xsd:boolean"/>
+               </sequence>
+            </complexType>
+         </element> 
+            
+        </schema>
+    </types>
+  
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                          MESSAGE TYPE DEFINITION 
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->    
+   
+     <!-- messages used for dummy instantiation -->
+     
+    <message name="CentralStoreRequestMessage">
+        <part name="DBName" type="xsd:boolean" />
+    </message>
+    
+    <message name="CentralStoreResponseMessage">
+        <part name="payload" type="xsd:boolean" />
+    </message>
+    
+     <!-- messages used for sending a request for an order and for receiving 
+         the correpsonding response -->
+         
+    <message name="ProductRequestMessage">
+        <part name="order" element="tns:ProductRequest" />
+        <part name="DBName" type="xsd:string"/>
+    </message>
+    
+    <message name="ProductResponseMessage">
+        <part name="response" element="tns:ProductResponse" />
+    </message>
+
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                          PORT TYPE DEFINITION 
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+     
+    <!-- portType implemented by the CentralStore BPEL process -->
+    
+    <portType name="CentralStore">
+        <operation name="initiateCentralStore">
+            <input message="tns:CentralStoreRequestMessage"/>
+            <output message="tns:CentralStoreResponseMessage"/>
+        </operation>
+        <operation name="requestProduct">
+            <input message="tns:ProductRequestMessage"/>
+            <output message="tns:ProductResponseMessage"/>
+        </operation>       
+     </portType>
+
+   
+
+   
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                      PARTNER LINK TYPE DEFINITION
+         
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->  
+       
+    <plnk:partnerLinkType name="CentralStore">
+        <plnk:role name="CentralStoreProvider">
+            <plnk:portType name="tns:CentralStore"/>
+        </plnk:role>
+        <plnk:role name="CentralStoreRequester">
+            <plnk:portType name="tns:CentralStore"/>
+        </plnk:role>
+    </plnk:partnerLinkType>   
+    
+   
+    
+    <plnk:partnerLinkType name="CentralStoreOrder">
+        <plnk:role name="orderProvider">
+            <plnk:portType name="tns:CentralStore"/>
+        </plnk:role>
+        <plnk:role name="orderRequester">
+            <plnk:portType name="tns:CentralStore"/>
+        </plnk:role>       
+    </plnk:partnerLinkType>   
+    
+</definitions>

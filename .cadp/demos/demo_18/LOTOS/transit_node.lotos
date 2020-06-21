@@ -1,0 +1,32 @@
+
+specification TRANSIT_NODE [CI, CO, DI, DO, cerri, crep, derri, timeout] : noexit
+
+library TYPES endlib
+
+behaviour
+
+hide erro, rq, ra, io in
+   (
+      (
+         (
+            (
+            Control [CI, cerri, erro, crep, rq, ra]
+            |[cerri, erro]|
+            ErrHandler [cerri, derri, timeout, erro, CO]
+            )
+         |[crep, rq, ra, derri]|
+            DataInPorts [DI, crep, rq, ra, derri, io]
+         )
+      |[crep, io, timeout]|
+         DataOutPorts [DO, crep, io, timeout]
+      )
+   |[DI, DO, CO]|
+   DataGenerator [DI, DO, CO]
+   )
+
+where 
+
+library CONTROL, ERRHANDLER, DATAINPORTS, DATAOUTPORTS, DATAGENERATOR endlib
+
+endspec
+

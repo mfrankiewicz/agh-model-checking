@@ -1,0 +1,30 @@
+module SCSI_B (TYPES, CONTROLLER, DISK, NO_DEVICE) is
+
+-------------------------------------------------------------------------------
+-- three disks in position 0, 2, 7 -- controller in position 1
+
+process MAIN [ARB : WIRE, CMD : NUM, REC : NUM, LAMBDA : NUM, MU : NUM] is
+   par ARB, CMD, REC in
+      CONTROLLER [ARB, CMD, REC, LAMBDA] (1 of NUM, ZERO_0127)
+   ||
+      par ARB in
+         DISK [ARB, CMD, REC, MU] (0 of NUM)
+      ||
+	 DISK [ARB, CMD, REC, MU] (2 of NUM)
+      ||
+	 NO_DEVICE [ARB] (3 of NUM)
+      ||
+	 NO_DEVICE [ARB] (4 of NUM)
+      ||
+	 NO_DEVICE [ARB] (5 of NUM)
+      ||
+	 NO_DEVICE [ARB] (6 of NUM)
+      ||
+	 DISK [ARB, CMD, REC, MU] (7 of NUM)
+      end par
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+end module

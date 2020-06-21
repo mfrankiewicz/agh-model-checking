@@ -1,0 +1,14 @@
+
+(*****************************************************************************
+ * Requirement 11
+ * For a given subscriber, once an Offhook has been performed, no signal
+ *  can be activated until onhook is performed
+ *****************************************************************************)
+
+[ true* .
+    (
+        ('S !1 !OFFH ![AB]SUBSC' . (not "S !1 !ONH")* . "S !1 !RINGS !ON") |
+        ('S !2 !OFFH ![AB]SUBSC' . (not "S !2 !ONH")* . "S !2 !RINGS !ON")
+    )
+] false
+

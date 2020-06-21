@@ -1,0 +1,40 @@
+module CONTROLLER (TYPES) is
+
+-------------------------------------------------------------------------------
+
+process CONTROLLER [ARB : WIRE, CMD : NUM, REC : NUM, LAMBDA : NUM]
+                   (NC : NUM, in var T : TABLE) is
+   var
+      PENDING : NUM,
+      N : NUM,
+      W : WIRE
+   in
+      PENDING := NC;
+      loop
+	 select
+	    ARB (?W) where (PENDING == NC) and C_PASS (W, NC)
+	 []
+	    N := any NUM where (PENDING == NC) and (N <> NC);
+	    only if T [NAT (N)] < 8 then
+	       LAMBDA (N); -- Markov delay inserted here
+	       PENDING := N
+	    end if
+	 []
+	    ARB (?W) where (PENDING <> NC) and C_LOSS (W, NC)
+	 []
+	    ARB (?W) where (PENDING <> NC) and C_WIN (W, NC);
+	    CMD (PENDING);
+	    T [NAT (PENDING)] := T [NAT (PENDING)] + 1;
+	    PENDING := NC
+	 []
+	    REC (?N) where (N <> NC);
+	    T [NAT (N)] := T [NAT (N)] - 1
+	 end select
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

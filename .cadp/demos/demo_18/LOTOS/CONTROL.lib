@@ -1,0 +1,157 @@
+
+(* ====================================================================== *)
+
+process Control [CI, cerri, erro, crep, rq, ra] : noexit :=
+
+        Controler [CI, cerri, erro, crep, rq, ra] (emptyrl, emptyset)
+		|[CI]|
+	Control_Msg_Generator [CI]
+
+endproc
+
+(* ====================================================================== *)
+
+process Control_Msg_Generator [CI] : noexit :=
+
+	Add_Port_Generator [CI]
+		|||
+	Add_Route_Generator [CI]
+		|||
+	Send_Faults_Generator [CI]
+		|||
+	Other_Command_Generator [CI]
+
+where
+
+(* ---------------------------------------------------------------------- *)
+
+process Add_Port_Generator [CI] : noexit :=
+
+ 	i ; Add_Port_Generator_0 [CI] 
+  []
+ 	i ; Add_Port_Generator_1 [CI] 
+  []
+ 	i ; Add_Port_Generator_0_1 [CI] 
+
+where
+
+(* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
+
+process Add_Port_Generator_0 [CI] : noexit :=
+  CI !Add_Data_Port !0 of PortNo ;
+        Add_Port_Generator_0 [CI]
+endproc
+
+process Add_Port_Generator_1 [CI] : noexit :=
+  CI !Add_Data_Port !1 of PortNo ;
+        Add_Port_Generator_1 [CI]
+endproc
+
+process Add_Port_Generator_0_1 [CI] : noexit :=
+  CI !Add_Data_Port !0 of PortNo ;
+        Add_Port_Generator_0_1 [CI]
+[]
+  CI !Add_Data_Port !1 of PortNo ;
+        Add_Port_Generator_0_1 [CI]
+endproc
+
+(* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ *)
+
+endproc
+
+(* ---------------------------------------------------------------------- *)
+
+process Add_Route_Generator [CI] : noexit :=
+  CI !Add_Route ?r:RouteNo !emptyset ;
+        Add_Route_Generator [CI]
+[]
+  CI !Add_Route ?r:RouteNo !add (0, emptyset) ;
+        Add_Route_Generator [CI]
+[]
+  CI !Add_Route ?r:RouteNo !add (1, emptyset) ;
+        Add_Route_Generator [CI]
+[]
+  CI !Add_Route ?r:RouteNo !add (1, add (0, emptyset)) ;
+        Add_Route_Generator [CI]
+endproc
+
+(* ---------------------------------------------------------------------- *)
+
+process Send_Faults_Generator [CI] : noexit :=
+  i ; stop
+[]
+  CI !Send_Faults ;
+	Send_Faults_Generator [CI]
+endproc
+
+(* ---------------------------------------------------------------------- *)
+
+process Other_Command_Generator [CI] : noexit :=
+  CI !Other_Command ;
+	Other_Command_Generator [CI]
+endproc
+
+(* ---------------------------------------------------------------------- *)
+
+endproc
+
+(* ====================================================================== *)
+
+process Controler [CI, erri, erro, crep, rq, ra] 
+				(rl:RouteList, ps:PortSet) : noexit :=
+
+(* Valid commands from control-port-in *) 
+
+  CI !Add_Data_Port ?n:PortNo [not (n IsIn ps)] ;
+	crep !n ; 
+	    Controler [CI, erri, erro, crep, rq, ra] (rl, add (n,ps))
+[]
+  CI !Add_Route ?r:RouteNo ?s:PortSet ; 
+	AdRoute [CI, erri, erro, crep, rq, ra] (rl, ps, r, s) 
+[]
+  CI !Send_Faults ;
+	erro ;
+	   Controler [CI, erri, erro, crep, rq, ra] (rl, ps)
+
+(* Other command from control-port-in *)
+
+[]
+  CI !Other_Command ;
+	erri ;
+	   Controler [CI, erri, erro, crep, rq, ra] (rl, ps)
+
+(* Route query from data ports *)
+
+[]
+  rq ?r:RouteNo ?e:Env
+   [(r IsIn rl) and (ps contains route (r, rl)) 
+		and not (route (r, rl) == emptyset)] ;
+	ra !route (r, rl) !r !e ;
+	   Controler [CI, erri, erro, crep, rq, ra] (rl, ps)
+
+[]
+  rq ?r:RouteNo ?e:Env 
+     [not (r IsIn rl) or not (ps contains route (r, rl)) 
+	or (route (r, rl) == emptyset)] ;
+	ra !Unknown_Route !r !e ;
+	   Controler [CI, erri, erro, crep, rq, ra] (rl, ps)
+
+where
+
+(* ---------------------------------------------------------------------- *)
+
+process  AdRoute [CI, erri, erro, crep, rq, ra]
+		(rl:RouteList, ps:PortSet, r:RouteNo, s:PortSet) : noexit :=
+
+  [r IsIn rl] ->
+	Controler [CI, erri, erro, crep, rq, ra] (update (r, s, rl), ps)
+[]
+  [not (r IsIn rl)] ->
+	Controler [CI, erri, erro, crep, rq, ra] (insert (r, s, rl), ps)
+endproc
+
+(* ---------------------------------------------------------------------- *)
+
+endproc
+
+(* ====================================================================== *)

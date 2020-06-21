@@ -1,0 +1,8 @@
+
+(*****************************************************************************
+ * Requirement 3
+ * It should always be possible for every subscriber to dial a number.
+ *****************************************************************************)
+
+[ true* ] (< "S !1 !DIAL !2" > true and < "S !2 !DIAL !1" > true)
+

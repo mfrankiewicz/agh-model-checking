@@ -1,0 +1,413 @@
+
+          CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+
+                      MANUAL INSTALLATION PROCEDURE
+
+******************************************************************************
+ 
+        If you are planning to use CADP on a PC running Windows, you should
+read first the instructions for setting up your PC in order to run CADP.
+These instructions are given in file $CADP/INSTALLATION_WINDOWS. They are 
+also available on the Web from: 
+	http://cadp.inria.fr/win32.html 
+
+        If you are planning to use CADP on an Apple computer running macOS,
+you should read first the instructions for setting up your computer in order
+to run CADP. These instructions are given in file $CADP/INSTALLATION_MACOS.
+They are also available on the Web from: 
+	http://cadp.inria.fr/macOS.html 
+
+******************************************************************************
+
+	The present document describes an alternative to the automatic 
+installation procedure based on Installator, the CADP Installation Assistant,
+and defined in file $CADP/INSTALLATION_1. 
+
+	Normally, if the automatic installation procedure succeeds, you
+can safely avoid reading the present document. 
+
+	However, if the automatic installation procedure fails or is not 
+applicable (for instance, because you do not have a Web browser installed 
+on your machine, or because your system administrator has set up a firewall
+that prevents you from performing standard "ftp" downloads), then the manual
+installation procedure described in the present document can be useful to you.
+
+******************************************************************************
+
+	This document is intended to persons in charge of installing or
+upgrading the CADP software.
+
+	Please note that the whole CADP software is entirely contained in a
+single directory. There is no constraint on the location of this directory:
+you can install it any place on any filesystem (provided that there is
+sufficient disk space).
+
+	On Windows, however, it is highly recommended to install CADP in
+C:\cadp, assuming that Windows and Cygwin are also installed on drive C. All
+the CADP tools should be executed in working directories located on this drive.
+
+	On a local area network, it is advised to have only a single installed
+copy of the CADP software, which is exported and made visible to other machines
+by means of mounted filesystems (e.g., using NFS). This functioning mode is
+permitted by the software licensing scheme used by the CADP software.
+
+	On Unix-based systems (namely, Solaris, Linux, and macOS), it is not
+necessary to be an a super-user ("root") to install or upgrade the CADP soft-
+ware. We even recommend that you install it as an ordinary user (not "root").
+However, you may need super-user privilege to install additional software
+(e.g., Gnuplot) suitable for using all functionalities of CADP.
+
+	On recent Windows systems for which the UAC (User Account Control)
+is activated (namely, all versions of Windows more recent than Windows XP),
+you will need administrator privileges to install both the Cygwin software
+and the CADP software. In particular, you must install CADP from a Cygwin
+shell window launched with administrative privileges (right-click on the
+Cygwin icon and select "Run as Administrator").
+
+	In any case, if a copy of CADP already exists on your system, you will
+need to be the owner of the directory containing CADP (including all its files
+and sub-directories) to perform the upgrade.
+
+	To perform a manual installation of CADP, it is mandatory that the 
+shell variable CADP refers to the directory chosen for installation, or to 
+the directory containing the existing version of CADP (which will be replaced
+by the new one).
+
+	On Unix-based systems, this can be done by a Bourne shell command:
+		CADP=/opt/cadp ; export CADP
+or by a C-shell command:
+		setenv CADP /opt/cadp
+
+	On Windows systems, this can be done by the following command:
+		CADP="c:/cadp" ; export CADP
+The following remarks apply to the installation of CADP on Windows:
+
+	- As mentioned above, it is highly recommended to install CADP in
+C:\cadp and to set $CADP to "c:/cadp". Once the installation is finished,
+variable $CADP will be given another value ("/cadp") as mentioned in the
+$CADP/INSTALLATION_2 file.
+
+	- The CADP software uses symbolic links, but is usually installed
+on a file system that does not support symbolic links natively (which is
+the case of Microsoft's FAT and NTFS file systems). This issue is dealt
+with when the installation of CADP is done by applying the present 
+instructions carefully. Notice that it is not possible to install a
+non-Windows version of CADP (e.g., a Linux version) on a Windows file
+system (e.g., FAT or NTFS) that does not support symbolic links.
+
+	Also, your $PATH variable should be properly configured so as to
+give you access to certain system commands (such as "mkdir", "mv", "chown",
+etc.). Before installing CADP, please verify the following points (see
+file $CADP/INSTALLATION_2 for a description of supported architectures /
+operating systems):
+
+	- If your machine/architecture is "iX86", "x64", "mac86", or "mac64":
+	  Your $PATH variable should include directory "/bin" and "/usr/bin"
+
+	- If your machine/architecture is "sol86", "sol64", or "win32":
+	  Your $PATH variable should include directory "/bin"
+
+	First, you have to download the most recent version of CADP using the 
+File Transfer Protocol of the Internet. 
+
+-------------------------------------------------------------------------------
+
+1) Make sure that you are in possession of the password required for
+   downloading the latest version of the CADP. This password should have
+   been sent to you by the CADP development team. If you do not have this
+   password, please enquire by sending an e-mail to "cadp@inria.fr".
+
+   The password is the same for the automatic installation procedure (using
+   Installator) and the manual installation procedure. In the sequel, we will
+   denote this password as the generic character string "XXXXXXXXXX".
+
+   The FTP distribution of the CADP software consists of several 
+   (tar-compressed) files. 
+
+	a) There is a "base" file, which contains all non-binary files 
+	   (e.g., text files and executable shell-scripts) of the CADP 
+	   distribution. By convention, the name of this file has the form: 
+		CADP_base_XXXXXXXXXX.tar.Z
+
+	b) Additionally, for each version of machine architecture / 
+	   operating system that is currently supported, there is also 
+	   a specific file, which contains all binary programs for this 
+	   version. By convention, the names of these files have the form: 
+		CADP_iX86_XXXXXXXXXX.tar.Z
+		CADP_x64_XXXXXXXXXX.tar.Z
+		CADP_sol86_XXXXXXXXXX.tar.Z
+		CADP_sol64_XXXXXXXXXX.tar.Z
+		CADP_win32_XXXXXXXXXX.tar.Z
+		CADP_mac86_XXXXXXXXXX.tar.Z
+		CADP_mac64_XXXXXXXXXX.tar.Z
+	   etc.
+
+   To install the CADP software, you must download the "base" file and the 
+   architecture specific files (e.g., "iX86", "x64", "sol86", "win32",
+   etc.) corresponding to the machines on which you plan to use CADP. 
+
+   In all cases, the generic string "XXXXXXXXXX" should be replaced with the
+   actual password. For instance, if the password is equal to "97a_5b93ae32", 
+   then the actual names of the FTP files will be:
+		CADP_base_97a_5b93ae32.tar.Z
+		CADP_iX86_97a_5b93ae32.tar.Z
+		etc.		
+
+-------------------------------------------------------------------------------
+
+2) Set the environment variable CADP as explained above. If you have already
+   an installed version of CADP, save it:
+
+		mv "$CADP" "$CADP".old
+
+-------------------------------------------------------------------------------
+
+3) Then, create the installation directory:
+
+		mkdir "$CADP"
+		cd "$CADP"
+
+-------------------------------------------------------------------------------
+
+4) Then, download the various files of the CADP package. This can be done
+   using either the 'wget' command (see Section 4a below), or the FTP client
+   built in your Web browser (see Section 4b) or the standard FTP client
+   provided by the operating system (see Section 4c below).
+
+-------------------------------------------------------------------------------
+
+4a) How to download using the 'wget' command:
+
+    Type the following commands:
+	wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_base_XXXXXXXXXX.tar.Z
+	wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_iX86_XXXXXXXXXX.tar.Z
+	wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_x64_XXXXXXXXXX.tar.Z
+	wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_sol86_XXXXXXXXXX.tar.Z
+	wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_sol64_XXXXXXXXXX.tar.Z
+	wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_win32_XXXXXXXXXX.tar.Z
+	wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_mac86_XXXXXXXXXX.tar.Z
+	wget ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_mac64_XXXXXXXXXX.tar.Z
+
+-------------------------------------------------------------------------------
+
+4b) How to download using the FTP client built in the Web browser:
+
+    Use your Web browser to download the following URLs:
+	ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_base_XXXXXXXXXX.tar.Z
+	ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_iX86_XXXXXXXXXX.tar.Z
+	ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_x64_XXXXXXXXXX.tar.Z
+	ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_sol86_XXXXXXXXXX.tar.Z
+	ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_sol64_XXXXXXXXXX.tar.Z
+	ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_win32_XXXXXXXXXX.tar.Z
+	ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_mac86_XXXXXXXXXX.tar.Z
+	ftp://ftp.inrialpes.fr/pub/vasy/cadp/CADP_mac64_XXXXXXXXXX.tar.Z
+
+-------------------------------------------------------------------------------
+
+4c) How to download using the standard FTP client:
+
+   On many systems, this client is named 'ftp', but on macOS and Windows/Cygwin
+   it is named 'ncftp'.
+
+   Start a FTP session to get the latest version of the tools. You have to
+   type in the commands below (only those written after the shell-prompt '$'
+   or the ftp prompts 'ftp>' and 'Password:'). 
+
+    $ ftp -n ftp.inrialpes.fr
+    Connected to ftp-serv.inrialpes.fr.
+    220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+    220-...
+
+    ftp> binary
+    200 TYPE is now 8-bit binary
+
+    ftp> user anonymous
+    230 Anonymous user logged in
+
+    ftp> cd pub/vasy/cadp
+    250 OK. Current directory is /pub/vasy/cadp
+
+    Note: The contents of 'pub/vasy/cadp' directory cannot be queried 
+	  (for instance, the 'ls' command gives no information). 
+	  However, downloading files works, provided that the names of 
+	  the files are known.
+
+    ftp> get CADP_base_XXXXXXXXXX.tar.Z
+    200 PORT command successful
+    150-Connecting to port ...
+    150 ... kbytes to download
+    226-File successfully transferred
+    local: CADP_base_XXXXXXXXXX.tar.Z remote: CADP_base_XXXXXXXXXX.tar.Z
+    ... bytes received in ... seconds (... Kbytes/s)
+
+    ftp> get CADP_iX86_XXXXXXXXXX.tar.Z
+    200 PORT command successful
+    150-Connecting to port ...
+    150 ... kbytes to download
+    226-File successfully transferred
+    local: CADP_iX86_XXXXXXXXXX.tar.Z remote: CADP_iX86_XXXXXXXXXX.tar.Z
+    ... bytes received in ... seconds (... Kbytes/s)
+
+    ftp> get CADP_x64_XXXXXXXXXX.tar.Z
+    200 PORT command successful
+    150-Connecting to port ...
+    150 ... kbytes to download
+    226-File successfully transferred
+    local: CADP_x64_XXXXXXXXXX.tar.Z remote: CADP_x64_XXXXXXXXXX.tar.Z
+    ... bytes received in ... seconds (... Kbytes/s)
+
+    ftp> get CADP_sol86_XXXXXXXXXX.tar.Z
+    200 PORT command successful
+    150-Connecting to port ...
+    150 ... kbytes to download
+    226-File successfully transferred
+    local: CADP_sol86_XXXXXXXXXX.tar.Z remote: CADP_sol86_XXXXXXXXXX.tar.Z
+    ... bytes received in ... seconds (... Kbytes/s)
+
+    ftp> get CADP_sol64_XXXXXXXXXX.tar.Z
+    200 PORT command successful
+    150-Connecting to port ...
+    150 ... kbytes to download
+    226-File successfully transferred
+    local: CADP_sol64_XXXXXXXXXX.tar.Z remote: CADP_sol64_XXXXXXXXXX.tar.Z
+    ... bytes received in ... seconds (... Kbytes/s)
+
+    ftp> get CADP_win32_XXXXXXXXXX.tar.Z
+    200 PORT command successful
+    150-Connecting to port ...
+    150 ... kbytes to download
+    226-File successfully transferred
+    local: CADP_win32_XXXXXXXXXX.tar.Z remote: CADP_win32_XXXXXXXXXX.tar.Z
+    ... bytes received in ... seconds (... Kbytes/s)
+
+    ftp> get CADP_mac86_XXXXXXXXXX.tar.Z
+    200 PORT command successful
+    150-Connecting to port ...
+    150 ... kbytes to download
+    226-File successfully transferred
+    local: CADP_mac86_XXXXXXXXXX.tar.Z remote: CADP_mac86_XXXXXXXXXX.tar.Z
+    ... bytes received in ... seconds (... Kbytes/s)
+
+    ftp> get CADP_mac64_XXXXXXXXXX.tar.Z
+    200 PORT command successful
+    150-Connecting to port ...
+    150 ... kbytes to download
+    226-File successfully transferred
+    local: CADP_mac64_XXXXXXXXXX.tar.Z remote: CADP_mac64_XXXXXXXXXX.tar.Z
+    ... bytes received in ... seconds (... Kbytes/s)
+
+    ftp> quit
+    221 Goodbye.
+
+-------------------------------------------------------------------------------
+
+5) Then, uncompress and extract the contents of the downloaded files.
+
+   Note 1: If the "uncompress" is not available on your machine, replace
+   "uncompress" with either "gunzip" or "gzip -d".
+
+		uncompress -c CADP_base_XXXXXXXXXX.tar.Z | tar -xvpf -
+		rm -f CADP_base_XXXXXXXXXX.tar.Z 
+
+		uncompress -c CADP_iX86_XXXXXXXXXX.tar.Z | tar -xvpf -
+		rm -f CADP_iX86_XXXXXXXXXX.tar.Z 
+
+		uncompress -c CADP_x64_XXXXXXXXXX.tar.Z | tar -xvpf -
+		rm -f CADP_x64_XXXXXXXXXX.tar.Z 
+
+		uncompress -c CADP_sol86_XXXXXXXXXX.tar.Z | tar -xvpf -
+		rm -f CADP_sol86_XXXXXXXXXX.tar.Z 
+
+		uncompress -c CADP_sol64_XXXXXXXXXX.tar.Z | tar -xvpf -
+		rm -f CADP_sol64_XXXXXXXXXX.tar.Z 
+
+		uncompress -c CADP_win32_XXXXXXXXXX.tar.Z | tar -xvpf -
+		rm -f CADP_win32_XXXXXXXXXX.tar.Z 
+
+		uncompress -c CADP_mac86_XXXXXXXXXX.tar.Z | tar -xvpf -
+		rm -f CADP_mac86_XXXXXXXXXX.tar.Z 
+
+		uncompress -c CADP_mac64_XXXXXXXXXX.tar.Z | tar -xvpf -
+		rm -f CADP_mac64_XXXXXXXXXX.tar.Z 
+
+-------------------------------------------------------------------------------
+
+6) Set the owner, group and permission of the directory:
+
+		chmod -R og-w "$CADP"
+		chmod -R a+rX "$CADP"
+
+   Note: this is an extra precaution, since the permissions of the
+	 files are already supposed to be correct.
+
+   Then, if you are installing CADP on Windows, run the following command:
+
+		sh "$CADP"/src/com/cadp_adjust -verbose
+
+   which takes care of symbolic links and CR/LF conversions in text files.
+
+-------------------------------------------------------------------------------
+
+7) You now have to prepare the license file for your copy of CADP. Before 
+   going on, please read the file $CADP/INSTALLATION_3, which describes
+   the principles of the CADP software licensing scheme and explains how
+   it has to be used. 
+
+   In the sequel, we assume that you have applied steps a) to d) described
+   in file $CADP/INSTALLATION_3.
+
+   e) Then, execute the following command:
+
+      "$CADP"/com/rfl jupiter mars neptune venus > /tmp/CADP_LICENSE
+
+   This command will prepare a prototype license file, containing all 
+   information required by the protection mechanism, and mail it to 
+   "cadp@inria.fr". 
+
+   Note: If you already have an old license file (e.g., "$CADP".old/LICENSE)
+   you can reuse the list of machines listed in this file by typing the 
+   following command: 
+
+      "$CADP"/com/rfl -f "$CADP".old/LICENSE > /tmp/CADP_LICENSE
+
+   This avoids the burden of listing the machines one by one. You can even add
+   new machines (e.g., "jupiter") to those already listed in the old license
+   file:
+
+      "$CADP"/com/rfl -f "$CADP".old/LICENSE jupiter > /tmp/CADP_LICENSE
+
+  f) Then, edit the resulting file /tmp/CADP_LICENSE and fill-in properly
+     the fields named "Institution", "Official", and "E-mail". For each of
+     these fields, you must replace the empty lines "XXXXXXXXXXXXXXXXXX..."
+     with appropriate information.
+
+  g) Then, e-mail this file /tmp/CADP_LICENSE as an attachment to 
+     cadp@inria.fr. When doing this, please, follow the indications
+     available from http://cadp.inria.fr/installator/rfl.html
+  
+  h) In reply, you will receive a valid license file by e-mail. Install this
+     file in $CADP/LICENSE according to the explanations given in the e-mail
+     message. Beware not to alter the information contained in the license
+     file, which may prevent the tools from working properly. 
+
+  i) If you do not receive a valid license file from us within two days, then
+     it is likely that the message has not been sent properly or that it was
+     blocked by spam filters. You should retry step g) above and, if you still
+     get no answer, try to contact us by other means.
+
+-------------------------------------------------------------------------------
+
+8) Once the new installation is complete, you can remove the old version
+   (unless you find more secure to keep it for a few weeks):
+
+		rm -rf "$CADP".old
+
+-------------------------------------------------------------------------------
+
+9) Please, remember that all CADP users should customize their startup
+   files as explained in the $CADP/INSTALLATION_2 file.
+
+-------------------------------------------------------------------------------
+Written by Hubert Garavel. Last updated on 2019/09/13 11:44:39
+-------------------------------------------------------------------------------
+

@@ -1,0 +1,158 @@
+% DEFAULT_XTL_LIBRARIES="actl.xtl, ltac.xtl, macros.xtl"
+
+-------------------------------------------------------------------------------
+-- Definition of six correctness properties
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_1 (SPEC)
+    "All the REQUEST actions should have strictly positive amounts"
+is
+    "$SPEC.bcg" |= with xtl
+	PRINT_BOOLEAN (
+	    not (exists L : label in
+	         L -> [ REQUEST _ _ ?amt : natural where amt <= 0 ]
+	    end_exists)
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_2 (SPEC)
+    "Between two subsequent REQUEST actions with the same reference ref"
+    "(0 <= ref <= M_r), a CANCEL action with parameter ref shall appear"
+is
+    "$SPEC.bcg" |= with xtl
+	PRINT_FORMULA (
+	    forall ref : natural among { 0 ... M_r } in
+		Box (isRequest (ref),
+		     AG_A (not (isCancel (ref)), Box (isRequest (ref), false)
+	             ))
+	    end_forall
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_3 (SPEC)
+    "A cancel of a reference 0<= ref <= M_r can appear only if a request of"
+    "reference ref has been done"
+is
+    "$SPEC.bcg" |= with xtl
+	PRINT_FORMULA (
+	    INIT implies forall ref : natural among { 0 ... M_r } in
+		 AG_A (not (isRequest (ref)), Box (isCancel (ref), false)
+	              )
+	    end_forall
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_4 (SPEC)
+    "An order request is eventually invoiced if not cancelled (this property"
+    "may be checked only on the NPOD scenarios)"
+is 
+    "$SPEC.bcg" |= with xtl
+        PRINT_FORMULA (
+            INIT implies forall ref : natural among { 0 ... M_r } in
+                Box (isRequest (ref),
+                        FAIR (not (isCancel (ref)), isInvoice (ref))
+                )
+            end_forall
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_5 (SPEC)
+    "The protocol should be deadlock free"
+is
+    "$SPEC.bcg" |= with xtl
+	PRINT_FORMULA (
+	    not (DEADLOCK)
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_6 (SPEC)
+    "Livelock (tau-circuit) freedom"
+is
+    "$SPEC.bcg" |= with xtl
+	PRINT_FORMULA (
+	    not (LIVELOCK)
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+-- Verification of the correctness properties on different scenarios
+-------------------------------------------------------------------------------
+
+% for d_p in d p
+% do
+   % for M_p in 0    # or: Mp in 0 1 (if one wants to attack a larger problem)
+   % do
+      % for M_r in 1 2
+      % do
+         % for M_a in 1 2
+         % do
+
+            % N="p${M_p}-r${M_r}-a${M_a}"
+
+            "inv2${d_p}-${N}.bcg" = strong reduction of 
+               generation of "inv2${d_p}-${N}.lot";
+
+	    check XTL_PROPERTY_1 ("inv2${d_p}-${N}");
+	    check XTL_PROPERTY_2 ("inv2${d_p}-${N}");
+	    check XTL_PROPERTY_3 ("inv2${d_p}-${N}");
+            (* XTL_PROPERTY_4 is not checked on this scenario *)
+	    check XTL_PROPERTY_5 ("inv2${d_p}-${N}");
+
+            % if test $d_p = p
+            % then
+
+               "inv2p_new-${N}.bcg" = strong reduction of
+                  generation of "inv2p_new-${N}.lot";
+
+               check XTL_PROPERTY_1 ("inv2p_new-${N}");
+               check XTL_PROPERTY_2 ("inv2p_new-${N}");
+               check XTL_PROPERTY_3 ("inv2p_new-${N}");
+               check XTL_PROPERTY_4 ("inv2p_new-${N}");
+               check XTL_PROPERTY_5 ("inv2p_new-${N}");
+
+               % if test $M_p = 0
+               % then
+
+                  % echo
+                  % echo "Checking safety equivalence of the initial version"
+                  % echo "--------------------------------------------------"
+
+                  "${N}_diag1.seq" = safety comparison
+                     "inv2d-${N}.bcg" == "inv2p-${N}.bcg";
+
+                  "${N}_diag2.seq" = safety comparison
+                     "inv2d-${N}.bcg" <= "inv2p-${N}.bcg";
+
+                  % echo
+                  % echo "Checking safety equivalence of the modified version"
+                  % echo "---------------------------------------------------"
+
+                  "${N}_diag3.seq" = safety comparison
+                     strong reduction of generation of "inv2d_safety-${N}.lot"
+                     == "inv2p-${N}.bcg";
+
+               % fi
+            % fi
+         % done
+      % done
+   % done
+% done
+
+-------------------------------------------------------------------------------
+

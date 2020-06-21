@@ -1,0 +1,855 @@
+
+(* 
+ * Four SCSI numbers (0, 1, 2, 7) are considered
+ * Three scenarios (A, B, C) will be considered
+ *  - scenario A: three disks in position 0, 1, 2 (controller in position 7)
+ *  - scenario B: three disks in position 0, 2, 7 (controller in position 1)
+ *  - scenario C: three disks in position 1, 2, 7 (controller in position 0)
+ *)
+
+% if test $# = 0
+% then
+%    SCENARIO_LIST="A B C"
+% else
+%    SCENARIO_LIST=$1
+% fi
+
+% for SCENARIO in $SCENARIO_LIST
+% do
+%    case $SCENARIO in
+%       A)
+%          # Specific constants and predicates for the SCSI configuration
+%          # with three disks in position 0, 1, 2 -- controller in position 7
+%          DISK_C=7	# SCSI number of the controller
+%          DISK_L=0	# SCSI number of the lowest-priority disk
+%          DISK_M=1	# SCSI number of the medium-priority disk
+%          DISK_H=2	# SCSI number of the highest-priority disk
+%          # Command sent to a disk with lower priority than the highest device
+%          CMD_lt_NMAX='(CMD_num ("0") or CMD_num ("1"))'
+%          # Command sent to a disk with priority lower than the controller
+%          CMD_lt_NC='(CMD_num ("0") or CMD_num ("1") or CMD_num ("2"))'
+%          # Command sent to a disk with priority higher than the controller
+%          CMD_gt_NC='false'
+%          # Performance evaluation data
+%          BUS_SPEED_LIST="400 4000 40000"
+%          ;;
+%       B)
+%          # Specific constants and predicates for the SCSI configuration
+%          # with three disks in position 0, 2, 7 -- controller in position 1
+%          DISK_C=1	# SCSI number of the controller
+%          DISK_L=0	# SCSI number of the lowest-priority disk
+%          DISK_M=2	# SCSI number of the medium-priority disk
+%          DISK_H=7	# SCSI number of the highest-priority disk
+%          # Command sent to a disk with lower priority than the highest device
+%          CMD_lt_NMAX='(CMD_num ("0") or CMD_num ("2"))'
+%          # Command sent to a disk with priority lower than the controller
+%          CMD_lt_NC='CMD_num ("0")'
+%          # Command sent to a disk with priority higher than the controller
+%          CMD_gt_NC='(CMD_num ("2") or CMD_num ("7"))'
+%          # Performance evaluation data
+%          BUS_SPEED_LIST=400
+%          ;;
+%       C)
+%          # Specific constants and predicates for the SCSI configuration
+%          # with three disks in position 1, 2, 7 -- controller in position 0
+%          DISK_C=0	# SCSI number of the controller
+%          DISK_L=1	# SCSI number of the lowest-priority disk
+%          DISK_M=2	# SCSI number of the medium-priority disk
+%          DISK_H=7	# SCSI number of the highest-priority disk
+%          # Command sent to a disk with lower priority than the highest device
+%          CMD_lt_NMAX='(CMD_num ("1") or CMD_num ("2"))'
+%          # Command sent to a disk with priority lower than the controller
+%          CMD_lt_NC='false'
+%          # Command sent to a disk with priority higher than the controller
+%          CMD_gt_NC='(CMD_num ("1") or CMD_num ("2") or CMD_num ("7"))'
+%          # Performance evaluation data
+%          BUS_SPEED_LIST=400
+%          ;;
+%    esac
+
+   ----------------------------------------------------------------------------
+   -- functional verification part
+   ----------------------------------------------------------------------------
+
+   % echo ""
+   % echo "Functional verification for scenario $SCENARIO"
+
+   (*
+    * Dataless formulas are checked on "model_1.bcg", whereas value-passing
+    * formulas are checked on a version in which the labels have been renamed
+    * for convenience, named "model_1_renamed.bcg"
+    *)
+   "model_1.bcg" = generation of  "SCSI_$SCENARIO.lnt";
+
+   "model_1_renamed.bcg" = total rename
+	"ARB !WIRE (\([^,]*\), \([^,]*\), \([^,]*\), \([^,]*\), \([^,]*\), \([^,]*\), \([^,]*\), \([^,]*\))" -> "ARB !\1 !\2 !\3 !\4 !\5 !\6 !\7 !\8"
+		in "model_1.bcg";
+
+   % DEFAULT_MCL_LIBRARIES="standard.mcl"
+   % DEFAULT_EVALUATOR3_LIBRARIES="macros_v3.mcl"
+   % DEFAULT_EVALUATOR4_LIBRARIES="macros_v4.mcl"
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_01
+      "The controller can neither send commands to itself, nor receive"
+      "reconnections from itself."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          NEVER (true* . CMD_num ("$DISK_C") or REC_num ("$DISK_C"));
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	  NEVER (true* . CMD_num ($DISK_C) or REC_num ($DISK_C));
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_02
+      "After every command or reconnection sent on the bus, no subsequent"
+      "command or reconnection can be sent before some device gets access"
+      "to the bus."
+   is
+      "model_1.bcg" |= with evaluator3
+	  NEVER (
+              true* . (CMD_any or REC_any) .
+              (not WIN_any)* . (CMD_any or REC_any)
+          );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_03
+      "After the controller sends a command to disk j, it cannot receive"
+      "the reconnection of a disk i < j unless disk j does not require"
+      "access to the bus."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          NEVER (
+              true* .
+              (
+                  (CMD_num ("1") . (not REC_num ("1"))* . ASK_1 .
+                  (not REC_num ("1"))* . REC_num ("0"))
+              |
+                  (CMD_num ("2") . (not REC_num ("2"))* . ASK_2 .
+                  (not REC_num ("2"))* . REC_0_i ('1'))
+              |
+                  (CMD_num ("3") . (not REC_num ("3"))* . ASK_3 .
+                  (not REC_num ("3"))* . REC_0_i ('2'))
+              (*
+              | 
+                  (CMD_num ("4") . (not REC_num ("4"))* . ASK_4 .
+                  (not REC_num ("4"))* . REC_0_i ('3'))
+              |
+                  (CMD_num ("5") . (not REC_num ("5"))* . ASK_5 .
+                  (not REC_num ("5"))* . REC_0_i ('4'))
+              |
+                  (CMD_num ("6") . (not REC_num ("6"))* . ASK_6 .
+                  (not REC_num ("6"))* . REC_0_i ('5'))
+              *)
+              | 
+                  (CMD_num ("7") . (not REC_num ("7"))* . ASK_7 .
+                  (not REC_num ("7"))* . REC_0_i ('6'))
+              )
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 [ true* ]
+	     forall j:nat among { 0 ... 7 } .
+	 	NEVER (
+	 	    CMD_num (j) . (not REC_num (j))* .
+	 	    ASK (j) . (not REC_num (j))* .
+	 	    { REC ?i:nat where i < j }
+	 	);
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_04
+      "Every command sent on the bus must be preceded by an arbitration"
+      "won by the controller."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          NEVER ((nil | true*) . CMD_any . (not WIN_${DISK_C})* . CMD_any);
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	  NEVER ((true* . CMD_any) ? . (not WIN ($DISK_C))* . CMD_any);
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_05
+      "Every reconnection sent by a disk on the bus must be preceded by an"
+      "arbitration won by that disk."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          NEVER (
+          (nil | (true* . REC_any)) .
+              (
+                  ((not WIN_0)* . REC_num ("0")) |
+                  ((not WIN_1)* . REC_num ("1")) |
+                  ((not WIN_2)* . REC_num ("2")) |
+                  (*
+                  ((not WIN_3)* . REC_num ("3")) |
+                  ((not WIN_4)* . REC_num ("4")) |
+                  ((not WIN_5)* . REC_num ("5")) |
+                  ((not WIN_6)* . REC_num ("6")) |
+                  *)
+                  ((not WIN_7)* . REC_num ("7"))
+              )
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 [ (true* . REC_any) ? ]
+	     forall i:nat among { 0 ... 7 } .
+	 	NEVER ((not WIN (i))* . REC_num (i));
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_06
+      "Two arbitrations without any command or reconnection in between may"
+      "occur only if no device required access to the bus at the first"
+      "arbitration."
+   is
+      "model_1.bcg" |= with evaluator3
+	 NEVER (true* . ASK_any . (not (CMD_any or REC_any))* . WIN_any);
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_07
+      "Between a reconnection sent by a disk and the next command received by"
+      "the disk (without any other reconnection sent by the disk meanwhile),"
+      "there cannot be any arbitration won by the disk."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          NEVER (
+              true* .
+              (
+                  (REC_num ("0") . (not (CMD_num ("0") or REC_num ("0")))* .
+                   WIN_0 . (not (CMD_num ("0") or REC_num ("0")))* .
+                   CMD_num ("0")) |
+                  (REC_num ("1") . (not (CMD_num ("1") or REC_num ("1")))* .
+                   WIN_1 . (not (CMD_num ("1") or REC_num ("1")))* .
+                   CMD_num ("1")) |
+                  (REC_num ("2") . (not (CMD_num ("2") or REC_num ("2")))* .
+                   WIN_2 . (not (CMD_num ("2") or REC_num ("2")))* .
+                   CMD_num ("2")) |
+              (*
+                  (REC_num ("3") . (not (CMD_num ("3") or REC_num ("3")))* .
+                   WIN_3 . (not (CMD_num ("3") or REC_num ("3")))* .
+                   CMD_num ("3")) |
+                  (REC_num ("4") . (not (CMD_num ("4") or REC_num ("4")))* .
+                   WIN_4 . (not (CMD_num ("4") or REC_num ("4")))* .
+                   CMD_num ("4")) |
+                  (REC_num ("5") . (not (CMD_num ("5") or REC_num ("5")))* .
+                   WIN_5 . (not (CMD_num ("5") or REC_num ("5")))* .
+                   CMD_num ("5")) |
+                  (REC_num ("6") . (not (CMD_num ("6") or REC_num ("6")))* .
+                   WIN_6 . (not (CMD_num ("6") or REC_num ("6")))* .
+                   CMD_num ("6")) |
+              *)
+                  (REC_num ("7") . (not (CMD_num ("7") or REC_num ("7")))* .
+                   WIN_7 . (not (CMD_num ("7") or REC_num ("7")))* .
+                   CMD_num ("7")) 
+                )
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 NEVER (
+	     true* .
+	     { REC ?i:nat } .
+	     (not (CMD_num (i) or REC_num (i)))* .
+	     WIN (i) .
+	     (not (CMD_num (i) or REC_num (i)))* .
+	     CMD_num (i)
+	 );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_08
+      "The difference between the number of arbitrations won by a disk and the"
+      "number of reconnections sent by the disk is always between 0 and 1."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          macro WIN_REC_between_0_1 (WIN_i, REC_i) =
+              nu WIN_REC_0 . (
+                  [ WIN_i ]
+                      nu WIN_REC_1 . (
+                          [ WIN_i ] false
+                          and
+                          [ REC_i ] WIN_REC_0
+                          and
+                          [ not ((WIN_i) or (REC_i)) ] WIN_REC_1
+                      )
+                  and
+                  [ REC_i ] false
+                  and
+                  [ not ((WIN_i) or (REC_i)) ] WIN_REC_0
+              )
+          end_macro
+          WIN_REC_between_0_1 (WIN_0 and not WIN_${DISK_C}, REC_num ("0")) and
+          WIN_REC_between_0_1 (WIN_1 and not WIN_${DISK_C}, REC_num ("1")) and
+          WIN_REC_between_0_1 (WIN_2 and not WIN_${DISK_C}, REC_num ("2")) and
+          (*
+          WIN_REC_between_0_1 (WIN_3 and not WIN_${DISK_C}, REC_num ("3")) and
+          WIN_REC_between_0_1 (WIN_4 and not WIN_${DISK_C}, REC_num ("4")) and
+          WIN_REC_between_0_1 (WIN_5 and not WIN_${DISK_C}, REC_num ("5")) and
+          WIN_REC_between_0_1 (WIN_6 and not WIN_${DISK_C}, REC_num ("6")) and
+          *)
+          WIN_REC_between_0_1 (WIN_7 and not WIN_${DISK_C}, REC_num ("7"));
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 forall i:nat among { 0 ... 7 } . (
+	     (i <> $DISK_C) implies
+	     nu WIN_REC (c:nat := 0) . (
+	 	[ WIN (i) ] ((c < 1) and WIN_REC (c + 1))
+	 	and
+	 	[ REC_num (i) ] ((c > 0) and WIN_REC (c - 1))
+	 	and
+	 	[ not (WIN (i) or REC_num (i)) ] WIN_REC (c)
+	     )
+	 );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_09
+      "The difference between the number of arbitrations won by the controller"
+      "and the number of commands sent to the disks is between 0 and 1."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          nu WIN_CMD_0 . (
+              [ WIN_${DISK_C} ]
+                  nu WIN_CMD_1 . (
+                      [ WIN_${DISK_C} ] false
+                      and
+                      [ CMD_any ] WIN_CMD_0
+                      and
+                      [ not (WIN_${DISK_C} or CMD_any) ] WIN_CMD_1
+                  )
+              and
+              [ CMD_any ] false
+              and
+              [ not (WIN_${DISK_C} or CMD_any) ] WIN_CMD_0
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 nu WIN_CMD (c:nat := 0) . (
+	     [ WIN ($DISK_C) ] ((c < 1) and WIN_CMD (c + 1))
+	     and
+	     [ CMD_any ]  ((c > 0) and WIN_CMD (c - 1))
+	     and
+	     [ not (WIN ($DISK_C) or CMD_any) ] WIN_CMD (c)
+	 );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property SAFETY_10
+      "The difference between the number of commands received by a disk and"
+      "the number of reconnections sent by the disk is between 0 and 8 (the"
+      "size of the disk buffer)."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          macro CMD_REC_between_0_8 (CMD_i, REC_i) =
+              nu CMD_REC_0 . (
+                  [ CMD_i ] nu CMD_REC_1 . (
+                      [ CMD_i ] nu CMD_REC_2 . (
+                          [ CMD_i ] nu CMD_REC_3 . (
+                              [ CMD_i ] nu CMD_REC_4 . (
+                                  [ CMD_i ] nu CMD_REC_5 . (
+                                      [ CMD_i ] nu CMD_REC_6 . (
+                                          [ CMD_i ] nu CMD_REC_7 . (
+                                              [ CMD_i ] nu CMD_REC_8 . (
+                                                  [ CMD_i ] false
+                                                  and
+                                                  [ REC_i ] CMD_REC_7
+                                                  and
+                                                  [ not ((CMD_i) or (REC_i)) ]
+                                                      CMD_REC_8
+                                              )
+                                              and
+                                              [ REC_i ] CMD_REC_6
+                                              and
+                                              [ not ((CMD_i) or (REC_i)) ]
+                                                  CMD_REC_7
+                                          )
+                                          and
+                                          [ REC_i ] CMD_REC_5
+                                          and
+                                          [ not ((CMD_i) or (REC_i)) ] CMD_REC_6
+                                      )
+                                      and
+                                      [ REC_i ] CMD_REC_4
+                                      and
+                                      [ not ((CMD_i) or (REC_i)) ] CMD_REC_5
+                                  )
+                                  and
+                                  [ REC_i ] CMD_REC_3
+                                  and
+                                  [ not ((CMD_i) or (REC_i)) ] CMD_REC_4
+                              )
+                              and
+                              [ REC_i ] CMD_REC_2
+                              and
+                              [ not ((CMD_i) or (REC_i)) ] CMD_REC_3
+                          )
+                          and
+                          [ REC_i ] CMD_REC_1
+                          and
+                          [ not ((CMD_i) or (REC_i)) ] CMD_REC_2
+                      )
+                      and
+                      [ REC_i ] CMD_REC_0
+                      and
+                      [ not ((CMD_i) or (REC_i)) ] CMD_REC_1
+                  )
+                  and
+                  [ REC_i ] false
+                  and
+                  [ not ((CMD_i) or (REC_i)) ] CMD_REC_0
+              )
+          end_macro
+          CMD_REC_between_0_8 (CMD_num ("0"), REC_num ("0")) and
+          CMD_REC_between_0_8 (CMD_num ("1"), REC_num ("1")) and
+          CMD_REC_between_0_8 (CMD_num ("2"), REC_num ("2")) and
+          (*
+          CMD_REC_between_0_8 (CMD_num ("3"), REC_num ("3")) and
+          CMD_REC_between_0_8 (CMD_num ("4"), REC_num ("4")) and
+          CMD_REC_between_0_8 (CMD_num ("5"), REC_num ("5")) and
+          CMD_REC_between_0_8 (CMD_num ("6"), REC_num ("6")) and
+          *)
+          CMD_REC_between_0_8 (CMD_num ("7"), REC_num ("7"));
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 forall i:nat among { 0 ... 7 } .
+	     nu CMD_REC (c:nat := 0) . (
+	 	[ CMD_num (i) ] ((c < 8) and CMD_REC (c + 1))
+	 	and
+	 	[ REC_num (i) ] ((c > 0) and CMD_REC (c - 1))
+	 	and
+	 	[ not (CMD_num (i) or REC_num (i)) ] CMD_REC (c)
+	     );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_01
+      "There is no deadlock in the system."
+   is
+      "model_1.bcg" |= with evaluator3
+	 [ true* ] < true > true;
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_02
+      "Assuming a fair scheduling of actions, every device will always gain"
+      "access to the bus by winning an arbitration."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          [ true* ] (
+              [ (not (WIN_0))* ] SOME ((not (WIN_0))* . WIN_0) and
+              [ (not (WIN_1))* ] SOME ((not (WIN_1))* . WIN_1) and
+              [ (not (WIN_2))* ] SOME ((not (WIN_2))* . WIN_2) and
+              (*
+              [ (not (WIN_3))* ] SOME ((not (WIN_3))* . WIN_3) and
+              [ (not (WIN_4))* ] SOME ((not (WIN_4))* . WIN_4) and
+              [ (not (WIN_5))* ] SOME ((not (WIN_5))* . WIN_5) and
+              [ (not (WIN_6))* ] SOME ((not (WIN_6))* . WIN_6) and
+              *)
+              [ (not (WIN_7))* ] SOME ((not (WIN_7))* . WIN_7) 
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 [ true* ]
+	     forall i:nat among { 0 ... 7 } . (
+	 	Present (i) implies
+	 	[ (not WIN (i))* ] SOME ((not WIN (i))* . WIN (i))
+	     );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_03
+      "After the controller sends a command on the bus, either a reconnection,"
+      "or a loop where no device requests the access to the bus will"
+      "eventually occur."
+   is
+      "model_1.bcg" |= with evaluator3
+	 [ true* . CMD_any ]
+	     mu X . (< NO_ASK > @ or (< true > true and [ not REC_any ] X));
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_04
+      "After the disk with highest priority or a disk with priority higher"
+      "than the controller receives a command and requests access to the bus"
+      "(after handling the command), it will eventually send a reconnection."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          macro after_CMD_ASK_inev_REC (CMD_i, ASK_i, WIN_i, REC_i) =
+              [   (CMD_i) and (CMD_num ("$DISK_H") or $CMD_gt_NC) .
+                  (not (ASK_i))* .
+                  (ASK_i) and not (WIN_i)
+              ] INEVITABLE (REC_i)
+          end_macro
+          [ true* ] (
+              after_CMD_ASK_inev_REC (CMD_num ("0"), ASK_0, WIN_0,
+                 REC_num ("0")) and
+              after_CMD_ASK_inev_REC (CMD_num ("1"), ASK_1, WIN_1,
+                 REC_num ("1")) and
+              after_CMD_ASK_inev_REC (CMD_num ("2"), ASK_2, WIN_2,
+                 REC_num ("2")) and
+              (*
+              after_CMD_ASK_inev_REC (CMD_num ("3"), ASK_3, WIN_3,
+                 REC_num ("3")) and
+              after_CMD_ASK_inev_REC (CMD_num ("4"), ASK_4, WIN_4,
+                 REC_num ("4")) and
+              after_CMD_ASK_inev_REC (CMD_num ("5"), ASK_5, WIN_5,
+                 REC_num ("5")) and
+              after_CMD_ASK_inev_REC (CMD_num ("6"), ASK_6, WIN_6,
+                 REC_num ("6")) and
+              *)
+              after_CMD_ASK_inev_REC (CMD_num ("7"), ASK_7, WIN_7,
+                 REC_num ("7"))
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 [ true* ]
+	     forall i:nat among { 0 ... 7 } . (
+	 	((i = $DISK_H) or (i > $DISK_C)) implies
+	 	[
+	 	    CMD_num (i) .
+	 	    (not ASK (i))* .
+	 	    ASK (i) and not WIN (i)
+	 	] INEVITABLE (REC_num (i))
+	     );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_05
+      "After a disk with priority smaller than the controller and smaller than"
+      "the highest disk priority receives a command, his access to the bus can"
+      "always be preempted by a disk with higher priority."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          macro after_CMD_ASK_never_REC (CMD_i, ASK_i, WIN_i, REC_i) =
+              [
+                  (CMD_i) and ($CMD_lt_NC and $CMD_lt_NMAX) .
+                  (not (ASK_i))* .
+                  (ASK_i) and not (WIN_i)
+              ] < not (REC_i or NO_ASK) > @
+          end_macro
+          [ true* ] (
+              after_CMD_ASK_never_REC (CMD_num ("0"), ASK_0, WIN_0,
+                 REC_num ("0")) and
+              after_CMD_ASK_never_REC (CMD_num ("1"), ASK_1, WIN_1,
+                 REC_num ("1")) and
+              after_CMD_ASK_never_REC (CMD_num ("2"), ASK_2, WIN_2,
+                 REC_num ("2")) and
+              after_CMD_ASK_never_REC (CMD_num ("3"), ASK_3, WIN_3,
+                 REC_num ("3")) and
+              after_CMD_ASK_never_REC (CMD_num ("4"), ASK_4, WIN_4,
+                 REC_num ("4")) and
+              after_CMD_ASK_never_REC (CMD_num ("5"), ASK_5, WIN_5,
+                 REC_num ("5")) and
+              after_CMD_ASK_never_REC (CMD_num ("6"), ASK_6, WIN_6,
+                 REC_num ("6")) and
+              after_CMD_ASK_never_REC (CMD_num ("7"), ASK_7, WIN_7,
+                 REC_num ("7"))
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 [ true* ]
+	     forall i:nat among { 0 ... 7 } . (
+	 	((i+1 <= $DISK_C) and (i < $DISK_H)) implies
+	 	(* note: i+1 <= $DISC_C <=> i < $DISC_C but does not cause
+	 	 * C compiler warnings when $DISC_C = 0
+	 	 *)
+	 	[
+	 	    CMD_num (i) .
+	 	    (not ASK (i))* .
+	 	    ASK (i) and not WIN (i)
+	 	] < not (REC_num (i) or NO_ASK) > @
+	     );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_06
+      "Every arbitration won by the controller is immediately followed by a"
+      "command sent to one of the disks."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          [ true* . WIN_${DISK_C} ] SOME (CMD_any);
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 [ true* . WIN ($DISK_C) ] SOME (CMD_any);
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_07
+      "Every arbitration won by a disk is immediately followed by a"
+      "reconnection sent by the disk."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          [ true* ] (
+              [ WIN_0 and not WIN_${DISK_C} ] SOME (REC_num ("0")) and
+              [ WIN_1 and not WIN_${DISK_C} ] SOME (REC_num ("1")) and
+              [ WIN_2 and not WIN_${DISK_C} ] SOME (REC_num ("2")) and
+              (*
+              [ WIN_3 and not WIN_${DISK_C} ] SOME (REC_num ("3")) and
+              [ WIN_4 and not WIN_${DISK_C} ] SOME (REC_num ("4")) and
+              [ WIN_5 and not WIN_${DISK_C} ] SOME (REC_num ("5")) and
+              [ WIN_6 and not WIN_${DISK_C} ] SOME (REC_num ("6")) and
+              *)
+              [ WIN_7 and not WIN_${DISK_C} ] SOME (REC_num ("7"))
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 [ true* ] 
+	     forall i:nat among { 0 ... 7 } . (
+	 	(i <> $DISK_C) implies [ WIN (i) ] SOME (REC_num (i))
+	     );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_08
+      "Every arbitration where no device requests access to the bus is"
+      "eventually followed, before any command or reconnection, by another"
+      "arbitration."
+   is
+      "model_1.bcg" |= with evaluator3
+	 [ true* . NO_ASK ]
+	     mu X . (
+	 	SOME (true)
+	 	and
+	 	NEVER (CMD_any or REC_any)
+	 	and
+	 	[ not (WIN_any or NO_ASK) ] X
+	     );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_09
+      "Assuming a fair scheduling of actions, an arbitration won by the"
+      "controller is always reachable from the initial state of the system"
+      "before any command or reconnection has been sent."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+         [ (not (WIN_${DISK_C} or CMD_any or REC_any))* ]
+             SOME (
+                 (not (WIN_${DISK_C} or CMD_any or REC_any))* . WIN_${DISK_C}
+             );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 [ (not (WIN ($DISK_C) or CMD_any or REC_any))* ]
+	     SOME (
+                 (not (WIN ($DISK_C) or CMD_any or REC_any))* . WIN ($DISK_C)
+             );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+
+   property LIVENESS_10
+      "All disk buffers potentially become loaded at their maximal capacity."
+   is
+      -- dataless formula
+      "model_1.bcg" |= with evaluator3
+          SOME (
+              true* .
+              (* 1st disk becomes full *)
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              (* 2nd disk becomes full *)
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              (* 3rd disk becomes full *)
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)* .
+              CMD_any . (not REC_any)* . CMD_any . (not REC_any)*
+          );
+      expected TRUE;
+
+      -- value-passing formula
+      "model_1_renamed.bcg" |= with evaluator4
+	 (* 3 disks, each one with a 4-slot buffer *)
+	 SOME (
+	     true* .
+	     (CMD_any . (not REC_any)* . CMD_any . (not REC_any)*) { 12 }
+	 );
+      expected TRUE
+   end property
+
+   ----------------------------------------------------------------------------
+   -- performance evaluation part
+   ----------------------------------------------------------------------------
+
+   % echo ""
+   % echo "Performance evaluation for scenario $SCENARIO"
+
+   "model_2.bcg" = branching reduction of
+                    total rename "ARB !.*" -> ARB  in
+                       hide CMD, REC in
+                          "model_1.bcg";
+
+   "model_3.bcg" = generation of
+         hide all but LAMBDA, MU, NU in
+            ("model_2.bcg"
+             |[ARB]|
+             strong reduction of "erlang.lnt":ERLANG [ARB, NU] (1));
+
+   % DISK_SPEED=400
+
+   (* bus delay varying from 2.5 milliseconds down to 250 microseconds *)
+
+   % for BUS_SPEED in $BUS_SPEED_LIST
+   % do
+      % DATA="SCSI_${SCENARIO}_${BUS_SPEED}.thr"
+      % rm -f $DATA
+
+      (* load varying from 100 milliseconds down to 625 microseconds *)
+
+      % for LOAD in 10 25 50 100 200 400 800 1600 
+      % do
+         % echo ""
+         % echo "Computation for speed $BUS_SPEED and load $LOAD"
+
+         (* turn model_3.bcg into an IMC *)
+         "model_4.bcg" = total rename
+	     "NU" -> "BUS; rate $BUS_SPEED",
+             "MU !$DISK_L" -> "DISK_L; rate $DISK_SPEED",
+             "MU !$DISK_M" -> "DISK_M; rate $DISK_SPEED",
+             "MU !$DISK_H" -> "DISK_H; rate $DISK_SPEED",
+             "LAMBDA !.*" -> "rate $LOAD"
+             in "model_3.bcg";
+
+         (* remove non-determinism using determinator *)
+         % bcg_open "model_4.bcg" determinator "model_5.bcg"
+         % bcg_info -size "model_5.bcg"
+
+         (* check the absence of tau transitions *)
+         % bcg_info -hidden "model_5.bcg"
+
+         (* perform steady-state analysis *)
+         % bcg_steady -thr -append $DATA "model_5.bcg" LOAD=$LOAD
+
+         % SIM_TIME=`echo "(1.0/$BUS_SPEED)*400000" | bc -l`
+         % bcg_open "model_5.bcg" cunctator -rate -time $SIM_TIME -action "BUS" "DISK_L" "DISK_M" "DISK_H"
+
+      % done
+   % done
+
+   ----------------------------------------------------------------------------
+   -- LNT vs LOTOS comparison
+   -- The original LOTOS specification is translated into graphs, which are
+   -- compared against the graphs generated from the LNT specification.
+   -- Corresponding graphs are expected to be strongly equivalent.
+   ----------------------------------------------------------------------------
+
+   % echo ""
+   % echo "Comparison between the LNT and LOTOS versions for scenario $SCENARIO"
+
+   -- generation of graphs from the original LOTOS specification
+
+   % (cd LOTOS ; svl demo.svl $SCENARIO)
+
+   -- comparison of the graphs generated from LOTOS and LNT
+
+   % for N in 1 2 3
+   % do
+      "diag_${SCENARIO}_$N.bcg" =
+         strong comparison "model_$N.bcg" == "LOTOS/model_$N.bcg";
+   % done
+
+% done
+
+(* calling Gnuplot to generate scsi.ps *)
+% gnuplot SCSI.plot
+
+(* displaying the Postscript file generated by Gnuplot *)
+% "$CADP"/src/com/cadp_postscript SCSI.ps
+
+(* cleanup *)
+% $CADP/src/com/cadp_rm determinator
+% $CADP/src/com/cadp_rm cunctator
+% for FILE in model_*.bcg model_*@1.o SCSI_*_*.thr SCSI.ps
+% do
+% 	SVL_RECORD_FOR_CLEAN "$FILE"
+% done
+% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"
+

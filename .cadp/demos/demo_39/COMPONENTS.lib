@@ -1,0 +1,212 @@
+
+(*===========================================================================*)
+(* Types *)
+
+library BOOLEAN endlib
+
+type Signal is Boolean
+   sorts
+      Sig
+   opns
+      (* Signals sent on gate CMD *)
+
+      Turn     (*! constructor *),
+      Drill    (*! constructor *),
+      Lock     (*! constructor *),
+      Unlock   (*! constructor *),
+      Test     (*! constructor *),
+
+      (* Signals sent on gate INF *)
+
+      Turned   (*! constructor *),
+      Present  (*! constructor *),
+      Absent   (*! constructor *),
+      Drilled  (*! constructor *),
+      Locked   (*! constructor *),
+      Unlocked (*! constructor *),
+      Tested   (*! constructor *),
+
+      (* Signals sent on gate REQ *)
+
+      Add      (*! constructor *),
+      Remove   (*! constructor *) :-> Sig
+
+      _eq_, _ne_ : Sig, Sig -> Bool
+   eqns
+      forall x, y:Sig
+      ofsort Bool
+         x eq x = true;
+         x eq y = false
+      ofsort Bool
+         x ne y = not (x eq y)
+endtype
+
+(*===========================================================================*)
+(* Physical components and their controllers *)
+
+(* Turntable *)
+
+process TT [TT1, TT2, TT3, TurnOn, ADD, REM, MU] (p0, p1, p2, p3:Bool) : noexit :=
+   TurnOn;
+      MU !Turned; (* Markov delay inserted here *)
+      TT2;
+         TT [TT1, TT2, TT3, TurnOn, ADD, REM, MU] (p3, p0, p1, p2)
+   []
+   [not (p0)] -> ADD;
+      TT1;
+         TT [TT1, TT2, TT3, TurnOn, ADD, REM, MU] (true, p1, p2, p3)
+   []
+   [p3] -> REM;
+      TT3;
+         TT [TT1, TT2, TT3, TurnOn, ADD, REM, MU] (p0, p1, p2, false)
+endproc
+
+(* Controller *)
+
+process TTC [TT1, TT2, TT3, TurnOn, INF, CMD] : noexit :=
+   TT1;
+      INF !Present;
+         TTC [TT1, TT2, TT3, TurnOn, INF, CMD]
+   []
+   CMD !Turn;
+      TurnOn;
+         TT2;
+           INF !Turned;
+             TTC [TT1, TT2, TT3, TurnOn, INF, CMD]
+   []
+   TT3;
+      INF !Absent;
+         TTC [TT1, TT2, TT3, TurnOn, INF, CMD]
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Drill *)
+
+process D [D1, D2, DUpDown, DOnOff, MU] (mode, pos:Bool) : noexit :=
+   DOnOff;
+      D [D1, D2, DUpDown, DOnOff, MU] (not (mode), pos)
+   []
+   [mode] -> (
+      DUpDown;
+      (
+      [pos] ->
+         D2;
+            D [D1, D2, DUpDown, DOnOff, MU] (mode, not (pos))
+      []
+      [not (pos)] ->
+         MU !Drilled; (* Markov delay inserted here *)
+         D1;
+            D [D1, D2, DUpDown, DOnOff, MU] (mode, not (pos))
+      )
+   )
+endproc
+
+(* Controller *)
+
+process DC [D1, D2, DUpDown, DOnOff, INF, CMD] : noexit :=
+   CMD !Drill;
+      DOnOff;
+         DUpDown;
+            D2;
+               DUpDown;
+                  D1;
+                     DOnOff;
+                        INF !Drilled;
+                           DC [D1, D2, DUpDown, DOnOff, INF, CMD]
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Clamp *)
+
+process C [C1, C2, COnOff] (locked:Bool) : noexit :=
+   COnOff;
+   (
+   [locked] ->
+      C1;
+         C [C1, C2, COnOff] (not (locked))
+   []
+   [not (locked)] ->
+      C2;
+         C [C1, C2, COnOff] (not (locked))
+   )
+endproc
+
+(* Controller *)
+
+process CC [C1, C2, COnOff, INF, CMD] : noexit :=
+   CMD !Lock;
+      COnOff;
+         C2;
+            INF !Locked;
+               CMD !Unlock;
+                  COnOff;
+                     C1;
+                        INF !Unlocked;
+                           CC [C1, C2, COnOff, INF, CMD]
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Tester *)
+
+process T [T1, T2, TUpDown, MU] (up:Bool) : noexit :=
+   TUpDown;
+   (
+   [up] ->
+      (
+         (* Good product *)
+         T2;
+            T [T1, T2, TUpDown, MU] (not (up))
+         []
+         (* Bad product *)
+         T [T1, T2, TUpDown, MU] (not (up))
+      )
+   []
+   [not (up)] ->
+      MU !Tested; (* Markov delay inserted here *)
+      T1;
+         T [T1, T2, TUpDown, MU] (not (up))
+   )
+endproc
+
+(* Controller *)
+
+process TC [T1, T2, TUpDown, INF, CMD] : noexit :=
+   CMD !Test;
+      TUpDown;
+         (
+            (* Good product *)
+            T2;
+               TUpDown;
+                  T1;
+                     INF !Tested !true;
+                        TC [T1, T2, TUpDown, INF, CMD]
+            []
+            (* Bad product *)
+            TUpDown;
+               T1;
+                  INF !Tested !false;
+                     TC [T1, T2, TUpDown, INF, CMD]
+         )
+endproc
+
+(*===========================================================================*)
+(* Environment *)
+
+process Env [REQ, ADD, REM, ERR] : noexit :=
+    REQ !Add;
+       ADD;
+           Env [REQ, ADD, REM, ERR]
+    []
+    REQ !Remove ?r:Bool;
+    (
+       [r] ->
+          REM;
+             Env [REQ, ADD, REM, ERR]
+       []
+       [not (r)] ->
+          ERR;
+             REM;
+                Env [REQ, ADD, REM, ERR]
+    )
+endproc
+

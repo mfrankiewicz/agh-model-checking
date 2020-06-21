@@ -1,0 +1,34 @@
+
+(*****************************************************************************
+ * Requirement 2
+ * There should be no sink in the specification i.e. for all states in
+ * the specification, it should be possible to eventually perform any action.
+ * Take tones here, environment is handled later
+ *****************************************************************************)
+
+[ true* ] (
+    (* potential (and fair) reachability of actions *)
+    < true* . "S !1 !DIALT !ON" > true		and
+    < true* . "S !1 !DIALT !OFF" > true		and
+    < true* . "S !1 !ERRORT !ON" > true		and
+    < true* . "S !1 !ERRORT !OFF" > true	and
+    < true* . "S !1 !RINGT !ON" > true		and
+    < true* . "S !1 !RINGT !OFF" > true		and
+    < true* . "S !1 !BUSYT !ON" > true		and
+    < true* . "S !1 !BUSYT !OFF" > true		and
+    < true* . "S !1 !SPEECHCONN !ON" > true	and
+    < true* . "S !1 !SPEECHCONN !OFF" > true	and
+
+    (* subscriber 1 cannot be called *)
+    [ 'S !1 !RINGS !O.*' ] false		and
+
+    (* loops forbidding inevitable reachability of actions *)
+    <not (
+        'S !1 !DIALT !O.*'	or
+        'S !1 !ERRORT !O.*'	or
+        'S !1 !RINGT !O.*'	or
+        'S !1 !BUSYT !O.*'	or
+        'S !1 !SPEECHCONN !O.*'
+    )> @
+)
+

@@ -1,0 +1,127 @@
+module test_purpose_2 (test_purpose_common) is
+
+-------------------------------------------------------------------------------
+
+process Client [clientHello_c: CH,
+                serverHello_c: SH,
+                helloRetryRequest_c: HRR,
+                encryptedExtensions_c: EE,
+                certificateRequest_c: CR,
+                certificate_c_c, certificate_s_c: C,
+                certificateVerify_s_c: CV,
+                finished_c_c, finished_s_c: F] is
+
+  var alert: AlertType,
+      CH_p: CLientHello,
+      C_C_p: Certificate,
+      CR_p: CertificateRequest,
+      HRR_p: HelloRetryRequest,
+      is_helloRequest: bool in
+
+    -- Initialisation of variables
+    CH_p := ClientHello (T_NULL, undefined, T_NULL, {}, T_NULL, {});
+    HRR_p := HelloRetryRequest (T_NULL, {}, {});
+    C_C_p := Certificate ({}, {});
+    is_helloRequest := false;
+
+    -- client key exchange
+    ClientHello_TP [clientHello_c] (is_helloRequest, !?CH_p, HRR_p, ?alert);
+    use alert;
+    -- protocol messages sent in the right order with incorrect Key shared
+    helloRetryRequest_c (?HRR_p);
+    is_helloRequest := true;
+    -- client key exchange
+    ClientHello_TP [clientHello_c] (is_helloRequest, !?CH_p, HRR_p, ?alert);
+    use alert;
+    serverHello_c (?any ServerHello);
+    encryptedExtensions_c (?any EncryptedExtensions);
+    -- protocol messages sent in the right and classical order
+    certificateRequest_c (?CR_p);
+    certificate_s_c (?any Certificate);
+    certificateVerify_s_c (?any CertificateVerify);
+    finished_s_c (?any Finished);
+    -- client authentification
+    Certificate_C_TP [certificate_c_c] (!?C_C_p, CH_p, CR_p);
+    use C_C_p;
+    Finished_C [finished_c_c]
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process Server [clientHello_c: CH,
+                serverHello_c: SH,
+                helloRetryRequest_c: HRR,
+                encryptedExtensions_c: EE,
+                certificateRequest_c: CR,
+                certificate_c_c, certificate_s_c: C,
+                certificateVerify_s_c: CV,
+                finished_c_c, finished_s_c: F] is
+
+  var CH_p: CLientHello,
+      C_S_p: Certificate,
+      CR_p: CertificateRequest,
+      HRR_p: HelloRetryRequest in
+
+    -- Initialisation of variables
+    HRR_p := HelloRetryRequest (T_NULL, {}, {});
+    CR_p := CertificateRequest ({}, {});
+    C_S_p := Certificate ({}, {});
+
+    -- client key exchange
+    clientHello_c (?CH_p);
+    use CH_p;
+    -- protocol messages sent in the right order with incorrect Key shared
+    HelloRetryRequest [helloRetryRequest_c] (!?HRR_p);
+    use HRR_p;
+    -- client key exchange
+    clientHello_c (?CH_p);
+    ServerHello [serverHello_c];
+    EncryptedExtensions_TP [encryptedExtensions_c];
+    -- protocol messages sent in the right and classical order
+    CertificateRequest_TP [certificateRequest_c];
+    Certificate_S_TP [certificate_s_c] (!?C_S_p, CH_p, CR_p);
+    use C_S_p;
+    CertificateVerify_S [certificateVerify_s_c];
+    Finished_S [finished_s_c];
+    -- client authentification
+    certificate_c_c (?any Certificate);
+    finished_c_c (?any Finished)
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process MAIN [clientHello_c: CH,
+              serverHello_c: SH,
+              helloRetryRequest_c: HRR,
+              encryptedExtensions_c: EE,
+              certificateRequest_c: CR,
+              certificate_s_c, certificate_c_c: C,
+              certificateVerify_s_c: CV,
+              finished_c_c, finished_s_c: F,
+              TP_ACCEPT: none] is
+  par
+    clientHello_c, serverHello_c, helloRetryRequest_c,
+    encryptedExtensions_c, certificateRequest_c, certificate_c_c,
+    certificate_s_c, certificateVerify_s_c, finished_c_c, finished_s_c ->
+      Client [clientHello_c, serverHello_c, helloRetryRequest_c,
+              encryptedExtensions_c, certificateRequest_c, certificate_c_c,
+              certificate_s_c, certificateVerify_s_c,
+              finished_c_c, finished_s_c]
+  ||
+    clientHello_c, serverHello_c, helloRetryRequest_c,
+    encryptedExtensions_c, certificateRequest_c, certificate_c_c,
+    certificate_s_c, certificateVerify_s_c, finished_c_c, finished_s_c ->
+      Server [clientHello_c, serverHello_c, helloRetryRequest_c,
+              encryptedExtensions_c, certificateRequest_c, certificate_c_c,
+              certificate_s_c, certificateVerify_s_c,
+              finished_c_c, finished_s_c]
+  end par;
+  loop TP_ACCEPT end loop
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

@@ -1,0 +1,19 @@
+(*
+ * Step 1:
+ * -------
+ * The LOTOS specification of the dynamic reconfiguration protocol "SPEC.lotos"
+ * is compiled using the CAESAR.ADT and CAESAR compilers. The generated
+ * labelled transition system is named "SPEC.bcg".
+ *)
+
+"SPEC.bcg" = generation of "SPEC.lotos";
+
+(*
+ * Step 2:
+ * -------
+ * "SPEC.bcg" is minimized modulo strong equivalence. This generates the file
+ * "SPEC_strong.bcg".
+ *)
+
+"SPEC_strong.bcg" = strong reduction of "SPEC.bcg";
+

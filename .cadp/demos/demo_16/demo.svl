@@ -1,0 +1,266 @@
+(* 
+ * The script performs the following actions:
+ * 
+ * 1) The protocol specification is generated and reduced modulo strong
+ *    equivalence.
+ * 
+ * 2) The service specification (i.e., an abtract description of the protocol's
+ *    observable behaviour) is generated and reduced modulo strong equivalence.
+ *
+ * 3) The protocol is compared against the service with branching equivalence.
+ * 
+ * 4) Some desired (safety and liveness) functioning properties of the protocol
+ *    on the minimized LTS are checked using the XTL tool.
+ *)
+
+-------------------------------------------------------------------------------
+-- generation of the protocol graph
+-------------------------------------------------------------------------------
+
+"PROTOCOL.bcg" = strong reduction of generation of "PROTOCOL.lnt" ;
+
+-------------------------------------------------------------------------------
+-- generation of the service graph
+-------------------------------------------------------------------------------
+
+"SERVICE.bcg" = strong reduction of generation of "SERVICE.lnt" ;
+
+-------------------------------------------------------------------------------
+-- comparison of the protocol against the service with branching equivalence
+-------------------------------------------------------------------------------
+
+"check_protocol_service.bcg" = branching comparison
+	"PROTOCOL.bcg" == "SERVICE.bcg" ;
+
+-------------------------------------------------------------------------------
+-- safety and liveness property checking on the protocol
+-------------------------------------------------------------------------------
+
+% DEFAULT_XTL_LIBRARIES="actl.xtl, macros.xtl"
+
+-------------------------------------------------------------------------------
+
+property SAFETY_1
+    "Message sequencing at the sender side"
+is
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (IN_d1_dn, IN_d1_dn, IN_CONF)
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (IN_CONF, IN_CONF, IN_d1_dn)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property SAFETY_2
+    "Message sequencing at the receiver side"
+is
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (
+                OUT_d1_FST, OUT_d1_FST, OUT_dn_OK or OUT_NOK
+            )
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (
+                OUT_dn_OK or OUT_NOK, OUT_dn_OK or OUT_NOK, OUT_d1_FST
+            )
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (
+                OUT_d1_FST, OUT_d1_OK, OUT_dn_OK or OUT_NOK
+            )
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property SAFETY_3
+    "Message sequencing at both sender and receiver sides"
+is
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (
+                IN_d1_dn and not (IN_d1), IN_OK, IN_d1_dn or OUT_dn_OK
+            )
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (IN_d1, IN_OK, IN_d1_dn or OUT_d1_OK)
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (
+                IN_d1_dn, OUT_NOK, IN_d1_dn or IN_NOK or IN_DK
+            )
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (IN_d1, OUT_NOK, IN_d1_dn)
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (
+                IN_d1_d2, OUT_d2_OK, IN_d1_dn or OUT_d1_FST
+            )
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (
+                IN_d1_d2_d3, OUT_d3_OK, IN_d1_dn or OUT_d2_INC
+            )
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_NOT_TO_UNLESS (
+                IN_d1_d2_d3, OUT_d2_INC, IN_d1_dn or OUT_d1_FST
+            )
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property LIVENESS_1
+    "Liveness of the message emission by the sending client"
+is
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            ACTL_INEV (IN_d1_dn)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property LIVENESS_2
+    "A message sent is eventually followed by a confirmation to the"
+    "sending client"
+is
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            IN_d1_dn wbox AU_A_B (true, not (IN_d1_dn), IN_CONF, true)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property LIVENESS_3
+    "An I_NOK confirmation (loss of the first chunk) is eventually followed"
+    "by another message emission"
+is
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            AFTER_INEV_2 (IN_d1_d2_d3, IN_NOK, IN_d1_dn)
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            AFTER_POT (IN_d1_d2_d3, IN_NOK)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property LIVENESS_4
+    "An I_NOK confirmation (loss of an intermediate chunk) is eventually"
+    "followed by an I_NOK indication at the receiving client"
+is
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            AFTER_INEV_3 (IN_d1_d2_d3, OUT_d1_FST, IN_NOK, OUT_NOK)
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            AFTER_POT_2 (IN_d1_d2_d3, OUT_d1_FST, IN_NOK)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property LIVENESS_5
+    "An I_DK confirmation (loss of the last chunk) is eventually followed"
+    "by an I_NOK indication at the sending client"
+is
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            AFTER_INEV_4 (
+                IN_d1_d2_d3, OUT_d1_FST, OUT_d2_INC, IN_DK, OUT_NOK
+            )
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            AFTER_POT_3 (IN_d1_d2_d3, OUT_d1_FST, OUT_d2_INC, IN_DK)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property LIVENESS_6
+    "The reception of all the chunks by the receiving client is eventually"
+    "followed by an I_DK or I_OK confirmation at the sending client"
+is
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            AFTER_INEV_4 (
+                IN_d1_d2_d3, OUT_d1_FST, OUT_d2_INC, OUT_d3_OK, IN_DK or IN_OK
+            )
+        );
+    expected TRUE;
+
+    "PROTOCOL.bcg" |= with xtl
+        PRINT_FORMULA (
+            AFTER_POT_3 (IN_d1_d2_d3, OUT_d1_FST, OUT_d2_INC, OUT_d3_OK)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+(* generation of the original LOTOS specification *)
+
+% (cd LOTOS ; echo "" ; svl)
+
+(* comparison of the graphs generated from LOTOS and LNT *)
+
+"diag1.bcg" = strong comparison "SERVICE.bcg" == "LOTOS/SERVICE.bcg";
+"diag2.bcg" = strong comparison "PROTOCOL.bcg" == "LOTOS/PROTOCOL.bcg";
+
+(* cleanup *)
+
+% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"

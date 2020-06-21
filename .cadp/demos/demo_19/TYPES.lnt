@@ -1,0 +1,229 @@
+(******************************************************************************
+ *                     P R O D U C T I O N    C E L L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	TYPES.lnt
+ *   Auteurs		:	Hubert GARAVEL and Wendelin SERWE
+ *   Version		:	1.9
+ *   Date		: 	2017/02/24 16:29:03
+ *****************************************************************************)
+
+module TYPES with "==" is
+
+-------------------------------------------------------------------------------
+
+function _~_ (X1, X2: REAL) : BOOL is
+   -- equality of two reals up to precision 10^-2
+   return (abs (X1 - X2) < 1.0e-2)
+end function
+
+-------------------------------------------------------------------------------
+
+type PRESS_POSITION is
+   -- position of the press
+   PRESS_BOTTOM,
+   PRESS_MIDDLE,
+   PRESS_TOP,
+   OTHER
+end type
+
+-------------------------------------------------------------------------------
+
+type ARM1_EXTENSION is
+   -- extension of arm 1
+   ARM1_MIN, -- 0.5208
+   ARM1_MAX, -- 0.6458
+   OTHER
+end type
+
+-------------------------------------------------------------------------------
+
+type ARM2_EXTENSION is
+   -- extension of arm 2
+   ARM2_MAX, -- 0.7971
+   ARM2_MIN, -- 0.5707
+   OTHER
+end type
+
+-------------------------------------------------------------------------------
+
+type ROBOT_ANGLE is
+   -- angle of the robot
+   ROBOT_M90, -- -90
+   ROBOT_M70, -- -70
+   ROBOT_0,
+   ROBOT_15,
+   ROBOT_35,
+   ROBOT_50,
+   OTHER
+end type
+
+-------------------------------------------------------------------------------
+
+type TABLE_POSITION is
+   -- position of the table
+   TABLE_BOTTOM,
+   TABLE_TOP,
+   OTHER
+end type
+
+-------------------------------------------------------------------------------
+
+type TABLE_ANGLE is
+   -- angle of the table
+   ANGLE_MIN, -- 0
+   ANGLE_MAX, -- 50
+   OTHER
+end type
+
+-------------------------------------------------------------------------------
+
+type CRANE_POSITION is
+   -- position of the crane
+   CRANE_OVER_FEED_BELT,
+   CRANE_OVER_DEPOSIT_BELT,
+   OTHER
+end type
+
+-------------------------------------------------------------------------------
+
+type CRANE_HEIGHT is
+   -- height of the crane
+   CRANE_HIGH, -- 0.9450
+   CRANE_LOW,  -- 0.6593
+   OTHER
+end type
+
+-------------------------------------------------------------------------------
+
+function CONVERT_S1_S2_S3 (S1, S2, S3: BOOL) : PRESS_POSITION is
+   -- this function converts signals received from the Tcl/Tk simulator into
+   -- the corresponding abstract values representing the position of the press
+   require not (S1 and S2) and not (S1 and S3) and not (S2 and S3);
+   -- at most one of S1, S2, and S3 is true
+   if S1 then
+      return PRESS_BOTTOM
+   elsif S2 then
+      return PRESS_MIDDLE
+   elsif S3 then
+      return PRESS_TOP
+   else
+      return OTHER
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function CONVERT_S4 (S4: REAL) : ARM1_EXTENSION is
+   -- this function converts signals received from the Tcl/Tk simulator into
+   -- the corresponding abstract values representing the extension of arm 1
+   if S4 ~ 0.5208 then
+      return ARM1_MIN
+   elsif S4 ~ 0.6458 then
+      return ARM1_MAX
+   else
+      return OTHER
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function CONVERT_S5 (S5: REAL) : ARM2_EXTENSION is
+   -- this function converts signals received from the Tcl/Tk simulator into
+   -- the corresponding abstract values representing the extension of arm 2
+   if S5 ~ 0.7971 then
+      return ARM2_MAX
+   elsif S5 ~ 0.5707 then
+      return ARM2_MIN
+   else
+      return OTHER
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function CONVERT_S6 (S6: REAL) : ROBOT_ANGLE is
+   -- this function converts signals received from the Tcl/Tk simulator into
+   -- the corresponding abstract values representing the height of robot angle
+   if S6 ~ -90.0 then
+      return ROBOT_M90
+   elsif S6 ~ -70.0 then
+      return ROBOT_M70
+   elsif S6 ~ 0.0 then
+      return ROBOT_0
+   elsif S6 ~ 15.0 then
+      return ROBOT_15
+   elsif S6 ~ 35.0 then
+      return ROBOT_35
+   elsif S6 ~ 50.0 then
+      return ROBOT_50
+   else
+      return OTHER
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function CONVERT_S7_S8 (S7, S8: BOOL) : TABLE_POSITION is
+   -- this function converts signals received from the Tcl/Tk simulator into
+   -- the corresponding abstract values representing the position of the table
+   require not (S7 and S8); -- at most one of S7 and S8 is true
+   if S7 then
+      return TABLE_BOTTOM
+   elsif S8 then
+      return TABLE_TOP
+   else
+      return OTHER
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function CONVERT_S9 (S9: REAL) : TABLE_ANGLE is
+   -- this function converts signals received from the Tcl/Tk simulator into
+   -- the corresponding abstract values representing the angle of the table
+   if S9 ~ 0.0 then
+      return ANGLE_MIN
+   elsif S9 ~ 50.0 then
+      return ANGLE_MAX
+   else
+      return OTHER
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function CONVERT_S10_S11 (S10, S11: BOOL) : CRANE_POSITION is
+   -- this function converts signals received from the Tcl/Tk simulator into
+   -- the corresponding abstract values representing the positions of the crane
+   require not (S10 and S11); -- at most one of S10 and S11 is true
+   if S10 then
+      return CRANE_OVER_DEPOSIT_BELT
+   elsif S11 then
+      return CRANE_OVER_FEED_BELT
+   else
+      return OTHER
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function CONVERT_S12 (S12: REAL) : CRANE_HEIGHT is
+   -- this function converts signals received from the Tcl/Tk simulator into
+   -- the corresponding abstract values representing the height of the crane
+   if S12 ~ 0.9450 then
+      return CRANE_HIGH
+   elsif S12 ~ 0.6593 then
+      return CRANE_LOW
+   else
+      return OTHER
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+end module

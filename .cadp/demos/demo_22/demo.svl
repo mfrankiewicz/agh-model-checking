@@ -1,0 +1,218 @@
+
+(*
+ * This SVL script performs the following activities:
+ * - generation of the LTS corresponding to "dekker.lnt" and minimization
+ *   modulo strong bisimulation of the resulting LTS; this results in an LTS
+ *   file named "dekker.bcg"
+ * - verification on "dekker.bcg" of temporal-logic formulas using the XTL,
+ *   EVALUATOR 3, and EVALUATOR 4 model checkers
+ * - verification that both LTSs for the LOTOS and LNT versions are strongly
+ *   bisimilar
+ *)
+
+"dekker.bcg" = strong reduction of generation of "dekker.lnt";
+
+-------------------------------------------------------------------------------
+
+% DEFAULT_XTL_LIBRARIES="ltac.xtl"
+% DEFAULT_MCL_LIBRARIES="macros.mcl"
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_1
+    "Deadlock freedom"
+is
+    "dekker.bcg" |= with xtl
+        PRINT_FORMULA (not (DEADLOCK));
+    expected TRUE;
+
+    "dekker.bcg" |= with evaluator3
+        [ true* ] < true > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_2
+    "Livelock (tau-circuit) freedom"
+is
+    "dekker.bcg" |= with xtl
+        PRINT_FORMULA (not (LIVELOCK));
+    expected TRUE;
+
+    "dekker.bcg" |= with evaluator3
+	macro TAU () = "i" end_macro
+        not < TAU > @;
+    expected TRUE;
+
+    "dekker.bcg" |= with evaluator4
+	not < tau > @;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_3
+    "Mutual exclusion. After Pi has entered its critical section CSi, it is"
+    "not possible that Pj enters its critical section CSj until Pi has"
+    "released CSi"
+is
+    "dekker.bcg" |= with xtl
+        let
+            (* Critical sections *)
+            CS0  : labelset = EVAL_A (CS0),
+            CS1  : labelset = EVAL_A (CS1),
+            (* Release the critical sections *)
+            REL0 : labelset = EVAL_A (F0 !"WRITE" !false),
+            REL1 : labelset = EVAL_A (F1 !"WRITE" !false)
+        in
+            PRINT_FORMULA (
+                NOT_TO_UNLESS (CS0, CS1, REL0)
+                and
+                NOT_TO_UNLESS (CS1, CS0, REL1)
+            )
+        end_let;
+    expected TRUE;
+
+    "dekker.bcg" |= with evaluator3
+        [ true* . ((CS0 . (not REL0)* . CS1) | (CS1 . (not REL1)* . CS0)) ]
+            false;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_4
+    "Liveness of the process actions"
+is
+    "dekker.bcg" |= with xtl
+        let
+            (* Non critical sections *)
+            NCS0 : labelset = EVAL_A (NCS0),
+            NCS1 : labelset = EVAL_A (NCS1),
+            (* Critical sections *)
+            CS0  : labelset = EVAL_A (CS0),
+            CS1  : labelset = EVAL_A (CS1),
+            (* Request access to the critical sections *)
+            REQ0 : labelset = EVAL_A (F0 !"WRITE" !true),
+            REQ1 : labelset = EVAL_A (F1 !"WRITE" !true),
+            (* Release the critical sections *)
+            REL0 : labelset = EVAL_A (F0 !"WRITE" !false),
+            REL1 : labelset = EVAL_A (F1 !"WRITE" !false)
+        in
+            PRINT_FORMULA (
+                POT (ENABLE (NCS0)) and (* actions performed by process 0 *)
+                POT (ENABLE (CS0))  and
+                POT (ENABLE (REQ0)) and
+                POT (ENABLE (REL0))
+                and
+                POT (ENABLE (NCS1)) and (* actions performed by process 1 *)
+                POT (ENABLE (CS1))  and
+                POT (ENABLE (REQ1)) and
+                POT (ENABLE (REL1))
+            )
+        end_let;
+    expected TRUE;
+
+    "dekker.bcg" |= with evaluator3
+        [ true* ] (
+            (* actions performed by process 0 *)
+            < true* . NCS0 > true and
+            < true* . CS0 > true and
+            < true* . REQ0 > true and
+            < true* . REL0 > true and
+            (* actions performed by process 1 *)
+            < true* . NCS1 > true and
+            < true* . CS1 > true and
+            < true* . REQ1 > true and
+            < true* . REL1 > true
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_5
+    "Reachability of Pi's critical section if Pj does not request the access."
+    "After Pj has left its critical section (RELj), all paths lead either to"
+    "a request of Pj (REQj) or to an access of Pi (CSi). After Pi has made a"
+    "request (REQi) and Pj released its CS (RELj), either Pi reaches its CS,"
+    "or Pj makes another request."
+is
+    "dekker.bcg" |= with xtl
+        (*
+         * NOTE: we use FAIR instead INEV because the algorithm contains
+         * a (not (REQ1 or CS0))-livelock.
+         *)
+        let
+            (* Critical sections *)
+            CS0  : labelset = EVAL_A (CS0),
+            CS1  : labelset = EVAL_A (CS1),
+            (* Request access to the critical sections *)
+            REQ0 : labelset = EVAL_A (F0 !"WRITE" !true),
+            REQ1 : labelset = EVAL_A (F1 !"WRITE" !true),
+            (* Release the critical sections *)
+            REL0 : labelset = EVAL_A (F0 !"WRITE" !false),
+            REL1 : labelset = EVAL_A (F1 !"WRITE" !false)
+        in
+            PRINT_FORMULA (
+                Box (REQ0, ALL (not (CS0),
+                    Box (REL1, FAIR (not (REQ1), REQ1 or CS0))))
+                and
+                Box (REQ1, ALL (not (CS1),
+                    Box (REL0, FAIR (not (REQ0), REQ0 or CS1))))
+            )
+        end_let;
+    expected TRUE;
+
+    "dekker.bcg" |= with evaluator3
+        (*
+         * NOTE: we use FAIR instead INEV because the algorithm contains
+         * a (not (REQ1 or CS0))-livelock.
+         *)
+        [ true* ] (
+          [ REQ0 . (not CS0)* . REL1 . (not REQ1)* ]
+            < (not REQ1)* . REQ1 or CS0 > true
+          and
+          [ REQ1 . (not CS1)* . REL0 . (not REQ0)* ]
+            < (not REQ0)* . REQ0 or CS1 > true
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_6
+    "Reachability of both critical sections under fair scheduling of actions"
+is
+    "dekker.bcg" |= with xtl
+        let
+            (* Critical sections *)
+            CS0  : labelset = EVAL_A (CS0),
+            CS1  : labelset = EVAL_A (CS1)
+        in
+            PRINT_FORMULA (FAIR (CS0) and FAIR (CS1))
+        end_let;
+    expected TRUE;
+
+    "dekker.bcg" |= with evaluator3
+        [ true* ] (
+            [ (not CS0)* ] < (not CS0)* . CS0 > true
+            and
+            [ (not CS1)* ] < (not CS1)* . CS1 > true
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+-- Checking that the LOTOS and LNT specifications are equivalent
+
+% (cd LOTOS ; echo "" ; svl)
+"diag.bcg" = strong comparison "LOTOS/dekker.bcg" == "dekker.bcg";
+
+-- Cleaning up
+
+% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"
+
+-------------------------------------------------------------------------------

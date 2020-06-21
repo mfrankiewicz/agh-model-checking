@@ -1,0 +1,22 @@
+
+(*****************************************************************************
+ * Requirement 14
+ * If A-Subscriber Dials a B-subscriber and B-subscriber is offhooked
+ *	There should be a possibility of activating A's busytone after
+ *	deactivating dialtone (no other tones should be activated)
+ *****************************************************************************)
+
+[
+    true* .
+    (
+        ("S !2 !OFFH !BSUBSC" . (not "S !2 !ONH")* . "S !1 !DIAL !2") |
+        ("S !1 !DIAL !2" . (not "S !2 !ONH")* . "S !2 !OFFH !BSUBSC")
+    )
+]
+<
+    ('S !1 .* !ON' implies 'S !1 !DIALT !ON')* .
+    "S !1 !DIALT !OFF" .
+    (not 'S !1 .*T !ON')* .
+    "S !1 !BUSYT !ON"
+> true
+

@@ -1,0 +1,89 @@
+specification DEKKER [NCS0, CS0, NCS1, CS1, F0, F1, T] : noexit
+
+library
+   BOOLEAN,
+   NATURAL
+endlib
+
+type COMMAND is
+   sorts COMMAND
+   opns
+      READ  (*! constructor *),
+      WRITE (*! constructor *) : -> COMMAND
+endtype
+
+behaviour
+
+      (
+      P [NCS0, CS0, F0, F1, T] (0)
+      |||
+      P [NCS1, CS1, F1, F0, T] (1)
+      )
+   |[F0, F1, T]|
+      (
+      FLAG [F0] (false)
+      |||
+      FLAG [F1] (false)
+      |||
+      TURN [T] (0)
+      )
+
+where
+
+   process P [NCS, CS, FJ, FI, T] (J : Nat) : noexit :=
+      NCS; (* non critical section *)
+         FJ !WRITE !true;
+            P_AUX_1 [NCS, CS, FJ, FI, T] (J)
+   endproc
+
+   process P_AUX_1 [NCS, CS, FJ, FI, T] (J : Nat) : noexit :=
+      FI !READ ?VAL_FI:Bool;
+         (
+         [VAL_FI] ->
+            T !READ ?VAL_T:Nat;
+               (
+               [VAL_T <> J] ->
+                  FJ !WRITE !false;
+                     P_AUX_2 [NCS, CS, FJ, FI, T] (J)
+               []
+               [VAL_T == J] ->
+                  P_AUX_1 [NCS, CS, FJ, FI, T] (J)
+               )
+         []
+         [not (VAL_FI)] ->
+            CS; (* critical section *)
+               T !WRITE !(J + 1) mod 2;
+                  FJ !WRITE !false;
+                     P [NCS, CS, FJ, FI, T] (J)
+         )
+   endproc
+
+   process P_AUX_2 [NCS, CS, FJ, FI, T] (J : Nat) : noexit :=
+      T !READ ?VAL_T:Nat;
+         (
+         [VAL_T <> J] ->
+            P_AUX_2 [NCS, CS, FJ, FI, T] (J)
+         []
+         [VAL_T == J] ->
+            FJ !WRITE !true;
+               P_AUX_1 [NCS, CS, FJ, FI, T] (J)
+         )
+   endproc
+
+   process FLAG [F] (VAL_FLAG : BOOL) : noexit :=
+      F !READ !VAL_FLAG;
+         FLAG [F] (VAL_FLAG)
+      []
+      F !WRITE ?VAL:BOOL;
+         FLAG [F] (VAL)
+   endproc
+
+   process TURN [T] (VAL_TURN : NAT) : noexit :=
+      T !READ !VAL_TURN;
+         TURN [T] (VAL_TURN)
+      []
+      T !WRITE ?VAL:NAT;
+         TURN [T] (VAL)
+   endproc
+
+endspec

@@ -1,0 +1,69 @@
+
+(*********************************************************************
+ * The alternating bit protocol is divided into four processes:      *
+ *        - BODY_TRANSMITTER                                         *
+ *        - BODY_RECEIVER                                            *
+ *        - MEDIUM1                                                  *
+ *        - MEDIUM2                                                  *
+ *********************************************************************)
+
+(* 
+ * This SVL script performs the following operations.
+ * 
+ * First, for each of these four processes, the corresponding LTS is 
+ * generated and reduced modulo strong equivalence. The reduced LTSs 
+ * are then composed together using LOTOS parallel and hiding operators.
+ * The parallel composition of the minimized processes is referred as 
+ * "bitalt_protocol.exp".
+ *
+ * Then, the following verifications are automatically performed:
+ *
+ * 1) Check for deadlocks in bitalt_protocol
+ *
+ * 2) Check for livelocks in bitalt_protocol
+ * 
+ * 3) Generate the reduced LTS of bitalt_protocol modulo branching bisimulation
+ * 
+ * 4) Compare the protocol with the service modulo branching bisimulation
+ *
+ *)
+
+% DEFAULT_PROCESS_FILE="bitalt_protocol.lotos"
+
+"bitalt_protocol.exp" = leaf strong reduction of 
+    hide SDT, RDT, RDTe, RACK, SACK, SACKe in
+        (
+            (
+                BODY_TRANSMITTER
+                |||
+                BODY_RECEIVER
+            )
+            |[SDT, RDT, RDTe, RACK, SACK, SACKe]|
+            (
+                MEDIUM1
+                |||
+                MEDIUM2
+            )
+        );
+
+(* Check for deadlocks *)
+
+"bitalt_dead.seq" = deadlock of "bitalt_protocol.exp";
+
+(* Check for livelocks *)
+
+"bitalt_live.bcg" = livelock of "bitalt_protocol.exp";
+
+(* Generate the LTS and reduce it modulo branching equivalence *)
+
+"bitalt_protocol.bcg" = branching reduction of "bitalt_protocol.exp";
+
+(*
+ * Compare the protocol with the service on-the-fly modulo branching
+ * bisimulation
+ *)
+
+"diag_branching.seq" = branching comparison
+	"bitalt_protocol.exp" == generation of "bitalt_service.lotos";
+
+

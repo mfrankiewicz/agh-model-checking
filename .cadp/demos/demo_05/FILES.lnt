@@ -1,0 +1,179 @@
+module FILES is
+
+-------------------------------------------------------------------------------
+
+(*
+ * Filenames are modeled as a natural so that the enumeration of all the
+ * possible filenames by the LOTOS compiler can easily be constrained. Thus,
+ * a list of filenames is a simple list of naturals.
+ *)
+
+type FILENAME_LIST is
+   CONS (FILENAME : NAT, NEXT : FILENAME_LIST),
+   NIL
+end type
+
+-------------------------------------------------------------------------------
+
+(* Return the first filename of the list. *)
+
+function FIRST [END_OF_LIST : none] (L : FILENAME_LIST) : NAT is
+   case L in
+   var
+      FILENAME : NAT
+   in
+
+      CONS (FILENAME, any FILENAME_LIST) ->
+         return FILENAME
+
+   |  NIL ->
+         raise END_OF_LIST
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Return the rest of the list. *)
+
+function NEXT [END_OF_LIST : none] (L : FILENAME_LIST) : FILENAME_LIST is
+   case L in
+   var
+      NEXT : FILENAME_LIST
+   in
+
+      CONS (any Nat, NEXT) ->
+         return NEXT
+
+   |  NIL ->
+         raise END_OF_LIST
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Test whether the list is empty. *)
+
+function EMPTY (L : FILENAME_LIST) : BOOL is
+   case L in
+
+      CONS (any Nat, any FILENAME_LIST) ->
+         return false
+
+   |  NIL ->
+         return true
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* A file is a list of characters *)
+
+type FILE is !implementedby "TFTP_FILE"
+   CONS (C : CHAR, F : FILE),
+   NIL
+end type
+
+-------------------------------------------------------------------------------
+
+(* Return the first character of the file. *)
+
+function FIRST [END_OF_FILE : none] (F : FILE) : CHAR is
+   case F in
+   var
+      C : CHAR
+   in
+
+      CONS (C, any FILE) ->
+         return C
+
+   |  NIL ->
+         raise END_OF_FILE
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Return the size of the file. *)
+
+function SIZE (F : FILE) : NAT is
+   case F in
+   var
+      NEXT : FILE
+   in
+
+      CONS (any CHAR, NEXT) ->
+         return 1 + SIZE (NEXT)
+
+   |  NIL ->
+         return 0
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Return the Nth character of the file. *)
+
+function NTH [BAD_INDEX : none] (F : FILE, N : NAT) : CHAR is
+   case F in
+   var
+      C : CHAR,
+      NEXT : FILE
+   in
+
+      CONS (C, NEXT) ->
+         if N == 1 then
+            return C
+         else
+            return NTH [BAD_INDEX] (NEXT, N - 1)
+         end if
+
+   |  NIL ->
+         raise BAD_INDEX
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Append a character to the file. *)
+
+function APPEND (F : FILE, C : CHAR) : FILE is
+   case F in
+   var
+      CUR : CHAR,
+      NEXT : FILE
+   in
+
+      CONS (CUR, NEXT) ->
+         return CONS (CUR, APPEND (NEXT, C))
+
+   |  NIL ->
+         return CONS (C, NIL)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Test whether two files are equal. *)
+
+function EQUAL (F1, F2 : FILE) : BOOL is
+   case F1, F2 in
+   var
+      C1, C2 : CHAR,
+      NEXT1, NEXT2 : FILE
+   in
+
+      CONS (C1, NEXT1), CONS (C2, NEXT2) ->
+         return (C1 eq C2) and EQUAL (NEXT1, NEXT2)
+
+   |  NIL, NIL ->
+         return true
+
+   |  any, any ->
+         return false
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

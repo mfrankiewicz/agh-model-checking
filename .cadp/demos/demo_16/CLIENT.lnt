@@ -1,0 +1,17 @@
+module CLIENT (TYPES, CHANNELS) is
+
+-------------------------------------------------------------------------------
+
+process SENDING_CLIENT [INPUT : InputChannel] is
+    loop
+        var D : Data in
+            D := any Data where D > (0 of DATA);
+            INPUT (cons_msg (D));
+            INPUT (?any Ind)
+        end var
+    end loop
+end process
+
+-------------------------------------------------------------------------------
+
+end module

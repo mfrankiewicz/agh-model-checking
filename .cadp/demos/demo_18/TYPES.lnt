@@ -1,0 +1,168 @@
+module TYPES
+   with "==", "!="
+is
+
+-------------------------------------------------------------------------------
+
+type Command is
+   Add_Data_Port,
+   Add_Route,
+   Send_Faults,
+   Other_Command
+end type
+
+-------------------------------------------------------------------------------
+
+type ErrorCode is
+   Unknown_Route
+   -- , Timed_Out
+   -- , Wrong_Msg
+end type
+
+-------------------------------------------------------------------------------
+
+type PortNo is
+   range 0..1 of Nat
+end type
+
+-------------------------------------------------------------------------------
+
+type PortSet is
+   list of PortNo
+   with "member"
+end type
+
+-- the "emptyset" constructor of the LOTOS version is written "{} of PortSet"
+-- in the LNT version
+
+-- the word "Set" in "PortSet" is misleading: in the LOTOS version, PortSet
+-- was not used as a set, but as a list; indeed, process DataGenerator makes
+-- an explicit distinction between the two terms "add (0, add (1, emptyset))"
+-- and "add (1, add (0, emptyset))"
+
+-------------------------------------------------------------------------------
+
+function add (p:PortNo, ps:PortSet):PortSet is
+   return cons (p, ps)
+end function
+
+-------------------------------------------------------------------------------
+
+function _IsIn_ (p:PortNo, ps:PortSet):Bool is
+   return member (p, ps)
+end function
+
+-------------------------------------------------------------------------------
+
+function _contains_ (ps1, ps2:PortSet):Bool is
+   case ps2 in
+     var xp:PortNo, xps:PortSet in
+     {} -> return true
+   | cons (xp, xps) -> if member (xp, ps1) then return (ps1 contains xps)
+                       else return false 
+		      end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+type RouteNo is
+   range 0..1 of Nat
+end type
+
+-------------------------------------------------------------------------------
+
+type Route is
+   Route (RouteNo:RouteNo, PortSet:PortSet)
+end type
+
+-------------------------------------------------------------------------------
+
+type RouteList is
+   list of Route
+end type
+
+-- the "emptyrl" constructor of the LOTOS version is written "{} of RouteList"
+-- in the LNT version
+
+-------------------------------------------------------------------------------
+
+function _IsIn_ (r:RouteNo, rl:RouteList):Bool is
+   case rl in
+      var xr:RouteNo, xrl:RouteList in
+         {} of RouteList ->
+            return false
+       | cons (Route (xr, any PortSet), xrl) ->
+            return (xr == r) or_else (r IsIn xrl)
+    end case
+end function
+
+-------------------------------------------------------------------------------
+
+function route (r:RouteNo, rl:RouteList):PortSet is
+   case rl in
+      var xr:RouteNo, xps:PortSet, xrl:RouteList in
+         {} of RouteList ->
+            return {} of PortSet
+       | cons (Route (xr, xps), xrl) ->
+            if xr == r then
+               return xps
+            else
+               return route (r, xrl)
+            end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function insert (r:RouteNo, ps:PortSet, rl:RouteList):RouteList is
+   return cons (Route (r, ps), rl)
+end function
+
+-------------------------------------------------------------------------------
+
+function update (r:RouteNo, ps:PortSet, rl:RouteList):RouteList is
+   case rl in
+      var xroute:Route, xr:RouteNo, xrl:RouteList in
+         {} of RouteList -> return {} of RouteList
+       | cons (xroute as Route (xr, any PortSet), xrl) ->
+            if xr == r then
+               return cons (Route (r, ps), xrl)
+            else
+               return cons (xroute, update (r, ps, xrl))
+            end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+type Env is
+   range 0..1 of Nat
+end type
+
+-------------------------------------------------------------------------------
+
+type EnvList is
+   list of Env
+   with "head", "tail", "remove", "member"
+end type
+
+-- the "emptyl" constructor of the LOTOS version is written "{} of EnvList"
+-- in the LNT version
+
+-------------------------------------------------------------------------------
+
+function insert (e:Env, el:EnvList):EnvList is
+   return cons (e, el)
+end function
+
+-------------------------------------------------------------------------------
+
+function _IsIn_ (e:Env, el:EnvList):Bool is
+   return member (e, el)
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

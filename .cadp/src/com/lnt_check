@@ -1,0 +1,172 @@
+#! /bin/sh
+
+# lnt_check version 1.25 -- date 2016/03/09 18:01:03 -- X. Clerc, H. Garavel, W. Serwe
+
+TOOLNAME=`basename $0`
+
+FILE=$1
+# ici, $FILE est cense etre le fichier .h produit par Caesar.adt a partir
+# du .lotos genere par lnt2lotos a partir d'un fichier .lnt
+
+MAIN="`basename $FILE .h`.lnt"
+# $MAIN est cense etre le nom du fichier LNT contenant le module principal
+
+#-----------------------------------------------------------------------------
+
+RENAME_CASE_FUNCTION() {
+sed -e 's/CASE__\([A-Z0-9_][A-Z0-9_]*\)__[0-9][0-9]*__\([^"]*\)__\([0-9][0-9]*\)__[A-Z0-9_]*/\1:\2:\3/'
+#    le nom de fonction auxiliaire
+#       "CASE__<module>__<nb>__<function>__<line>__<variable>"
+#    est remplace par <module>:<function>:<line> ou <module> et <function>
+#    sont respectivement le nom du module et de la fonction dans lesquels
+#    la fonction auxiliaire est definie et ou <line> est le numero de ligne
+#    de l'instruction case a laquelle correspond cette fonction ; dans le cas
+#    particulier ou <function> commence par la chaine "SPECIAL__", celle-ci
+#    est conservee
+}
+
+#-----------------------------------------------------------------------------
+
+RENAME_OUT_INOUT_FUNCTION() {
+sed -e 's/__[0-9][0-9]*[A-Za-z][A-Za-z0-9_]*//'
+#    les chaines dont la forme est decrite par l'expression sed ci-dessus
+#    correspondent a des informations de profil ajoutees par le traducteur
+#    aux fonctions avec parametres "out" et/ou "in out", potentiellement
+#    surchargees, afin de resoudre la surcharge ; ces chaines sont supprimees
+#    pour recuperer le nom de la fonction LNT d'origine
+}
+
+#-----------------------------------------------------------------------------
+
+REPLACE_QUOTES() {
+#    application des conventions de C_PRINT_WARNING_NAME() de lnt2lotos
+sed -e 's/"\([A-Z][^"]*\)"/\1/g' |
+#    suppression des guillemets autour des noms commencant par une majuscule
+sed -e "s/\"\([^\"][^\"]*\)\"/\`\`\1''/g"
+#    remplacement des guillemets par `` et '' autour les autres noms
+#    note : il est necessaire d'utiliser les guillements doubles autour de
+#    l'expression (et non pas les quotes simples), afin de pouvoir generer
+#    les quotes simples en sortie ; en consequence, les guillemets au sein
+#    de l'expression doivent etre proteges
+}
+
+#-----------------------------------------------------------------------------
+
+DECODE_SPECIAL_IDENTIFIER() {
+while read STRING
+do
+	case "$STRING" in
+	    *SPECIAL__* )
+		# la chaine lue contient un identificateur special qu'il faut
+		# decoder pour retrouver le nom de fonction LNT originel ;
+		# on commence par extraire cet identificateur special
+		ENCODED=`echo "$STRING" | sed -e 's/.*SPECIAL__\([A-Z]*\).*/\1/'`
+		# on decode $ENCODED qui est une sequence de lettres majuscules
+		# (il faut maintenir la coherence avec la liste des caracteres
+		# speciaux definis par la classe SPECIAL_CHARACTER dans le
+		# fichier "lotosnt.tabc" et avec la fonction d'encodage
+		# C_LNT_TO_C_IDENTIFIER() definie dans le fichier "lotosnt.f")
+		DECODED=`echo "$ENCODED" | tr '[ABCDEFGHIJKLMN]' '[#%&*+-/>=<@\\^~]'`
+		# finalement, on affiche $STRING en eliminant le prefixe
+		# "SPECIAL__" et en remplacant $ENCODED par $DECODED
+		printf "%s\n" "$STRING" | sed -e "s/SPECIAL__$ENCODED/$DECODED/"
+		;;
+	    * ) 
+		# la chaine lue ne contient pas d'identificateur special
+		printf "%s\n" "$STRING"
+		;;
+	esac
+done
+}
+
+#-----------------------------------------------------------------------------
+
+DISPLAY_FILE_BUT_NOT_LINE() {
+sed -e "s/;[0-9][0-9]*;/$MAIN/" |
+#    si la chaine entre deux ';' a la forme <numero de ligne>,
+#    on la supprime car l'utilisateur n'est pas cense connaitre les numeros
+#    de ligne du code LOTOS genere ; on insere le nom du fichier contenant le
+#    module principal
+sed -e 's/;\([A-Z0-9_][A-Z0-9_]*\):[0-9][0-9]*;/\1.lnt/'
+#    si la chaine entre deux ';' a la forme <nom de fichier>:<numero de ligne>,
+#    on affiche le nom du fichier et on supprime le numero de ligne
+}
+
+#-----------------------------------------------------------------------------
+
+# phase 1 : analyse de l'exhaustivite des patterns dans les fonctions LNT
+# - on cherche la chaine CAESAR_ADT_ERROR dans le code C produit par Caesar.adt
+#   afin de detecter les cas de patterns LNT non exhaustives
+# - on retire d'abord les fonctions *__GENERATED*, GET__*, RAISE__* produites
+#   par lnt2lotos
+# - on retire ensuite les fonctions COMPUTE__CASE__BRANCH__* qui seront
+#   traitees ulterieurement durant la phase 3
+# - on retire ensuite les fonctions predefinies LOTOS qui figurent dans
+#   $CADP/lib
+
+grep 'CAESAR_ADT_ERROR ("' "$FILE" |
+grep -v '__GENERATED' |
+grep -v '\<GET__[0-9]' |
+grep -v '\<RAISE__' |
+grep -v 'CAESAR_ADT_ERROR ("COMPUTE__CASE__BRANCH__[0-9]*__.*__[0-9]* ' |
+grep -v '\[BASICNATURALNUMBER:' |
+grep -v '\[BIT:' |
+grep -v '\[BITNATREPR:' |
+grep -v '\[BITSTRING:' |
+grep -v '\[BOOLEAN:' |
+grep -v '\[DECDIGIT:' |
+grep -v '\[DECNATREPR:' |
+grep -v '\[DECSTRING:' |
+grep -v '\[HEXDIGIT:' |
+grep -v '\[HEXNATREPR:' |
+grep -v '\[HEXSTRING:' |
+grep -v '\[INTEGER:' |
+grep -v '\[INTEGERNUMBER:' |
+grep -v '\[ISO8807:' |
+grep -v '\[NATREPRESENTATIONS:' |
+grep -v '\[NATURAL:' |
+grep -v '\[NATURALNUMBER:' |
+grep -v '\[OCTDIGIT:' |
+grep -v '\[OCTET:' |
+grep -v '\[OCTETSTRING:' |
+grep -v '\[OCTNATREPR:' |
+grep -v '\[OCTSTRING:' |
+grep -v '\[X_ACTION:' |
+grep -v '\[X_BIT:' |
+grep -v '\[X_BOOLEAN:' |
+grep -v '\[X_CHARACTER:' |
+grep -v '\[X_INTEGER:' |
+grep -v '\[X_NATURAL:' |
+grep -v '\[X_REAL:' |
+grep -v '\[X_STRING:' |
+grep -v '\[Y_ENUMERATION:' |
+grep -v '\[Y_LIST:' |
+grep -v '\[Y_MODULUS:' |
+grep -v '\[Y_QUEUE:' |
+grep -v '\[Y_SET:' |
+grep -v '\[Y_STACK:' |
+grep -v '\[Y_SYMBOLIC:' |
+grep -v '\[Y_TABLE:' |
+grep -v '\[Y_TUPLE:' |
+RENAME_CASE_FUNCTION |
+RENAME_OUT_INOUT_FUNCTION |
+sed -e 's/.*CAESAR_ADT_ERROR ("\([^ :]*\):\([^ :]*\):\([^ ]*\) \[\([^]]*\)\].*/\1.lnt:\3: warning: function "\2" contains a non-exhaustive case/' |
+sed -e 's/.*CAESAR_ADT_ERROR ("\([^ ]*\) \[\([^]]*\)\].*/;\2;:0: warning: function "\1" contains a non-exhaustive case/' |
+DECODE_SPECIAL_IDENTIFIER |
+DISPLAY_FILE_BUT_NOT_LINE |
+REPLACE_QUOTES |
+uniq
+
+#-----------------------------------------------------------------------------
+
+# phase 2 : analyse de l'exhaustivite des patterns dans les processus LNT
+# - on cherche la chaine CAESAR_ADT_ERROR dans le code C produit par Caesar.adt
+#   afin de detecter les cas de patterns LNT non exhaustives
+# - contrairement a la phase 1, il n'y a pas besoin de filtrer les resultats
+
+grep 'CAESAR_ADT_ERROR ("COMPUTE__CASE__BRANCH' "$FILE" |
+sed -e 's/.*CAESAR_ADT_ERROR ("COMPUTE__CASE__BRANCH__[0-9]*__\(.*\)__\([0-9]*\) \[\([^]]*\)\].*/;\3;:\2: warning: process "\1" contains a non-exhaustive case/' |
+DISPLAY_FILE_BUT_NOT_LINE |
+REPLACE_QUOTES
+
+#-----------------------------------------------------------------------------

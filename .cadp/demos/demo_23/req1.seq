@@ -1,0 +1,9 @@
+
+Sequence producing a counterexample for property 1
+
+
+<until> [LDCON .*]
+<until> [LDCON .*]
+(~([LDCON .*] | [ARBRESGAP]))+
+<deadlock>
+

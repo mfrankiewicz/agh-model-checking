@@ -1,0 +1,560 @@
+(******************************************************************************
+ *                     P R O D U C T I O N    C E L L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	CONTROLLER.lnt
+ *   Auteurs		:	Hubert GARAVEL and Wendelin SERWE
+ *   Version		:	1.19
+ *   Date		: 	2017/03/01 11:05:25
+ *****************************************************************************)
+
+module CONTROLLER (TYPES, CHANNELS, STATES) is
+
+-------------------------------------------------------------------------------
+
+process CONTROLLER [G1: PRESS_POSITION,
+                    G2: ARM1_EXTENSION,
+                    G3: ARM2_EXTENSION,
+                    G6: ROBOT_ANGLE,
+                    G7: TABLE_POSITION,
+                    G8: TABLE_ANGLE,
+                    G9: CRANE_POSITION,
+                    G10: CRANE_HEIGHT,
+                    G12, G13: BOOL,
+                    PRESS_UPWARD, PRESS_STOP, PRESS_DOWNWARD,
+                    ARM1_FORWARD, ARM1_STOP, ARM1_BACKWARD,
+                    ARM2_FORWARD, ARM2_STOP, ARM2_BACKWARD,
+                    ARM1_MAG_ON, ARM1_MAG_OFF,
+                    ARM2_MAG_ON, ARM2_MAG_OFF,
+                    ROBOT_LEFT, ROBOT_STOP, ROBOT_RIGHT,
+                    TABLE_LEFT, TABLE_STOP_H, TABLE_RIGHT,
+                    TABLE_UPWARD, TABLE_STOP_V, TABLE_DOWNWARD,
+                    CRANE_TO_BELT2, CRANE_STOP_H, CRANE_TO_BELT1,
+                    CRANE_LIFT, CRANE_STOP_V, CRANE_LOWER,
+                    CRANE_MAG_ON, CRANE_MAG_OFF,
+                    BELT1_START, BELT1_STOP,
+                    BELT2_START, BELT2_STOP,
+                    BLANK_ADD: NONE] is
+
+   -- the controller consists in 13 concurrent processes P1, ..., P13, each
+   -- supervising a particular engine of the production cell, or a given
+   -- degree of freedom of a particular engine
+
+   hide
+      -- each gate is noted [3], [4], or [5] if it is used in three-party,
+      -- four-party, or five-party rendezvous, respectively; absence of such
+      -- indication means that the gate is used in two-party rendezvous
+      FT_READY,      -- belt1 ready to deliver a blank element to the table [3]
+      FT,            -- belt1 delivers a blank element to the table [3]
+      TA1_READY,     -- table ready to deliver a blank element to arm1 [5]
+      TA1,           -- arm1 took a blank element from the table [3]
+      A1P,           -- arm1 ready to deliver a blank element to the press [4]
+      PA2,           -- press delivers an element to arm2 [4]
+      A2D,           -- arm2 puts a pressed element on belt2 [4]
+      DC_READY,      -- crane arrived over belt2
+      DC,            -- crane gets a pressed element from belt2 [4]
+      CF,            -- crane puts a blank element on belt1 [4]
+      UP_M70,        -- robot angle is or will soon be greater than -70 degr.
+      UP_15,         -- robot angle is or will soon be greater than 15 degr.
+      DOWN_15,       -- robot angle is or will soon be smaller than 15 degr.
+      DOWN_M70: NONE -- robot angle is or will soon be smaller than -70 degr.
+   in
+      par
+         A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70 ->
+            P1 [G1, PRESS_UPWARD, PRESS_STOP, PRESS_DOWNWARD,
+                A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70]
+       ||
+         TA1_READY, A1P ->
+            P2 [G2, ARM1_FORWARD, ARM1_STOP, ARM1_BACKWARD, TA1_READY, A1P]
+       ||
+         PA2, A2D ->
+            P3 [G3, ARM2_FORWARD, ARM2_STOP, ARM2_BACKWARD, PA2, A2D]
+       ||
+         TA1_READY, A1P, TA1 ->
+            P4 [ARM1_MAG_ON, ARM1_MAG_OFF, TA1_READY, A1P, TA1]
+       ||
+         PA2, A2D ->
+            P5 [ARM2_MAG_ON, ARM2_MAG_OFF, PA2, A2D]
+       ||
+         TA1_READY, A1P, PA2, A2D, UP_M70, UP_15, DOWN_15, DOWN_M70 ->
+            P6 [G6, ROBOT_LEFT, ROBOT_STOP, ROBOT_RIGHT,
+                TA1_READY, A1P, PA2, A2D, UP_M70, UP_15, DOWN_15, DOWN_M70]
+       ||
+         FT_READY, FT, TA1_READY, TA1 ->
+            P7 [G7, TABLE_UPWARD, TABLE_STOP_V, TABLE_DOWNWARD,
+                FT_READY, FT, TA1_READY, TA1]
+       ||
+         FT_READY, FT, TA1_READY, TA1 ->
+            P8 [G8, TABLE_LEFT, TABLE_STOP_H, TABLE_RIGHT,
+                FT_READY, FT, TA1_READY, TA1]
+       ||
+         DC_READY, DC, CF ->
+            P9 [G9, CRANE_TO_BELT2, CRANE_STOP_H, CRANE_TO_BELT1,
+                DC_READY, DC, CF]
+       ||
+         DC_READY, DC, CF ->
+            P10 [G10, CRANE_LIFT, CRANE_STOP_V, CRANE_LOWER, DC_READY, DC, CF]
+       ||
+         DC, CF ->
+            P11 [CRANE_MAG_ON, CRANE_MAG_OFF, DC, CF]
+       ||
+         FT_READY, FT, CF ->
+            P12 [G12, BELT1_START, BELT1_STOP, BLANK_ADD, FT_READY, FT, CF]
+       ||
+         A2D, DC ->
+            P13 [G13, BELT2_START, BELT2_STOP, A2D, DC]
+      end par
+   end hide
+end process
+
+-------------------------------------------------------------------------------
+
+-- each process Pi is split into two (but sometimes one, or sometimes three)
+-- concurrent processes; the former process describes the overall functioning
+-- cycle of the engine, while the latter process scrutates the inputs and
+-- decides when a transition to a next state is required
+
+-------------------------------------------------------------------------------
+
+process P1 [G1: PRESS_POSITION,
+            PRESS_UPWARD, PRESS_STOP, PRESS_DOWNWARD,
+            A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70: NONE] is
+   -- this process controls the press
+   -- initially, the press is in middle position
+   par PRESS_STOP in
+      -- the actions before the loop are the same as the actions inside the
+      -- loop starting from state 1, but without the rendezvous on gate PA2;
+      -- indeed, initially, there is no item in the press that could be
+      -- delivered to arm 2
+      PRESS_DOWNWARD;
+      PRESS_STOP; -- bottom position -> state 2
+      UP_15;
+      loop
+         DOWN_15;
+         PRESS_UPWARD;
+         PRESS_STOP; -- middle position -> state 3
+         DOWN_M70;
+         A1P;
+         UP_M70;
+         PRESS_UPWARD;
+         PRESS_STOP; -- top position -> state 1
+         PRESS_DOWNWARD;
+         PRESS_STOP; -- bottom position -> state 2
+         UP_15;
+         PA2
+      end loop
+    ||
+      var
+         STATE: THREE_STATE,
+         VALUE: PRESS_POSITION
+      in
+         STATE := 1;
+         loop
+            G1 (?VALUE);
+            if LIMIT_PRESS_POSITION (STATE, VALUE) then
+               PRESS_STOP;
+               STATE := SUCC (STATE)
+            end if
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P2 [G2: ARM1_EXTENSION,
+            ARM1_FORWARD, ARM1_STOP, ARM1_BACKWARD, TA1_READY, A1P: NONE] is
+   -- this process controls the extension of arm 1
+   -- initially, arm 1 is completely retracted
+   par ARM1_STOP in
+      -- arm 1 is initially out of its range of operation (it is too short);
+      -- thus, it must first be extended to the lower limit of its range of
+      -- operation
+      ARM1_FORWARD;
+      loop
+         ARM1_STOP; -- 0.5208
+         TA1_READY;
+         ARM1_FORWARD;
+         ARM1_STOP; -- 0.6458
+         A1P;
+         ARM1_BACKWARD
+      end loop
+    ||
+      var STATE: TWO_STATE,
+          VALUE: ARM1_EXTENSION
+      in
+         STATE := 1;
+         loop
+            G2 (?VALUE);
+            if LIMIT_ARM1_EXTENSION (STATE, VALUE) then
+               ARM1_STOP;
+               STATE := SUCC (STATE)
+            end if
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P3 [G3: ARM2_EXTENSION,
+            ARM2_FORWARD, ARM2_STOP, ARM2_BACKWARD, PA2, A2D: NONE] is
+   -- this process controls the extension of arm 2
+   -- initially, arm 2 is completely retracted
+   par ARM2_STOP in
+      loop
+         ARM2_FORWARD;
+         ARM2_STOP; -- 0.7971
+         PA2;
+         ARM2_BACKWARD;
+         ARM2_STOP; -- 0.5707
+         A2D
+      end loop
+    ||
+      var STATE: TWO_STATE,
+          VALUE: ARM2_EXTENSION
+      in
+         STATE := 1;
+         loop
+            G3 (?VALUE);
+            if LIMIT_ARM2_EXTENSION (STATE, VALUE) then
+               ARM2_STOP;
+               STATE := SUCC (STATE)
+            end if
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P4 [ARM1_MAG_ON, ARM1_MAG_OFF, TA1_READY, A1P, TA1: NONE] is
+   -- this process controls the magnet of arm 1
+   -- initially, the magnet of arm 1 is off
+   loop
+      TA1_READY;
+      ARM1_MAG_ON;
+      TA1;
+      A1P;
+      ARM1_MAG_OFF
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process P5 [ARM2_MAG_ON, ARM2_MAG_OFF, PA2, A2D: NONE] is
+   -- this process controls the magnet of arm 2
+   -- initially, the magnet of arm 2 is off
+   loop
+      PA2;
+      ARM2_MAG_ON;
+      A2D;
+      ARM2_MAG_OFF
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process P6 [G6: ROBOT_ANGLE,
+            ROBOT_LEFT, ROBOT_STOP, ROBOT_RIGHT,
+            TA1_READY, A1P, PA2, A2D,
+            UP_M70, UP_15, DOWN_15, DOWN_M70: NONE] is
+   -- this process controls the angle of the robot
+   -- initially, the angle of the robot is 0 degrees
+   par ROBOT_STOP in
+      -- the actions before the loop are the same as the actions inside the
+      -- loop starting from state 4, but without the stop at 35 degrees,
+      -- the rendezvous on PA2, and the restart of the movement to the left;
+      -- indeed, initially there is no item in the press that could be
+      -- delivered to arm 2
+      ROBOT_RIGHT;
+      ROBOT_STOP; -- 15 degrees -> state i2
+      UP_15;
+      ROBOT_RIGHT;
+      ROBOT_STOP; -- 50 degrees -> state i3
+      TA1_READY;
+      ROBOT_LEFT;
+      ROBOT_STOP; -- 15 degrees -> state i4
+      DOWN_15;
+      ROBOT_LEFT;
+      ROBOT_STOP; -- -70 degrees -> state 1
+      DOWN_M70;
+      loop
+         ROBOT_LEFT;
+         ROBOT_STOP; -- -90 degrees -> state 2
+         A1P;
+         ROBOT_RIGHT;
+         ROBOT_STOP; -- -70 degrees -> state 3
+         UP_M70;
+         ROBOT_RIGHT;
+         ROBOT_STOP; -- 15 degrees -> state 4
+         UP_15;
+         ROBOT_RIGHT;
+         ROBOT_STOP; -- 50 degrees -> state 5
+         TA1_READY;
+         ROBOT_LEFT;
+         ROBOT_STOP; -- 35 degrees -> state 6
+         PA2;
+         ROBOT_LEFT;
+         ROBOT_STOP; -- 15 degrees -> state 7
+         DOWN_15;
+         ROBOT_LEFT;
+         ROBOT_STOP; -- -70 degrees -> state 1
+         DOWN_M70;
+         A2D
+      end loop
+    ||
+      var STATE: ELEVEN_STATE,
+          VALUE: ROBOT_ANGLE
+      in
+         STATE := i1;
+         loop
+            G6 (?VALUE);
+	    if LIMIT_ROBOT_ANGLE (STATE, VALUE) then
+               ROBOT_STOP;
+               STATE := SUCC (STATE)
+            end if
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P7 [G7: TABLE_POSITION,
+            TABLE_UPWARD, TABLE_STOP_V, TABLE_DOWNWARD,
+            FT_READY, FT, TA1_READY, TA1: NONE] is
+   -- this process controls the height of the table
+   -- initially, the table is in bottom position
+   par TABLE_STOP_V in
+      TABLE_STOP_V; -- initialisation is mandatory
+      loop
+         FT_READY;
+         FT;
+         TABLE_UPWARD;
+         TABLE_STOP_V;
+         TA1_READY;
+         TA1;
+         TABLE_DOWNWARD;
+         TABLE_STOP_V
+      end loop
+    ||
+      var STATE: TWO_STATE,
+          VALUE: TABLE_POSITION -- initial value is TABLE_BOTTOM
+      in
+         STATE := 1;
+         loop
+            G7 (?VALUE);
+            if LIMIT_TABLE_POSITION (STATE, VALUE) then
+               TABLE_STOP_V;
+               STATE := SUCC (STATE)
+            end if
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P8 [G8: TABLE_ANGLE,
+            TABLE_LEFT, TABLE_STOP_H, TABLE_RIGHT,
+            FT_READY, FT, TA1_READY, TA1: NONE] is
+   -- this process controls the angle of the table
+   -- initially, the angle of the table is 0 degrees
+   par TABLE_STOP_H in
+      TABLE_STOP_H; -- initialisation is mandatory
+      loop
+         FT_READY;
+         FT;
+         TABLE_RIGHT;
+         TABLE_STOP_H;
+         TA1_READY;
+         TA1;
+         TABLE_LEFT;
+         TABLE_STOP_H
+      end loop
+    ||
+      var STATE: TWO_STATE,
+          VALUE: TABLE_ANGLE
+      in
+         STATE := 1;
+         loop
+            G8 (?VALUE);  -- initial value is ANGLE_MIN
+            if LIMIT_TABLE_ANGLE (STATE, VALUE) then
+               TABLE_STOP_H;
+               STATE := SUCC (STATE)
+            end if
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P9 [G9: CRANE_POSITION,
+            CRANE_TO_BELT2, CRANE_STOP_H, CRANE_TO_BELT1,
+            DC_READY, DC, CF: NONE] is
+   -- this process controls the position of the crane
+   -- initial position is OTHER
+   par CRANE_STOP_H in
+      loop
+         CRANE_TO_BELT2;
+         CRANE_STOP_H;
+         DC_READY;
+         DC;
+         CRANE_TO_BELT1;
+         CRANE_STOP_H;
+         CF
+      end loop
+    ||
+      var STATE: TWO_STATE,
+          VALUE: CRANE_POSITION
+      in
+         STATE := 1;
+         loop
+            G9 (?VALUE); -- initial value is OTHER
+            if LIMIT_CRANE_POSITION (STATE, VALUE) then
+               CRANE_STOP_H;
+	       STATE := SUCC (STATE)
+            end if
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P10 [G10: CRANE_HEIGHT,
+             CRANE_LIFT, CRANE_STOP_V, CRANE_LOWER, DC_READY, DC, CF: NONE] is
+   -- this process controls the height of the crane
+   -- initial height is OTHER
+   par CRANE_STOP_V in
+      loop
+         DC_READY;
+         CRANE_LOWER;
+         CRANE_STOP_V;
+         DC;
+         CRANE_LIFT;
+         CRANE_STOP_V;
+         CF
+      end loop
+    ||
+      var STATE: TWO_STATE,
+          VALUE: CRANE_HEIGHT
+      in
+         STATE := 1;
+         loop
+            G10 (?VALUE); -- initial value is OTHER
+            if LIMIT_CRANE_HEIGHT (STATE, VALUE) then
+               CRANE_STOP_V;
+               STATE := SUCC (STATE)
+            end if
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P11 [CRANE_MAG_ON, CRANE_MAG_OFF, DC, CF: NONE] is
+   -- this process controls the magnet of the crane
+   loop
+      DC;
+      CRANE_MAG_ON;
+      CF;
+      CRANE_MAG_OFF
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process P12 [G12: BOOL,
+             BELT1_START, BELT1_STOP, BLANK_ADD, FT_READY, FT, CF: NONE] is
+   -- this process controls belt 1 (feed belt)
+   par
+      BLANK_ADD ->
+         BLANK_ADD;
+         BLANK_ADD;
+         BLANK_ADD;
+         BLANK_ADD;
+         BLANK_ADD;
+         stop
+    ||
+      BLANK_ADD, BELT1_STOP, FT ->
+         -- before the loop, a few actions are required because, initially,
+         -- there is no blank in the production cell, so that a blank has
+         -- first to be added and the feed belt has to be started to move
+         -- this blank towards the elevating rotary table
+         BLANK_ADD;
+         BELT1_START;
+         loop
+            BELT1_STOP;
+            FT_READY;
+            BELT1_START;
+            FT;
+            select
+               CF
+             []
+               BLANK_ADD
+            end select
+         end loop
+    ||
+      BELT1_STOP, FT ->
+         var S13, PREVIOUS_S13: BOOL in
+            PREVIOUS_S13 := false;
+            loop
+               G12 (?S13);
+               if PREVIOUS_S13 != S13 then
+                  if S13 then
+                     BELT1_STOP
+                  else
+                     FT
+                  end if;
+                  PREVIOUS_S13 := S13
+               end if
+            end loop
+         end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P13 [G13: BOOL,
+             BELT2_START, BELT2_STOP, A2D, DC: NONE] is
+   -- this process controls belt 2 (deposit belt)
+   par BELT2_STOP in
+      -- before the loop, a few actions are required because, initially,
+      -- there is no item on the deposit belt, so that action DC would be
+      -- impossible; the deposit belt has thus to wait for arm 2 to deliver
+      -- an item (i.e., action A2D)
+      A2D;
+      loop
+         BELT2_START;
+         BELT2_STOP;
+         par
+            DC
+          ||
+            A2D
+         end par
+      end loop
+    ||
+      var S14, PREVIOUS_S14: BOOL in
+         PREVIOUS_S14 := false;
+         loop
+            G13 (?S14);
+            if PREVIOUS_S14 and not (S14) then
+               BELT2_STOP
+            end if;
+            PREVIOUS_S14 := S14
+         end loop
+      end var
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+end module

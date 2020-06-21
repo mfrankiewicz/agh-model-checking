@@ -1,0 +1,9 @@
+#! /bin/sh
+
+CLASS=$1
+
+for FILE in `ls $CLASS*.bcg`
+do
+	bcg_draw $FILE
+	rm -f *@1.o
+done

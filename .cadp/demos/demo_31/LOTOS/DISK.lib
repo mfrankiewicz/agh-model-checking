@@ -1,0 +1,20 @@
+
+process DISK [ARB, CMD, REC, MU] (N:NUM, L:NAT, READY:BOOL) : noexit :=
+   CMD !N;
+      DISK [ARB, CMD, REC, MU] (N, L+1, READY)
+   []
+   ARB ?W:WIRE [not (READY) and C_PASS (W, N)];
+      DISK [ARB, CMD, REC, MU] (N, L, READY)
+   []
+   [not (READY) and (L > 0)] ->
+      MU !N; (* Markov delay inserted here *)
+         DISK [ARB, CMD, REC, MU] (N, L-1, true)
+   []
+   ARB ?W:WIRE [READY and C_LOSS (W, N)];
+      DISK [ARB, CMD, REC, MU] (N, L, READY)
+   []
+   ARB ?W:WIRE [READY and C_WIN (W, N)];
+      REC !N;
+         DISK [ARB, CMD, REC, MU] (N, L, false)
+endproc
+

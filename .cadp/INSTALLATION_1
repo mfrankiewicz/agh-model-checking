@@ -1,0 +1,124 @@
+
+          CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+
+		   ASSISTED INSTALLATION PROCEDURE
+
+	This document is intended to persons in charge of installing or
+upgrading the CADP software, which is distributed electronically using 
+Internet protocols FTP and HTTP.
+
+******************************************************************************
+ 
+        If you are planning to use CADP on a PC running Windows, you should
+read first the instructions for setting up your PC in order to run CADP.
+These instructions are given in file $CADP/INSTALLATION_WINDOWS. They are 
+also available on the Web from: 
+	http://cadp.inria.fr/win32.html 
+
+        If you are planning to use CADP on an Apple computer running macOS,
+you should read first the instructions for setting up your computer in order
+to run CADP. These instructions are given in file $CADP/INSTALLATION_MACOS.
+They are also available on the Web from: 
+	http://cadp.inria.fr/macOS.html 
+
+******************************************************************************
+
+	The installation of CADP can be greatly simplified by the use of
+Installator, the CADP Installation Assistant. Installator is a user-friendly
+program which will help you to install or upgrade CADP. It will automatically
+download and configure the CADP software on your machine(s).
+
+	Alternately, there is also a manual installation procedure for CADP
+(see the $CADP/INSTALLATION_4 for CADP), which is more complex and, therefore,
+not recommended unless required by some specific circumstances. In most cases
+however, the assisted installation procedure should be preferred.
+
+-------------------------------------------------------------------------------
+
+1) Make sure that you are in possession of the password required for
+   downloading the latest version of the CADP. This password should have 
+   been sent to you by the CADP development team. If you do not have it, 
+   please enquire by sending an e-mail to "cadp@inria.fr".
+
+-------------------------------------------------------------------------------
+
+2) Please note that the whole CADP software is entirely contained in a 
+   single directory. There is no constraint on the location of this directory:
+   you can install it any place on any filesystem (provided that there is
+   sufficient disk space). 
+
+   On Windows, however, it is highly recommended to install CADP in C:\cadp,
+   assuming that Windows and Cygwin are also installed on drive C. All the
+   CADP tools should be executed in working directories located on this drive.
+
+   On a local area network, it is advised to have only a single installed copy
+   of the CADP software, which is exported and made visible to other machines
+   by means of mounted filesystems (e.g., using NFS). This functioning mode
+   is permitted by the software licensing scheme used by the CADP software.
+
+-------------------------------------------------------------------------------
+
+3) On Unix-based systems (namely, Solaris, Linux, and macOS), it is not
+   necessary to be an a super-user ("root") to install or upgrade the CADP
+   software. We even recommend that you install it as an ordinary user (not
+   "root"). However, you may also need super-user privilege to install some
+   additional software (e.g., Gnuplot) suitable for using all functionalities
+   of CADP.
+
+   On Windows systems, you will need administrator privileges to install both
+   the Cygwin software and the CADP software. In particular, you must install
+   CADP from a Cygwin shell window launched with administrative privileges
+   (right-click on the Cygwin icon and select "Run as Administrator").
+
+   In any case, if a copy of CADP already exists on your system, you will need
+   to be the owner of the directory containing CADP (including all its files
+   and sub-directories) to perform the upgrade.
+
+-------------------------------------------------------------------------------
+
+4) There are two possible ways to start the assisted installation procedure:
+
+	- The first way is only applicable if you have already a copy of the
+	  CADP software installed on your machine, and if this copy is more
+	  recent than CADP version 2006-a.
+
+	  If this is the case, determine the directory $CADP in which your
+	  copy is installed. Then, you simply have to type the following
+	  shell-command:
+
+		"$CADP"/com/installator
+
+   	  or, in the particular case where you are looking for a beta-release
+	  of CADP rather than an official release:
+
+		"$CADP"/com/installator -beta
+
+	  Do not use the -beta option unless you have been specifically 
+	  advised to do so by the CADP development team.
+
+   	  This command will start Installator, which will help you to install
+	  or upgrade CADP on your machine(s). Please note that you will be
+	  prompted the download password to proceed.
+
+	- The second way is always applicable: it works both for first-time 
+	  installations and for upgrades of existing copies (whatever their 
+	  version numbers). Use your favourite Web browser to access the
+          following URL:
+		http://cadp.inria.fr/installator
+   	  and follow the explanations given.
+
+-------------------------------------------------------------------------------
+
+5) Once you have downloaded the latest version of CADP, please remember that:
+
+	- All CADP users should customize their startup files as explained
+	  in the $CADP/INSTALLATION_2 file.
+ 
+	- You will have to install the $CADP/LICENSE file that will be
+	  returned to you by e-mail (for detailed information about the
+	  licensing scheme, consult the $CADP/INSTALLATION_3 file).
+
+-------------------------------------------------------------------------------
+Written by Hubert Garavel. Last updated on 2019/09/13 11:44:38
+-------------------------------------------------------------------------------
+

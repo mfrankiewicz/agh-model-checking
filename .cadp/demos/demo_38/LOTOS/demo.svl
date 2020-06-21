@@ -1,0 +1,125 @@
+(*
+ * This script demonstrates the compositional verification techniques of CADP
+ * with an LOTOS implementation of the DES (Data Encryption Standard), an
+ * algorithm designed to encipher and decipher 64-bit blocks of data using
+ * a 64-bit key.
+ *)
+
+-------------------------------------------------------------------------------
+-- Compositional state space generation
+-------------------------------------------------------------------------------
+
+(*
+ * In order to reduce the time and memory requirements for the generation of
+ * the state space, the domain of 64-bit vectors is reduced to a single value,
+ * by simply redefining the abstract data type for bits so as to use a
+ * singleton domain: instead of the library "BIT_CONCRETE.lib", the LOTOS
+ * specification "DES_ABSTRACT.lotos" uses the library "BIT_ABSTRACT.lib".
+ *
+ * Each of the three main components of the DES is generated and minimized
+ * under the constraints of the already computed parts.
+ *)
+
+% DEFAULT_PROCESS_FILE="DES_ABSTRACT.lotos"
+
+(* generation and minimization of the controller *)
+
+"controller.bcg" = branching reduction of
+	CONTROLLER;
+
+(* generation and minimization of the key_path constrained by the controller *)
+
+"keypath.bcg" = branching reduction of
+	KEY_PATH
+	-|[CTRL_CK, CTRL_SHIFT, CTRL_DK]|
+	"controller.bcg";
+
+(* generation and minimization of the parallel composition of the minimized
+ * controller and the minimized key_path *)
+
+"controller_keypath.bcg" = branching reduction of
+	"keypath.bcg"
+	|[CTRL_CK, CTRL_SHIFT, CTRL_DK]|
+	"controller.bcg";
+
+(* generation and minimization of the data_path, constrained by the parallel
+ * composition of the controller and key_path *)
+
+"data_path.bcg" = branching reduction of
+	DATA_PATH
+	-|[CTRL_CL, CTRL_CR, SUBKEY]|
+	"controller_keypath.bcg";
+
+(* generation and minimization of the complete abstract DES; gate SUBKEY
+ * is left visible for verification purposes *)
+
+"des.bcg" = branching reduction of
+	hide CTRL_CL, CTRL_CR, CTRL_CK, CTRL_SHIFT, CTRL_DK in
+		"data_path.bcg"
+		|[CTRL_CL, CTRL_CR, SUBKEY]|
+		"controller_keypath.bcg";
+
+-------------------------------------------------------------------------------
+
+(*
+ * To verify the correct function, a prototype implementation is generated from
+ * the LOTOS specification "DES_CONCRETE.lotos" using the EXEC/CAESAR framework.
+ * This prototype is then used to encipher an decipher some sample blocks, and
+ * the results are compared to the official results. The difference between
+ * the two LOTOS specifications "DES_ABSTRACT.lotos" and "DES_CONCRETE.lotos"
+ * is that the latter uses concrete bits.
+ *)
+
+% SVL_PRINT_MESSAGE ""
+% SVL_PRINT_MESSAGE "generating DES executable ..."
+
+% caesar.adt -silent DES_CONCRETE.lotos 2>&1 | tee -a $SVL_LOG_FILE
+% caesar -silent -exec -e7 DES_CONCRETE.lotos 2>&1 | tee -a $SVL_LOG_FILE
+% $CADP/src/com/cadp_ln ../gate_functions.c .
+% $CADP/src/com/cadp_cc -I$CADP/incl -DCAESAR_KERNEL_DELAY=0 -DLOTOS \
+%    DES_CONCRETE.c gate_functions.c $CADP/src/exec_caesar/main.c \
+%    -L$CADP/bin.`$CADP/com/arch` -lcaesar_base -lm \
+%    -o des 2>&1 | tee -a $SVL_LOG_FILE
+
+% SVL_RECORD_FOR_CLEAN "gate_functions.c"
+% SVL_RECORD_FOR_CLEAN "DES_CONCRETE.h"
+% SVL_RECORD_FOR_CLEAN "DES_CONCRETE.c"
+% SVL_RECORD_FOR_CLEAN "DES_CONCRETE.err"
+% SVL_RECORD_FOR_SWEEP "DES_CONCRETE.o"
+% SVL_RECORD_FOR_CLEAN "des"
+% SVL_RECORD_FOR_SWEEP "gate_functions.o"
+% SVL_RECORD_FOR_SWEEP "main.o"
+% SVL_RECORD_FOR_SWEEP "input.log"
+
+-------------------------------------------------------------------------------
+
+property PROPERTY_5 (CRYPT, KEY, DATA, OUTPUT)
+	"The DES prototype computes the expected result"
+is
+	% echo "CRYPT !$CRYPT" > input.log
+	% echo "DATA !$DATA" >> input.log
+	% echo "KEY !$KEY" >> input.log
+	% ./des < input.log
+	expected "OUTPUT !$OUTPUT";
+end property
+
+check PROPERTY_5 (1, "8000000000000000", "8000000000000000", "6a7fc86c02379a5e");
+check PROPERTY_5 (0, "8000000000000000", "6a7fc86c02379a5e", "8000000000000000");
+check PROPERTY_5 (1, "133457799bbcdff1", "0123456789abcdef", "85e813540f0ab405");
+check PROPERTY_5 (0, "133457799bbcdff1", "0123456789abcdef", "ee0f7c12e0b09338");
+check PROPERTY_5 (1, "133457799bbcdff1", "ee0f7c12e0b09338", "0123456789abcdef");
+check PROPERTY_5 (0, "133457799bbcdff1", "85e813540f0ab405", "0123456789abcdef");
+check PROPERTY_5 (1, "0e329232ea6d0d73", "8787878787878787", "0000000000000000");
+check PROPERTY_5 (0, "0e329232ea6d0d73", "0000000000000000", "8787878787878787");
+
+-------------------------------------------------------------------------------
+
+% if [ `cadp_memory -physical` -lt 6442450944 ] ; then
+% 	SVL_PRINT_MESSAGE ""
+% 	SVL_PRINT_MESSAGE "not enough RAM for generating LTS with concrete bits (6 GB needed)"
+% else
+	"des_sample.bcg" = branching reduction of "DES_SAMPLE.lotos";
+% fi
+
+-------------------------------------------------------------------------------
+

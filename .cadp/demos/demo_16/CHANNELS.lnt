@@ -1,0 +1,41 @@
+module CHANNELS (TYPES) is
+
+-------------------------------------------------------------------------------
+
+-- these two definitions are common to the service and the protocol
+
+channel InputChannel is
+    (Msg),
+    (Ind)
+end channel
+
+channel OutputChannel is
+    (Msg),
+    (Ind),
+    (Data, Ind)
+end channel
+
+-------------------------------------------------------------------------------
+
+-- these four definitions are specific to the protocol
+
+channel NullChannel is
+    ()
+end channel
+
+channel SignalChannel is
+    (Signal)
+end channel
+
+channel IndChannel is
+    (Ind)
+end channel
+
+channel KChannel is
+    (Bool, Bool, Bool, Data)
+end channel
+
+-------------------------------------------------------------------------------
+
+end module
+

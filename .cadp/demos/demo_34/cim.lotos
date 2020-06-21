@@ -1,0 +1,337 @@
+(******************************************************************************
+ *            Computer Integrated Manufacturing (CIM) Architecture
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       cim.lotos
+ *   Author             :       Radu MATEESCU
+ *   Version            :       1.2
+ *   Date               :       2005/02/04 11:27:14
+ *****************************************************************************)
+
+specification CIM_ARCHITECTURE [REQUEST, INPUT, OUTPUT, CMD_SU, CMD_ST, CMD,
+                                RDY, GET, PUT, WIN, WOUT, CMD_A, RDY_A,
+                                CMD_B, RDY_B, GET_A, PUT_B, TR, AR] : noexit
+
+(*===========================================================================*)
+(* Data part *)
+
+library BOOLEAN, NATURAL endlib
+
+type Command is
+   sorts
+      Cmd
+
+   opns
+      READ    (*! constructor *),
+      DELIVER (*! constructor *) :-> Cmd
+endtype
+
+type Product is Boolean, Natural
+   sorts
+      Raw,
+      Prd,
+      RQueue,
+      PQueue,
+      PrdStock
+
+   opns
+      R (*! constructor *) : Nat -> Raw
+      RType : Raw -> Nat
+      _eq_, _ne_ : Raw, Raw -> Bool
+      P (*! constructor *) : Nat -> Prd
+      PType : Prd -> Nat
+      _eq_, _ne_ : Prd, Prd -> Bool
+      nil    (*! constructor *) :-> RQueue
+      append (*! constructor *) : RQueue, Raw -> RQueue
+      empty : RQueue -> Bool
+      head : RQueue -> Raw
+      tail : RQueue -> RQueue
+      nil    (*! constructor *) :-> PQueue
+      append (*! constructor *) : PQueue, Prd -> PQueue
+      empty : PQueue -> Bool
+      head : PQueue -> Prd
+      tail : PQueue -> PQueue
+      nil  (*! constructor *) :-> PrdStock
+      cons (*! constructor *) : Prd, Nat, PrdStock -> PrdStock
+      GetQty : Prd, PrdStock -> Nat
+      SetQty : Prd, Nat, PrdStock -> PrdStock
+
+   eqns
+      forall M, N:Nat, P, P1, P2:Prd, Q:PQueue, R, R1, R2:Raw, S:RQueue,
+             PS:PrdStock
+
+      ofsort Nat
+         RType (R (N)) = N;
+
+      ofsort Bool
+         R1 eq R2 = RType (R1) eq RType (R2);
+         R1 ne R2 = not (R1 eq R2);
+
+      ofsort Nat
+         PType (P (N)) = N;
+
+      ofsort Bool
+         P1 eq P2 = PType (P1) eq PType (P2);
+         P1 ne P2 = not (P1 eq P2);
+
+      ofsort Bool
+         empty (nil of RQueue) = true;
+         empty (append (S, R)) = false;
+
+      ofsort Raw
+         head (append (nil, R)) = R;
+         head (append (S, R)) = head (S);
+
+      ofsort RQueue
+         tail (append (nil, R)) = nil;
+         tail (append (S, R)) = append (tail (S), R);
+
+      ofsort Bool
+         empty (nil of PQueue) = true;
+         empty (append (Q, P)) = false;
+
+      ofsort Prd
+         head (append (nil, P)) = P;
+         head (append (Q, P)) = head (Q);
+
+      ofsort PQueue
+         tail (append (nil, P)) = nil;
+         tail (append (Q, P)) = append (tail (Q), P);
+
+      ofsort Nat
+         (* assert: PrdStock not empty and Prd in PrdStock *)
+         P1 eq P2 => GetQty (P1, cons (P2, M, PS)) = M;
+         GetQty (P1, cons (P2, M, PS)) = GetQty (P1, PS);
+
+      ofsort PrdStock
+         (* assert: PrdStock not empty and Prd in PrdStock *)
+         P1 eq P2 => SetQty (P1, N, cons (P2, M, PS)) = cons (P2, N, PS);
+         SetQty (P1, N, cons (P2, M, PS)) = cons (P2, M, SetQty (P1, N, PS));
+endtype
+
+(*===========================================================================*)
+(* Behaviour part *)
+
+behaviour
+
+   Controller [CMD, RDY, CMD_SU, CMD_ST, REQUEST]
+   |[CMD, RDY, CMD_SU, CMD_ST]|
+   (
+      (
+         RawBelt [WIN, GET] (nil of RQueue)
+         |||
+         PrdBelt [WOUT, PUT] (nil of PQueue)
+      )
+      |[WIN, WOUT, GET, PUT]|
+      (
+         Supply [CMD_SU, INPUT, GET]
+         |||
+         Store [CMD_ST, OUTPUT, PUT] (cons (P (1), 2, cons (P (2), 2,
+                                      cons (P (3), 2, nil))))
+         |||
+         Workcell [CMD, RDY, WIN, WOUT] (1)
+         |||
+         Workcell [CMD, RDY, WIN, WOUT] (2)
+         |||
+         Workcell [CMD, RDY, WIN, WOUT] (3)
+      )
+   )
+
+where
+
+(*---------------------------------------------------------------------------*)
+(* Controller *)
+
+process Controller [CMD, RDY, CMD_SU, CMD_ST, REQUEST] : noexit :=
+   REQUEST ?PrType:Nat ?Qty:Nat
+   [(PrType >= 1) and (PrType <= 3) and (Qty >= 1) and (Qty <= 2)];
+      CMD_ST !READ ?Stock:PrdStock;
+      (
+      [GetQty (P (PrType), Stock) >= Qty] ->
+         CMD_ST !DELIVER !PrType !Qty;
+            Controller [CMD, RDY, CMD_SU, CMD_ST, REQUEST]
+      []
+      [GetQty (P (PrType), Stock) < Qty] ->
+         CMD !PrType !Qty - GetQty (P (PrType), Stock);
+            CMD_SU !PrType !Qty - GetQty (P (PrType), Stock);
+               RDY !PrType;
+                  CMD_ST !DELIVER !PrType !Qty;
+                     Controller [CMD, RDY, CMD_SU, CMD_ST, REQUEST]
+      )
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Raw material and product transport belts *)
+
+process RawBelt [WIN, GET] (RQ:RQueue) : noexit :=
+   [not (empty (RQ))] ->
+      WIN ?PrType:Nat !head (RQ) [RType (head (RQ)) = PrType];
+         RawBelt [WIN, GET] (tail (RQ))
+   []
+   GET ?R:Raw;
+      RawBelt [WIN, GET] (append (RQ, R))
+endproc
+
+process PrdBelt [WOUT, PUT] (PQ:PQueue) : noexit :=
+   [not (empty (PQ))] ->
+      PUT !head (PQ);
+         PrdBelt [WOUT, PUT] (tail (PQ))
+   []
+   WOUT ?P:Prd;
+      PrdBelt [WOUT, PUT] (append (PQ, P))
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Raw material supply *)
+
+process Supply [CMD_SU, INPUT, GET] : noexit :=
+   CMD_SU ?PrType:Nat ?Qty:Nat;
+      Supply2 [CMD_SU, INPUT, GET] (PrType, Qty)
+endproc
+
+process Supply2 [CMD_SU, INPUT, GET] (PrType, Qty:Nat) : noexit :=
+   [Qty > 0] ->
+      INPUT !PrType;
+         GET !R (PrType);
+            Supply2 [CMD_SU, INPUT, GET] (PrType, Qty - 1)
+   []
+   [Qty = 0] ->
+      Supply [CMD_SU, INPUT, GET]
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Product store *)
+
+process Store [CMD_ST, OUTPUT, PUT] (Stock:PrdStock) : noexit :=
+   CMD_ST !READ !Stock;
+      Store [CMD_ST, OUTPUT, PUT] (Stock)
+   []
+   CMD_ST !DELIVER ?PrType:Nat ?Qty:Nat [Qty <= GetQty (P (PrType), Stock)];
+      OUTPUT !P (PrType) !Qty;
+         Store [CMD_ST, OUTPUT, PUT] (SetQty (P (PrType),
+                                      GetQty (P (PrType), Stock) - Qty, Stock))
+   []
+   PUT ?P:Prd;
+      Store [CMD_ST, OUTPUT, PUT] (SetQty (P, GetQty (P, Stock) + 1, Stock))
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Workcell *)
+
+process Workcell [CMD, RDY, WIN, WOUT] (PrType:Nat) : noexit :=
+
+   hide CMD_A, RDY_A, CMD_B, RDY_B, TR, AR, GET_A, PUT_B in
+   (
+      (
+         WCC [CMD, RDY, CMD_A, RDY_A, CMD_B, RDY_B, TR, AR] (PrType)
+         |[CMD_A, RDY_A, CMD_B, RDY_B]|
+         (
+            WSA [CMD_A, RDY_A, WIN, GET_A] (PrType)
+            |||
+            WSB [CMD_B, RDY_B, PUT_B, WOUT]
+         )
+      )
+      |[GET_A, PUT_B, TR, AR]|
+      WCT [GET_A, PUT_B, TR, AR] (nil of PQueue)
+   )
+
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Workstation A: building products from raw material *)
+
+process WSA [CMD_A, RDY_A, WIN, GET_A] (PrType:Nat) : noexit :=
+   CMD_A ?N:Nat;
+      WSA2 [CMD_A, RDY_A, WIN, GET_A] (PrType, N)
+endproc
+
+process WSA2 [CMD_A, RDY_A, WIN, GET_A] (PrType, N:Nat) : noexit :=
+   [N > 0] ->
+      WIN !PrType ?R:Raw;
+         GET_A !P (PrType);
+            WSA2 [CMD_A, RDY_A, WIN, GET_A] (PrType, N - 1)
+   []
+   [N = 0] ->
+      RDY_A;
+         WSA [CMD_A, RDY_A, WIN, GET_A] (PrType)
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Workstation B: processing products to final form *)
+
+process WSB [CMD_B, RDY_B, PUT_B, WOUT] : noexit :=
+   CMD_B ?N:Nat;
+      WSB2 [CMD_B, RDY_B, PUT_B, WOUT] (N)
+endproc
+
+process WSB2 [CMD_B, RDY_B, PUT_B, WOUT] (N:Nat) : noexit :=
+   [N > 0] ->
+      PUT_B ?P:Prd;
+         WOUT !P;
+            WSB2 [CMD_B, RDY_B, PUT_B, WOUT] (N - 1)
+   []
+   [N = 0] ->
+      RDY_B;
+         WSB [CMD_B, RDY_B, PUT_B, WOUT]
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Workcell transport service *)
+
+process WCT [GET_A, PUT_B, TR, AR] (PQ:PQueue) : noexit :=
+   [Empty (PQ)] ->
+   (
+      TR;
+         GET_A ?P:Prd;
+            WCT [GET_A, PUT_B, TR, AR] (append (PQ, P))
+      []
+      GET_A ?P:Prd;
+         TR;
+            WCT [GET_A, PUT_B, TR, AR] (append (PQ, P))
+   )
+   []
+   [not (Empty (PQ))] ->
+   (
+      TR;
+         GET_A ?P:Prd;
+            WCT [GET_A, PUT_B, TR, AR] (append (PQ, P))
+      []
+      GET_A ?P:Prd;
+         TR;
+            WCT [GET_A, PUT_B, TR, AR] (append (PQ, P))
+      []
+      PUT_B !head (PQ);
+         AR;
+            WCT [GET_A, PUT_B, TR, AR] (tail (PQ))
+   )
+endproc
+
+(*---------------------------------------------------------------------------*)
+(* Workcell controller *)
+
+process WCC [CMD, RDY, CMD_A, RDY_A, CMD_B, RDY_B, TR, AR] (PrType:Nat) : noexit :=
+   CMD !PrType ?N:Nat;
+      CMD_B !N;
+         WCC2 [CMD, RDY, CMD_A, RDY_A, CMD_B, RDY_B, TR, AR] (PrType, N)
+endproc
+
+process WCC2 [CMD, RDY, CMD_A, RDY_A, CMD_B, RDY_B, TR, AR] (PrType, N:Nat) : noexit :=
+   [N > 0] ->
+      CMD_A !1;
+         RDY_A;
+            TR;
+               AR;
+                  WCC2 [CMD, RDY, CMD_A, RDY_A, CMD_B, RDY_B, TR, AR] (PrType, N - 1)
+   []
+   [N = 0] ->
+      RDY_B;
+         RDY !PrType;
+            WCC [CMD, RDY, CMD_A, RDY_A, CMD_B, RDY_B, TR, AR] (PrType)
+endproc
+
+endspec
+

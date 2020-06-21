@@ -1,0 +1,37 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_decl
+#   Auteur              :       Hubert GARAVEL
+#   Version             :       1.3
+#   Date                :       2003/03/14 11:32:07
+##############################################################################
+
+# This shell-script is used by Declarator
+
+BINARY=$1
+FUNCTION=$2
+COMPILER=$3
+VERSION=$4
+
+nm "$BINARY" | grep "$FUNCTION\>" > /dev/null 2> /dev/null
+
+if test $? = 0
+then
+	echo "" 
+	echo "WARNING! The $COMPILER compiler (version $VERSION) used is obsolete."
+	echo "It still implements function $FUNCTION(), which has been"
+	echo "withdrawn from the \"caesar_graph\" application programming interface."
+	echo "Please, report this problem to the author(s) of $COMPILER."
+fi
+
+exit 0
+ 

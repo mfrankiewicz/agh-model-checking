@@ -1,0 +1,931 @@
+(* ------------------------------------------------------------------------- *)
+(* Production Cell in LOTOS                                                  *)
+(* Hubert Garavel - updates by Mark Jorgensen and Wendelin Serwe             *)
+(* ------------------------------------------------------------------------- *)
+
+(* if-then-else-endif macros to shorten LOTOS code *)
+
+#define if (let OK:BOOL = (
+
+#define then ) in ([OK] -> (
+
+#define else ) [] [not (OK)] -> (
+
+#define endif )))
+
+(* ------------------------------------------------------------------------- *)
+
+(* gates corresponding to actions sent to the Tcl/Tk simulator *)
+
+#define A1 PRESS_UPWARD, PRESS_STOP, PRESS_DOWNWARD
+
+#define A2 ARM1_FORWARD, ARM1_STOP, ARM1_BACKWARD
+
+#define A3 ARM2_FORWARD, ARM2_STOP, ARM2_BACKWARD
+
+#define A4 ARM1_MAG_ON, ARM1_MAG_OFF
+
+#define A5 ARM2_MAG_ON, ARM2_MAG_OFF
+
+#define A6 ROBOT_LEFT, ROBOT_STOP, ROBOT_RIGHT
+
+#define A7 TABLE_UPWARD, TABLE_STOP_V, TABLE_DOWNWARD
+
+#define A8 TABLE_LEFT, TABLE_STOP_H, TABLE_RIGHT
+
+#define A9 CRANE_TO_BELT2, CRANE_STOP_H, CRANE_TO_BELT1
+
+#define A10 CRANE_LIFT, CRANE_STOP_V, CRANE_LOWER
+
+#define A11 CRANE_MAG_ON, CRANE_MAG_OFF
+
+#define A12 BELT1_START, BELT1_STOP
+
+#define A13 BELT2_START, BELT2_STOP
+
+#define A_ALL A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13
+
+(* ------------------------------------------------------------------------- *)
+
+(* gates corresponding to internal actions *)
+
+#define G_ALL G1, G2, G3,         G6, G7, G8, G9, G10,      G12, G13
+
+#define ROBOT_ALL \
+   UP_M70,  (* robot angle is or will soon be greater than -70 degrees *) \
+   UP_15,   (* robot angle is or will soon be greater than 15 degrees *) \
+   DOWN_15, (* robot angle is or will soon be smaller than 15 degrees *) \
+   DOWN_M70 (* robot angle is or will soon be smaller than -70 degrees *)
+
+(* ========================================================================= *)
+
+specification PRODUCTION [GET_STATUS, BLANK_ADD, A_ALL] : noexit
+
+library BOOLEAN, NATURAL, X_CHARACTER, X_STRING endlib
+
+(* ------------------------------------------------------------------------- *)
+
+type ENRICHED_NATURAL is NATURAL
+   opns 10 (*! implementedby ADT_N10 *), 
+        11 (*! implementedby ADT_N11 *), 
+        12 (*! implementedby ADT_N12 *), 
+        13 (*! implementedby ADT_N13 *), 
+        14 (*! implementedby ADT_N14 *) : -> NAT
+   eqns
+      ofsort NAT
+         10 = Succ (9);
+         11 = Succ (10);
+         12 = Succ (11);
+         13 = Succ (12);
+         14 = Succ (13);
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type REAL is BOOLEAN
+   sorts REAL (*! implementedby ADT_REAL comparedby ADT_CMP_REAL
+                  printedby ADT_PRINT_REAL external *)
+   opns
+      0 (*! implementedby R0 external *),
+      15 (*! implementedby R15 external *),
+      35 (*! implementedby R35 external *),
+      50 (*! implementedby R50 external *),
+      M70 (*! implementedby RM70 external *),
+      M90 (*! implementedby RM90 external *),
+      0_5208 (*! implementedby R0_5208 external *),
+      0_5707 (*! implementedby R0_5707 external *),
+      0_6458 (*! implementedby R0_6458 external *),
+      0_6593 (*! implementedby R0_6593 external *),
+      0_7971 (*! implementedby R0_7971 external *),
+      0_9450 (*! implementedby R0_9450 external *) : -> REAL
+      _==_ (*! implementedby ADT_EQ_REAL external *),
+      _<>_ (*! implementedby ADT_NE_REAL external *) : REAL, REAL -> BOOL
+endtype
+
+(* ========================================================================= *)
+
+type PRESS_POSITION is BOOLEAN
+   sorts PRESS_POSITION
+   opns
+      PRESS_BOTTOM (*! constructor *),
+      PRESS_MIDDLE (*! constructor *),
+      PRESS_TOP (*! constructor *),
+      OTHER (*! constructor *) : -> PRESS_POSITION
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type ARM1_EXTENSION is BOOLEAN
+   sorts ARM1_EXTENSION
+   opns
+      0_5208 (*! constructor *),
+      0_6458 (*! constructor *),
+      OTHER (*! constructor *) : -> ARM1_EXTENSION
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type ARM2_EXTENSION is BOOLEAN
+   sorts ARM2_EXTENSION
+   opns
+      0_7971 (*! constructor *),
+      0_5707 (*! constructor *),
+      OTHER (*! constructor *) : -> ARM2_EXTENSION
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type ROBOT_ANGLE is BOOLEAN
+   sorts ROBOT_ANGLE
+   opns
+      0 (*! constructor *),
+      15 (*! constructor *),
+      35 (*! constructor *),
+      50 (*! constructor *),
+      M70 (*! constructor *),
+      M90 (*! constructor *),
+      OTHER (*! constructor *) : -> ROBOT_ANGLE
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type TABLE_POSITION is BOOLEAN
+   sorts TABLE_POSITION
+   opns
+      TABLE_BOTTOM (*! constructor *),
+      TABLE_TOP (*! constructor *), 
+      OTHER (*! constructor *) : -> TABLE_POSITION
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type TABLE_ANGLE is BOOLEAN
+   sorts TABLE_ANGLE
+   opns
+      0 (*! constructor *),
+      50 (*! constructor *),
+      OTHER (*! constructor *) : -> TABLE_ANGLE
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type CRANE_POSITION is BOOLEAN
+   sorts CRANE_POSITION
+   opns
+      CRANE_OVER_FEED_BELT (*! constructor *),
+      CRANE_OVER_DEPOSIT_BELT (*! constructor *),
+      OTHER (*! constructor *) : -> CRANE_POSITION
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type CRANE_HEIGHT is BOOLEAN
+   sorts CRANE_HEIGHT
+   opns
+      0_9450 (*! constructor *),
+      0_6593 (*! constructor *),
+      OTHER (*! constructor *) : -> CRANE_HEIGHT
+endtype
+
+(* ========================================================================= *)
+
+type CONVERSIONS is REAL, ROBOT_ANGLE, ARM1_EXTENSION, ARM2_EXTENSION,
+   TABLE_POSITION, TABLE_ANGLE, CRANE_HEIGHT, PRESS_POSITION, CRANE_POSITION
+   (*
+    * fonctions to convert concrete input values of the interface variables
+    * S1, ..., S12 into corresponding abstract values defined above
+    *)
+   opns
+      CONVERT_S1_S2_S3 : BOOL, BOOL, BOOL -> PRESS_POSITION
+      CONVERT_S4 : REAL -> ARM1_EXTENSION
+      CONVERT_S5 : REAL -> ARM2_EXTENSION
+      CONVERT_S6 : REAL -> ROBOT_ANGLE
+      CONVERT_S7_S8 : BOOL, BOOL -> TABLE_POSITION
+      CONVERT_S9 : REAL -> TABLE_ANGLE
+      CONVERT_S10_S11 : BOOL, BOOL -> CRANE_POSITION
+      CONVERT_S12 : REAL -> CRANE_HEIGHT
+   eqns
+      ofsort PRESS_POSITION
+         CONVERT_S1_S2_S3 (true, false, false) = PRESS_BOTTOM;
+         CONVERT_S1_S2_S3 (false, true, false) = PRESS_MIDDLE;
+         CONVERT_S1_S2_S3 (false, false, true) = PRESS_TOP;
+         CONVERT_S1_S2_S3 (false, false, false) = OTHER;
+         (* otherwise => undefined *)
+      ofsort ARM1_EXTENSION
+      forall X:REAL
+         X = 0_5208 of REAL => CONVERT_S4 (X) = 0_5208;
+         X = 0_6458 of REAL => CONVERT_S4 (X) = 0_6458;
+         CONVERT_S4 (X) = OTHER;
+      ofsort ARM2_EXTENSION
+      forall X:REAL
+         X = 0_7971 of REAL => CONVERT_S5 (X) = 0_7971;
+         X = 0_5707 of REAL => CONVERT_S5 (X) = 0_5707;
+         CONVERT_S5 (X) = OTHER;
+      ofsort ROBOT_ANGLE
+      forall X:REAL
+         X = 0 of REAL => CONVERT_S6 (X) = 0;
+         X = 15 of REAL => CONVERT_S6 (X) = 15;
+         X = 35 of REAL => CONVERT_S6 (X) = 35;
+         X = 50 of REAL => CONVERT_S6 (X) = 50;
+         X = M70 of REAL => CONVERT_S6 (X) = M70;
+         X = M90 of REAL => CONVERT_S6 (X) = M90;
+         CONVERT_S6 (X) = OTHER;
+      ofsort TABLE_POSITION
+      forall X:REAL
+         CONVERT_S7_S8 (true, false) = TABLE_BOTTOM;
+         CONVERT_S7_S8 (false, true) = TABLE_TOP;
+         CONVERT_S7_S8 (false, false) = OTHER;
+         (* otherwise => undefined *)
+      ofsort TABLE_ANGLE
+      forall X:REAL
+         X = 0 of REAL => CONVERT_S9 (X) = 0;
+         X = 50 of REAL => CONVERT_S9 (X) = 50;
+         CONVERT_S9 (X) = OTHER;
+      ofsort CRANE_POSITION
+      forall X:REAL
+         CONVERT_S10_S11 (true, false) = CRANE_OVER_DEPOSIT_BELT;
+         CONVERT_S10_S11 (false, true) = CRANE_OVER_FEED_BELT;
+         CONVERT_S10_S11 (false, false) = OTHER;
+         (* otherwise => undefined *)
+      ofsort CRANE_HEIGHT
+      forall X:REAL
+         X = 0_9450 of REAL => CONVERT_S12 (X) = 0_9450;
+         X = 0_6593 of REAL => CONVERT_S12 (X) = 0_6593;
+         CONVERT_S12 (X) = OTHER;
+endtype
+
+(* ========================================================================= *)
+
+type TWO_STATE is
+   (* this type is used in processes P2b, P3b, P7b, P8b, P9b, and P10b *)
+   sorts TWO_STATE
+   opns 1 (*! constructor *),
+        2 (*! constructor *) : -> TWO_STATE
+        SUCC : TWO_STATE -> TWO_STATE
+   eqns
+      forall S:TWO_STATE
+      ofsort TWO_STATE
+         SUCC (1) = 2;
+         SUCC (2) = 1;
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type THREE_STATE is
+   (* this type is used in process P1b *)
+   sorts THREE_STATE
+   opns 1 (*! constructor *),
+        2 (*! constructor *),
+        3 (*! constructor *) : -> THREE_STATE
+        SUCC : THREE_STATE -> THREE_STATE
+   eqns
+      forall S:THREE_STATE
+      ofsort THREE_STATE
+         SUCC (1) = 2;
+         SUCC (2) = 3;
+         SUCC (3) = 1;
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type ELEVEN_STATE is
+   (* this type is used in process P6b *)
+   sorts ELEVEN_STATE
+   opns i1 (*! constructor *),
+        i2 (*! constructor *),
+        i3 (*! constructor *),
+        i4 (*! constructor *),
+        1 (*! constructor *),
+        2 (*! constructor *),
+        3 (*! constructor *),
+        4 (*! constructor *),
+        5 (*! constructor *),
+        6 (*! constructor *),
+        7 (*! constructor *) : -> ELEVEN_STATE
+        SUCC : ELEVEN_STATE -> ELEVEN_STATE
+   eqns
+      forall S:ELEVEN_STATE
+      ofsort ELEVEN_STATE
+         SUCC (i1) = i2;
+         SUCC (i2) = i3;
+         SUCC (i3) = i4;
+         SUCC (i4) = 1;
+         SUCC (1) = 2;
+         SUCC (2) = 3;
+         SUCC (3) = 4;
+         SUCC (4) = 5;
+         SUCC (5) = 6;
+         SUCC (6) = 7;
+         SUCC (7) = 1;
+endtype
+
+(* ========================================================================= *)
+
+type LIMITS is REAL, ROBOT_ANGLE, ARM1_EXTENSION, ARM2_EXTENSION, 
+   TABLE_POSITION, TABLE_ANGLE, CRANE_HEIGHT, PRESS_POSITION, CRANE_POSITION,
+   TWO_STATE, THREE_STATE, ELEVEN_STATE
+   (*
+    * functions that return "true" when a particular engine has reached
+    * a specified limit of movement, so that a state change is required
+    *)
+   opns 
+      LIMIT_PRESS_POSITION : THREE_STATE, PRESS_POSITION -> BOOL
+      LIMIT_ARM1_EXTENSION : TWO_STATE, ARM1_EXTENSION -> BOOL
+      LIMIT_ARM2_EXTENSION : TWO_STATE, ARM2_EXTENSION -> BOOL
+      LIMIT_ROBOT_ANGLE : ELEVEN_STATE, ROBOT_ANGLE -> BOOL
+      LIMIT_TABLE_POSITION : TWO_STATE, TABLE_POSITION -> BOOL
+      LIMIT_TABLE_ANGLE : TWO_STATE, TABLE_ANGLE -> BOOL
+      LIMIT_CRANE_POSITION : TWO_STATE, CRANE_POSITION -> BOOL
+      LIMIT_CRANE_HEIGHT : TWO_STATE, CRANE_HEIGHT -> BOOL
+   eqns
+      ofsort BOOL
+      forall S:THREE_STATE, VALUE:PRESS_POSITION
+         LIMIT_PRESS_POSITION (1, PRESS_BOTTOM) = true;
+         LIMIT_PRESS_POSITION (2, PRESS_MIDDLE) = true;
+         LIMIT_PRESS_POSITION (3, PRESS_TOP) = true;
+         LIMIT_PRESS_POSITION (S, VALUE) = false;
+      ofsort BOOL
+      forall S:TWO_STATE, VALUE:ARM1_EXTENSION
+         LIMIT_ARM1_EXTENSION (1, 0_5208) = true;
+         LIMIT_ARM1_EXTENSION (2, 0_6458) = true;
+         LIMIT_ARM1_EXTENSION (S, VALUE) = false;
+      ofsort BOOL
+      forall S:TWO_STATE, VALUE:ARM2_EXTENSION
+         LIMIT_ARM2_EXTENSION (1, 0_7971) = true;
+         LIMIT_ARM2_EXTENSION (2, 0_5707) = true;
+         LIMIT_ARM2_EXTENSION (S, VALUE) = false;
+      ofsort BOOL
+      forall S:ELEVEN_STATE, VALUE:ROBOT_ANGLE
+         LIMIT_ROBOT_ANGLE (i1, 15) = true;
+         LIMIT_ROBOT_ANGLE (i2, 50) = true;
+         LIMIT_ROBOT_ANGLE (i3, 15) = true;
+         LIMIT_ROBOT_ANGLE (i4, M70) = true;
+         LIMIT_ROBOT_ANGLE (1, M90) = true;
+         LIMIT_ROBOT_ANGLE (2, M70) = true;
+         LIMIT_ROBOT_ANGLE (3, 15) = true;
+         LIMIT_ROBOT_ANGLE (4, 50) = true;
+         LIMIT_ROBOT_ANGLE (5, 35) = true;
+         LIMIT_ROBOT_ANGLE (6, 15) = true;
+         LIMIT_ROBOT_ANGLE (7, M70) = true;
+         LIMIT_ROBOT_ANGLE (S, VALUE) = false;
+      ofsort BOOL
+      forall S:TWO_STATE, VALUE:TABLE_POSITION
+         LIMIT_TABLE_POSITION (1, TABLE_BOTTOM) = true;
+         LIMIT_TABLE_POSITION (2, TABLE_TOP) = true;
+         LIMIT_TABLE_POSITION (S, VALUE) = false;
+      ofsort BOOL
+      forall S:TWO_STATE, VALUE:TABLE_ANGLE
+         LIMIT_TABLE_ANGLE (1, 0) = true;
+         LIMIT_TABLE_ANGLE (2, 50) = true;
+         LIMIT_TABLE_ANGLE (S, VALUE) = false;
+      ofsort BOOL
+      forall S:TWO_STATE, VALUE:CRANE_POSITION
+         LIMIT_CRANE_POSITION (1, CRANE_OVER_DEPOSIT_BELT) = true;
+         LIMIT_CRANE_POSITION (2, CRANE_OVER_FEED_BELT) = true;
+         LIMIT_CRANE_POSITION (S, VALUE) = false;
+      ofsort BOOL
+      forall S:TWO_STATE, VALUE:CRANE_HEIGHT
+         LIMIT_CRANE_HEIGHT (1, 0_9450) = true;
+         LIMIT_CRANE_HEIGHT (2, 0_6593) = true;
+         LIMIT_CRANE_HEIGHT (S, VALUE) = false;
+
+endtype
+
+(* ========================================================================= *)
+
+behaviour 
+
+hide G_ALL in
+   (
+      DISPATCHER [GET_STATUS, G_ALL] (false)
+                                     (* or true to sequentialize events *)
+      |[G_ALL]|
+      CONTROLLER [G_ALL, A_ALL, BLANK_ADD]
+   )
+
+where
+
+(* ========================================================================= *)
+
+process DISPATCHER [GET_STATUS, G_ALL] (SEQUENTIAL: BOOL) : noexit :=
+   (*
+    * this process receives inputs from the Tcl/Tk simulator and dispatches
+    * them to the corresponding components of the controller process
+    *)
+   GET_STATUS ?S1, S2, S3:BOOL ?S4, S5, S6:REAL ?S7, S8:BOOL ?S9:REAL 
+              ?S10, S11 :BOOL ?S12:REAL ?S13, S14:BOOL ?S15:STRING;
+      if SEQUENTIAL then
+        (*
+         * inputs are dispatched to controller gates in sequential order,
+         * which reduces the amount of nondeterminism, possibly making the 
+         * specification easier to analyze
+         *)
+         G1 !CONVERT_S1_S2_S3 (S1, S2, S3);  (* press position *)
+         G2 !CONVERT_S4 (S4);                (* arm1 extension *)
+         G3 !CONVERT_S5 (S5);                (* arm2 extension *)
+         G6 !CONVERT_S6 (S6);                (* robot angle *)
+         G7 !CONVERT_S7_S8 (S7, S8);         (* table position *)
+         G8 !CONVERT_S9 (S9);                (* table angle *)
+         G9 !CONVERT_S10_S11 (S10, S11);     (* crane position *) 
+         G10 !CONVERT_S12 (S12);             (* crane height *)
+         G12 !S13;                           (* sensor feed belt *)
+         G13 !S14;                           (* sensor deposit belt *)
+            DISPATCHER [GET_STATUS, G_ALL] (SEQUENTIAL)
+      else
+         (* inputs are dispatched to controller gates in any order *)
+         (
+            G1 !CONVERT_S1_S2_S3 (S1, S2, S3);  (* press position *)
+               exit
+            |||
+            G2 !CONVERT_S4 (S4);                (* arm1 extension *)
+               exit
+            |||
+            G3 !CONVERT_S5 (S5);                (* arm2 extension *)
+               exit
+            |||
+            G6 !CONVERT_S6 (S6);                (* robot angle *)
+               exit
+            |||
+            G7 !CONVERT_S7_S8 (S7, S8);         (* table position *)
+               exit
+            |||
+            G8 !CONVERT_S9 (S9);                (* table angle *)
+               exit
+            |||
+            G9 !CONVERT_S10_S11 (S10, S11);     (* crane position *)
+               exit
+            |||
+            G10 !CONVERT_S12 (S12);             (* crane height *)
+               exit
+            |||
+            G12 !S13;                           (* sensor feed belt *)
+               exit
+            |||
+            G13 !S14;                           (* sensor deposit belt *)
+               exit
+         )
+         >>
+           DISPATCHER [GET_STATUS, G_ALL] (SEQUENTIAL)
+      endif
+endproc
+
+(* ========================================================================= *)
+
+process CONTROLLER [G_ALL, A_ALL, BLANK_ADD] : noexit :=
+   (*
+    * the controller consists in 13 concurrent processes P1, ..., P2, each
+    * supervising a particular engine of the production cell, or a given
+    * degree of freedom of a particular engine; each process PI is split
+    * into two (sometimes three) concurrent processes PIa and PIb; each
+    * process PIa describes the overall functioning cycle of the engine;
+    * each process PIb scrutates the inputs and decides when a transition
+    * to a next state is required
+    *)
+   hide FT_READY, FT, TA1_READY, TA1, A1P, PA2, A2D, DC_READY, DC, CF, ROBOT_ALL in
+      (
+         P1 [G1, A1, A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70]
+         |[A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70]|
+         (
+            (
+               (
+                  P2 [G2, A2, TA1_READY, A1P]
+                  |[TA1_READY, A1P]|
+                  P4 [A4, TA1_READY, A1P, TA1]
+               )
+               |||
+               (
+                  P3 [G3, A3, PA2, A2D]
+                  |[PA2, A2D]|
+                  P5 [A5, PA2, A2D]
+               )
+            )
+            |[TA1_READY, A1P, PA2, A2D]|
+            P6 [G6, A6, TA1_READY, A1P, PA2, A2D, ROBOT_ALL]
+         )
+         |[TA1_READY, A2D, TA1]|
+         (
+            (
+               P7 [G7, A7, FT_READY, FT, TA1_READY, TA1]
+               |[FT, FT_READY, TA1_READY, TA1]|
+               P8 [G8, A8, FT_READY, FT, TA1_READY, TA1]
+            )
+            |[FT_READY, FT]|
+            P12 [G12, A12, FT_READY, FT, CF, BLANK_ADD]
+            |[CF]|
+            (
+               P9 [G9, A9, DC_READY, DC, CF]
+               |[DC, CF, DC_READY]|
+               P10 [G10, A10, DC_READY, DC, CF]
+               |[DC, CF]|
+               P11 [A11, DC, CF]
+            )
+            |[DC]|
+            P13 [G13, A13, A2D, DC]
+         )
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P1 [G1, A1, A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70] : noexit :=
+   (* this process controls the position of the press *)
+   (
+   PRESS_DOWNWARD;
+      PRESS_STOP; (* bottom position *)
+         UP_15;
+            P1a [A1, A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70]
+   )
+   |[PRESS_STOP]|
+   P1b [G1, PRESS_STOP] (1 of THREE_STATE)
+where
+   process P1a [A1, A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70] : noexit :=
+      DOWN_15;
+         PRESS_UPWARD;
+            PRESS_STOP; (* middle position *)
+               DOWN_M70; 
+                  A1P;
+                     UP_M70;
+                        PRESS_UPWARD;
+                           PRESS_STOP; (* top position *)
+                              PRESS_DOWNWARD;
+                                 PRESS_STOP; (* bottom position *)
+                                    UP_15;
+                                       PA2;
+                                          P1a [A1, A1P, PA2, UP_M70, UP_15, DOWN_15, DOWN_M70]
+   endproc
+   process P1b [G1, PRESS_STOP] (STATE:THREE_STATE) : noexit :=
+      G1 ?VALUE:PRESS_POSITION;
+         if LIMIT_PRESS_POSITION (STATE, VALUE) then
+            PRESS_STOP;
+               P1b [G1, PRESS_STOP] (SUCC (STATE))
+         else
+            P1b [G1, PRESS_STOP] (STATE)
+         endif
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P2 [G2, A2, TA1_READY, A1P] : noexit :=
+   (* this process controls the extension of arm 1 *)
+   (
+   ARM1_FORWARD;
+      P2a [A2, TA1_READY, A1P]
+   )
+   |[ARM1_STOP]|
+   P2b [G2, ARM1_STOP] (1 of TWO_STATE)
+where
+   process P2a [A2, TA1_READY, A1P] : noexit :=
+      ARM1_STOP; (* 0_5208 *)
+         TA1_READY;
+            ARM1_FORWARD;
+               ARM1_STOP; (* 0_6458 *)
+                  A1P;
+                    ARM1_BACKWARD;
+                       P2a [A2, TA1_READY, A1P]
+   endproc
+   process P2b [G2, ARM1_STOP] (STATE:TWO_STATE) : noexit :=
+      G2 ?VALUE:ARM1_EXTENSION;
+         if LIMIT_ARM1_EXTENSION (STATE, VALUE) then
+            ARM1_STOP;
+               P2b [G2, ARM1_STOP] (SUCC (STATE))
+         else
+            P2b [G2, ARM1_STOP] (STATE)
+         endif
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P3 [G3, A3, PA2, A2D] : noexit :=
+   (* this process controls the extension of arm 2 *)
+   P3a [A3, PA2, A2D]
+   |[ARM2_STOP]|
+   P3b [G3, ARM2_STOP] (1 of TWO_STATE)
+where
+   process P3a [A3, PA2, A2D] : noexit :=
+      ARM2_FORWARD;
+         ARM2_STOP; (* 0_7971 *)
+            PA2;
+               ARM2_BACKWARD;
+                  ARM2_STOP; (* 0_5707 *)
+                     A2D;
+                        P3a [A3, PA2, A2D]
+   endproc
+   process P3b [G3, ARM2_STOP] (STATE:TWO_STATE) : noexit :=
+      G3 ?VALUE:ARM2_EXTENSION;
+         if LIMIT_ARM2_EXTENSION (STATE, VALUE) then
+            ARM2_STOP;
+               P3b [G3, ARM2_STOP] (SUCC (STATE))
+         else
+            P3b [G3, ARM2_STOP] (STATE)
+         endif
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P4 [A4, TA1_READY, A1P, TA1] : noexit :=
+   (* this process controls the magnet of arm 1 *)
+   TA1_READY;
+      ARM1_MAG_ON;
+         TA1;
+            A1P;
+               ARM1_MAG_OFF;
+                  P4 [A4, TA1_READY, A1P, TA1]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P5 [A5, PA2, A2D] : noexit :=
+   (* this process controls the magnet of arm 2 *)
+   PA2;
+      ARM2_MAG_ON;
+         A2D;
+            ARM2_MAG_OFF;
+               P5 [A5, PA2, A2D]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P6 [G6, A6, TA1_READY, A1P, PA2, A2D, ROBOT_ALL] : noexit :=
+   (* this process controls the angle of the robot *)
+   (
+      ROBOT_RIGHT;
+         ROBOT_STOP; (* 15 degres *)
+            UP_15;
+               ROBOT_RIGHT;
+                  ROBOT_STOP; (* 50 degres *)
+                     TA1_READY;
+                        ROBOT_LEFT;
+                           ROBOT_STOP; (* 15 degres *)
+                              DOWN_15;
+                                 ROBOT_LEFT;
+                                    ROBOT_STOP; (* -70 degres *)
+                                       DOWN_M70;
+                                          P6a [A6, TA1_READY, A1P, PA2, A2D, ROBOT_ALL] 
+   )
+   |[ROBOT_STOP]|
+   P6b [G6, ROBOT_STOP] (i1 of ELEVEN_STATE)
+where
+   process P6a [A6, TA1_READY, A1P, PA2, A2D, ROBOT_ALL] : noexit :=
+      ROBOT_LEFT;
+         ROBOT_STOP; (* -90 degres *)
+            A1P;
+               ROBOT_RIGHT;
+                  ROBOT_STOP; (* -70 degres *)
+                     UP_M70;
+                        ROBOT_RIGHT;
+                           ROBOT_STOP; (* 15 degres *)
+                              UP_15;
+                                 ROBOT_RIGHT;
+                                    ROBOT_STOP; (* 50 degres *)
+                                       TA1_READY;
+                                          ROBOT_LEFT;
+      ROBOT_STOP; (* 35 degres *)
+         PA2;
+            ROBOT_LEFT;
+               ROBOT_STOP; (* 15 degres *)
+                  DOWN_15;
+                     ROBOT_LEFT;
+                        ROBOT_STOP; (* -70 degres *)
+                           DOWN_M70;
+                              A2D;
+                                 P6a [A6, TA1_READY, A1P, PA2, A2D, ROBOT_ALL]
+   endproc
+   process P6b [G6, ROBOT_STOP] (STATE:ELEVEN_STATE): noexit :=
+      G6 ?VALUE:ROBOT_ANGLE;
+         if LIMIT_ROBOT_ANGLE (STATE, VALUE) then
+            ROBOT_STOP;
+               P6b [G6, ROBOT_STOP] (SUCC (STATE))
+         else
+             P6b [G6, ROBOT_STOP] (STATE)
+         endif
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P7 [G7, A7, FT_READY, FT, TA1_READY, TA1] : noexit :=
+   (* this process controls the height of the table *)
+   (
+   TABLE_STOP_V; (* initialisation is mandatory *)
+      P7a [A7, FT_READY, FT, TA1_READY, TA1]
+   )
+   |[TABLE_STOP_V]|
+   P7b [G7, TABLE_STOP_V] (1 of TWO_STATE)
+where
+   process P7a [A7, FT_READY, FT, TA1_READY, TA1] : noexit := 
+      FT_READY;
+         FT;
+            TABLE_UPWARD;
+               TABLE_STOP_V;
+                  TA1_READY;
+                     TA1;
+                        TABLE_DOWNWARD;
+                           TABLE_STOP_V;
+                              P7a [A7, FT_READY, FT, TA1_READY, TA1]
+   endproc
+   process P7b [G7, TABLE_STOP_V] (STATE:TWO_STATE) : noexit := 
+      G7 ?VALUE:TABLE_POSITION; (* initial value is PRESS_BOTTOM *)
+         if LIMIT_TABLE_POSITION (STATE, VALUE) then
+            TABLE_STOP_V;
+               P7b [G7, TABLE_STOP_V] (SUCC (STATE))
+         else
+            P7b [G7, TABLE_STOP_V] (STATE)
+         endif
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P8 [G8, A8, FT_READY, FT, TA1_READY, TA1] : noexit :=
+   (* this process controls the angle of the table *)
+   (
+   TABLE_STOP_H; (* initialisation is mandatory *)
+      P8a [A8, FT_READY, FT, TA1_READY, TA1]
+   )
+   |[TABLE_STOP_H]|
+   P8b [G8, TABLE_STOP_H] (1 of TWO_STATE)
+where
+   process P8a [A8, FT_READY, FT, TA1_READY, TA1] : noexit :=
+      FT_READY;
+         FT;
+            TABLE_RIGHT;
+               TABLE_STOP_H;
+                  TA1_READY;
+                     TA1;
+                        TABLE_LEFT;
+                           TABLE_STOP_H;
+                              P8a [A8, FT_READY, FT, TA1_READY, TA1]
+   endproc
+   process P8b [G8, TABLE_STOP_H] (STATE:TWO_STATE) : noexit :=
+      G8 ?VALUE:TABLE_ANGLE; (* initial value is 0 *)
+         if LIMIT_TABLE_ANGLE (STATE, VALUE) then
+            TABLE_STOP_H;
+               P8b [G8 , TABLE_STOP_H] (SUCC (STATE))
+         else
+            P8b [G8, TABLE_STOP_H] (STATE)
+         endif
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P9 [G9, A9, DC_READY, DC, CF] : noexit :=
+   (* this process controls the position of the crane *)
+   P9a [A9, DC_READY, DC, CF]
+   |[CRANE_STOP_H]|
+   P9b [G9, CRANE_STOP_H] (1 of TWO_STATE)
+where
+   process P9a [A9, DC_READY, DC, CF] : noexit :=
+      CRANE_TO_BELT2;
+         CRANE_STOP_H;
+            DC_READY;
+               DC;
+                  CRANE_TO_BELT1;
+                     CRANE_STOP_H;
+                        CF;
+                           P9a [A9, DC_READY, DC, CF] 
+   endproc
+   process P9b [G9, CRANE_STOP_H] (STATE:TWO_STATE) : noexit :=
+      G9 ?VALUE:CRANE_POSITION; (* initial value is OTHER *)
+         if LIMIT_CRANE_POSITION (STATE, VALUE) then
+            CRANE_STOP_H;
+               P9b [G9, CRANE_STOP_H] (SUCC (STATE))
+         else
+            P9b [G9, CRANE_STOP_H] (STATE)
+         endif
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P10 [G10, A10, DC_READY, DC, CF] : noexit :=
+   (* this process controls the height of the crane *)
+   P10a [A10, DC_READY, DC, CF]
+   |[CRANE_STOP_V]|
+   P10b [G10, CRANE_STOP_V] (1 of TWO_STATE)
+where
+   process P10a [A10, DC_READY, DC, CF] : noexit :=
+      DC_READY;
+         CRANE_LOWER;
+            CRANE_STOP_V;
+               DC;
+                  CRANE_LIFT;
+                     CRANE_STOP_V;
+                        CF;
+                           P10a [A10, DC_READY, DC, CF]
+   endproc
+   process P10b [G10, CRANE_STOP_V] (STATE:TWO_STATE) : noexit :=
+      G10 ?VALUE:CRANE_HEIGHT;
+         if LIMIT_CRANE_HEIGHT (STATE, VALUE) then
+            CRANE_STOP_V;
+               P10b [G10, CRANE_STOP_V] (SUCC (STATE))
+         else
+            P10b [G10, CRANE_STOP_V] (STATE)
+         endif
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P11 [A11, DC, CF] : noexit :=
+   (* this process controls the magnet of the crane *)
+   DC;
+      CRANE_MAG_ON;
+         CF;
+            CRANE_MAG_OFF;
+               P11 [A11, DC, CF]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P12 [G12, A12, FT_READY, FT, CF, BLANK_ADD] : noexit :=
+   (* this process controls belt 1 and adds the five blanks *)
+   BLANK_ADD;
+      BLANK_ADD;
+         BLANK_ADD;
+            BLANK_ADD;
+               BLANK_ADD;
+                  stop
+   |[BLANK_ADD]|
+   (
+   BLANK_ADD;
+      BELT1_START;
+         P12a [A12, FT_READY, FT, CF, BLANK_ADD]
+   )
+   |[BELT1_STOP, FT]|
+   P12b [G12, BELT1_STOP, FT] (false)
+where 
+    process P12a [A12, FT_READY, FT, CF, BLANK_ADD] : noexit :=
+       BELT1_STOP;
+          FT_READY;
+             BELT1_START;
+                FT;
+                   (
+                   CF;
+                      P12a [A12, FT_READY, FT, CF, BLANK_ADD]
+                   []
+                   BLANK_ADD;
+                      P12a [A12, FT_READY, FT, CF, BLANK_ADD]
+                   )
+    endproc
+    process P12b [G12, BELT1_STOP, FT] (PREVIOUS_S13:BOOL) : noexit :=
+       G12 ?S13:BOOL;
+          (
+          [PREVIOUS_S13 = S13] ->
+             P12b [G12, BELT1_STOP, FT] (PREVIOUS_S13)
+          []
+          [not (PREVIOUS_S13) and S13] ->
+             BELT1_STOP;
+                P12b [G12, BELT1_STOP, FT] (S13)
+          []
+          [PREVIOUS_S13 and not (S13)] ->
+             FT;
+                P12b [G12, BELT1_STOP, FT] (S13)
+          )          
+    endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process P13 [G13, A13, A2D, DC] : noexit :=
+   (* this process controls belt 2 *)
+   (
+   A2D;
+      P13a [A13, A2D, DC]
+   )
+   |[BELT2_STOP]|
+   P13b [G13, BELT2_STOP] (false)
+where
+   process P13a [A13, A2D, DC] : noexit :=
+      BELT2_START;
+         BELT2_STOP;
+            (
+            DC;
+               A2D;
+                  P13a [A13, A2D, DC]
+            []
+            A2D;
+               DC;
+                  P13a [A13, A2D, DC]
+            )
+   endproc
+   process P13b [G13, BELT2_STOP] (PREVIOUS_S14:BOOL) : noexit :=
+      G13 ?S14:BOOL;
+         (
+         [not (PREVIOUS_S14) or S14] ->
+            P13b [G13, BELT2_STOP] (S14)
+         []
+         [PREVIOUS_S14 and not (S14)] ->
+            BELT2_STOP;
+               P13b [G13, BELT2_STOP] (S14)
+         )
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+endspec
+

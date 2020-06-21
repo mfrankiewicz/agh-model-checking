@@ -1,0 +1,155 @@
+#! /bin/sh 
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_psbox
+#   Auteurs             :       Marc HERBERT, Hubert GARAVEL, Nicolas DESCOUBES
+#   Version             :       1.32
+#   Date                :       2019/10/17 12:50:07
+##############################################################################
+
+COMMAND=`basename "$0"`
+ 
+ARCH=`"$CADP"/com/arch`
+
+#-----------------------------------------------------------------------------
+
+SEARCH_GSWIN () {
+	# ne pas mettre $1 ci-dessous entre guillemets ou entre apostrophes!
+	ls -d $1 2>/dev/null | "$CADP"/src/com/cadp_tail -n 1
+}
+
+#-----------------------------------------------------------------------------
+
+if [ "$CADP_PS_INTERPRETER" = "" ]
+then
+	case $ARCH in
+		sun3 | sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 )
+			CADP_PS_INTERPRETER="gs"
+
+			# On complete le $PATH de maniere plausible pour 
+			# essayer de localiser "gs". Note: on a parfois un
+			# lien symbolique ghostscript -> gs
+			PATH="$PATH:/usr/bin:/usr/local/bin:/usr/sfw/bin:/opt/local/bin"
+			export PATH
+			;;
+
+		win32 )
+			if [ -x /bin/gs.exe -o -x /usr/bin/gs.exe ]
+			then
+				# Installation recente de Cygwin selon les
+				# directives INSTALLATION_WINDOWS publiees
+				# en aout 2013 : on utilise la commande 'gs'
+				# de Cygwin
+
+				CADP_PS_INTERPRETER="gs.exe"
+				PATH="$PATH:/bin:/usr/bin"
+				export PATH
+			else
+				# Installation ancienne de Cygwin selon
+				# les directives anterieures a aout 2013 :
+				# on utilise la commande 'gswin32c' installee
+				# separement
+
+				CADP_PS_INTERPRETER="gswin32c.exe"
+				# pour win64, il faudra prendre "gswin64c.exe"
+
+				# On complete le $PATH car il ne contient
+				# probablement pas le chemin d'acces a
+				# gswin32c.exe. On suppose que l'installation
+				# a eu lieu par defaut dans le repertoire 
+				# C:\Program Files\gstools (version gs5.50) ou 
+				# C:\gstools\gs?.?? (versions 5.x) ou 
+				# C:\Aladdin\gs?.??\bin (versions 6.x) ou 
+		        	# C:\gs\gs?.??\bin (versions 7.x) ou
+				# C:\Program Files\gs\gs?.??\bin ou
+				# C:\Program Files (x86)\gs\gs?.??\bin
+				# (versions 8.x et 9.x)
+				# ou ?.?? designe un numero de version
+
+				ROOT=`"$CADP"/src/com/cadp_path -root`
+
+				PATH="$PATH":"$ROOT/Program Files/gstools":`SEARCH_GSWIN "$ROOT/gstools/gs?.??"`:`SEARCH_GSWIN "$ROOT/Aladdin/gs?.??/bin"`:`SEARCH_GSWIN "$ROOT/gs/gs?.??/bin"`:`SEARCH_GSWIN "$ROOT/Program?Files/gs/gs?.??/bin"`:`SEARCH_GSWIN "$ROOT/Program?Files?(x86)/gs/gs?.??/bin"`
+				export PATH
+			fi
+			;;
+			
+		macOS | mac86 | mac64 )
+			# valeur par defaut
+			CADP_PS_INTERPRETER="ghostscript"
+
+			# On complete le $PATH de maniere plausible
+			PATH="$PATH:/usr/local/bin:/opt/local/bin:/sw/bin"
+			export PATH
+
+			# recherche d'un interprete PostScript disponible
+			# (autrefois, l'interprete s'appelait "gs" ; avec
+			# l'installation Fink, il s'appelle "ghostscript")
+			for N in ghostscript gs
+			do
+				WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+				if [ "$WHICH_N" != "$N" ]
+				then
+					# cadp_which a trouve' l'interprete et
+					# renvoye' son chemin d'acces complet
+					CADP_PS_INTERPRETER="$N"
+					break
+				fi
+			done
+			;;
+
+		* )
+            		echo "$COMMAND: unknown architecture $ARCH"
+			exit 1 ;;
+	esac
+fi
+
+# cas de l'option -default
+ 
+if [ "$1" = "-default" ]
+then
+        "$CADP"/src/com/cadp_which "$CADP_PS_INTERPRETER"
+        exit 0
+fi
+
+# cas de l'option -size
+
+if [ "$1" = "-size" ]
+then
+	INITIAL_SIZE="-dDEVICEWIDTHPOINTS=$2 -dDEVICEHEIGHTPOINTS=$3"
+	shift 3
+else
+	INITIAL_SIZE=""
+fi
+
+# On demande a gs d'interpreter le PostScript et de produire en sortie un
+# fichier PostScript dans lequel on ne recupere que la ligne contenant
+# %%BoundingBox. On ne recupere que cette ligne, car le reste du fichier
+# produit ne respecte pas le format BCG PSF.
+
+# Lorsque la sortie de "gs -sDEVICE=pswrite" est un pipe (sortie standard)
+# et non pas un fichier, il produit deux lignes avec %%BoudingBox, une au
+# debut du texte PostScript, l'autre a la fin. La premiere est vide: elle
+# se reduit a "%%BoundingBox: (atend)", car "gs" n'a pas encore calcule'
+# la taille de la bounding box. La deuxieme contient la bonne taille. 
+# On la recupere par "tail -n 1"
+
+# Note (2013-08-20): pswrite est obsolete et devra a terme etre remplace
+# par ps2write. Pour l'instant, on le conserve tel quel.
+
+BOUNDINGBOX=`cat "$1" | "$CADP_PS_INTERPRETER" -dQUIET -dNOPAUSE $INITIAL_SIZE -sDEVICE=pswrite -sOutputFile=- - | grep -i '^%%BoundingBox' | "$CADP"/src/com/cadp_tail -n 1`
+
+TEMPORARY=`"$CADP"/src/com/cadp_temporary $COMMAND`
+
+sed -e "/^%%Pages/d" -e "/^%%BoundingBox/c\\
+$BOUNDINGBOX"  "$1" > "$TEMPORARY"
+
+mv "$TEMPORARY" "$1"
+

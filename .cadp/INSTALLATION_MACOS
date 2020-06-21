@@ -1,0 +1,334 @@
+
+          CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+
+                            MACOS INSTALLATION
+
+******************************************************************************
+
+        This document is intended to every person planning to use CADP on
+a computer running Apple macOS. If you do not plan to use CADP in an
+Apple macOS environment, you can avoid reading this document.
+
+******************************************************************************
+
+SECTION 1. CADP FOR MACOS
+
+   The following versions of macOS are supported:
+   - OS X 10.10 "Yosemite"
+   - OS X 10.11 "El Capitan"
+   - macOS 10.12 "Sierra"
+   - macOS 10.13 "High Sierra"
+   - macOS 10.14 "Mojave"
+
+   For more details about supported architectures, please refer to 
+       http://cadp.inria.fr/status.html
+
+   To install CADP on macOS, it is not necessary to be an administrator:
+   a normal user can install CADP in his/her home directory. However, before
+   installing CADP, the preliminary steps described in this document must be
+   performed from an administrator account, in particular, because one will
+   need to invoke the "sudo" command.
+
+-------------------------------------------------------------------------------
+
+SECTION 2. INSTALLING X11 FOR MACOS
+
+   X11 is no longer included in macOS by default but can be installed via
+   the open source XQuartz project at 
+     http://xquartz.macosforge.org/landing
+
+   Download the ".dmg" installer file and double click to execute it.
+   A window opens: double click on "XQuartz.pkg" and proceed within the
+   installer. You will be prompted for the administrator password.
+
+   Some versions of XQuartz (e.g., 2.7.6) no longer install themselves
+   in /usr/X11R6 but in /opt/X11. To handle this situation, type the
+   following command:
+          test -d /usr/X11R6 || sudo /usr/libexec/x11-select /opt/X11
+
+   Then, log out and log in again in order to complete the installation. 
+
+   To make sure that the installation is complete and functional, open a
+   Terminal window ("Finder" -> "Go" -> "Utilities" -> "Terminal") and
+   launch XQuartz manually by typing in the Terminal window:
+          open -a XQuartz
+
+-------------------------------------------------------------------------------
+
+SECTION 3. INSTALLING DEVELOPMENT TOOLS FOR MACOS
+
+   For using CADP, you will need a C compiler, as well as companion tools,
+   such as "make".
+
+   If you already have these tools installed on your machine (i.e., you
+   know that /usr/bin/gcc, /usr/bin/make, etc. work normally), we recommend
+   that you keep them unchanged and skip the remainder of this section.
+
+   Otherwise, the standard way of getting these tools is to install Apple's
+   Xcode software. The following explanations have been prepared for Xcode
+   7.2 and 7.3, but the installation procedure was similar for Xcode 4 and 5.
+
+   Xcode must be downloaded from the Apple web site. Xcode is available
+   free of charge but you will need an Apple ID. If you do not have one
+   already, you can create an account from:
+      http://developer.apple.com/programs/register/
+   You will be prompted for much personal information, including e-mail,
+   address, phone number, and credit card data (the latter is optional).
+
+   You must first determine which version of Xcode can be used on your
+   version of macOS. For instance, on "Yosemite", you can install
+   Xcode 7.2.1 but not Xcode 7.3. The following page is helpful:
+      https://en.wikipedia.org/wiki/Xcode
+
+   Go to the Apple developer web site
+      https://developer.apple.com
+   and log in using your Apple ID and password. Then, go to the
+   following page by typing its address in the URL bar:
+      https://developer.apple.com/downloads
+   and select an Xcode version compatible with your macOS version.
+   Download the ".dmg" installer file and double click to execute it.
+   Drag the Xcode icon to drop it into the Applications folder. The
+   installation takes some time.
+
+   In a Terminal window, type the following command:
+          sudo xcodebuild -license
+   Enter the administrator password, read the license and type "agree".
+   Otherwise, tools will be locked silently until the license has been
+   accepted.
+
+   Note: Command "sudo" will fail if you are not operating from an 
+   administrator account.
+
+   Note: Another way to accept the license is launch Xcode ("Finder" ->
+   "Go" -> "Applications" -> "Xcode"). The verification takes some time.
+   Then, click on "Open" and wait again. You will be prompted to accept
+   the license agreement and to enter the administrator password.
+
+   In a Terminal window, type the following command:
+          xcode-select --install
+   A window will pop up, from which you can install the Command Line Tools.
+
+   Note: On former versions of Xcode (before 7.3), Xcode explicitly asks
+   whether to "Install additional required components" (answer "Install").
+   On other versions, the user can install them on demand by launching
+   "Xcode" -> "Preferences" -> "Downloads" -> "Install Command Line Tools".
+
+   Note: In principle, to use CADP, it would be sufficient to install
+   only the Command Line Developer Tools, which are much smaller than
+   Xcode (250 Mbytes rather than 10.5 Gbytes for Xcode 7.3) and do not
+   require an Apple ID. Notice also that many development tools are
+   available in source code form at:
+      http://www.opensource.apple.com/release/developer-tools-46/
+   However, to use MacPorts (see Section 4 below), Xcode is required;
+   if only the Command Line Developer Tools are installed, MacPorts
+   will fail with the following error message:
+          Warning: xcodebuild exists but failed to execute
+          Warning: Xcode does not appear to be installed; most ports will
+          likely fail to build
+   This was checked in November 2013 on Mac OS X 10.9 "Mavericks" and
+   in April 2016 on Mac OS X 10.11 "El Capitan". We therefore recommend
+   to install the entire Xcode package.
+
+-------------------------------------------------------------------------------
+
+SECTION 4. INSTALLING A POSTSCRIPT VIEWER FOR MACOS
+
+   The BCG_DRAW tool requires a PostScript interpreter and a PostScript viewer
+   in order to display the BCG graphs.
+
+   As regards the PostScript viewer, CADP will use by default the builtin
+   viewer (named "Preview") that Apple provides as part of its operating
+   system. Therefore, it is not required to install another viewer, such
+   as the Ghostview software.
+
+   As regards the PostScript interpreter, we recommend using Ghostscript.
+
+   If you already have a working version of Ghostscript installed on your
+   machine, we recommend that you keep it unchanged. Otherwise, we recommend
+   that you install Ghostscript using either MacPorts or Homebrew.
+
+   a) Installation using MacPorts
+
+   This requires to install MacPorts first. Go to the MacPorts Web site:
+         http://www.macports.org/install.php
+   and download the version of "pkg installer" corresponding to your 
+   version of macOS. Double click to launch this installer, and
+   proceed to the installation, which requires an administrator password
+   and takes about one minute. 
+
+   Open a Terminal window. Type the command:
+          echo $PATH
+   and make sure that your $PATH variable contains the two directories:
+          /opt/local/bin   and   /opt/local/sbin
+   (so it enables access to /opt/local/bin/port in particular).
+
+   Finally, you can install Ghostscript by typing in the Terminal window:
+          sudo port install ghostscript
+   This takes some time, because many dependencies have to be installed.
+
+   Note: There may a window popping up to inform you that Java SE6 is
+   needed by javac. There is no neeed to install this for using CADP.
+
+   b) Installation using Homebrew
+
+   This requires to install Homebrew first, as explained on the Web site:
+         http://brew.sh
+
+   Then, you can install Ghostscript by typing in the Terminal window:
+          brew install ghostscript
+
+-------------------------------------------------------------------------------
+
+SECTION 5. INSTALLING GNUPLOT FOR MACOS
+
+   The Gnuplot plotting utility is required to run the full demo examples
+   30, 31 and 39 (it is used to visualize measurements produced by the CADP
+   tools for performance evaluation).
+
+   a) Installation using MacPorts
+
+   Once MacPorts has been installed (see Section 4 above), it can be used
+   to install Gnuplot easily:
+          sudo port install gnuplot
+
+   Check that the command has been installed in /opt/local/bin/gnuplot.
+   If this file does not exist, please notify cadp@inria.fr.
+
+   b) Installation using Homebrew
+
+   Once Homebrew  has been installed (see Section 4 above), it can be used
+   to install Gnuplot easily:
+          brew install gnuplot
+
+   Check that the command has been installed in /usr/local/bin/gnuplot.
+   If this file does not exist, please notify cadp@inria.fr.
+
+------------------------------------------------------------------------------- 
+
+SECTION 6. INSTALLING GNUTAR ON MACOS
+
+   There are different versions of the Unix "tar" command, especially the
+   BSD tar and the GNU tar, the latter being used by CADP. For long, both
+   versions have been present on macOS. However, the GNU tar has been
+   removed from Mac OS X 10.9 "Mavericks".
+
+   a) Installation using MacPorts
+
+   Install the GNU tar:
+          sudo port install gnutar
+
+   Check that the command has been installed in /opt/local/bin/gnutar.
+   If this file does not exist, please notify cadp@inria.fr.
+
+   b) Installation using Homebrew
+
+   Install the GNU tar:
+          brew install gnu-tar
+
+   Check that the command has been installed in /usr/local/bin/gtar.
+   If this file does not exist, please notify cadp@inria.fr.
+
+------------------------------------------------------------------------------- 
+
+SECTION 7. INSTALLING GNU AWK ON MACOS
+
+   The Awk version shipped by default with macOS is old and very limited.
+   The CADP tools require the Gnu Awk software to be present.
+
+   a) Installation using MacPorts
+
+   Install the GNU awk:
+          sudo port install gawk
+
+   Check that the command has been installed in /opt/local/bin/gawk.
+   If this file does not exist, please notify cadp@inria.fr.
+
+   b) Installation using Homebrew
+
+   Install the GNU awk:
+          brew install gawk
+
+   Check that the command has been installed in /usr/local/bin/gawk.
+   If this file does not exist, please notify cadp@inria.fr.
+
+------------------------------------------------------------------------------- 
+
+SECTION 8. INSTALLING WGET ON MACOS
+
+   a) Installation using MacPorts
+
+   Install the "wget" command:
+          sudo port install wget
+
+   b) Installation using Homebrew
+
+   Install the "wget" command:
+          brew install wget
+
+------------------------------------------------------------------------------- 
+
+SECTION 9. ASSIGNING A STATIC HOSTNAME TO YOUR MACHINE
+
+   By default, macOS does not give your machine a static hostname, so that
+   the name of the machine is dynamically assigned by the router and may
+   change depending on the network to which the machine is connected. When
+   the machine is disconnected from the network, its name changes to get a
+   ".local" extension.
+
+   Setting a static hostname in macOS does not alter its behaviour. All
+   other operating systems (Solaris, Linux, Windows, etc.) are using static
+   hostnames by default, and this is required for using CADP seamlessly.
+
+   Type the following command:
+          hostname
+   when the machine is connected to the network and when it is disconnected.
+   If both answers differ (and especially, if the answer returned when the
+   machine is disconnected has with a ".local" extension), then your machine
+   has a dynamic hostname.
+
+   To change it, choose the static hostname (noted here $NAME) you want to 
+   assign to your machine. It must be an alphanumeric string possibly 
+   containing dashes (for instance, "jupiter" or "jupiter-2").
+
+   Then, type the following commands:
+          NAME=jupiter                       # no spaces around "="
+          sudo hostname $NAME
+          sudo scutil --set LocalHostName $NAME
+          sudo scutil --set HostName $NAME   # or $NAME.local, $NAME.univ.edu
+          # the following command is optional
+          sudo scutil --set ComputerName $NAME
+
+   At this point, wait for (at least) ten seconds until your computer
+   has got changed its name, which you can check by typing the command:
+          hostname
+   that should now return $NAME.
+
+------------------------------------------------------------------------------- 
+
+SECTION 10. CHECK YOUR INSTALLATION
+
+   Open a Terminal window and type the following commands:
+          cd /tmp
+          wget -O tst ftp://ftp.inrialpes.fr/pub/vasy/cadp/tst
+          sh ./tst mac86
+       or
+          cd /tmp
+          wget -O tst ftp://ftp.inrialpes.fr/pub/vasy/cadp/tst
+          sh ./tst mac64
+
+   Note: If the command "wget" is not available on your machine, use
+   your web browser to download the "tst" shell-script from
+   ftp://ftp.inrialpes.fr/pub/vasy/cadp/tst
+
+   Inspect carefully the output of the "tst" command, looking for lines
+   starting with "***", which report major installation problems. Apply
+   the changes suggested until no problem is reported.
+
+   You are now ready to install the CADP software itself. Go back to:
+
+     http://cadp.inria.fr/installator/index.html#macOS
+
+-------------------------------------------------------------------------------
+Written by Hubert Garavel. Last updated on 2019/06/12 14:34:33
+-------------------------------------------------------------------------------
+

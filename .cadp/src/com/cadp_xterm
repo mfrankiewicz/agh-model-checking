@@ -1,0 +1,192 @@
+#! /bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_xterm
+#   Auteurs             :       Aldo MAZZILLI, Hubert GARAVEL et Nicolas
+#                               DESCOUBES
+#   Version             :       1.25
+#   Date                :       2019/11/13 18:28:00
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+#-----------------------------------------------------------------------------
+
+EXEC_OPTION() {
+	# affichage de l'option permettant d'executer dans un terminal une
+	# commande composee d'une liste d'arguments, par exemple "vi file"
+
+	# note : on doit ecrire printf "%s\n" "-e" au lieu de echo "-e" qui
+	# n'est pas portable (ca ne fonctionne pas sous Linux) et au lieu
+	# de printf "-e" (qui ne fonctionne pas sous ksh93 d'OpenIndiana)
+
+	case `basename "$1"` in
+		gnome-terminal )
+			# selon le manuel, l'option correcte est "-x" (ou
+			# "--execute") ; cela fonctionne sous Solaris 10 ;
+			# les versions recentes de "gnome-terminal"
+			# signalent que "-x" est perime : il faudra alors
+			# utiliser "--" au lieu de "-x", mais cela n;est
+			# pas encore documente officiellement
+			echo "-x"
+			;;
+		konsole )
+			printf "%s\n" "-e"
+			;;
+		lxterminal )
+			printf "%s\n" "-e"
+			;;
+		mate-terminal )
+			echo "-x"
+			;;
+		xfce4-terminal )
+			echo "-x"
+			;;
+		x-terminal-emulator )
+			# selon le manuel, l'option correcte serait "-x"
+			# mais elle ne fonctionne pas ; on utilise "-e"
+			printf "%s\n" "-e"
+			;;
+		xterm )
+			printf "%s\n" "-e"
+	esac
+}
+
+#-----------------------------------------------------------------------------
+
+case $DETAILED_ARCH in
+	sun3 | sun4 | sun5 | sun64 )
+		XTERM="xterm"
+		if [ "$1" = "-default" ]
+		then
+			"$CADP"/src/com/cadp_which $XTERM
+			exit $?
+		elif [ "$1" = "-option" ]
+		then
+			EXEC_OPTION "xterm"
+			exit 0
+		fi
+		$XTERM $XTERM_OPTIONS
+		;;
+	sol86 | sol64 )
+		# - sous Solaris 10, on a seulement gnome-terminal et xterm
+		# - sous Solaris 11, on a gnome-terminal et xterm (et
+		#   peut-etre d'autres commandes)
+		# - sous OpenIndiana, on a x-terminal-emulator (qui pointe
+		#   vers mate-terminal), mate-terminal et xterm
+		XTERM="xterm"
+		for N in x-terminal-emulator gnome-terminal mate-terminal xterm
+		do
+			WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+			if [ "$WHICH_N" != "$N" ]
+			then
+				# cadp_which a trouve' l'application terminal
+				# et renvoye' le chemin d'acces complet
+				XTERM="$N"
+				break
+			fi
+		done
+		if [ "$1" = "-default" ]
+		then
+			"$CADP"/src/com/cadp_which $XTERM
+			exit $?
+		elif [ "$1" = "-option" ]
+		then
+			EXEC_OPTION "$XTERM"
+			exit 0
+		fi
+		$XTERM
+		;;
+	iX86 | iX86-64 | x64 | ia64 )
+		XTERM="x-terminal-emulator"
+		for N in x-terminal-emulator mate-terminal gnome-terminal konsole xfce4-terminal lxterminal xterm
+		do
+			WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+			if [ "$WHICH_N" != "$N" ]
+			then
+				# cadp_which a trouve' l'application terminal
+				# et renvoye' le chemin d'acces complet
+				XTERM="$N"
+				break
+			fi
+		done
+		if [ "$1" = "-default" ]
+		then
+			"$CADP"/src/com/cadp_which $XTERM
+			exit $?
+		elif [ "$1" = "-option" ]
+		then
+			EXEC_OPTION "$XTERM"
+			exit 0
+		fi
+		$XTERM
+		;;
+	win32-cygnus | win64-cygnus )
+		if [ "$1" = "-default" -o "$1" = "-option" ]
+		then
+			echo ""
+			exit 0
+		fi
+		cmd.exe /c start bash
+		;;
+	win32-msys )
+		if [ "$1" = "-default" -o "$1" = "-option" ]
+		then
+			echo ""
+			exit 0
+		fi
+		/bin/start sh -i
+		;;
+	win32-* )
+		if [ "$1" = "-default" -o "$1" = "-option" ]
+		then
+			echo ""
+			exit 0
+		fi
+		cmd.exe /c start sh
+		;;
+	macOS | mac86 | mac64 )
+		if [ "$1" = "-default" -o "$1" = "-option" ]
+		then
+			echo ""
+			exit 0
+		fi
+		# au lieu de lancer simplement l'application
+		# /Applications/Utilities/Terminal.app/Contents/MacOS/Terminal
+		# qui risque de conduire a une situation dans laquelle
+		# plusieurs applications "Terminal" seraient simultanement
+		# actives, on utilise l'AppleScript ci-dessous qui teste si
+		# une application "Terminal" est deja active
+		osascript << \EOF
+		   tell application "Finder"
+		      if the process "Terminal" exists then
+		         (* l'application "Terminal" est deja active *)
+		         (* on lui demande d'ouvrir une nouvelle fenetre *)
+		         tell application "Terminal"
+		            do script ""
+		         end tell
+		      else
+		         (* l'application "Terminal" n'est pas demarree *)
+		         (* on la lance *)
+		         tell application "Terminal"
+		            run
+		         end tell
+		      end if
+		   end tell
+EOF
+		;;
+	* )
+		echo "$COMMAND: unknown architecture $ARCH"
+		exit 1
+esac
+

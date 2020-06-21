@@ -1,0 +1,177 @@
+specification BRP_PROTOCOL [INPUT, OUTPUT] : noexit 
+
+library
+   TYPES
+endlib
+
+behaviour 
+
+   hide T1, T2, SEND_K, REC_L, REC_K, SEND_L, LOST, SYNC in
+      (
+         (
+            SENDING_CLIENT [INPUT]
+         |[INPUT]|
+            (
+            S [INPUT, SEND_K, REC_L, T1, SYNC] (false)
+            |[T1]|
+            T1 [T1, LOST]
+            )
+         )
+      |[SEND_K, REC_L, LOST, SYNC]|
+         (
+            (
+            K [SEND_K, REC_K, LOST]
+            |||
+            L [SEND_L, REC_L, LOST]
+            )
+         |[REC_K, SEND_L]|
+            (
+            R [OUTPUT, REC_K, SEND_L, T2]
+            |[T2]|
+            T2 [T2, SYNC]
+            )
+         )
+      )
+
+where
+
+   process SENDING_CLIENT [INPUT] : noexit :=
+      choice N : Nat []
+         [N > 0] ->
+            INPUT ! cons_msg (N);
+               INPUT ? I0 : Ind;
+                  SENDING_CLIENT [INPUT]
+   endproc
+
+   process S [INPUT, SEND_K, REC_L, T1, SYNC] (ALT : Bool) : noexit :=
+      INPUT ? M : Msg;
+         (
+         [length (M) > 0] ->
+            S_1 [INPUT, SEND_K, REC_L, T1, SYNC] (ALT, M, length (M), 0)
+         []
+         [length (M) == 0] ->
+            S [INPUT, SEND_K, REC_L, T1, SYNC] (ALT)
+         )
+
+   where
+
+      process S_1 [INPUT, SEND_K, REC_L, T1, SYNC] (ALT : Bool, M : Msg, L, RETRY : Nat) : noexit :=
+         T1 ! START;
+            SEND_K ! (length (M) == L) ! (length (M) == 1) ! ALT ! head (M);
+               (
+               REC_L;
+                  T1 ! RESET;
+                     (
+                     [length (M) == 1] ->
+                        INPUT ! I_OK;
+                           S [INPUT, SEND_K, REC_L, T1, SYNC] (not (ALT))
+                     []
+                     [length (M) > 1] ->
+                        S_1 [INPUT, SEND_K, REC_L, T1, SYNC] (not (ALT), tail (M), L, 0)
+                     )
+               []
+               T1 ! TIMEOUT;
+                  (
+                  [RETRY < max] ->
+                     S_1 [INPUT, SEND_K, REC_L, T1, SYNC] (ALT, M, L, RETRY + 1)
+                  []
+                  [RETRY == max] ->
+                     INPUT ! confirm (M);
+                        SYNC ! S_READY;
+                           SYNC ! R_READY;
+                              S [INPUT, SEND_K, REC_L, T1, SYNC] (not (ALT))
+                  )
+               )
+      endproc
+
+   endproc
+
+   process T1 [T1, LOST] : noexit :=
+      T1 ! START;
+         (
+         T1 ! RESET;
+            T1 [T1, LOST]
+         []
+         LOST;
+            T1 ! TIMEOUT;
+               T1 [T1, LOST]
+         )
+   endproc
+
+   process K [SEND_K, REC_K, LOST] : noexit :=
+      SEND_K ? FST, LST, ALT : Bool ? D : Data;
+         (
+         REC_K ! FST ! LST ! ALT ! D; (* Transmission correcte *)
+            K [SEND_K, REC_K, LOST]
+         []
+         LOST;                        (* Perte avec indication *)
+            K [SEND_K, REC_K, LOST]
+         )
+   endproc
+
+   process R [OUTPUT, REC_K, SEND_L, T2] : noexit :=
+      REC_K ? FST, LST, ALT : Bool ? D : Data [FST];
+            OUTPUT ! D ! indication (FST, LST);
+               T2 ! START;
+                  SEND_L;
+                     R_1 [OUTPUT, REC_K, SEND_L, T2] (LST, not (ALT))
+
+   where
+
+      process R_1 [OUTPUT, REC_K, SEND_L, T2] (END, ALT : Bool) : noexit :=
+         REC_K ? FST, LST : Bool ! ALT ? D : Data;       (* Nouveau paquet *)
+            T2 ! RESET;
+               OUTPUT ! D ! indication (FST, LST);
+                  T2 ! START;
+                     SEND_L;
+                        R_1 [OUTPUT, REC_K, SEND_L, T2] (LST, not (ALT))
+         []
+         REC_K ? FST, LST : Bool ! not (ALT) ? D : Data; (* Paquet duplique *)
+            SEND_L;
+               R_1 [OUTPUT, REC_K, SEND_L, T2] (LST, ALT)
+         []
+         T2 ! TIMEOUT;
+            (
+            [not (END)] -> (* Il reste encore des paquets *)
+               OUTPUT ! I_NOK;
+                  T2 ! R_READY;
+                     R [OUTPUT, REC_K, SEND_L, T2]
+            []
+            [END] ->       (* Dernier paquet deja transmis *)
+               T2 ! R_READY;
+                  R [OUTPUT, REC_K, SEND_L, T2]
+            )
+      endproc
+
+   endproc
+
+   process T2 [T2, SYNC] : noexit :=
+      T2 ! START;
+         (
+         T2 ! RESET;
+            T2 [T2, SYNC]
+         []
+         SYNC ! S_READY;
+            T2 ! TIMEOUT;
+               T2 ! R_READY;
+                  SYNC ! R_READY;
+                     T2 [T2, SYNC]
+         )
+      []
+      SYNC ! S_READY;
+         SYNC ! R_READY;
+            T2 [T2, SYNC]
+   endproc
+
+   process L [SEND_L, REC_L, LOST] : noexit :=
+      SEND_L;
+         (
+         REC_L; (* Transmission correcte *)
+            L [SEND_L, REC_L, LOST]
+         []
+         LOST;  (* Perte avec indication *)
+            L [SEND_L, REC_L, LOST]
+         )
+   endproc
+
+endspec

@@ -1,0 +1,24 @@
+
+process CONTROLLER [ARB, CMD, REC, LAMBDA] (NC:NUM, PENDING:NUM, T:TABLE) : noexit :=
+   ARB ?W:WIRE [(PENDING == NC) and C_PASS (W, NC)];
+      CONTROLLER [ARB, CMD, REC, LAMBDA] (NC, PENDING, T)
+   []
+   (
+   choice N:NUM []
+      [(PENDING == NC) and (N <> NC)] ->
+         [VAL (T, N) < 8] ->
+            LAMBDA !N; (* Markov delay inserted here *)
+               CONTROLLER [ARB, CMD, REC, LAMBDA] (NC, N, T)
+   )
+   []
+   ARB ?W:WIRE [(PENDING <> NC) and C_LOSS (W, NC)];
+      CONTROLLER [ARB, CMD, REC, LAMBDA] (NC, PENDING, T)
+   []
+   ARB ?W:WIRE [(PENDING <> NC) and C_WIN (W, NC)];
+      CMD !PENDING;
+         CONTROLLER [ARB, CMD, REC, LAMBDA] (NC, NC, INCR (T, PENDING))
+   []
+   REC ?N:NUM [N <> NC];
+      CONTROLLER [ARB, CMD, REC, LAMBDA] (NC, PENDING, DECR (T, N))
+endproc
+

@@ -1,0 +1,51 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_awk
+#   Auteur              :       Hubert Garavel
+#   Version             :       1.4
+#   Date                :       2019/06/12 14:40:03
+##############################################################################
+
+ARCH=`"$CADP"/com/arch`
+
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+		# /bin/awk is too limited
+		# /bin/nawk has major bugs affecting, e.g., close()
+		if [ -f /bin/gawk ]
+		then
+			# most likely OpenIndiana, maybe Solaris 11
+			AWK=/bin/gawk
+		elif [ -f /usr/bin/gnu/awk ]
+		then
+			# most likely Solaris 11
+			AWK=/usr/bin/gnu/awk
+		elif [ -f /opt/sfw/bin/gawk ]
+		then
+			# most likely Solaris 10
+			AWK=/opt/sfw/bin/gawk
+		else
+			# plausible replacement
+			AWK=/usr/xpg4/bin/awk
+		fi 
+		$AWK "$@"
+		;;
+	mac86 | mac64 )
+		# /bin/awk is obsolete
+		# assuming that Gnu Awk has been installed
+		gawk "$@"
+		;;
+	* )
+		awk "$@"
+		;;
+esac
+

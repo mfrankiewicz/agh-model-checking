@@ -1,0 +1,117 @@
+
+#------------------------------------------------------------------------------
+# This file was modified by Hubert Garavel - Wed Sep 25 10:11:54 CEST 2013
+#------------------------------------------------------------------------------
+
+# Set variable wishpath to the pathname that leads to wish
+# set wishpath /usr/local/bin/wish
+# set wishpath [subst $env(CADP)/tcl-tk/bin.$env(CADP_ARCH)/wish]
+# set wishpath "$env(WISHDIR)/wish"
+set wishpath [subst $env(CADP)/tcl-tk/com/wish]
+
+# Delete the window of the current application
+
+wm withdraw .
+
+# Set the default value for DEBUG
+set DEBUG 0
+if {[lsearch $argv -dbg] != -1} {set DEBUG 1}
+
+# Propagate $DEBUG to the feedback pipe
+if { $DEBUG } {
+   set pipe_arguments "-dbg"
+} else {
+   set pipe_arguments ""
+}
+
+# Locate path of the simulation
+
+set path_name [file dirname [info script] ]/
+set path_pipe_name $path_name
+
+# Set here the name of the simulation and of the feedbackpipe
+# and of the panel
+set simulation tksim_9
+set pipe feedback_pipe 
+set panel panel
+
+# Set the Default Controller
+set controller panel
+
+# Get Position of Controlprogramoption in the command string
+set position_of_con [lsearch $argv -con]
+
+set arguments $argv
+
+# If other controller than the panel is required 
+# get the controller name and set arguments variable
+if {$position_of_con != -1} {
+   set controller file
+   set position_of_filename [expr $position_of_con+1]
+   if {$position_of_filename >= $argc} {
+      puts stderr "ERROR: filename is missing"
+      destroy .
+      exit
+   }
+   set name_controller [lindex $arguments $position_of_filename]
+   set arguments [lreplace $arguments $position_of_con $position_of_filename]
+}
+
+# If other than feedback_pipe is required
+# set variable pipe accordingly
+set position_of_pipe [lsearch $argv -pip]
+if {$position_of_pipe != -1} {
+   set position_of_pipename [expr $position_of_pipe+1]
+   if {$position_of_pipename >= $argc} {
+      puts stderr "ERROR: pipename is missing"
+      destroy .
+      exit
+   }
+   set pipe [lindex $argv $position_of_pipename]
+   set path_pipe_name ""
+}
+
+# Call the simulation and the feedback pipe 
+# and the corresponding controller
+
+set command1 "$wishpath -f $path_name$simulation $arguments"
+if ($DEBUG) {
+   puts stderr "command1 = $command1"
+}
+
+set command2 "$wishpath -f $path_name$panel $arguments"
+if ($DEBUG) {
+   puts stderr "command2 = $command2"
+}
+
+set command3 "$wishpath -f $path_pipe_name$pipe $pipe_arguments"
+if ($DEBUG) {
+   puts stderr "command3 = $command3"
+}
+
+case $controller in {
+
+   {panel} {
+      if {$DEBUG} {
+         puts stderr "#1: exec sh -c {$command1} &"
+         puts stderr "#2: exec sh -c {$command2} | sh -c {$command3} &"
+      }
+      eval "exec sh -c {$command1} &"
+      eval "exec sh -c {$command2} | sh -c {$command3} &" 
+   }
+
+   {file}  {
+      if {$DEBUG} {
+         puts stderr "#3: exec sh -c {$command1} | $name_controller | sh -c {$command3} &"
+         # Invoke controller with log traces emitted on stderr
+	 eval "exec sh -c {$command1} | $name_controller - | sh -c {$command3} &"
+      } else {
+	 eval "exec sh -c {$command1} | $name_controller | sh -c {$command3} &"
+      }
+   }
+
+}
+
+destroy .
+exit
+

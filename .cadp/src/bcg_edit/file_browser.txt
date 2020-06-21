@@ -1,0 +1,35 @@
++--------------+
+| File Browser |
++--------------+
+
+The "File name" entry works as a pattern-matching filter, following
+the "glob" conventions of he C-shell "csh". For example, the pattern
+"*.ps" will select all files having a ".ps" extension and the pattern 
+"*.bcg" will elect all files having a ".bcg" extension. It is also
+possible to type directly a new file name (or pattern) in this field.
+
+The "Directory" entry displays the current directory path. It can be 
+modified directly, by typing the new directory path in this field.
+
+The list below shows the directories and the files that match the current
+pattern. Directories and files can be selected with a simple click of
+the left button: 
+
+	- Clicking on a directory makes to enter this directory. 
+          The ".." entry corresponds to the parent directory in the 
+          file system hierarchy. A simple 
+
+        - Clicking on a file selects this file for loading or saving
+          (see below).
+
+The "Load" or "Save" button allows to read or write into the selected
+file.
+
+The "Refresh" button consults the contents of the current directory
+and updates the list.
+
+The "Cancel" button allows to quit the file browser, leaving the
+current directory unchanged.
+
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

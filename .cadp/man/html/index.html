@@ -1,0 +1,414 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>CADP On-Line Manual Pages</TITLE>
+</HEAD>
+
+<BODY BGCOLOR="white" FGCOLOR="black">
+
+<H1>CADP On-Line Manual Pages</H1>
+
+<P>
+This Page gives the latest versions of the manual pages of the tools available in the <A HREF="http://cadp.inria.fr">CADP toolbox</A>.
+
+<P>
+<B>Note:</B> The manual pages below are the most recent versions of the CADP documentation, and refer to the current or immediately forthcoming release of CADP. If an earlier version of CADP version is installed at your site, the documentation may contain some differences.
+
+<P>
+
+<TABLE cellpadding="5" border="0" width="100%"><TR><TD bgcolor="#ccccff">
+<FONT size="+3"><A NAME="languages"><B>1. CADP Languages and Formats</B></A></FONT>
+</TD></TR></TABLE>
+
+<P>
+
+<UL>
+<DL>
+<DT><A HREF="aut.html">aut</A></DT><DD>
+simple file format for labelled transition systems 
+</DD>
+<DT><A HREF="bcg.html">bcg</A></DT><DD>
+Binary Coded Graphs: binary file format for labelled transition
+systems 
+</DD>
+<DT><A HREF="bes.html">bes</A></DT><DD>
+text file format for Boolean Equation Systems 
+</DD>
+<DT><A HREF="exp.html">exp</A></DT><DD>
+language for describing networks of communicating automata
+
+</DD>
+   <DT><FONT color="blue">fsp</FONT></DT>
+      <DD>process calculus defined by Jeff Magee and Jeff Kramer (Imperial College)</DD>
+      <DD><I>see the <A HREF="fsp2lotos.html">fsp2lotos</A> and <A HREF="fsp.open.html">fsp.open</A> manual pages</I></DD>
+
+<DT><A HREF="gcf.html">gcf</A></DT><DD>
+Grid Configuration File format 
+</DD>
+   <DT><FONT color="blue">hid</FONT></DT>
+      <DD>file format for hiding labels</DD>
+      <DD><I>see the <A HREF="caesar_hide_1.html">caesar_hide_1</A> manual page</I></DD>
+
+   <DT><FONT color="blue">lnt</FONT></DT>
+      <DD>newest specification language supported by CADP</DD>
+      <DD>adapted from E-LOTOS (ISO International Standard 15437:2001)</DD>
+      <DD><I>see the <A HREF="http://cadp.inria.fr/tutorial">tutorial page</A>, section "Tutorials for LNT"</I></DD>
+
+   <DT><A HREF="lotos.html">lotos</A></DT>
+      <DD>oldest specification language supported by CADP</DD>
+      <DD>(ISO International Standard 8807:1989)</DD>
+      <DD><I>see the <A HREF="http://cadp.inria.fr/tutorial">tutorial page</A>, section "Tutorials for LOTOS"</I></DD>
+<DT><A HREF="mcl.html">mcl</A></DT><DD>
+Model Checking Language (versions 3, 4, and 5) 
+</DD>
+<DT><A HREF="mcl3.html">mcl3</A></DT><DD>
+Model Checking Language version 3 (regular alternation-free
+mu-calculus) 
+</DD>
+<DT><A HREF="mcl4.html">mcl4</A></DT><DD>
+Model Checking Language version 4 (value-passing modal
+mu-calculus) 
+</DD>
+<DT><A HREF="mcl5.html">mcl5</A></DT><DD>
+Model Checking Language version 5 (probabilistic value-passing
+modal mu-calculus) 
+</DD>
+<DT><A HREF="nupn.html">nupn</A></DT><DD>
+Nested-Unit Petri Nets 
+</DD>
+<DT><A HREF="pbg.html">pbg</A></DT><DD>
+Partitioned BCG File format 
+</DD>
+<DT><A HREF="rbc.html">rbc</A></DT><DD>
+textual file format for random BES (Boolean Equation Systems)
+configuration 
+</DD>
+   <DT><FONT color="blue">ren</FONT></DT>
+      <DD>file format for renaming labels</DD>
+      <DD><I>see the <A HREF="caesar_rename_1.html">caesar_rename_1</A> manual page</I></DD>
+<DT><A HREF="seq.html">seq</A></DT><DD>
+CADP common format for execution sequences (i.e., traces)
+
+</DD>
+<DT><A HREF="svl-lang.html">svl-lang</A></DT><DD>
+script language for verification scenarios 
+</DD>
+<DT><A HREF="xtl-lang.html">xtl-lang</A></DT><DD>
+language for value-based temporal logic formulas 
+</DD>
+</DL>
+</UL>
+
+<TABLE cellpadding="5" border="0" width="100%"><TR><TD bgcolor="#ccccff">
+<FONT size="+3"><A NAME="tools"><B>2. CADP Command-Line Tools</B></A></FONT>
+</TD></TR></TABLE>
+
+<P>
+
+<UL>
+<DL>
+<DT><A HREF="bcg_cmp.html">bcg_cmp</A></DT><DD>
+equivalence comparison of normal, probabilistic, or stochastic
+labeled transitions systems (LTS) encoded in the BCG format 
+</DD>
+<DT><A HREF="bcg_draw.html">bcg_draw</A></DT><DD>
+display graphs encoded in the BCG format 
+</DD>
+<DT><A HREF="bcg_edit.html">bcg_edit</A></DT><DD>
+edit interactively the PostScript representation of BCG
+graphs 
+</DD>
+<DT><A HREF="bcg_graph.html">bcg_graph</A></DT><DD>
+generate various kinds of useful BCG graphs 
+</DD>
+<DT><A HREF="bcg_info.html">bcg_info</A></DT><DD>
+display information about graphs encoded in the BCG format
+
+</DD>
+<DT><A HREF="bcg_io.html">bcg_io</A></DT><DD>
+convert graphs from and into the BCG format 
+</DD>
+<DT><A HREF="bcg_labels.html">bcg_labels</A></DT><DD>
+modify the labels of graphs encoded in the BCG format
+
+</DD>
+<DT><A HREF="bcg_lib.html">bcg_lib</A></DT><DD>
+generate dynamic libraries for graphs encoded in the BCG
+format 
+</DD>
+<DT><A HREF="bcg_merge.html">bcg_merge</A></DT><DD>
+translation of a partitioned BCG graph into one single
+BCG graph 
+</DD>
+<DT><A HREF="bcg_min.html">bcg_min</A></DT><DD>
+minimization of normal, probabilistic, or stochastic labeled
+transitions systems (LTS) encoded in the BCG format 
+</DD>
+<DT><A HREF="bcg_open.html">bcg_open</A></DT><DD>
+OPEN/CAESAR connection for graphs encoded in the BCG format
+
+</DD>
+<DT><A HREF="bcg_steady.html">bcg_steady</A></DT><DD>
+steady-state numerical analysis of (extended) continuous-time
+Markov chains encoded in the BCG format 
+</DD>
+<DT><A HREF="bcg_transient.html">bcg_transient</A></DT><DD>
+transient numerical analysis of (extended) continuous-time
+Markov chains encoded in the BCG format 
+</DD>
+<DT><A HREF="bes_solve.html">bes_solve</A></DT><DD>
+resolution of boolean equation systems 
+</DD>
+<DT><A HREF="bisimulator.html">bisimulator</A></DT><DD>
+on-the-fly equivalence/preorder checking 
+</DD>
+<DT><A HREF="caesar.adt.html">caesar.adt</A></DT><DD>
+translation of LOTOS abstract data types into C 
+</DD>
+<DT><A HREF="caesar.bdd.html">caesar.bdd</A></DT><DD>
+structural and behavioural analysis of Nested-Unit Petri
+Nets 
+</DD>
+<DT><A HREF="caesar.html">caesar</A></DT><DD>
+compilation &amp; verification of LOTOS specifications 
+</DD>
+<DT><A HREF="caesar.indent.html">caesar.indent</A></DT><DD>
+LOTOS specifications pretty-printer 
+</DD>
+<DT><A HREF="contributor.html">contributor</A></DT><DD>
+CADP contribution assistant  
+</DD>
+<DT><A HREF="cunctator.html">cunctator</A></DT><DD>
+on-the-fly steady-state simulation of continuous-time Markov
+chains 
+</DD>
+<DT><A HREF="declarator.html">declarator</A></DT><DD>
+test an OPEN/CAESAR implementation 
+</DD>
+<DT><A HREF="determinator.html">determinator</A></DT><DD>
+elimination of nondeterminism for stochastic systems
+
+</DD>
+<DT><A HREF="distributor.html">distributor</A></DT><DD>
+state space generation using distributed reachability
+analysis 
+</DD>
+<DT><A HREF="evaluator.html">evaluator</A></DT><DD>
+a family of on-the-fly model checkers 
+</DD>
+<DT><A HREF="evaluator3.html">evaluator3</A></DT><DD>
+on-the-fly model checking of MCL v3 formulas 
+</DD>
+<DT><A HREF="evaluator4.html">evaluator4</A></DT><DD>
+on-the-fly model checking of MCL v4 formulas 
+</DD>
+<DT><A HREF="evaluator5.html">evaluator5</A></DT><DD>
+on-the-fly model checking of MCL v5 formulas 
+</DD>
+<DT><A HREF="executor.html">executor</A></DT><DD>
+random execution  
+</DD>
+<DT><A HREF="exhibitor.html">exhibitor</A></DT><DD>
+search for execution sequences matching a given pattern
+
+</DD>
+<DT><A HREF="exp.open.html">exp.open</A></DT><DD>
+OPEN/CAESAR connection for EXP networks of communicating
+automata 
+</DD>
+<DT><A HREF="fsp.open.html">fsp.open</A></DT><DD>
+OPEN/CAESAR connection for the FSP language 
+</DD>
+<DT><A HREF="fsp2lotos.html">fsp2lotos</A></DT><DD>
+FSP to LOTOS translator 
+</DD>
+<DT><A HREF="generator.html">generator</A></DT><DD>
+BCG graph generation using reachability analysis 
+</DD>
+<DT><A HREF="installator.html">installator</A></DT><DD>
+CADP installation assistant  
+</DD>
+<DT><A HREF="lnt.open.html">lnt.open</A></DT><DD>
+OPEN/CAESAR connection for the LNT language 
+</DD>
+<DT><A HREF="lnt2lotos.html">lnt2lotos</A></DT><DD>
+LNT to LOTOS translator 
+</DD>
+<DT><A HREF="lotos.open.html">lotos.open</A></DT><DD>
+OPEN/CAESAR connection for the LOTOS language 
+</DD>
+<DT><A HREF="lpp.html">lpp</A></DT><DD>
+LNT pre-processor 
+</DD>
+<DT><A HREF="nupn_info.html">nupn_info</A></DT><DD>
+query and transformation of Nested-Unit Petri Nets 
+</DD>
+<DT><A HREF="ocis.html">ocis</A></DT><DD>
+Open/Caesar Interactive Simulator 
+</DD>
+<DT><A HREF="pbg_cp.html">pbg_cp</A></DT><DD>
+copy a partitioned BCG graph 
+</DD>
+<DT><A HREF="pbg_info.html">pbg_info</A></DT><DD>
+display information about a partitioned BCG graph 
+</DD>
+<DT><A HREF="pbg_mv.html">pbg_mv</A></DT><DD>
+move a partitioned BCG graph 
+</DD>
+<DT><A HREF="pbg_rm.html">pbg_rm</A></DT><DD>
+remove a partitioned BCG graph 
+</DD>
+<DT><A HREF="predictor.html">predictor</A></DT><DD>
+predict the feasability of reachability analysis 
+</DD>
+<DT><A HREF="projector.html">projector</A></DT><DD>
+semi-composition and generation of Labelled Transition
+Systems 
+</DD>
+<DT><A HREF="reductor.html">reductor</A></DT><DD>
+BCG graph generation using reachability analysis combined
+with on-the-fly reduction 
+</DD>
+<DT><A HREF="scrutator.html">scrutator</A></DT><DD>
+pruning of Labelled Transition Systems 
+</DD>
+<DT><A HREF="seq.open.html">seq.open</A></DT><DD>
+OPEN/CAESAR connection for traces encoded in the SEQ format
+
+</DD>
+<DT><A HREF="simulator.html">simulator</A></DT><DD>
+interactive simulator with ASCII command-line interface
+
+</DD>
+<DT><A HREF="svl.html">svl</A></DT><DD>
+compilation and execution of SVL scripts 
+</DD>
+<DT><A HREF="terminator.html">terminator</A></DT><DD>
+deadlock detection 
+</DD>
+<DT><A HREF="tgv.html">tgv</A></DT><DD>
+Test Generation from transitions systems using Verification techniques
+  <BR>
+ 
+</DD>
+<DT><A HREF="tst.html">tst</A></DT><DD>
+CADP installation and configuration auto-test facility 
+</DD>
+<DT><A HREF="xeuca.html">xeuca</A></DT><DD>
+graphical-user interface for the EUCALYPTUS tools 
+</DD>
+<DT><A HREF="xsimulator.html">xsimulator</A></DT><DD>
+interactive simulator with X-windows interface 
+</DD>
+<DT><A HREF="xtl.html">xtl</A></DT><DD>
+evaluation of value-based temporal logic formulas 
+</DD>
+</DL>
+</UL>
+
+<TABLE cellpadding="5" border="0" width="100%"><TR><TD bgcolor="#ccccff">
+<FONT size="+3"><A NAME="tools"><B>3. CADP Application Programming Interfaces</B></A></FONT>
+</TD></TR></TABLE>
+
+<P>
+
+<B>Note:</B> The manual pages of the Open/Caesar Application Programming Interfaces are available as part of the CADP software package.
+
+<P>
+
+<UL>
+<DL>
+<DT><A HREF="bcg_read.html">bcg_read</A></DT><DD>
+a simple interface to read a BCG graph  
+</DD>
+<DT><A HREF="bcg_write.html">bcg_write</A></DT><DD>
+a simple interface to produce a BCG graph 
+</DD>
+<DT><A HREF="caesar_area_1.html">caesar_area_1</A></DT><DD>
+the ``area_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_bitmap.html">caesar_bitmap</A></DT><DD>
+the ``bitmap'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_cache_1.html">caesar_cache_1</A></DT><DD>
+the ``cache_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_diagnostic_1.html">caesar_diagnostic_1</A></DT><DD>
+the ``diagnostic_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_edge.html">caesar_edge</A></DT><DD>
+the ``edge'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_graph.html">caesar_graph</A></DT><DD>
+the ``graph'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_hash.html">caesar_hash</A></DT><DD>
+the ``hash'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_hide_1.html">caesar_hide_1</A></DT><DD>
+the ``hide_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_mask_1.html">caesar_mask_1</A></DT><DD>
+the ``mask_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_rename_1.html">caesar_rename_1</A></DT><DD>
+the ``rename_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_solve_1.html">caesar_solve_1</A></DT><DD>
+the ``solve_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_solve_2.html">caesar_solve_2</A></DT><DD>
+the ``solve_2'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_stack_1.html">caesar_stack_1</A></DT><DD>
+the ``stack_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_standard.html">caesar_standard</A></DT><DD>
+the ``standard'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_table_1.html">caesar_table_1</A></DT><DD>
+the ``table_1'' library of OPEN/CAESAR 
+</DD>
+<DT><A HREF="caesar_version.html">caesar_version</A></DT><DD>
+the ``version'' library of OPEN/CAESAR 
+</DD>
+</DL>
+</UL>
+
+<TABLE cellpadding="5" border="0" width="100%"><TR><TD bgcolor="#ccccff">
+<FONT size="+3"><A NAME="old"><B>4. Deprecated or Deleted Tools</B></A></FONT>
+</TD></TR></TABLE>
+
+<P>
+
+<UL>
+<DL>
+   <DT><A HREF="aldebaran.html">aldebaran</A></DT>
+      <DD>minimization and comparison of labelled transitions systems</DD>
+      <DD><I>deprecated in 2008 - see HISTORY file entries #1299, #1742, and #1827</I></DD>
+   <DT><FONT color="blue">caesar.aldebaran</FONT></DT>
+      <DD>combination of CAESAR and ALDEBARAN</DD>
+      <DD><I>deleted in 2002 - see HISTORY file entry #826</I></DD>
+   <DT><FONT color="blue">caesar.open</FONT></DT>
+      <DD>use <A HREF="lotos.open.html">lotos.open</A> instead - OPEN/CAESAR connection for the LOTOS language</DD>
+      <DD><I>deprecated in 2020 - see HISTORY file entry #2569</I></DD>
+   <DT><FONT color="blue">des2aut</FONT></DT>
+      <DD>composition generation of a labelled transitions system</DD>
+      <DD><I>deleted in 2002 - see HISTORY file entry #783</I></DD>
+   <DT><FONT color="blue">exp2fc2</FONT></DT>
+      <DD>conversion of .exp files to parallel .fc2 files</DD>
+      <DD><I>deleted in 2014 - see HISTORY file entry #1844</I></DD>
+   <DT><FONT color="blue">fc2open</FONT></DT>
+      <DD>connection of FC2 format to OPEN/CAESAR</DD>
+      <DD><I>deleted in 2002 - see HISTORY file entry #819</I></DD>
+</DL>
+</UL>
+
+<P>
+
+<HR>
+<A HREF="http://cadp.inria.fr"><IMG ALIGN=CENTER SRC="/share/left.gif"> Back to the CADP Home Page </A>
+</BODY>
+</HTML>
+

@@ -1,0 +1,1038 @@
+
+process InitIndividualKB [user,parentin,parentout,signal]
+  ( B : BaseId ) : exit :=
+  IndividualKB [user,parentin,parentout,signal]
+	(B,
+	none of ParentBase,
+	{} of SubmittedTbl, first of Id,
+	{} of PendingTbl)
+endproc
+
+process IdleIndividualKB [user,parentin,parentout,signal]
+  ( B : BaseId,
+    G : ParentBase ) : exit :=
+  IndividualKB [user,parentin,parentout,signal]
+	(B,
+	G,
+	{} of SubmittedTbl, first of Id,
+	{} of PendingTbl)
+endproc
+
+process IndividualKB [user,parentin,parentout,signal] 
+  ( B : BaseId,
+    G : ParentBase, 
+    A : SubmittedTbl, NA : Id,
+    P : PendingTbl)
+  : exit :=
+
+  [A = {} of SubmittedTbl] -> [P = {} of PendingTbl] -> exit
+  []  
+  
+  
+  [G = none] -> [A = {} of SubmittedTbl] ->
+  user !B !doregister ?b1 : BaseId;
+  parentout !B !b1 !register(NA,b1);
+  IndividualKB [user,parentin,parentout,signal]
+  	(B,
+  	G,
+  	insert(submitted(NA,reqregister(b1)),A),next(NA),
+  	P)
+
+  []
+  
+  [issome(G)] ->
+  user !B !doevaluate ?p1 : Proposal;
+  parentout !B !the(G) !evaluate(NA,p1);
+  IndividualKB [user,parentin,parentout,signal] 
+  	(B,
+  	G,
+  	insert(submitted(NA,reqevaluate(p1)),A),next(NA),
+  	P)
+
+  []
+  
+  [issome(G)] ->
+  user !B !doachieve ?p1 : Proposal;
+  parentout !B !the(G) !achieve(NA,p1);
+  IndividualKB [user,parentin,parentout,signal] 
+  	(B,
+  	G,
+  	insert(submitted(NA,reqachieve(p1)),A),next(NA),
+  	P)
+
+  []
+  
+  [issome(G)] ->
+  user !B !doforward ?r1 : Request;
+  parentout !B !the(G) !forward(NA,r1);
+  IndividualKB [user,parentin,parentout,signal] 
+        (B,
+        G,
+        insert(submitted(NA,reqforward(r1)),A),next(NA),
+        P)
+
+  []
+  
+  [issome(G)] ->
+  ( choice m1 : Id [] [m1 isin A] ->
+    user !B !dodeny !req(get(m1,A));
+    parentout !B !the(G) !deny(m1);
+    IndividualKB [user,parentin,parentout,signal] 
+  	(B,
+  	G,
+  	remove(m1,A),NA,
+  	P)
+  )
+
+  []
+  
+  [issome(G)] ->
+  ( choice n1 : Id [] 	
+    [n1 isin P] ->  [status(get(n1,P)) = new] ->
+    ( let r1 : Request = req(get(n1,P)) in
+      user !B !doaccept !r1;
+      parentout !B !the(G) !reply(n1,acceptx);
+      IndividualKB [user,parentin,parentout,signal] 
+  	(B,
+  	G,
+  	A,NA,
+  	insert(set_status(accepted,get(n1,P)),P))
+      []
+      user !B !doreject !r1;
+      parentout !B !the(G) !reply(n1,reject);
+      IndividualKB [user,parentin,parentout,signal] 
+  	(B,
+  	G,
+  	A,NA,
+  	insert(set_status(rejected,get(n1,P)),P))
+      []
+      [is_reqachieve(r1)] ->
+      (*** should apply to forward*(achieve(...)) too ***)
+      user !B !dochallenge !r1 ?p1 : Proposal;
+      parentout !B !the(G) !reply(n1,challenge(NA,p1));
+      IndividualKB [user,parentin,parentout,signal] 
+  	(B,
+  	G,
+  	insert(submitted(NA,reqchallenge(p1)),A),next(NA),
+  	insert(set_status(challenged,get(n1,P)),P))
+    )
+  )
+
+  []
+  parentin ?from : BaseId !B ?msg : Message;
+  ( 
+    [is_notify(msg)] ->
+    ( let	m1 : Id = inreplyto(msg),
+    	a1 : Answer = content(msg) in
+      ( [m1 isin A] ->
+        ( [is_reqregister(req(get(m1,A)))] ->
+          [content(req(get(m1,A))) of BaseId = from] ->
+          ( [isnone(G)] ->
+    	( [is_acceptx(a1)] ->
+    	  IndividualKB [user,parentin,parentout,signal]
+    		(B,
+    		some(from),
+    		remove(m1,A),NA,
+    		P)
+    	  []
+    	  [not(is_acceptx(a1))] ->
+    	  IndividualKB [user,parentin,parentout,signal]
+    		(B,
+    		G,
+    		remove(m1,A),NA,
+    		P)
+    	)
+            []
+            [issome(G)] ->
+    	IndividualKB [user,parentin,parentout,signal] 
+    		(B,
+    		G,
+    		remove(m1,A),NA,
+    		P)
+          )
+          []
+          [not(is_reqregister(req(get(m1,A))))] ->
+          IndividualKB [user,parentin,parentout,signal] 
+    	      (B,
+    	      G,
+    	      remove(m1,A),NA,
+    	      P)
+        )
+        []
+        [m1 notin A] ->
+        signal !B !signotinA !msg;
+        IndividualKB [user,parentin,parentout,signal] 
+    	(B,
+    	G,
+    	A,NA,
+    	P)
+      )
+    )
+
+    []
+    
+    [is_askall(msg)] ->
+    ( [G eq some(from)] ->
+      ( let	n1 : Id = replywith(msg),
+    	r1 : Request = content(msg) in
+        IndividualKB [user,parentin,parentout,signal] 
+    	(B,
+    	G,
+    	A,NA,
+    	insert(pending(n1,r1,new),P))
+      )
+    )
+
+    []
+    
+    [is_tell(msg)] ->
+    ( [G eq some(from)] ->
+      (*** handling of knowledge in user KB: unspecified ***)
+      IndividualKB [user,parentin,parentout,signal] 
+        (B,
+        G,
+        A,NA,
+        P)
+    )
+
+    []
+    
+    [is_error(msg)] ->
+    ( [G eq some(from)] ->
+      ( let	m1 : Id = inreplyto(msg) in
+        ( [m1 isin A] ->
+          IndividualKB [user,parentin,parentout,signal] 
+    	(B,
+    	G,
+    	remove(M1,A),NA,
+    	P)
+          []
+          [m1 notin A] ->
+          signal !B !signotinA !msg;
+          IndividualKB [user,parentin,parentout,signal] 
+    	  (B,
+    	  G,
+    	  A,NA,
+    	  P)
+        )
+      )
+    )
+
+    []
+    
+    [is_poolnotify(msg)] ->
+    ( [G eq some(from)] ->
+      ( let	n1 : Id = inreplyto(msg) in
+        ( [n1 isin P] ->
+          IndividualKB [user,parentin,parentout,signal] 
+    	(B,
+    	G,
+    	A,NA,
+    	remove(n1,P))
+          []
+          [n1 notin P] ->
+          signal !B !signotinP !msg;
+          IndividualKB [user,parentin,parentout,signal] 
+    	  (B,
+    	  G,
+    	  A,NA,
+    	  P)
+        )
+      )
+    )
+
+    []
+    
+    [is_pooldeny(msg)] ->
+    ( [G eq some(from)] ->
+      ( let	n1 : Id = inreplyto(msg) in
+        ( [n1 isin P] ->
+          IndividualKB [user,parentin,parentout,signal] 
+    	(B,
+    	G,
+    	A,NA,
+    	remove(n1,P))
+          []
+          [n1 notin P] ->
+          signal !B !signotinP !msg;
+          IndividualKB [user,parentin,parentout,signal] 
+    	  (B,
+    	  G,
+    	  A,NA,
+    	  P)
+        )
+      )
+    )
+
+  )
+
+
+endproc
+
+
+process InitGroupKB [childrenin,childrenout,parentin,parentout,signal]
+  ( B : BaseId ) : exit :=
+  GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	(B,
+	none of ParentBase,
+	{} of GrpSubmittedTbl, first of Id,
+	{} of PendingTbl,
+	{} of CfcTbl, first of Id,
+	{} of SubscriberSet,
+	{} of Knowledge)
+endproc
+
+process IdleGroupKB [childrenin,childrenout,parentin,parentout,signal]
+  ( B : BaseId,
+    G : Parentbase,
+    S : SubscriberSet ) : exit :=
+  GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	(B,
+        G,
+	{} of GrpSubmittedTbl, first of Id,
+	{} of PendingTbl,
+	{} of CfcTbl, first of Id,
+	S,
+	{} of Knowledge)
+endproc
+
+process GroupKB [childrenin,childrenout,parentin,parentout,signal] 
+  ( B : BaseId,
+    G : Parentbase, 
+    A : GrpSubmittedTbl, NA : Id,
+    P : PendingTbl,
+    C : CfcTbl, NC : Id,
+    S : SubscriberSet,
+    K : Knowledge)
+  : exit :=
+
+    [A = {} of GrpSubmittedTbl] -> [P = {} of PendingTbl] ->
+      [C = {} of CfcTbl] -> exit
+  []  
+  
+  childrenin ?from : BaseId !B ?msg : Message;
+  ( 
+    [is_register(msg)] ->
+    ( let	b2 : BaseId = content(msg),
+    	m1 : Id = replywith(msg) in
+      let 	req : Request = reqregister(b2) in
+      [b2 = B] ->
+      ( [S ne {}] ->
+        ( Broadcast [childrenout] (B, askall(NC,req), S)
+          >>
+          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    insert(cfc(NC,from,m1,req,card(S)),C), next(NC),
+    	    S,
+    	    K)
+        )
+        []
+        [S eq {}] ->
+        childrenout !B !from !notify(m1, acceptx);
+        childrenout !B !from !tell(assert(K));
+        signal !B !sigregistered !from;
+        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    C,NC,
+    	    insert(from,S),
+    	    K)
+      )
+    )
+
+    []
+    
+    [is_evaluate(msg)] ->
+    ( let	p1 : Proposal = content(msg),
+    	m1 : Id = replywith(msg) in
+      childrenout !B !from !notify(m1, answer(query(K,p1)));
+      GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	(B,
+    	G,
+    	A,NA,
+    	P,
+    	C,NC,
+    	S,
+    	K)
+    )
+
+    []
+    
+    [is_achieve(msg)] ->
+    ( let	p1 : Proposal = content(msg),
+    	m1 : Id = replywith(msg) in
+      let 	req : Request = reqachieve(p1) in
+      ( [query(K,p1)] ->
+        ( Broadcast [childrenout] (B, askall(NC,req), S)
+          >>
+          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    insert(cfc(NC,from,m1,req,card(S)),C),next(NC),
+    	    S,
+    	    K)
+        )
+        []
+        [not(query(K,p1))] ->
+        ( childrenout !B !from !error(m1);
+          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    C,NC,
+    	    S,
+    	    K)
+        )
+      )
+    )
+
+    []
+    
+    [is_forward(msg)] ->
+    ( let	r1 : Request = content(msg),
+    	m1 : Id = replywith(msg) in
+      let 	req : Request = reqforward(r1) in
+      ( [issome(G) or (isnone(G) and is_reqregister(r1))] ->
+        ( Broadcast [childrenout] (B, askall(NC,req), S)
+          >>
+          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    insert(cfc(NC,from,m1,req,card(S)),C),next(NC),
+    	    S,
+    	    K)
+        )
+        []
+        [isnone(G) and not(is_reqregister(r1))] ->
+        ( childrenout !B !from !error(m1);
+          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    C,NC,
+    	    S,
+    	    K)
+        )
+      )
+    )
+
+    []
+    
+
+    [is_deny(msg)] ->
+    ( let	m1 : Id = inreplyto(msg) in
+      [searchrequest(from,m1,C)] ->
+      ( let	n1 : Id = id(getrequest(from,m1,C)) in
+        ( Broadcast [childrenout] (B, pooldeny(n1), S)
+          >>
+          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	(B,
+    	G,
+    	A,NA,
+    	P,
+    	remove(n1,C),NC,
+    	S,
+    	K)
+        )
+      )
+      []
+      [not(searchrequest(from,m1,C))] ->
+      signal !B !signotinC !msg;
+      GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	(B,
+    	G,
+    	A,NA,
+    	P,
+    	C,NC,
+    	S,
+    	K)
+    )
+
+    []
+    
+    [is_reply(msg)] ->
+    ( let	n1 : Id = inreplyto(msg),
+    	a1 : Answer = content(msg) in
+      [n1 isin C] ->
+      ( let	entry : CfcEntry = get(n1,C) in
+        let	x1 : Nat = count(entry),
+    	r1 : Request = req(entry),
+    	b2 : BaseId = sender(entry),
+    	m2 : Id = senderid(entry) in
+        ( [is_acceptx(a1)] ->
+          ( [x1 = 1] ->
+            (
+    	  
+	  [is_reqregister(r1)] ->
+	  childrenout !B !b2 !notify(m2, acceptx);
+	  childrenout !B !b2 !tell(assert(K));
+	  ( Broadcast [childrenout] (B, poolnotify(n1,acceptx), S)
+	    >>
+	    EnumerateAskall [childrenout] (B, remove(n1,C), b2)
+	    >>
+	    signal !B !sigregistered !b2;
+	    GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	(B,
+	  	G,
+	  	A,NA,
+	  	P,
+	  	incallcount(remove(n1,C)),NC,
+	  	insert(b2,S),
+	  	K)
+	  )
+
+    	  []
+    	  
+	  [is_reqachieve(r1)] ->
+	  childrenout !B !b2 !notify(m2, acceptx);
+	  ( let p1 : Proposal = content(r1) in
+	    ( Broadcast [childrenout] (B, poolnotify(n1,acceptx), S)
+	      >>
+	      Broadcast [childrenout] (B, tell(p1), S)
+	      >>
+	      signal !B !sigstored !p1 !query(K,p1);
+	      GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	(B,
+	  	G,
+	  	A,NA,
+	  	P,
+	  	remove(n1,C),NC,
+	  	S,
+	  	K+p1)
+	    )
+	  )
+
+    	  []
+    	  
+	  [is_reqforward(r1)] ->
+	  ( [not(G eq some(b2))] ->
+	    ( let r2 : Request = content(r1) in
+	      Broadcast [childrenout] (B, poolnotify(n1,acceptx), S)
+	      >>
+	      ( [is_reqregister(r2)] ->
+	        ( let b3 : BaseId = content(r2) in
+	  	parentout !B !b3 !register(NA,b3);
+	  	GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	  (B,
+	  	  G,
+	  	  insert(submitted(NA,r2,b2,m2),A),next(NA),
+	  	  P,
+	  	  remove(n1,C),NC,
+	  	  S,
+	  	  K)
+	        )
+	        []
+	        [is_reqevaluate(r2)] -> [issome(G)] ->
+	        parentout !B !the(G) !evaluate(NA,content(r2));
+	        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	  (B,
+	  	  G,
+	  	  insert(submitted(NA,r2,b2,m2),A),next(NA),
+	  	  P,
+	  	  remove(n1,C),NC,
+	  	  S,
+	  	  K)
+	        []
+	        [is_reqachieve(r2)] -> [issome(G)] ->
+	        parentout !B !the(G) !achieve(NA,content(r2));
+	        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	  (B,
+	  	  G,
+	  	  insert(submitted(NA,r2,b2,m2),A),next(NA),
+	  	  P,
+	  	  remove(n1,C),NC,
+	  	  S,
+	  	  K)
+	        []
+	        [is_reqforward(r2)] -> [issome(G)] ->
+	        parentout !B !the(G) !forward(NA,content(r2));
+	        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	  (B,
+	  	  G,
+	  	  insert(submitted(NA,r2,b2,m2),A),next(NA),
+	  	  P,
+	  	  remove(n1,C),NC,
+	  	  S,
+	  	  K)
+	      )
+	    )
+	    []
+	    [G eq some(b2)] ->
+	    ( [m2 isin P] -> [status(get(m2,P)) = new] ->
+	      parentout !B !the(G) !reply(m2,acceptx);
+	      ( Broadcast [childrenout] (B, poolnotify(n1,acceptx), S)
+	        >>
+	        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	(B,
+	  	G,
+	  	A,NA,
+	  	insert(set_status(accepted,get(m2,P)),P),
+	  	remove(n1,C),NC,
+	  	S,
+	  	K)
+	      )
+	      []
+	      [m2 notin P] ->
+	      signal !B !signotinP !msg;
+	      ( Broadcast [childrenout] (B, poolnotify(n1,acceptx), S)
+	        >>
+	        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	(B,
+	  	G,
+	  	A,NA,
+	  	P,
+	  	remove(n1,C),NC,
+	  	S,
+	  	K)
+	      )
+	    )
+	  )
+
+    	  []
+    	  
+	  [is_reqtell(r1)] -> [G eq some(b2)] ->
+	  ( let p1 : Proposal = content(r1) in
+	    ( Broadcast [childrenout] (B, poolnotify(n1,acceptx), S)
+	      >>
+	      Broadcast [childrenout] (B, tell(p1), S)
+	      >>
+	      signal !B !sigstored !p1 !query(K,p1);
+	      GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	  	(B,
+	  	G,
+	  	A,NA,
+	  	P,
+	  	remove(n1,C),NC,
+	  	S,
+	  	K+p1)
+	    )
+	  )
+
+            )
+    	[]
+    	[x1 gt 1] ->
+    	GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    insert(set_count(pred(x1),entry),C),NC,
+    	    S,
+    	    K)
+          )      
+          []
+          [is_reject(a1)] ->
+          (
+            
+	    [not(G eq some(b2))] ->
+	    childrenout !B !b2 !notify(m2, a1);
+	    ( Broadcast [childrenout] (B, pooldeny(n1), S)
+	      >>
+	      GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	    	(B,
+	    	G,
+	    	A,NA,
+	    	P,
+	    	remove(n1,C),NC,
+	    	S,
+	    	K)
+	    )
+	    []
+	    [G eq some(b2)] ->
+	    ( [is_reqforward(r1)] ->
+	      ( [m2 isin P] -> [status(get(m2,P)) = new] ->
+	        parentout !B !the(G) !reply(m2,reject);
+	        ( Broadcast [childrenout] (B, pooldeny(n1), S)
+	          >>
+	          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	    	(B,
+	    	G,
+	    	A,NA,
+	    	insert(set_status(rejected,get(m2,P)),P),
+	    	remove(n1,C),NC,
+	    	S,
+	    	K)
+	        )
+	        []
+	        [m2 notin P] ->
+	        signal !B !signotinP !msg;
+	        ( Broadcast [childrenout] (B, pooldeny(n1), S)
+	          >>
+	          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	    	(B,
+	    	G,
+	    	A,NA,
+	    	P,
+	    	remove(n1,C),NC,
+	    	S,
+	    	K)
+	        )
+	      )
+	      []
+	      [is_reqtell(r1)] ->
+	      ( Broadcast [childrenout] (B, pooldeny(n1), S)
+	        >>
+	        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	    	(B,
+	    	G,
+	    	A,NA,
+	    	P,
+	    	remove(n1,C),NC,
+	    	S,
+	    	K)
+	      )
+	    )
+
+          )
+          []
+          [is_challenge(a1)] ->
+          (
+            
+	    [is_reqachieve(r1)] ->
+	    (*** should apply to forward*(achieve(...)) too ***)
+	    ( [not(G eq some(b2))] ->
+	      ( let	m1 : Id = replywith(a1),
+	    	  p1 : Proposal = content(a1),
+	    	  p2 : Proposal = content(r1) in
+	        let	r2 : Request = reqachieve(p2*p1) in
+	        childrenout !B !b2 !notify(m2, a1);
+	        ( Broadcast [childrenout] (B, pooldeny(n1), S)
+	          >>
+	          Broadcast [childrenout] (B, askall(NC,r2), S)
+	          >>
+	          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+	    	  (B,
+	    	  G,
+	    	  A,NA,
+	    	  P,
+	    	  insert(	cfc(NC,from,m1,r2,card(S)),
+	    		  remove(n1,C)),
+	    	  next(NC),
+	    	  S,
+	    	  K)
+	        )
+	      )
+	      []
+	      [G eq some(b2)] ->
+	      ( stop
+	        (*** should not be reached ***)
+	      )
+	    )
+
+          )
+        )
+      ) 
+      []
+      [n1 notin C] ->
+      signal !B !signotinC !msg;
+      GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	(B,
+    	G,
+    	A,NA,
+    	P,
+    	C,NC,
+    	S,
+    	K)
+    )
+
+  )
+  []
+  parentin ?from : BaseId !B ?msg : Message;
+  ( 
+    [is_notify(msg)] ->
+    ( let	m1 : Id = inreplyto(msg),
+    	a1 : Answer = content(msg) in
+      [m1 isin A] ->
+      ( let entry : GrpSubmittedEntry = get(m1,A) in
+        let r1 : Request = req(entry),
+    	b2 : BaseId = sender(entry),
+    	m2 : Id = senderid(entry) in
+        childrenout !B !b2 !notify(m2,a1);
+        ( [is_reqregister(r1)] -> [content(r1) of BaseId = from] ->
+          ( [is_acceptx(a1)] ->
+    	GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	      (B,
+    	      some(from),
+    	      remove(m1,A),NA,
+    	      P,
+    	      C,NC,
+    	      S,
+    	      K)
+    	[]
+    	[not(is_acceptx(a1))] ->
+    	GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	      (B,
+    	      G,
+    	      remove(m1,A),NA,
+    	      P,
+    	      C,NC,
+    	      S,
+    	      K)
+          )
+          []
+          [not(is_reqregister(r1))] ->
+          [G eq some(from)] ->
+          GroupKB [childrenin,childrenout,parentin,parentout,signal] 
+    	      (B,
+    	      G,
+    	      remove(m1,A),NA,
+    	      P,
+    	      C,NC,
+    	      S,
+    	      K)
+        )
+      )
+      []
+      [m1 notin A] ->
+      signal !B !signotinA !msg;
+      GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	(B,
+    	G,
+    	A,NA,
+    	P,
+    	C,NC,
+    	S,
+    	K)
+    )
+
+    []
+    
+    [is_askall(msg)] ->
+    ( [G eq some(from)] ->
+      ( let n1 : Id = replywith(msg),
+            r1 : Request = content(msg) in
+        Broadcast [childrenout] (B, askall(NC,reqforward(r1)), S)
+        >>
+        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	(B,
+    	G,
+    	A,NA,
+    	insert(pending(n1,r1,new),P),
+    	insert(cfc(NC,from,n1,reqforward(r1),card(S)),C),next(NC),
+    	S,
+    	K)
+      )
+    )
+
+    []
+    
+    [is_error(msg)] ->
+    ( [G eq some(from)] ->
+      ( let	m1 : Id = inreplyto(msg) in
+        [m1 isin A] ->
+        ( let entry : GrpSubmittedEntry = get(m1,A) in
+          let b2 : BaseId = sender(entry),
+    	  m2 : Id = senderid(entry) in
+          childrenout !B !b2 !error(m2);
+          GroupKB [childrenin,childrenout,parentin,parentout,signal] 
+    	      (B,
+    	      G,
+    	      remove(m1,A),NA,
+    	      P,
+    	      C,NC,
+    	      S,
+    	      K)
+        )
+        []
+        [m1 notin A] ->
+        signal !B !signotinA !msg;
+        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	  (B,
+    	  G,
+    	  A,NA,
+    	  P,
+    	  C,NC,
+    	  S,
+    	  K)
+      )
+    )
+
+    []
+    
+    [is_poolnotify(msg)] ->
+    ( [G eq some(from)] ->
+      ( let n1 : Id = inreplyto(msg) in
+        [n1 isin P] ->
+        ( [searchrequest(from,n1,C)] ->
+          ( let n2 : Id = id(getrequest(from,n1,C)) in
+    	( Broadcast [childrenout] (B, poolnotify(n2,acceptx), S)
+    	  >>
+    	  GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    remove(n1,P),
+    	    remove(n2,C),NC,
+    	    S,
+    	    K)
+    	)
+          )
+          []
+          [not(searchrequest(from,n1,C))] ->
+          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    remove(n1,P),
+    	    C,NC,
+    	    S,
+    	    K)
+        )
+        []
+        [n1 notin P] ->
+        signal !B !signotinP !msg;
+        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    C,NC,
+    	    S,
+    	    K)
+      )  
+    )
+
+    []
+    
+    [is_pooldeny(msg)] ->
+    ( [G eq some(from)] ->
+      ( let n1 : Id = inreplyto(msg) in
+        [n1 isin P] ->
+        ( [searchrequest(from,n1,C)] ->
+          ( let n2 : Id = id(getrequest(from,n1,C)) in
+    	( Broadcast [childrenout] (B, pooldeny(n2), S)
+    	  >>
+    	  GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    remove(n1,P),
+    	    remove(n2,C),NC,
+    	    S,
+    	    K)
+    	)
+          )
+          []
+          [not(searchrequest(from,n1,C))] ->
+          GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    remove(n1,P),
+    	    C,NC,
+    	    S,
+    	    K)
+        )
+        []
+        [n1 notin P] ->
+        signal !B !signotinP !msg;
+        GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	    (B,
+    	    G,
+    	    A,NA,
+    	    P,
+    	    C,NC,
+    	    S,
+    	    K)
+      )  
+    )
+
+    []
+    
+    [is_tell(msg)] ->
+    ( [G eq some(from)] ->
+      ( let p1 : Proposal = content(msg) in
+        let req : Request = reqtell(p1) in
+        ( [query(K,p1)] ->
+          ( Broadcast [childrenout] (B, askall(NC,req), S)
+    	>>
+    	GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	      (B,
+    	      G,
+    	      A,NA,
+    	      P,
+    	      insert(cfc(NC,from,first,req,card(S)),C),next(NC),
+    	      S,
+    	      K)
+          )
+          []
+          [not(query(K,p1))] ->
+          ( signal !B !signotconsistent !p1;
+    	GroupKB [childrenin,childrenout,parentin,parentout,signal]
+    	      (B,
+    	      G,
+    	      A,NA,
+    	      P,
+    	      C,NC,
+    	      S,
+    	      K)
+          )
+        )
+      )
+    )
+
+  )
+
+
+endproc
+
+
+process Broadcast [out]
+	( B : BaseId,
+	  msg : Message,
+	  S : SubscriberSet ) : exit :=
+[S eq {}] -> exit
+[]
+[S ne {}] ->
+( let b1 : BaseId = pick(S) in
+  out !B !b1 !msg;
+  Broadcast [out] (B, msg, remove(b1,S))
+)
+endproc
+
+
+process EnumerateAskall [childrenout]
+	( B : BaseId,
+	  C : CfcTbl,
+	  b1 : BaseId ) : exit :=
+[C eq {}] -> exit
+[]
+[C ne {}] ->
+( let entry : CfcEntry = pick(C) in
+  childrenout !B !b1 !askall(id(entry),req(entry));
+  EnumerateAskall [childrenout] (B, remove(id(entry), C), b1)
+)
+endproc
+
+
+process InitQueue [input,output] : exit :=
+  Queue  [input,output] (<> of PacketQueue)
+endproc
+
+process Queue [input,output] (pktq : PacketQueue) : exit :=
+  [pktq eq <>] -> exit
+  []
+  input ?b1 : BaseId ?b2 : BaseId ?msg : Message;
+  Queue [input,output] (pktq + packet(b1,b2,msg))
+  []
+  [pktq ne <>] ->
+  output !sender(first(pktq)) !receiver(first(pktq)) !message(first(pktq)) ;
+  Queue [input,output] (butfirst(pktq))
+endproc
+
+
+process Ring [g] : noexit :=
+  g; Ring [g]
+endproc
+

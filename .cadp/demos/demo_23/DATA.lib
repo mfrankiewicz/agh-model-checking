@@ -1,0 +1,458 @@
+
+(*---------------------------------------------------------------------------*)
+
+type BoolTABLE is Boolean, NaturalNumber
+   sorts
+      BoolTABLE
+   opns
+      empty  (*! constructor *) : -> BoolTABLE
+      btable (*! constructor *) : Nat, Bool, BoolTABLE -> BoolTABLE
+      init      : Nat -> BoolTABLE
+      invert    : Nat, BoolTABLE -> BoolTABLE
+      get       : Nat, BoolTABLE -> Bool
+      if        : Bool, BoolTABLE, BoolTABLE -> BoolTABLE
+      zero      ,
+      one       ,
+      more      : BoolTABLE -> Bool
+   eqns
+      forall xnat, ynat : Nat,
+             xbool, ybool : Bool,
+             xbt, ybt : BoolTABLE
+      ofsort BoolTABLE
+         init (0)               = empty;
+         init (Succ (xnat))     = btable (xnat, false, init (xnat));
+         invert (xnat, empty)   = empty;
+         xnat eq ynat =>
+         invert (xnat, btable (ynat, xbool, xbt))
+                                = btable (ynat, not (xbool), xbt);
+         xnat ne ynat =>
+         invert (xnat, btable (ynat, xbool, xbt))
+                                = btable (ynat, xbool, invert (xnat, xbt));
+      ofsort Bool
+         xnat eq ynat =>
+         get (xnat, btable (ynat, ybool, xbt))
+                                = ybool;
+         xnat ne ynat =>
+         get (xnat, btable (ynat, ybool, xbt))
+                                = get (xnat, xbt);
+         get (xnat, empty)      = true;
+      ofsort BoolTABLE
+         if (true, xbt, ybt)    = xbt;
+         if (false, xbt, ybt)   = ybt;
+      ofsort Bool
+         zero (empty)           = true;
+         zero (btable (xnat, true, xbt))
+                                = false;
+         zero (btable (xnat, false, xbt))
+                                = zero (xbt);
+         one (empty)            = false;
+         one (btable (xnat, true, xbt))
+                                = zero (xbt);
+         one (btable (xnat, false, xbt))
+                                = one (xbt);
+         more (xbt) = not (zero (xbt)) and not (one (xbt));
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type CHECK is Boolean
+   sorts
+      CHECK
+   opns
+      bottom (*! constructor *) : -> CHECK
+      check  (*! constructor *) : -> CHECK
+      eq : CHECK, CHECK -> Bool
+   eqns
+      ofsort Bool
+         eq (bottom, bottom) = true;
+         eq (check, check)   = true;
+         eq (check, bottom)  = false;
+         eq (bottom, check)  = false;
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type DATA is CHECK, Boolean
+   sorts
+      DATA (*! iteratedby ITR_FIRST_DATA and ITR_NEXT_DATA *)
+   opns
+      d1 (*! constructor *) : -> DATA
+      d2 (*! constructor *) : -> DATA
+      crc : DATA -> CHECK
+      eq  : DATA, DATA -> Bool
+   eqns
+      forall d : DATA
+      ofsort Bool
+         eq (d1, d1) = true;
+         eq (d2, d2) = true;
+         eq (d1, d2) = false;
+         eq (d2, d1) = false;
+      ofsort CHECK
+         crc (d)     = check;
+endtype   
+
+(*---------------------------------------------------------------------------*)
+
+type HEADER is CHECK, Boolean
+   sorts
+      HEADER (*! iteratedby ITR_FIRST_HEADER and ITR_NEXT_HEADER *)
+   opns
+      c1 (*! constructor *) : -> HEADER
+      c2 (*! constructor *) : -> HEADER
+      crc : HEADER -> CHECK
+      eq  : HEADER, HEADER -> Bool
+   eqns
+      forall c : HEADER
+      ofsort Bool
+         eq (c1, c1) = true;
+         eq (c2, c2) = true;
+         eq (c1, c2) = false;
+         eq (c2, c1) = false;
+      ofsort CHECK
+         crc (c)     = check;
+endtype
+(* 
+type HEADER is DATA renamedby
+   sortnames
+      HEADER for DATA
+   opnnames
+      c1     for d1
+      c2     for d2
+endtype
+*)  
+
+(*---------------------------------------------------------------------------*)
+
+type ACK is CHECK, Boolean
+   sorts
+      ACK (*! iteratedby ITR_FIRST_ACK and ITR_NEXT_ACK *)
+   opns
+      a1 (*! constructor *) : -> ACK
+      a2 (*! constructor *) : -> ACK
+      crc : ACK -> CHECK
+      eq  : ACK, ACK -> Bool
+   eqns
+      forall a : ACK
+      ofsort Bool
+         eq (a1, a1) = true;
+         eq (a2, a2) = true;
+         eq (a1, a2) = false;
+         eq (a2, a1) = false;
+      ofsort CHECK
+         crc (a)     = check;
+endtype
+(*  
+type ACK is ACK renamedby
+   sortnames
+      ACK    for ACK
+   opnnames
+      a1     for d1
+      a2     for d2
+endtype
+*) 
+ 
+(*---------------------------------------------------------------------------*)
+
+type ACKSIG is ACK, Boolean, CHECK
+   sorts
+      ACKSIG
+   opns
+      acksig (*! constructor *) : ACK, CHECK -> ACKSIG
+      eq : ACKSIG, ACKSIG -> Bool
+   eqns
+      forall xack, yack : ACK,
+             xcheck, ycheck : CHECK
+      ofsort Bool
+      eq (acksig (xack, xcheck), acksig (yack, ycheck))
+                                = eq (xack, yack) and eq (xcheck, ycheck);
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type DESTSIG is Boolean, NaturalNumber
+   sorts
+      DESTSIG
+   opns
+      destsig (*! constructor *) : Nat -> DESTSIG
+      eq : DESTSIG, DESTSIG -> Bool
+   eqns
+      forall xnat, ynat : Nat
+      ofsort Bool
+         eq (destsig (xnat), destsig (ynat))
+                                 = xnat eq ynat;
+endtype
+ 
+(*---------------------------------------------------------------------------*)
+
+type HEADERSIG is Boolean, CHECK, HEADER
+   sorts
+      HEADERSIG
+   opns
+      headersig (*! constructor *) : HEADER, CHECK -> HEADERSIG
+      eq : HEADERSIG, HEADERSIG -> Bool
+   eqns
+      forall xhead, yhead : HEADER,
+             xcheck, ycheck : CHECK
+      ofsort Bool
+         eq (headersig (xhead, xcheck), headersig (yhead, ycheck))
+                                 = eq (xhead, yhead) and
+                                   eq (xcheck, ycheck);
+endtype
+ 
+(*---------------------------------------------------------------------------*)
+
+type DATASIG is Boolean, CHECK, DATA
+   sorts
+      DATASIG
+   opns
+      datasig (*! constructor *) : DATA, CHECK -> DATASIG
+      eq : DATASIG, DATASIG -> Bool
+   eqns
+      forall xdata, ydata : DATA,
+             xcheck, ycheck : CHECK
+      ofsort Bool
+         eq (datasig (xdata, xcheck), datasig (ydata, ycheck))
+                                 = eq (xdata, ydata) and
+                                   eq (xcheck, ycheck);
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type BOC is CHECK, Boolean
+   sorts
+      BOC
+   opns
+      release (*! constructor *),
+      hold (*! constructor *),
+      no_op (*! constructor *) : -> BOC
+      eq  : BOC, BOC -> Bool
+   eqns
+      forall b1, b2 : BOC
+      ofsort Bool
+         eq (release, release) = true;
+         eq (hold, hold)       = true;
+         eq (no_op, no_op)     = true;
+   (* otherwise *)
+         eq (b1, b2)           = false;
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type PHY_AREQ is CHECK, Boolean
+   sorts
+      PHY_AREQ
+   opns
+      fair (*! constructor *),
+      immediate (*! constructor *) : -> PHY_AREQ
+      eq  : PHY_AREQ, PHY_AREQ -> Bool
+   eqns
+     ofsort Bool
+         eq (fair, fair)           = true;
+         eq (immediate, immediate) = true;
+         eq (fair, immediate)      = false;
+         eq (immediate, fair)      = false;
+endtype
+(*
+type PHY_AREQ is DATA renamedby
+   sortnames
+      PHY_AREQ  for DATA
+   opnnames
+      fair      for d1
+      immediate for d2
+endtype
+*)
+
+(*---------------------------------------------------------------------------*)
+
+type PHY_ACONF is CHECK, Boolean
+   sorts
+      PHY_ACONF
+   opns
+      won (*! constructor *),
+      lost (*! constructor *) : -> PHY_ACONF
+      eq  : PHY_ACONF, PHY_ACONF -> Bool
+   eqns
+     ofsort Bool
+         eq (won, won)   = true;
+         eq (lost, lost) = true;
+         eq (won, lost)  = false;
+         eq (lost, won)  = false;
+endtype
+(*
+type PHY_ACONF is DATA renamedby
+   sortnames
+      PHY_ACONF for DATA
+   opnnames
+      won       for d1
+      lost      for d2
+endtype
+*)
+
+(*---------------------------------------------------------------------------*)
+
+type SIGNAL is ACK, ACKSIG,
+               Boolean, CHECK,
+               DATA, DATASIG,
+               DESTSIG, HEADER, HEADERSIG
+   sorts
+      SIGNAL
+   opns
+      sig (*! constructor *) : DESTSIG -> SIGNAL
+      sig (*! constructor *) : HEADERSIG -> SIGNAL
+      sig (*! constructor *) : DATASIG -> SIGNAL
+      sig (*! constructor *) : ACKSIG -> SIGNAL
+      dhead (*! constructor *),
+      Start (*! constructor *),
+      End (*! constructor *),
+      Prefix (*! constructor *),
+      subactgap  (*! constructor *),
+      Dummy  (*! constructor *)
+                             : -> SIGNAL
+      is_dest,
+      is_header,
+      is_data,
+      is_ack,
+      is_physig : SIGNAL -> Bool
+      valid_hpart,
+      valid_ack : SIGNAL -> Bool
+      getdest   : SIGNAL -> Nat
+      getdcrc   : SIGNAL -> CHECK
+      getdata   : SIGNAL -> DATA
+      gethead   : SIGNAL -> HEADER
+      getack    : SIGNAL -> ACK
+      corrupt   : SIGNAL -> SIGNAL
+      eq        : SIGNAl, SIGNAL -> Bool
+   eqns
+      forall xnat, ynat : Nat,
+             xcheck, ycheck : CHECK,
+             xhead : HEADER,
+             xdata : DATA,
+             xdest, ydest : DESTSIG,
+             xsigh, ysigh : HEADERSIG,
+             xsigd, ysigd : DATASIG,
+             xsiga, ysiga : ACKSIG,
+             xack, yack   : ACK,
+             xsig, ysig   : SIGNAL
+      ofsort Bool
+         is_dest (sig (xdest))   = true;
+         (* otherwise *)
+            is_dest (xsig)       = false;
+         is_header (sig (xsigh)) = true;
+         (* otherwise *)
+            is_header (xsig)     = false;
+         is_data (sig (xsigd))   = true;
+         (* otherwise *)
+            is_data (xsig)       = false;
+         is_ack (sig (xsiga))    = true;
+         (* otherwise *)
+            is_ack (xsig)        = false;
+         is_physig (Start)       = true;
+         is_physig (End)         = true;
+         is_physig (Prefix)      = true;
+         is_physig (subactgap)   = true;
+         (* otherwise *)
+            is_physig (xsig)     = false;
+         valid_ack (sig (acksig (xack, xcheck)))
+                                 = eq (xcheck, check);
+         (* otherwise *)
+            valid_ack (xsig)     = false;
+         valid_hpart (sig (headersig (xhead, xcheck)))
+                                 = eq (xcheck, check);
+         (* otherwise *)
+            valid_hpart (xsig)   = false;
+      ofsort Nat
+         getdest (sig (destsig (xnat)))
+                                 = xnat;
+      ofsort HEADER
+         gethead (sig (headersig (xhead, xcheck)))
+                                 = xhead;
+      ofsort CHECK
+         getdcrc (sig (datasig (xdata, xcheck)))
+                                 = xcheck;
+      ofsort DATA
+         getdata (sig (datasig (xdata, xcheck)))
+                                 = xdata;
+      ofsort ACK
+         getack (sig (acksig (xack, xcheck)))
+                                 = xack;
+      ofsort SIGNAL
+         corrupt (sig (headersig (xhead, xcheck)))
+                                 = sig (headersig (xhead, bottom));
+         corrupt (sig (datasig (xdata, xcheck)))
+                                 =  sig (datasig (xdata, bottom));  
+         corrupt (sig (acksig (xack, xcheck)))
+                                 =  sig (acksig (xack, bottom));
+      ofsort Bool
+         eq (sig (xdest), sig (ydest)) = eq (xdest, ydest);
+         eq (sig (xsigh), sig (ysigh)) = eq (xsigh, ysigh);
+         eq (sig (xsigd), sig (ysigd)) = eq (xsigd, ysigd);
+         eq (sig (xsiga), sig (ysiga)) = eq (xsiga, ysiga);
+         eq (dhead, dhead)             = true;
+         eq (Start, Start)             = true;
+         eq (End, End)                 = true;
+         eq (Prefix, Prefix)           = true;
+         eq (subactgap, subactgap)     = true;
+         eq (Dummy, Dummy)             = true;
+         (* otherwise *)
+            eq (xsig, ysig)            = false;
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type SIG_TUPLE is Boolean, SIGNAL
+   sorts
+      SIG_TUPLE
+   opns
+      quadruple (*! constructor *)
+                : SIGNAL, SIGNAL, SIGNAL, SIGNAL -> SIG_TUPLE
+      void (*! constructor *)
+                : -> SIG_TUPLE
+      first,
+      second,
+      third,
+      fourth    : SIG_TUPLE -> SIGNAL
+      is_void   : SIG_TUPLE -> Bool
+   eqns
+      forall xphy1, xphy2, xphy3, xphy4 : SIGNAL,
+             yphy1, yphy2, yphy3, yphy4 : SIGNAL
+      ofsort SIGNAL
+         first (quadruple (xphy1, xphy2, xphy3, xphy4))  = xphy1;
+         second (quadruple (xphy1, xphy2, xphy3, xphy4)) = xphy2;
+         third (quadruple (xphy1, xphy2, xphy3, xphy4))  = xphy3;
+         fourth (quadruple (xphy1, xphy2, xphy3, xphy4)) = xphy4;
+      ofsort Bool
+         is_void (void)  = true;
+         is_void (quadruple (xphy1, xphy2, xphy3, xphy4)) = false;
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type LIN_DCONF is ACK
+   sorts
+      LIN_DCONF
+   opns
+      ackrec    (*! constructor *) : ACK -> LIN_DCONF
+      ackmiss   (*! constructor *),
+      broadsent (*! constructor *) : -> LIN_DCONF
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+type LIN_DIND is Boolean, DATA, HEADER
+   sorts
+      LIN_DIND
+   opns
+      good      (*! constructor *),
+      broadrec  (*! constructor *) : HEADER, DATA -> LIN_DIND
+      dcrc_err  (*! constructor *) : HEADER -> LIN_DIND
+      is_broadrec : LIN_DIND -> Bool
+   eqns
+      forall xhead: HEADER, xdata: DATA, xind: LIN_DIND
+      ofsort Bool
+         is_broadrec (broadrec (xhead, xdata))   = true;
+         (* otherwise *)
+         is_broadrec (xind)                      = false;
+endtype
+
+(*---------------------------------------------------------------------------*)
+

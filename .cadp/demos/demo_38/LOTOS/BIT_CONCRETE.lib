@@ -1,0 +1,22 @@
+(******************************************************************************
+ *             D A T A    E N C R Y P T I O N    S T A N D A R D
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	BIT_CONCRETE.lib
+ *   Auteur		:	Wendelin SERWE
+ *   Version		:	1.6
+ *   Date		: 	2015/09/15 16:02:46
+ *****************************************************************************)
+
+type BIT is BOOLEAN
+   sorts BIT
+   opns 0 (*! implementedby BIT_ZERO constructor *) : -> BIT 
+        1 (*! implementedby BIT_ONE  constructor *) : -> BIT
+endtype
+
+(* ------------------------------------------------------------------------- *)
+

@@ -1,0 +1,57 @@
+#! /bin/sh
+
+###############################################################################
+#                               C A D P
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_more
+#   Auteurs             :       Remi Herilier et Hubert Garavel
+#   Version             :       1.7
+#   Date                :       2018/05/25 10:31:28
+##############################################################################
+
+# Ce script affiche de maniere portable le contenu d'un fichier.
+# Il utilise la variable d'environnement $PAGER si elle est definie, ou
+# "more" sinon (sauf sous Windows, ou l'on utilise "less" au lieu de "more")
+
+ARCH=`"$CADP"/com/arch`
+
+if [ "$PAGER" = "" ]
+then
+	case $ARCH in
+		win32 ) # Sous Windows, la commande "more" de Cygwin se bloque
+			# lorsqu'elle est invoquee depuis un programme C via la
+			# fonction system () de Mingwin et own_system() de
+			# CADP ; on la remplace par "less -X -E"
+			PAGER="less"
+			# option non documentee, mais utilisable
+			CADP_PAGER_OPTIONS="-X -E"
+			;;
+		* )
+			PAGER="more"
+			;;
+	esac
+fi
+
+if [ "$1" = "-default" ]
+then
+	# recuperation du nom de la commande $PAGER sans d'eventuelles options
+	CADP_PAGER_COMMAND=`echo "$PAGER" | sed -e 's/ -.*//'`
+	"$CADP"/src/com/cadp_which "$CADP_PAGER_COMMAND"
+	exit 0
+fi
+
+# Ici, on a un dilemne: la valeur de $PAGER pourrait contenir des espaces
+# dans le nom de la commande (par exemple, sous Windows), auquel cas il
+# faudrait ecrire "$PAGER" entre guillemets ; mais la valeur de $PAGER
+# peut contenir aussi d'eventuelles options separees par des espaces
+# (par exemple, "less -ins" sous Solaris 11), auquel cas il ne faut pas
+# ecrire $PAGER entre guillemets. On opte pour la seconde option
+
+$PAGER $CADP_PAGER_OPTIONS "$@"
+

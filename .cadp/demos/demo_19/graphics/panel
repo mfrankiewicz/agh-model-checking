@@ -1,0 +1,79 @@
+
+####################################################################
+#
+# Datei panel
+#
+# Autor :          Artur Brauer
+# Erstellzeitraum : Maerz 1993
+#
+# Diese Datei enthaelt das Hauptprogramm fuer den Steuerblock der 
+# Fertigungszellen-Simulation
+#
+####################################################################
+
+
+#Default - Einstellungen fuer 
+#die Darstellung : farbig
+#die Sprache	 : englisch
+
+set color_schwarzweiss  color
+set engl_deutsch 	english
+
+if { [lsearch $argv -bw] != -1 } {
+	set color_schwarzweiss schwarzweiss
+	}
+if { [lsearch $argv -eng ] != -1 } {
+	set engl_deutsch english
+	}
+if { [lsearch $argv -grm ] != -1 } {
+	set engl_deutsch deutsch
+  	}
+
+
+# Bestimme den Pfad fuer das Panel
+
+set path_name [file dirname [info script] ]/
+
+
+
+
+# simcoltab_cl/bw.tcl
+# bestimmt die Farbwerte der Simulation
+case $color_schwarzweiss in {
+    { color } {
+    	 source ${path_name}simcoltab_cl.tcl
+	}
+    {schwarzweiss} {
+    	 source ${path_name}simcoltab_bw.tcl
+	}
+   }
+
+#panel_grm/eng enthaelt die Prozedur build {frame}
+#die den steuerblock in dem frame aufbaut
+case $engl_deutsch in {
+       { deutsch } {
+		  source ${path_name}panel_grm.tcl
+		 }
+       { english } {
+		  source ${path_name}panel_eng.tcl
+	  	 }
+     }
+
+#Baue den Steuerblock auf
+#HAUPTPROGRAMM
+
+case $engl_deutsch in {
+    {deutsch} {
+ 		wm title . "STEUERBLOCK FUER DIE FERTIGUNSZELLENSIMULATION"
+ 	      }
+    {english} {
+ 		wm title . "CONTROLPANEL OF THE PRODUCTION CELL"
+	       }
+   }
+wm iconbitmap . @${path_name}bitmap_iconpanel.xbm
+
+build .steuer
+ 
+pack append . .steuer {top fillx filly}
+update
+ 

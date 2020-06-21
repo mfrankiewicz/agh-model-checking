@@ -1,0 +1,433 @@
+module handshake (handshake_interactions) is
+
+-------------------------------------------------------------------------------
+
+process ClientHello [clienth: CH] (is_hello_retry_request: bool,
+                                   in out CH_p: ClientHello,
+                                   HRR_p: HelloRetryRequest,
+                                   out alert: AlertType) is
+  if is_hello_retry_request then
+    -- Hello retry request sent by the server
+    if (CH_p.legacy_version == HRR_p.protocol_version) and
+       (CH_p.cipher_suite == HRR_p.cipher_suite) and
+       (CH_p.extensions == HRR_p.extensions) then
+      -- The request would not result in any change in the ClientHello
+      alert := illegal_parameter
+    else
+      if is_extension (early_data, CH_p.extensions) then
+        CH_p := CH_p.{extensions ->
+                        remove_type_extension (early_data, CH_p.extensions)}
+      end if;
+      alert := undefined
+    end if
+  else
+    -- First ClientHello message
+    -- initialisation with standard arguments
+    CH_p := CH_p.{legacy_version -> TLS12,
+                  random -> 28byteRand,
+                  legacy_session_id -> T_NULL,
+                  -- AED algo/HKDF hash pairs supported by the Client
+                  cipher_suite -> {},
+                  legacy_compression_methods -> T_NULL,
+                  extensions -> {Extension (supported_versions,
+                                            SupportedVersions ({TLS13}))}};
+    select
+      -- desire the server to authenticate via a certificate
+      var sas: SignatureSchemeList in
+        sas := random_signature_algorithms;
+        CH_p := CH_p.{extensions ->
+                        add_extension (Extension (signature_algorithms,
+                                                  SignatureSchemeList (sas)),
+                                       CH_p.extensions)}
+      end var
+    []
+      -- client MAY send the "certificate_authorities"
+      var cr: CertificateAuthoritiesExtension in
+        cr := random_certificate_authorites;
+        CH_p := CH_p.{extensions ->
+                        add_extension
+                          (Extension (certificate_authorities,
+                                      CertificateAuthoritiesExtension (cr)),
+                           CH_p.extensions)}
+      end var
+    []
+      CH_p := CH_p.{cipher_suite -> random_select_ciphers}
+    end select;
+    alert := undefined
+  end if;
+  clienth (ClientHello (CH_p.legacy_version, CH_p.random,
+                        CH_p.legacy_session_id, CH_p.cipher_suite,
+                        CH_p.legacy_compression_methods, CH_p.extensions))
+end process
+
+-------------------------------------------------------------------------------
+
+process EncryptedExtensions [encryptede: EE] is
+  var v_extensions: Extensions in
+    select
+      v_extensions := {}
+    []
+      -- forbidden extensions
+      v_extensions := {Extension (certificate_authorities,
+                                  CertificateAuthoritiesExtension
+                                    ({x00, xFF}))}
+    end select;
+    encryptede (EncryptedExtensions (v_extensions))
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process CertificateRequest [certificater: CR] is
+  var v_certificate_context: CertificateRequestContext,
+      v_extensions: Extensions in
+    v_certificate_context := {};
+    v_extensions := {Extension (void_filters,
+                                OIDFilterExtension ({peer ({x00}, {x00})}))};
+    select
+      null
+    []
+      -- Server MAY send the "certificate_authorities"
+      var cr: CertificateAuthoritiesExtension in
+        cr := random_certificate_authorites;
+        v_extensions := add_extension (Extension (certificate_authorities,
+                        CertificateAuthoritiesExtension (cr)), v_extensions)
+      end var
+    end select;
+    v_extensions := add_extension (Extension (signature_algorithms,
+                    SignatureSchemeList ({rsa_pkcs1_sha256})), v_extensions);
+    certificater (CertificateRequest (v_certificate_context, v_extensions))
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process Certificate_S [certificate: C]
+                      (in out C_p: Certificate,
+                       CH_p: ClientHello, CR_p: CertificateRequest) is
+  var ed: ExtensionData in
+    C_p := C_p.{crc -> CR_p.certificate_context};
+    if is_extension (server_certificate_type, CH_p.extensions) then
+      var ex: Extension in
+        ex := cp_extension (server_certificate_type, CH_p.extensions);
+        ed := ex.extension_data;
+        if ed.ct != RawPublicKey then
+          -- X509
+          ed := CertificateType (x509)
+        end if
+      end var
+    else
+      -- X509
+      ed := CertificateType (x509)
+    end if;
+    C_p := C_p.{certificate_list ->
+                  cons (add_Entry (ed.ct, CH_p), C_p.certificate_list)};
+    certificate (Certificate (C_p.crc, C_p.certificate_list))
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process Certificate_C [certificate: C, certificatev: CV]
+                      (in out C_p: Certificate, CH_p: ClientHello,
+                      CR_p: CertificateRequest) is
+  -- Certificate available
+  if is_extension (client_certificate_type, CH_p.extensions) then
+    -- Response to a CertificateRequest
+    C_p := C_p.{crc -> CR_p.certificate_context};
+    var ex: Extension,
+        ed: ExtensionData in
+      ex := cp_extension (client_certificate_type, CH_p.extensions);
+      ed := ex.extension_data;
+      if ed.ct != RawPublicKey then
+        -- X509
+        ed := CertificateType (x509)
+      end if;
+      C_p := C_p.{certificate_list -> 
+                    cons (add_Entry (ed.ct, CH_p), C_p.certificate_list)}
+    end var;
+    CertificateVerify_C [certificatev]
+  else
+    -- No suitable certificate is available
+    -- Client MUST send a Certificate message containing no certificates
+    C_p := C_p.{certificate_list -> {}, crc -> {}}
+  end if;
+  certificate (Certificate (C_p.crc, C_p.certificate_list))
+end process
+
+-------------------------------------------------------------------------------
+
+process CertificateVerify_C [certificatev: CV] is
+  certificatev (CertificateVerify ({rsa_pkcs1_sha256}, {}))
+end process
+
+-------------------------------------------------------------------------------
+
+process EndOfEarlyData [endOEdata: EOED] is
+  endOEdata (EndOfEarlyData (true))
+end process
+
+-------------------------------------------------------------------------------
+
+process Client [clientHello_c: CH,
+                serverHello_c: SH,
+                helloRetryRequest_c: HRR,
+                encryptedExtensions_c: EE,
+                certificateRequest_c: CR,
+                certificate_c_c, certificate_s_c: C,
+                certificateVerify_c_c, certificateVerify_s_c: CV,
+                finished_c_c, finished_s_c: F,
+                endOfEarlyData_c: EOED,
+                alert_client, alert_server: A] is
+  var alert: AlertType,
+      CH_p: CLientHello,
+      C_C_p: Certificate,
+      CR_p: CertificateRequest,
+      HRR_p: HelloRetryRequest,
+      is_earlyData, is_helloRequest, is_PSK: bool in
+    -- Initialisation of variables
+    CH_p := ClientHello (T_NULL, undefined, T_NULL, {}, T_NULL, {});
+    HRR_p := HelloRetryRequest (T_NULL, {}, {});
+    CR_p := CertificateRequest ({}, {});
+    C_C_p := Certificate ({}, {});
+    is_earlyData := false;
+    is_helloRequest := false;
+    is_PSK := false;
+    -- START state in Appendix A.1 of [draft-ietf-tls-tls13-24]
+    disrupt 
+      loop L in
+        -- client key exchange [K_send = early data]
+        ClientHello [clientHello_c] (is_helloRequest, !?CH_p, HRR_p, ?alert);
+        if alert != undefined then
+          -- abort the handshake with an alert
+          alert_client (alert)
+        else
+          -- WAIT_SH state in Appendix A.1 of [draft-ietf-tls-tls13-24]
+          select
+            helloRetryRequest_c (?HRR_p);
+            is_helloRequest := true
+          []
+            serverHello_c (?any ServerHello);
+            break L
+          []
+            -- protocol messages sent in the wrong order
+            select
+              encryptedExtensions_c (?any EncryptedExtensions)
+            []
+              certificateRequest_c (?any CertificateRequest)
+            []
+              certificate_s_c (?any Certificate)
+            []
+              certificateVerify_s_c (?any CertificateVerify)
+            []
+              finished_s_c (?any Finished)
+            end select;
+            alert := unexpected_message;
+            -- abort the handshake with an "unexpected_message" alert
+            alert_client (alert)
+          end select
+        end if
+      end loop;
+      if alert == undefined then
+        -- K_recv = handshake
+        -- WAIT_EE state in Appendix A.1 of [draft-ietf-tls-tls13-24]
+        disrupt 
+          -- Recv EncryptedExtensions
+          encryptedExtensions_c (?any EncryptedExtensions);
+          select
+            -- Using certificate
+            -- WAIT_CERT_CR state in Appendix A.1 of [draft-ietf-tls-tls13-24]
+            select
+              -- Recv CertificateRequest
+              certificateRequest_c (?CR_p);
+              -- WAIT_CERT state in Appendix A.1 of [draft-ietf-tls-tls13-24]
+              certificate_s_c (?any Certificate)
+            []
+              certificate_s_c (?any Certificate)
+            end select;
+            -- WAIT_CV state in Appendix A.1 of [draft-ietf-tls-tls13-24]
+            certificateVerify_s_c (?any CertificateVerify)
+          []
+            -- using PSK
+            is_PSK := true
+          end select;
+          -- WAIT_FINISHED state in Appendix A.1 of [draft-ietf-tls-tls13-24]
+          finished_s_c (?any Finished);
+          if is_earlyData then
+            -- [Send EndOfEarlyData]
+            EndOfEarlyData [endOfEarlyData_c]
+          end if;
+          -- K_send = handshake
+          -- [Send Certificate [+ CertificateVerify]]
+          if is_PSK != true then
+            -- client authentification
+            Certificate_C [certificate_c_c, certificateVerify_c_c]
+                          (!?C_C_p, CH_p, CR_p);
+            use C_C_p
+          end if;
+          -- Send finished
+          Finished_C [finished_c_c]
+          -- K_send = K_recv = application
+          -- CONNECTED state in Appendix A.1 of [draft-ietf-tls-tls13-24]
+        by
+          -- renegociation of the client 
+          ClientHello [clientHello_c] (is_helloRequest, !?CH_p, HRR_p, ?alert);
+          use CH_p;
+          use alert
+        end disrupt
+      end if
+    by
+      alert_server (?any AlertType);
+      stop
+    end disrupt
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process Server [clientHello_c: CH,
+                serverHello_c: SH,
+                helloRetryRequest_c: HRR,
+                encryptedExtensions_c: EE,
+                certificateRequest_c: CR,
+                certificate_c_c, certificate_s_c: C,
+                certificateVerify_c_c, certificateVerify_s_c: CV,
+                finished_c_c, finished_s_c: F,
+                endOfEarlyData_c: EOED,
+                alert_server, alert_client: A] is
+  var CH_p: CLientHello,
+      C_S_p, C_C_p: Certificate,
+      CR_p: CertificateRequest,
+      HRR_p: HelloRetryRequest,
+      is_earlyData, is_PSK: bool in
+    -- Initialisation of variables
+    HRR_p := HelloRetryRequest (T_NULL, {}, {});
+    CR_p := CertificateRequest ({}, {});
+    C_S_p := Certificate ({}, {});
+    is_earlyData := false;
+    is_PSK := false;
+    
+    disrupt
+      -- START state in Appendix A.2 of [draft-ietf-tls-tls13-24]
+      loop L in
+        -- Rec ClientHello
+        -- RECVD_CH state in Appendix A.2 of [draft-ietf-tls-tls13-24]
+        clientHello_c (?CH_p);
+        select
+          -- right parameters received
+          break L
+        []
+          -- protocol messages sent in the right order with incorrect key shared
+          HelloRetryRequest [helloRetryRequest_c] (!?HRR_p)
+        end select
+      end loop;
+      disrupt
+        -- Select parameters
+        -- NEGOTIATED state in Appendix A.2 of [draft-ietf-tls-tls13-24]
+        -- Send ServerHello
+        ServerHello [serverHello_c];
+        -- K_send = handshake
+        -- Send EncryptedExtensions
+        EncryptedExtensions [encryptedExtensions_c];
+        if is_PSK != true then
+          -- [Send CertificateRequest]
+          CertificateRequest [certificateRequest_c];
+          -- [Send Certificate + CertificateVerify]
+          Certificate_S [certificate_s_c] (!?C_S_p, CH_p, CR_p);
+          use C_S_p;
+          CertificateVerify_S [certificateVerify_s_c]
+        end if;
+        -- Send finished
+        Finished_S [finished_s_c];
+        -- K_send = application
+        if is_earlyData then
+          -- 0 - RTT
+          -- K_recv = early data
+          loop L3 in
+            -- WAIT_EOED state in Appendix A.2 of [draft-ietf-tls-tls13-24]
+            select
+              -- Recv early data
+              is_earlyData := true;
+              use is_earlyData
+            []
+              -- Recv EndOfEarlyData
+              endOfEarlyData_c (?any EndOfEarlyData);
+              -- K_recv = handshake
+              break L3
+            end select
+          end loop
+        end if;
+        -- WAIT_FLIGHT2 state in Appendix A.2 of [draft-ietf-tls-tls13-24]
+        if is_PSK == false then
+          -- Client auth
+          -- WAIT_CERT + WAIT_CV states in Appendix A.2 of [draft-ietf-tls-tls13-24]
+          select
+            -- WAIT_CV state in Appendix A.2 of [draft-ietf-tls-tls13-24]
+            -- Recv CertificateRecv + CertificateVerify
+            -- client authentification
+            certificate_c_c (?any Certificate);
+            certificateVerify_c_c (?any CertificateVerify)
+          []
+            -- Recv empty certificate
+            certificate_c_c (?C_C_p)  where (C_C_p == Certificate ({}, {}))
+          end select
+        end if;
+        -- WAIT_FINISHED state in Appendix A.2 of [draft-ietf-tls-tls13-24]
+        -- Recv finished
+        finished_c_c (?any Finished)
+        -- K_rev = application
+        -- CONNECTED state in Appendix A.2 of [draft-ietf-tls-tls13-24]
+      by
+        -- TLS 1.3 refuses renegociation without a Hello Retry Request
+        clientHello_c (?any ClientHello);
+        -- abort the handshake with an "unexpected_message" alert
+        alert_server (unexpected_message)
+      end disrupt
+    by
+      alert_client (?any AlertType);
+      stop
+    end disrupt
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process MAIN [clientHello_c: CH,
+              serverHello_c: SH,
+              helloRetryRequest_c: HRR,
+              encryptedExtensions_c: EE,
+              certificateRequest_c: CR,
+              certificate_c_c, certificate_s_c: C,
+              certificateVerify_c_c, certificateVerify_s_c: CV,
+              finished_c_c, finished_s_c: F,
+              endOfEarlyData_c: EOED,
+              alert_server_c, alert_client_c: A] is
+  par
+    clientHello_c, serverHello_c, helloRetryRequest_c,
+    encryptedExtensions_c, certificateRequest_c, certificate_c_c,
+    certificate_s_c, certificateVerify_c_c, certificateVerify_s_c,
+    finished_c_c, finished_s_c, endOfEarlyData_c, alert_client_c,
+    alert_server_c ->
+      Client [clientHello_c, serverHello_c, helloRetryRequest_c,
+              encryptedExtensions_c, certificateRequest_c, certificate_c_c,
+              certificate_s_c, certificateVerify_c_c, certificateVerify_s_c,
+              finished_c_c, finished_s_c, endOfEarlyData_c, alert_client_c,
+              alert_server_c]
+  ||
+    clientHello_c, serverHello_c, helloRetryRequest_c,
+    encryptedExtensions_c, certificateRequest_c, certificate_c_c,
+    certificate_s_c, certificateVerify_c_c, certificateVerify_s_c,
+    finished_c_c, finished_s_c, endOfEarlyData_c, alert_server_c,
+    alert_client_c ->
+      Server [clientHello_c, serverHello_c, helloRetryRequest_c,
+              encryptedExtensions_c, certificateRequest_c, certificate_c_c,
+              certificate_s_c, certificateVerify_c_c, certificateVerify_s_c,
+              finished_c_c, finished_s_c, endOfEarlyData_c, alert_client_c,
+              alert_server_c]
+  end par
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

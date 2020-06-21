@@ -1,0 +1,75 @@
+module SERVICE (TYPES, CHANNELS, CLIENT) is
+
+-------------------------------------------------------------------------------
+
+process MAIN [INPUT : InputChannel, OUTPUT : OutputChannel] is
+    par INPUT in
+        SENDING_CLIENT [INPUT]
+        ||
+        SERVICE [INPUT, OUTPUT]
+    end par
+end process
+
+-------------------------------------------------------------------------------
+
+process SERVICE [INPUT : InputChannel, OUTPUT : OutputChannel] is
+    var INIT : Bool,
+        L : Nat,
+        M : Msg
+    in
+        M := {};    -- not strictly needed, currently required by LNT2LOTOS
+        L := 0;     -- not strictly needed, currently required by LNT2LOTOS
+        INIT := true;
+        loop
+            case INIT in
+                true -> 
+                    INPUT (?M);
+                    L := length (M);
+                    if L > 0 then
+                        INIT := false
+                    end if
+              | false ->
+                    assert (L >= 1) and (length (M) <= L);
+                    select
+                        i;
+                        if length (M) == L then
+                            INPUT (confirm (M))
+                        else
+                            INPUT (confirm (M));
+                            OUTPUT (I_NOK)
+                        end if;
+                        INIT := true
+                    []
+                        i;
+                        OUTPUT (head (M),
+                                indication (length (M) == L, length (M) == 1));
+                        if length (M) == 1 then
+                            select
+                                i;
+                                INPUT (I_OK)
+                            []
+                                i;
+                                INPUT (I_DK)
+                            end select;
+                            INIT := true
+                        else
+                            select
+                                i;
+                                M := tail (M)
+                                -- here, INIT is left unchanged
+                            []
+                                i;
+                                INPUT (I_NOK);
+                                OUTPUT (I_NOK);
+                                INIT := true
+                            end select
+                        end if
+                    end select
+            end case
+        end loop
+    end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module

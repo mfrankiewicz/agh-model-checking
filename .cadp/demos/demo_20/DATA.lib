@@ -1,0 +1,71 @@
+(*---------------------------------------------------------------------------*)
+
+   library BOOLEAN, NATURALNUMBER endlib
+
+(*---------------------------------------------------------------------------*)
+
+   type ADDRESS is 
+      sorts
+         ADR (*! implementedby ADR comparedby EQUAL_ADR
+                 iteratedby ENUM_FIRST_ADR and ENUM_NEXT_ADR
+                 printedby PRINT_ADR *)
+      opns
+         1 (*! implementedby A1 constructor *),
+         2 (*! implementedby A2 constructor *),
+         3 (*! implementedby A3 constructor *) : -> ADR
+   endtype
+
+(*---------------------------------------------------------------------------*)
+
+   type MESSAGE is NATURALNUMBER renamedby
+      sortnames MSG for NAT
+   endtype
+
+(*---------------------------------------------------------------------------*)
+
+   type MESSAGE_MODULO_3 is MESSAGE
+      opns 1 (*! implementedby M1 *),
+           2 (*! implementedby M2 *),
+           3 (*! implementedby M3 *),
+           N (*! implementedby NB_MESSAGES *) : -> MSG
+	   _-_ (*! implementedby MINUS *),
+           _{+}_ (*! implementedby PLUS_MODULO_3 *),
+           _{-}_ (*! implementedby MINUS_MODULO_3 *): MSG, MSG -> MSG
+           eqns
+              forall X, Y : MSG
+              ofsort MSG
+                 1 = Succ (0);
+                 2 = Succ (1);
+                 3 = Succ (2);
+                 N = 3;
+              ofsort MSG
+                 X - 0 = X;
+                 Succ (X) - Succ (Y) = X - Y;
+              ofsort MSG
+                 (X + Y) le 3 => X {+} Y = X + Y;
+                 (X + Y) gt 3 => X {+} Y = X + Y - 3; 
+              ofsort MSG
+                 X le Y => X {-} Y = (X + 3) - Y;
+                 X gt Y => X {-} Y = X - Y; 
+   endtype
+  
+(*---------------------------------------------------------------------------*)
+
+   type TYPEMSG is BOOLEAN
+      sorts
+         TYPEMSG (*! implementedby TYPE_MESS comparedby CMP_TYPE
+                     iteratedby ENUM_FIRST_TYPE and ENUM_NEXT_TYPE
+                     printedby PRINT_TYPE *)
+      opns
+         FIRST (*! implementedby FST_TYPE constructor *),
+         SECOND (*! implementedby SEC_TYPE constructor *) : -> TYPEMSG
+         EQ_TYPE (*! implementedby EQUAL_TYPE *) : TYPEMSG, TYPEMSG -> BOOL
+      eqns
+         forall X, Y : TYPEMSG
+         ofsort BOOL
+            EQ_TYPE (X, X) = true;
+   	    EQ_TYPE (X, Y) = false; (* assuming priority *)
+   endtype
+
+(*---------------------------------------------------------------------------*)
+

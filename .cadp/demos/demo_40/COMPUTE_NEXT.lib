@@ -1,0 +1,30 @@
+(******************************************************************************
+ * COMPUTE_NEXT.lib:
+ * computation of initial and next values exchanged during negotiation rounds
+ * in the book auction example
+ *****************************************************************************)
+
+type COMPUTE_NEXT is
+   NATURAL
+   sorts Comp
+   opns
+        (* computation of initial values *)
+        times1 (*! constructor *) : -> Comp
+        times2 (*! constructor *) : -> Comp
+        (* computation of next values *)
+        add1   (*! constructor *) : -> Comp
+        add2   (*! constructor *) : -> Comp
+        minus1 (*! constructor *) : -> Comp
+        minus2 (*! constructor *) : -> Comp
+        (* evaluation function *)
+        compute : Nat, Comp -> Nat
+   eqns
+      forall n : Nat
+      ofsort Nat
+         compute (n, times1) = n;
+         compute (n, times2) = n * 2;
+         compute (n, add1)   = n + 1;
+         compute (n, add2)   = n + 2;
+         compute (n, minus1) = n - 1;
+         compute (n, minus2) = n - 2;
+endtype

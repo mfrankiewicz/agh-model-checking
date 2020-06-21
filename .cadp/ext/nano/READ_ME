@@ -1,0 +1,37 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains the following files:
+
+ - bes.nanorc:         Nano syntax mode for the BES format
+ - exp.nanorc:         Nano syntax mode for the EXP format
+ - lnt.nanorc:         Nano syntax mode for the LNT language
+ - lotos.nanorc:       Nano syntax mode for the LOTOS language
+ - mcl.nanorc:         Nano syntax mode for the MCL language
+ - nupn.nanorc:        Nano syntax mode for the NUPN format
+ - rbc.nanorc:         Nano syntax mode for the RBC format
+ - svl.nanorc:         Nano syntax mode for the SVL language
+ - xtl.nanorc:         Nano syntax mode for the XTL language
+
+How to use these files:
+-----------------------
+
+Then, in your home directory, create a ".nanorc" file if it does not exist
+already. Insert the following lines in this file, replacing each occurrence
+of PATH_TO_CADP with the absolute path where the CADP software is installed
+on your machine (i.e., the value of the $CADP environment variable):
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+include "PATH_TO_CADP/ext/nano/bes.nanorc"
+include "PATH_TO_CADP/ext/nano/exp.nanorc"
+include "PATH_TO_CADP/ext/nano/lnt.nanorc"
+include "PATH_TO_CADP/ext/nano/lotos.nanorc"
+include "PATH_TO_CADP/ext/nano/mcl.nanorc"
+include "PATH_TO_CADP/ext/nano/nupn.nanorc"
+include "PATH_TO_CADP/ext/nano/rbc.nanorc"
+include "PATH_TO_CADP/ext/nano/svl.nanorc"
+include "PATH_TO_CADP/ext/nano/xtl.nanorc"
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+

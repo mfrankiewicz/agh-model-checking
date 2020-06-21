@@ -1,0 +1,108 @@
+(******************************************************************************
+ *                                X T L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       info.xtl
+ *   Author             :       Radu MATEESCU
+ *   Version            :       1.7
+ *   Date               :       2014/12/22 17:40:10
+ *****************************************************************************)
+
+(*
+ * Print various informations about an LTS in BCG format
+ *)
+
+(*===========================================================================*)
+(* Libraries used *)
+
+library basic.xtl end_library
+
+(*===========================================================================*)
+
+def PRINT_LTS_INFOS () : action =
+
+    (* Print the number of states *)
+    printf ("Number of states:\t\t")        fby
+    print (number_of_states ())             fby
+    newline ()                              fby
+
+    (* Print the number of transitions *)
+    printf ("Number of transitions:\t\t")   fby
+    print (number_of_edges ())              fby
+    newline ()                              fby
+
+    (* Print the number of labels *)
+    printf ("Number of labels:\t\t")        fby
+    print (number_of_labels ())             fby
+    newline ()                              fby
+
+    (* Print the number of tau-transitions *)
+    printf ("Number of tau-transitions:\t") fby
+    print (
+	<| + on T : edge where not (visible (label (T))) |> #1
+    )                                       fby
+    newline ()                              fby
+
+    (* Print the average branching factor *)
+    printf ("Branching factor:\t\t")        fby
+    print (
+        real (number_of_edges ()) / real (number_of_states ())
+    )                                       fby
+    newline ()                              fby
+    newline ()                              fby
+
+    (* Print the actions for which the LTS is not deterministic *)
+    let (RLS : labelset, RTS : edgeset) =
+	for S : state, T : edge among out (S)
+	    in    (LS : labelset, TS : edgeset)
+	    where not (label (T) among LS)
+		  and
+		  exists T2 : edge among out (S) in
+		      (T2 <> T) and (label (T2) = label (T))
+		  end_exists
+	    apply (insert, insert)
+	    from  ({}, {})
+	    to    (label (T), T)
+	end_for
+    in
+	if RLS = {} then
+	    printf ("LTS is deterministic\n")
+	else
+	    printf ("LTS is not deterministic for the actions:\n") fby
+	    <| fby on T : edge among RTS |> (
+		tab () fby print (label (T)) fby printf (" (e.g., state ") fby
+		print (source (T)) fby printf (")") fby newline ()
+	    )
+	end_if
+    end_let                                fby
+    newline ()                             fby
+
+    (* Print some deadlock states *)
+    let (RN : integer, RSS : stateset) =
+    for S : state
+	in    (N : integer, SS : stateset)
+	while N < 20
+	where forall S2 : state among succ (S) in false end_forall
+	apply (+, insert)
+	from  (0, {})
+	to    (1, S)
+    end_for
+    in
+	if RN = 0 then
+	    printf ("No deadlock states\n")
+	else
+	    printf ("Some deadlock states:\n") fby
+	    <| fby on S : state among RSS |> (
+		tab () fby print (S) fby printf (" ")
+	    )
+	end_if
+    end_let                                fby
+    newline ()                             fby
+    newline ()
+
+end_def
+

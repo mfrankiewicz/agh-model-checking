@@ -1,0 +1,44 @@
++--------------+
+| OPTIONS menu | 
++--------------+
+
+"PostScript options..."
+-----------------------
+The "PostScript bounding box" field defines the bounding box parameter
+of the PostScript file. The unit is the PostScript point.
+
+The "Vertex radius" field defines the radius of the vertices. The unit 
+used is the PostScript point.
+
+The "Arrow's shape" field defines the shape of the arrows. The first 
+number is "ARROW_SHAPE_1", the second "ARROW_SHAPE_2" and the third 
+"ARROW_SHAPE_3", as shown below:
+
+                                ARROW_SHAPE_1 
+                                  |--------|
+                               ARROW_SHAPE_2
+                               |-----------|
+                               %%%%%%      
+                                %%%%%%%  
+                                 %%%%%%%%   
+                                  %%%%%%%% 
+           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                            -     %%%%%%%%
+              ARROW_SHAPE_3 |    %%%%%%%%
+                            |   %%%%%%%
+                            -  %%%%%% 
+                     
+"Display options..."
+--------------------
+The "Grid width (x)" field defines the horizontal distance between two
+grid panes. The unit is the pixel.
+
+The "Grid height (y)" field defines the vertical distance between two 
+grid panes. The unit is the pixel.   
+     
+The display buttons allow to choose displayed items among "Vertices", 
+"Edges", "Labels" and "Grid". It is not possible to display labels 
+without displaying edges.
+        
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

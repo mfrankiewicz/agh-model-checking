@@ -1,0 +1,111 @@
+#!/bin/sh 
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       contributor
+#   Auteurs             :       Julien HENRY et Hubert GARAVEL
+#   Version             :       1.21
+#   Date                :       2018/01/10 10:50:48
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+# on verifie que CADP existe
+if [ "$CADP" = "" ]
+then
+	echo "$COMMAND: the \$CADP variable is not defined in the environment"
+	exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+if [ "$CADP_DEBUG" = "garavel" ]
+then
+	# cas particulier
+	if [ "$CADP_CONTRIBUTOR" = "" ]
+	then
+		CADP_CONTRIBUTOR=$HOME/Parallelisme/Contributor
+	fi
+	sh "$CADP_CONTRIBUTOR"/Make-tcl
+elif [ "$CADP_CONTRIBUTOR" = "" ]
+then
+	# cas general
+	CADP_CONTRIBUTOR=`"$CADP"/src/com/cadp_path -winpath "$CADP/src/contributor"`
+fi
+export CADP_CONTRIBUTOR
+
+# -----------------------------------------------------------------------------
+
+# repertoire ou Contributor range ses fichiers temporaires
+
+if [ "$CONTRIBUTOR_TMP" = "" ]
+then
+	if [ "$CADP_TMP" != "" ]
+	then
+		CONTRIBUTOR_TMP=$CADP_TMP
+	else
+		CONTRIBUTOR_TMP="/tmp"
+	fi
+fi
+export CONTRIBUTOR_TMP
+
+# -----------------------------------------------------------------------------
+
+ARCH=`"$CADP"/com/arch`
+
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+		CONTRIBUTOR_TAR="tar -cvf - -I"
+		# sous Solaris, l'option -I indique que les fichiers a archiver
+		# se trouvent dans un fichier et non sur la ligne de commande
+		;;
+	iX86 | x64 | ia64 | win32 )
+		CONTRIBUTOR_TAR="tar -cvf - -T"
+		# sous Linux, l'option -T indique que les fichiers a archiver
+		# se trouvent dans un fichier et non sur la ligne de commande
+		;;
+	macOS | mac86 | mac64 )
+		CONTRIBUTOR_TAR="tar -cvf - -T"
+		# sous MacOS X, l'option -T indique que les fichiers a archiver
+		# se trouvent dans un fichier et non sur la ligne de commande
+		;;
+	* )
+		echo "$COMMAND: unknown architecture $ARCH"
+		exit 1
+esac
+export CONTRIBUTOR_TAR
+
+# Note : contributor appelle les commandes cadp_print, cadp_tail et cadp_edit
+
+# Note : les options -I et -T de tar sont non-POSIX, mais elles permettent
+# d'eviter de lancer une commande shell qui deborde les limites du shell,
+# ce qui pourrait se produire si on enumerait tous les fichiers a archiver
+# sur la ligne de commande du tar
+
+# -----------------------------------------------------------------------------
+
+# Remise des variables LANG et LC_ALL a des valeurs standards 
+unset LANG
+LC_ALL="C"
+export LC_ALL
+
+# -----------------------------------------------------------------------------
+
+# Mise a jour eventuelle des parametres de configuration
+
+"$CADP/src/com/cadp_setup" -query -upgrade
+
+# -----------------------------------------------------------------------------
+
+# commande normale
+"$CADP/tcl-tk/com/wish" -f "$CADP_CONTRIBUTOR/contributor.tcl"
+
+exit 0
+

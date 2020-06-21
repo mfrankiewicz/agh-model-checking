@@ -1,0 +1,44 @@
+
+library
+   Boolean, Natural
+endlib
+
+type SequenceNumber is Boolean
+   sorts SeqNum (*! implementedby SEQNUM comparedby CMP_SEQNUM
+                    printedby PRINT_SEQNUM *)
+   opns 0 (*! implementedby ZERO constructor *) : -> SeqNum
+        1 (*! implementedby ONE constructor *) : -> SeqNum
+        Inc (*! implementedby INC *) : SeqNum -> SeqNum
+        Equal (*! implementedby EQ_SEQNUM *) : SeqNum, SeqNum -> Bool
+   eqns
+      forall X, Y:SeqNum
+         ofsort SeqNum
+            Inc (0) = 1;
+            Inc (1) = 0;
+         ofsort Bool
+            Equal (X, X) = true;
+            Equal (0, 1) = false;
+            Equal (1, 0) = false;
+endtype
+
+type BitString is Natural renamedby
+   sortnames BitString for Nat
+   opnnames Empty for 0
+            AnotherBitString for Succ
+            Equal for eq
+endtype
+
+type FrameType is Boolean
+   sorts FrameType (*! implementedby FRAMETYPE comparedby CMP_FRAMETYPE
+                       printedby PRINT_FRAMETYPE *)
+   opns Info (*! implementedby INFO constructor *),
+        Ack (*! implementedby ACK constructor *) : -> FrameType
+        Equal (*! implementedby EQ_FRAMETYPE *) : FrameType, FrameType -> Bool
+   eqns
+      ofsort Bool
+         forall X:FrameType
+            Equal (X, X) = true;
+            Equal (Ack, Info) = false;
+            Equal (Info, Ack) = false
+endtype
+

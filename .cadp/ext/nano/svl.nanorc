@@ -1,0 +1,32 @@
+## Nano syntax file for the SVL language
+## Produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+## Version 1.8:SVL+1.3:SECT
+
+syntax "SVL" "\.svl$"
+
+## Keywords
+color brightblue "\<(abstraction|all|bag|branching|but|chaos|check|comparison|cut|deadlock|divbranching|end|expected|fifo|gate|generation|hide|in|is|label|labels|leaf|livelock|multiple|node|observational|of|par|partial|prio|probabilistic|property|reduction|refined|rename|result|root|safety|single|smart|stochastic|stop|strong|sync|tau-compression|tau-confluence|tau-divergence|tau\*.a|total|trace|user|using|verify|weak|with)\>"
+
+## Basic Types
+color magenta "\<(acyclic|bdd|bfs|dfs|fly|std)\>"
+
+## Constants
+color yellow "\<(FALSE|TRUE)\>"
+
+## Functions
+color blue "\<(aldebaran|bcg_min|bcg_cmp|bisimulator|evaluator|evaluator3|evaluator4|exhibitor|fc2tools|reductor|xtl)\>"
+
+## Operators
+color blue "\[|\]|\{|\}|>|=|:|\#|\?|==|>=|<=|\|=|->|\|\||\|\[|\]\||-\|\||-\|\[|\|\|\||-\|\|\|"
+
+## Strings
+color red "'[^']*'"
+color red ""[^"]*""
+
+## Pragmas
+color cyan "^[[:space:]]*%.*"
+
+## Comments
+color green "--.*"
+color green start="\(\*" end="\*\)"
+

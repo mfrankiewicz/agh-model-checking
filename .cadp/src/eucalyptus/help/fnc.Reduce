@@ -1,0 +1,10 @@
+Reduce allows the minimization of a Labelled Transition system according
+to various equivalences (e.g., strong equivalence, branching bisimulation,
+safety equivalence, etc.). 
+
+This functionality can also be used to compare ``on the fly'' a network of 
+communicating Labelled Transition systems to another Labelled Transition 
+system.
+ 
+
+EUCALYPTUS Reference Manual. Last updated 2018/05/23 12:43:42.

@@ -1,0 +1,67 @@
+
+(* Basic predicates over actions *)
+
+def IN_d1 () : labelset =
+   EVAL_A (INPUT !`{1}`)
+end_def
+
+def IN_d1_d2 () : labelset =
+   EVAL_A (INPUT !`{1, 2}`)
+end_def
+
+def IN_d1_d2_d3 () : labelset =
+   EVAL_A (INPUT !`{1, 2, 3}`)
+end_def
+
+def IN_OK () : labelset =
+   EVAL_A (INPUT !`I_OK`)
+end_def
+
+def IN_NOK () : labelset =
+   EVAL_A (INPUT !`I_NOK`)
+end_def
+
+def IN_DK () : labelset =
+   EVAL_A (INPUT !`I_DK`)
+end_def
+
+def IN_CONF () : labelset =
+   IN_OK or IN_NOK or IN_DK
+end_def
+
+def IN_d1_dn () : labelset =
+   EVAL_A (INPUT _) and not (IN_CONF)
+end_def
+
+def OUT_d1_FST () : labelset =
+   EVAL_A (OUTPUT !1 !`I_FST`)
+end_def
+
+def OUT_d2_INC () : labelset =
+   EVAL_A (OUTPUT !2 !`I_INC`)
+end_def
+
+def OUT_d1_OK () : labelset =
+   EVAL_A (OUTPUT !1 !`I_OK`)
+end_def
+
+def OUT_d2_OK () : labelset =
+   EVAL_A (OUTPUT !2 !`I_OK`)
+end_def
+
+def OUT_d3_OK () : labelset =
+   EVAL_A (OUTPUT !3 !`I_OK`)
+end_def
+
+def OUT_OK () : labelset =
+   EVAL_A (OUTPUT _ !`I_OK`)
+end_def
+
+def OUT_NOK () : labelset =
+   EVAL_A (OUTPUT !`I_NOK`)
+end_def
+
+def OUT_dn_OK () : labelset =
+   OUT_OK and not (OUT_d1_OK)
+end_def
+

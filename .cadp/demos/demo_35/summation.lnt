@@ -1,0 +1,119 @@
+module summation (TYPES) is
+
+!nat_sup 7 
+
+-----------------------------------------------------------------------------
+
+channel Identity_Channel is
+     (Identity, Identity)
+end channel
+
+channel Identity_Answer_Channel is
+     (Identity, Identity, Nat_8)
+end channel
+
+channel Nat_8_Channel is
+     (Nat_8)
+end channel
+
+-----------------------------------------------------------------------------
+
+process MAIN is
+     -- the synchronizations between processes P_0 to P_5 are described 
+     -- using the "m among n" synchronization operator in the SVL script
+     stop
+end process
+
+-----------------------------------------------------------------------------
+
+-- initial state
+
+process P_INIT [START: Identity_Channel,
+                ANSWER: identity_Answer_Channel,
+                REPORT: Nat_8_Channel]
+               (id: Identity) is
+     if id == 0 of Identity then
+          -- id is the main process, so it starts immediately in the active
+          -- state; the last data parameter of P_ACTIVE below states that id
+          -- expects an ANSWER or START message from each of its neighbours
+          P_ACTIVE [START, ANSWER, REPORT] (id, Weight (id), 
+                    Nil, 0 of Identity, Number_Neighbours (id))
+     else
+          -- id is not the main process and one of its neighbours, which
+          -- is by now considered as its parent, starts id; the last data
+          -- parameter of P_ACTIVE below states that id expects an ANSWER
+          -- or START message from each of its neighbours except its parent,
+          -- who already sent a START
+          var j: Identity in
+               START (id, ?j);
+               P_ACTIVE [START, ANSWER, REPORT] (id, Weight (id),
+                         insert (j, Nil), j, Number_Neighbours (id) - 1)
+          end var
+     end if
+end process
+
+-----------------------------------------------------------------------------
+
+-- active state
+
+process P_ACTIVE [START: Identity_Channel,
+                  ANSWER: identity_Answer_Channel,
+                  REPORT: Nat_8_Channel] 
+                 (id:Identity,
+                  sum:Nat_8, 
+                  started_neighbours:Identity_List,
+                  parent:Identity, waiting:Nat) is
+     -- id tells its neighbours except its parent (which was initially in
+     -- the started_neighbours list) to start; those neighbours that were
+     -- not yet active will go into the active state, considering id as
+     -- their parent; those neighbours that were already active will simply
+     -- decrement their waiting counter
+     select
+          var j: Identity in
+               START (?j, id) where (Neighbour (id, j) and
+                              not (member (j, started_neighbours)));
+               P_ACTIVE [START, ANSWER, REPORT] (id, sum, 
+                         insert (j, started_neighbours), parent, waiting)
+          end var
+     []
+          only if waiting > 0 then
+               -- id is still expecting some messages from its neighbours
+               -- and one of them sends its result: id adds it to its sum
+               -- and decrements its waiting counter
+               var m: Nat_8 in
+                    ANSWER (id, ?any Identity, ?m);
+                    P_ACTIVE [START, ANSWER, REPORT] (id, sum + m,
+                              started_neighbours, parent, waiting - 1)
+               end var
+          end if
+     []
+          only if waiting > 0 then
+               -- id is still expecting some messages from its neighbours
+               -- and its neighbour j tells it to start, but id is already
+               -- started; id simply counts this START message as one of
+               -- the messages it was expecting by decrementing its waiting 
+               -- counter
+               START (id, ?any Identity);
+               P_ACTIVE [START, ANSWER, REPORT] (id, sum,
+                         started_neighbours, parent, waiting - 1)
+          end if
+     []
+          only if (length (started_neighbours) == Number_Neighbours (id)) and
+             (waiting == 0) then
+               -- all id's neighbours have been started and id has received
+               -- all the messages it was expecting
+               if id == 0 of Identity then
+                    -- id is the main process, so it reports the final
+                    -- sum
+                    REPORT (sum)
+               else
+                    -- id is not the main process and sends its sum to
+                    -- its parent
+                    ANSWER (parent, id, sum)
+               end if;
+               stop
+          end if
+     end select
+end process
+
+end module

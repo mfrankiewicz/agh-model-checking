@@ -1,0 +1,19 @@
+
+hide PRED1, SUCC1, PRED2, SUCC2, PRED3, SUCC3 in
+   (
+      (
+      STATION [OPEN, CLOSE, CRASH, PRED1, SUCC1] (A1, true)
+      |||
+      STATION [OPEN, CLOSE, CRASH, PRED2, SUCC2] (A2, false)
+      |||
+      STATION [OPEN, CLOSE, CRASH, PRED3, SUCC3] (A3, false)
+      )
+   |[PRED1, SUCC1, PRED2, SUCC2, PRED3, SUCC3]|
+      (
+      LINK [SUCC1, PRED2]
+      |||
+      LINK [SUCC2, PRED3]
+      ||| 
+      LINK [SUCC3, PRED1]
+      )
+   )

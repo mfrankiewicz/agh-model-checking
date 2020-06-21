@@ -1,0 +1,188 @@
+
+type DecNumb is Boolean
+sorts DecNumb (*! implementedby DECNUM comparedby CMP_DECNUM
+                  iteratedby ENUM_FIRST_DECNUM and ENUM_NEXT_DECNUM
+                  printedby PRINT_DECNUM *)
+opns
+  0 (*! implementedby ZERO constructor *) : -> DecNumb
+  s (*! implementedby SUCC constructor *): DecNumb -> DecNumb
+  1 (*! implementedby UN *),
+  2 (*! implementedby DEUX *),
+  3 (*! implementedby TROIS *),
+  4 (*! implementedby QUATRE *): -> DecNumb
+  _==_ (*! implementedby EQ_DECNUM *),
+  _<_ (*! implementedby INF_DECNUM *),
+  _<=_ (*! implementedby INFEQ_DECNUM *),
+  _>=_ (*! implementedby SUPEQ_DECNUM *),
+  _>_ (*! implementedby SUP_DECNUM *)  : DecNumb , DecNumb  -> Bool
+
+eqns forall x,y: DecNumb
+  ofsort Bool
+
+    x == x = true;
+    s(x) == s(y) = x == y;
+    s(x) == 0 = false;
+    0 == s(y) = false;
+    x < x = false;
+    s(x) < s(y) = x < y;
+    0 < s(y) = true;
+    s(x) < 0 = false;
+ 
+    x <= y  = (x < y) or (x == y);
+    x >= y  = not (x < y) ;
+    x > y   = not (x <= y );
+ 
+  ofsort DecNumb
+    1 = s(0);
+    2 = s(s(0));
+    3 = s(s(s(0)));
+    4 = s(s(s(s(0))));
+endtype (* DecNumb *)
+
+type ISDUType is
+sorts ISDU (*! implementedby ISDU comparedby CMP_ISDU
+               iteratedby ENUM_FIRST_ISDU and ENUM_NEXT_ISDU
+               printedby PRINT_ISDU *)
+opns   data1 (*! implementedby DATA1 constructor *): -> ISDU
+        (* data2 to data5 have been suppressed *)
+endtype (* ISDUType *)
+ 
+type Sequencenumber is Boolean
+sorts Sequencenumber (*! implementedby SEQ comparedby CMP_SEQ
+                         iteratedby ENUM_FIRST_SEQ and ENUM_NEXT_SEQ
+                         printedby PRINT_SEQ *)
+opns
+  0 (*! implementedby BZERO constructor *),
+  1 (*! implementedby BUN constructor *): -> Sequencenumber
+  succ (*! implementedby SUCCSEQ *)      : Sequencenumber -> Sequencenumber
+  _eq_ (*! implementedby EQSEQ *),
+  _ne_ (*! implementedby NEQSEQ *): Sequencenumber,Sequencenumber -> Bool
+ 
+eqns forall a,b : Sequencenumber
+  ofsort Sequencenumber
+    succ(0) = 1;
+    succ(1) = 0;
+ 
+  ofsort Bool
+    a=b => a eq b = true;
+    a eq b = false; (* dans les autres cas *)
+ 
+    a=b => a ne b = false;
+    a ne b = true;
+ 
+endtype (* Sequencenumber *)
+ 
+type InresSpType is Boolean, ISDUType
+sorts SP (*! implementedby SP comparedby CMP_SP
+             iteratedby ENUM_FIRST_SP and ENUM_NEXT_SP
+             printedby PRINT_SP *)
+opns
+  ICONreq (*! implementedby ICONREQ constructor *),
+  ICONconf (*! implementedby ICONCONF constructor *),
+  IDISind (*! implementedby IDISIND constructor *),
+  ICONind (*! implementedby ICONIND constructor *),
+  ICONresp (*! implementedby ICONRESP constructor *),
+  IDISreq (*! implementedby IDISREQ constructor *): -> SP
+  IDATreq (*! implementedby IDATREQ constructor *),
+  IDATind (*! implementedby IDATIND constructor *): ISDU -> SP
+  isICONreq (*! implementedby ISICONREQ *),
+  isICONconf (*! implementedby ISICONCONF *),
+  isIDISind (*! implementedby ISIDISIND *),
+  isIDATreq (*! implementedby ISIDATREQ *),
+  isIDATind (*! implementedby ISIDATIND *),
+  isICONind (*! implementedby ISICONIND *),
+  isICONresp (*! implementedby ISICONRESP *),
+  isIDISreq (*! implementedby ISIDISREQ *): SP -> Bool
+  data (*! implementedby DATAISDU *): SP -> ISDU
+ 
+ 
+eqns forall d : ISDU, sp : SP
+ 
+  ofsort ISDU
+    data(IDATreq(d)) = d;
+    data(IDATind(d)) = d;
+ 
+  ofsort Bool
+    isICONreq(ICONreq)  = true;
+    isICONreq(sp)  = false;
+    isICONconf(ICONconf) = true;
+    isICONconf(sp) = false;
+    isIDISind(IDISind)  = true;
+    isIDISind(sp)  = false;
+    isIDATreq(IDATreq(d))  = true;
+    isIDATreq(sp)  = false;
+    isIDATind(IDATind(d))  = true;
+    isIDATind(sp)  = false;
+    isICONind(ICONind)  = true;
+    isICONind(sp)  = false;
+    isICONresp(ICONresp) = true;
+    isICONresp(sp) = false;
+    isIDISreq(IDISreq)  = true;
+    isIDISreq(sp)  = false;
+endtype (* InresSpType *)
+
+type IPDUType is Boolean, ISDUType, Sequencenumber
+sorts IPDU (*! implementedby IPDU comparedby CMP_IPDU
+               iteratedby ENUM_FIRST_IPDU and ENUM_NEXT_IPDU
+               printedby PRINT_IPDU *)
+opns
+ 
+  CR (*! implementedby CR constructor *),
+  CC (*! implementedby CC constructor *),
+  DR (*! implementedby DR constructor *) : -> IPDU
+  DT (*! implementedby DT constructor *) : Sequencenumber,ISDU -> IPDU
+  AK (*! implementedby AK constructor *) : Sequencenumber      -> IPDU
+  isCR (*! implementedby ISCR *),
+  isCC (*! implementedby ISCC *),
+  isDT (*! implementedby ISDT *),
+  isAK (*! implementedby ISAK *),
+  isDR (*! implementedby ISDR *): IPDU -> Bool
+  data(*! implementedby DATAIPDU *) : IPDU -> ISDU
+  num (*! implementedby NUM *): IPDU -> Sequencenumber
+ 
+eqns forall f: Sequencenumber, d : ISDU, ipdu : IPDU
+ 
+  ofsort ISDU
+    data(DT(f,d)) = d;
+ 
+  ofsort Sequencenumber
+    num(DT(f,d)) = f;
+    num(AK(f)) = f;
+ 
+  ofsort Bool
+    isCR(CR) = true;
+    isCR(ipdu) = false;
+    isCC(CC) = true;
+    isCC(ipdu) = false;
+    isDT(DT(f,d)) = true;
+    isDT(ipdu) = false;
+    isAK(AK(f)) = true;
+    isAK(ipdu) = false;
+    isDR(DR) = true;
+    isDR(ipdu) = false;
+endtype (* IPDUType *)
+
+type MediumSpType is Boolean, IPDUType
+sorts MSP (*! implementedby MSP comparedby CMP_MSP
+              iteratedby ENUM_FIRST_MSP and ENUM_NEXT_MSP
+              printedby PRINT_MSP *)
+opns
+  MDATreq (*! implementedby MDATREQ constructor *),
+  MDATind (*! implementedby MDATIND constructor *): IPDU -> MSP
+  isMDATreq (*! implementedby ISMDATREQ *),
+  isMDATind (*! implementedby ISMDATIND *) : MSP  -> Bool
+  data (*! implementedby DATAMSP *): MSP  -> IPDU
+ 
+eqns forall d : IPDU, sp : MSP
+  ofsort IPDU
+    data(MDATreq(d)) = d;
+    data(MDATind(d)) = d;
+ 
+  ofsort Bool
+    isMDATreq(MDATreq(d)) = true;
+    isMDATreq(sp) = false;
+ 
+    isMDATind(MDATind(d)) = true;
+    isMDATind(sp) = false;
+endtype (* MediumSpType *)
+

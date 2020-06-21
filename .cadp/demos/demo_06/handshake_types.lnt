@@ -1,0 +1,470 @@
+module handshake_types
+  with "==", "!=", "get", "set", "head", "tail"
+is
+
+-------------------------------------------------------------------------------
+-- Types
+-------------------------------------------------------------------------------
+
+type Random32 is
+  28byteRand,
+  undefined
+end type
+
+-------------------------------------------------------------------------------
+
+type ProtocolVersion is
+  TLS10,
+  TLS11,
+  TLS12,
+  TLS13,
+  DTLS10,
+  DTLS12,
+  T_NULL
+end type
+
+-------------------------------------------------------------------------------
+
+type AlertType is
+  -- cf. Section 6 of [draft-ietf-tls-tls13-24]
+  bad_certificate,
+  certificate_required,
+  decode_error,
+  decrypt_error,
+  illegal_parameter,
+  insufficient_security,
+  missing_extension,
+  protocol_version,
+  unexpected_message,
+  unsupported_certificate,
+  undefined
+end type
+
+-------------------------------------------------------------------------------
+
+type CipherType is
+  -- cf. Appendix B.4 of [draft-ietf-tls-tls13-24]
+  TLS_AES_128_GCM_SHA256,
+  TLS_AES_256_GCM_SHA384,
+  TLS_CHACHA20_POLY1305_SHA256,
+  TLS_AES_128_CCM_SHA256,
+  TLS_AES_128_CCM_8_SHA256
+end type
+
+-------------------------------------------------------------------------------
+
+type SignatureScheme is
+  -- cf. Section 4.3 of [draft-ietf-tls-tls13-24]
+  -- RSASSA-PKCS1-v1_5 algorithms
+  rsa_pkcs1_sha256,
+  rsa_pkcs1_sha384,
+  rsa_pkcs1_sha512,
+  -- ECDSA algorithms
+  ecdsa_secp256r1_sha256,
+  ecdsa_secp384r1_sha384,
+  ecdsa_secp521r1_sha512,
+  -- RSASSA-PSS algorithms
+  rsa_pss_sha256,
+  rsa_pss_sha384,
+  rsa_pss_sha512,
+  -- EdDSA algorithms
+  ed25519,
+  ed448,
+  -- Legacy algorithms
+  rsa_pkcs1_sha1,
+  ecdsa_sha1,
+  -- Reserved Code Points
+  private_use,
+  unknown
+end type
+
+-------------------------------------------------------------------------------
+
+type Compression_methods is
+  T_NULL,
+  DEFLATE,
+  LZS
+end type
+
+-------------------------------------------------------------------------------
+
+type Session_id is
+  T_NULL,
+  32byteID
+end type
+
+-------------------------------------------------------------------------------
+
+type Ciphers is
+  list of ciphertype
+end type
+
+-------------------------------------------------------------------------------
+
+type ExtensionType is
+  -- cf. Section 4.2 of [draft-ietf-tls-tls13-24]
+  server_name,
+  max_fragment_length,
+  status_request,
+  supported_groups,
+  signature_algorithms,    -- signatureScheme
+  use_srtp,
+  heartbeat,
+  application_layer_protocol_negotiation,
+  signed_certificate_timestamp,
+  client_certificate_type,
+  server_certificate_type,
+  padding,
+  key_share,
+  pre_shared_key,
+  early_data,
+  supported_versions,
+  cookie,
+  psk_key_exchange_modes,
+  certificate_authorities,
+  void_filters,
+  post_handshake_auth
+end type
+
+-------------------------------------------------------------------------------
+
+type BYTE is
+  x00, x01, x02, x03, x04, x05, x06, x07, x08, x09, x0F, xFF
+end type
+
+-------------------------------------------------------------------------------
+
+type Cookie is
+  list of BYTE
+end type
+
+-------------------------------------------------------------------------------
+
+type CertificateAuthoritiesExtension is
+  list of BYTE
+end type
+
+-------------------------------------------------------------------------------
+
+type CertificateExtensionOid is
+  list of BYTE
+end type
+
+-------------------------------------------------------------------------------
+
+type CertificateExtensionValues is
+  list of BYTE
+end type
+
+-------------------------------------------------------------------------------
+
+type CertificateType is
+  RawPublicKey,
+  X509
+end type
+
+-------------------------------------------------------------------------------
+
+type NamedGroup is
+  -- cf. Appendix B.3.1.4 of [draft-ietf-tls-tls13-24]
+  -- Elliptic Curve Groups (ECDHE)
+  ecp256r1,  -- (0x0017),
+  secp384r1, -- (0x0018),
+  secp521r1, -- (0x0019),
+  x25519,    -- (0x001D),
+  x448,      -- (0x001E),
+  -- Finite Field Groups (DHE)
+  ffdhe2048, -- (0x0100),
+  ffdhe3072, -- (0x0101),
+  ffdhe4096, -- (0x0102),
+  ffdhe6144, -- (0x0103),
+  ffdhe8192, -- (0x0104),
+  -- Reserved Code Points
+  ffdhe_private_use, -- (0x01FC..0x01FF),
+  ecdhe_private_use, -- (0xFE00..0xFEFF),
+  unknown            -- (0xFFFF)
+end type
+
+-------------------------------------------------------------------------------
+
+type NamedGroupList is
+  list of NamedGroup
+end type
+
+-------------------------------------------------------------------------------
+
+type KeyShareEntry is
+  list of NamedGroup
+end type
+
+-------------------------------------------------------------------------------
+
+type OIDFilter is
+  peer (oid: CertificateExtensionOid, value: CertificateExtensionValues)
+end type
+
+-------------------------------------------------------------------------------
+
+type OIDFilterExtension is
+  list of OIDFilter
+end type
+
+-------------------------------------------------------------------------------
+
+type SignatureSchemeList is    -- supported_signature_algorithms
+  list of SignatureScheme
+end type
+
+-------------------------------------------------------------------------------
+
+type SupportedVersions is
+  list of ProtocolVersion
+end type
+
+-------------------------------------------------------------------------------
+
+type ExtensionData is
+  Cookie (c: Cookie),
+  CertificateAuthoritiesExtension (cae: CertificateAuthoritiesExtension),
+  CertificateType (ct: CertificateType),
+  CertificateStatusRequest (csr: CertificateStatusRequest),
+  KeyShareEntry (kse: KeyShareEntry),
+  NamedGroupList (ng: NamedGroupList),
+  OIDFilterExtension (oidfe: OIDFilterExtension),
+  SignatureSchemeList (ss: SignatureSchemeList),
+  SupportedVersions (sv: SupportedVersions)
+end type
+
+-------------------------------------------------------------------------------
+
+type Extension is
+  Extension (extension_type: ExtensionType, extension_data: ExtensionData)
+end type
+
+-------------------------------------------------------------------------------
+
+type Extensions is
+  list of Extension
+  with "reverse", "member", "remove"
+end type
+
+-------------------------------------------------------------------------------
+
+type ResponderIdList is
+  list of BYTE
+end type
+
+-------------------------------------------------------------------------------
+
+type OCSPStatusRequest is
+  OCSPStatusRequest (responderId: ResponderIdList, extensions: Extensions)
+end type
+
+-------------------------------------------------------------------------------
+
+type CertificateStatusRequest is
+  255,
+  OCSP (ocsp: OCSPStatusRequest)
+end type
+
+-------------------------------------------------------------------------------
+
+type Entry is
+  Entry (entry_type: certificateType, extensions: Extensions)
+end type
+
+-------------------------------------------------------------------------------
+
+type Entries is
+ list of Entry
+  with "reverse", "member", "remove"
+end type
+
+-------------------------------------------------------------------------------
+
+type CertificateRequestContext is
+  list of BYTE
+end type
+
+-------------------------------------------------------------------------------
+
+type Signature is
+  list of BYTE
+end type
+
+-------------------------------------------------------------------------------
+
+type MAC is
+  server_handshake_traffic_secret,
+  client_handshake_traffic_secret,
+  client_application_traffic_secret
+end type
+
+-------------------------------------------------------------------------------
+
+type ClientHello is
+  ClientHello (legacy_version: ProtocolVersion,
+               random: Random32,
+               legacy_session_id: Session_id,
+               cipher_suite: ciphers,
+               legacy_compression_methods: Compression_methods,
+               extensions: Extensions)
+end type
+
+-------------------------------------------------------------------------------
+
+type ServerHello is
+  ServerHello (protocol_version: ProtocolVersion,
+               random: Random32,
+               cipher_suite: ciphers,
+               extensions: Extensions)
+end type
+
+-------------------------------------------------------------------------------
+
+type HelloRetryRequest is
+  HelloRetryRequest (protocol_version: ProtocolVersion,
+                     cipher_suite: ciphers,
+                     extensions: Extensions)
+end type
+
+-------------------------------------------------------------------------------
+
+type EncryptedExtensions is
+  EncryptedExtensions (extensions: Extensions)
+end type
+
+-------------------------------------------------------------------------------
+
+type CertificateRequest is
+  CertificateRequest (certificate_context: CertificateRequestContext,
+                      extensions: Extensions)
+end type
+
+-------------------------------------------------------------------------------
+
+type Certificate is
+  Certificate (crc: certificateRequestContext, certificate_list: Entries)
+end type
+
+-------------------------------------------------------------------------------
+
+type CertificateVerify is
+  CertificateVerify (algorithm: SignatureSchemeList, ss: Signature)
+end type
+
+-------------------------------------------------------------------------------
+
+type Finished is
+  Finished (hmac: MAC)
+end type
+
+-------------------------------------------------------------------------------
+
+type EndOfEarlyData is
+  EndOfEarlyData (b: bool)
+end type
+
+-------------------------------------------------------------------------------
+-- Constants
+-------------------------------------------------------------------------------
+
+function random_signature_algorithms: SignatureSchemeList is
+  return {rsa_pkcs1_sha256, rsa_pkcs1_sha384,
+          rsa_pkcs1_sha512, ecdsa_secp256r1_sha256}
+end function
+
+------------------------------------------------------------------------------
+
+function random_select_ciphers : ciphers is
+  return {TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384,
+          TLS_CHACHA20_POLY1305_SHA256, TLS_AES_128_CCM_SHA256}
+end function
+
+------------------------------------------------------------------------------
+
+function random_certificate_authorites : CertificateAuthoritiesExtension is
+  return {xFF}
+end function
+
+-------------------------------------------------------------------------------
+-- Functions
+-------------------------------------------------------------------------------
+
+function is_extension (in ex: ExtensionType, in var exts: Extensions): bool is
+  loop
+    if exts == {} then
+      return false
+    elsif head (exts).extension_type == ex then
+      return true
+    else
+      exts := tail (exts)
+    end if
+  end loop
+end function
+
+-------------------------------------------------------------------------------
+
+function cp_extension (in ex: ExtensionType, in var exts: Extensions): Extension is
+  var e: Extension in
+    loop
+      assert exts != {};
+      e := head (exts);
+      if e.extension_type == ex then
+        return e
+      else
+        exts := tail (exts)
+      end if
+    end loop
+  end var
+end function
+
+-------------------------------------------------------------------------------
+
+function add_extension (ex: Extension, exts: Extensions): Extensions is
+  if is_extension (ex.extension_type, exts) == false then
+    return cons (ex, exts)
+  else
+    return exts
+  end if
+end function
+
+-------------------------------------------------------------------------------
+
+function remove_type_extension (in ex: ExtensionType,
+                                in var exts: Extensions): Extensions is
+  var t_list: Extensions, e: Extension in
+    t_list := {};
+    loop
+      if exts == {} then
+        return t_list
+      end if;
+      e := head (exts);
+      if e.extension_type != ex then
+        t_list := cons (e, t_list)
+      end if;
+      exts := tail (exts)
+    end loop
+  end var
+end function
+
+-------------------------------------------------------------------------------
+
+function add_Entry (certificate_type: CertificateType,
+                    CH_p: ClientHello) : Entry is
+  var exts: Extensions in
+    if is_extension (status_request, CH_p.extensions) then
+      exts := {cp_extension (status_request, CH_p.extensions)}
+    elsif is_extension (signed_certificate_timestamp, CH_p.extensions) then
+      exts := {cp_extension (signed_certificate_timestamp, CH_p.extensions)}
+    else
+      exts := {}
+    end if;
+    return Entry (certificate_type, exts)
+  end var
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

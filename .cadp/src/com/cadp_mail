@@ -1,0 +1,354 @@
+#! /bin/sh 
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_mail
+#   Auteurs             :       A. MAZZILLI, H. GARAVEL et D. CHAMPELOVIER
+#   Version             :       1.43
+#   Date                :       2019/02/13 12:30:20
+##############################################################################
+
+# Ce script envoie un message par e-mail
+# - Sous Unix, on utilise la commande /bin/mail qui fonctionne automatiquement
+#   sans que l'utilisateur ait a parametrer l'adresse de son serveur SMTP
+#   et son adresse e-mail personnelle.
+# - Sous Windows (win32), on utilise un programme freeware "blat" qui fournit 
+#   un client mail accessible par la ligne de commande (cette fonctionnalite
+#   n'existe pas en standard sous Windows).
+
+# On utilise cadp_mail dans 4 contextes differents :
+#
+# 1) L'appel "cadp_mail -server" renvoie :
+#    - soit la chaine "cadp_mail_automatic" si l'on est sous Unix et qu'un
+#      daemon SMTP ("sendmail", "exim", "postfix", "Qmail", ...) fonctionne
+#    - soit la chaine "cadp_mail_failed" si l'on est sous Unix et qu'un
+#      daemon STMP n'est pas lance'
+#    - soit la chaine "cadp_mail_unknown" si l'on est sous Windows et que
+#      l'on n'a pas lance "blat -install" auparavant
+#    - soit le nom du serveur SMTP si l'on est sous Windows et que "blat" 
+#      a deja ete configure'.
+#
+# 2) L'appel "cadp_mail -from" renvoie :
+#    - soit la chaine "cadp_mail_automatic" si l'on est sous Unix et qu'un
+#      daemon SMTP fonctionne
+#    - soit la chaine "cadp_mail_failed" si l'on est sous Unix et qu'un
+#      daemon SMTP n'est pas lance'
+#    - soit la chaine "cadp_mail_unknown" si l'on est sous Windows et que
+#      l'on n'a pas lance "blat -install" auparavant
+#    - soit l'adresse e-mail de l'expediteur si l'on est sous Windows et que 
+#      "blat" a deja ete configure'.
+#
+# 3) Sous Unix uniquement :
+#    L'appel "cadp_mail [-verbose] -send SERVEUR_SMTP EXPEDITEUR FICHIER \
+#    DESTINATAIRE SUJET" envoie FICHIER a DESTINATAIRE en utilisant EXPEDITEUR
+#    comme adresse de retour (c'est-a-dire la valeur du champ 'From:' dans 
+#    l'en-tete d'e-mail).
+#    Le parametre SERVEUR_SMTP doit toujours valoir "-", ce qui signifie que,
+#    sous Unix, on utilise le serveur SMTP configure par defaut (concretement,
+#    Installator ne demande pas a l'utilisateur de specifier le nom du serveur
+#    STMP, ce qui constitue une difference entre les versions Unix et Windows).
+#    Le parametre EXPEDITEUR peut valoir "-" si l'on prend l'adresse de retour
+#    qui est positionnee par defaut.
+#    Le parametre SUJET est optionnel (il vaut, soit vide, soit "RFL")
+#    Si l'option facultative -verbose est presente, alors "cadp_mail" renvoie
+#    sur stdout soit "cadp_mail_ok" soit "cadp_mail_failed" 
+#
+# 4) Sous Windows uniquement :
+#    L'appel "cadp_mail [-verbose] -send SERVEUR_SMTP EXPEDITEUR FICHIER \
+#    DESTINATAIRE SUJET" envoie FICHIER a DESTINATAIRE en utilisant 
+#    SERVEUR_SMTP avec comme adresse de retour EXPEDITEUR.
+#    Le parametre SUJET est optionnel (il vaut, soit vide, soit "RFL")
+#    Si l'option facultative -verbose est presente, alors "cadp_mail" renvoie 
+#    sur stdout soit "cadp_mail_ok" soit "cadp_mail_failed"
+#
+# 5) L'appel "cadp_mail -default" renvoie le chemin de la commande "mail"
+#    utilisee selon l'architecture
+
+COMMAND=`basename "$0"`
+
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	CADP=$CADP_INSTALLATOR
+	# do not export $CADP here
+fi
+
+ARCH=`"$CADP"/com/arch`
+export ARCH
+
+# -----------------------------------------------------------------------------
+
+# choix du mailer qui, sous Unix, doit obligatoirement posseder les options 
+# "-r" (reply-to) et "-s" (subject)
+
+case $ARCH in
+	sun3 | sun4 )
+		MAILER="/bin/mail" ;;
+	sun5 | sun64 | sol86 | sol64 )
+		MAILER="/bin/mailx" ;;
+	iX86 | x64 | ia64 )
+		# le chemin d'acces peut etre soit /bin/mail soit /usr/bin/mail
+		# selon les systemes
+		if [ -x /bin/mail ]
+		then
+			MAILER="/bin/mail"
+		elif [ -x /usr/bin/mail ]
+		then
+			MAILER="/usr/bin/mail"
+		else
+			MAILER="mail"
+		fi
+		;;
+	win32 )
+		MAILER="$CADP/src/installator/bin.win32/blat" ;;
+	macOS | mac86 | mac64 )
+		MAILER="/usr/bin/mail" ;;
+	* )
+		echo "$COMMAND: unknown architecture $ARCH"
+		exit 1 ;;
+esac
+
+# -----------------------------------------------------------------------------
+
+if [ "$1" = "-default" ]
+then
+	"$CADP"/src/com/cadp_which "$MAILER"
+	exit 0
+fi
+
+# -----------------------------------------------------------------------------
+
+if [ "$1" = "-verbose" ]
+then
+	# appel depuis Installator
+	VERBOSE=1
+	# comme on relit la sortie stdout du present shell-script, il faut
+	# garantir que $MAILER ne vient pas polluer cette sortie avec ses
+	# propres messages d'erreur
+	IGNORE_MAILER_OUTPUT="> /dev/null"
+	shift
+else
+	# appel depuis Eucalyptus
+	VERBOSE=0
+	IGNORE_MAILER_OUTPUT=""
+fi
+
+# -----------------------------------------------------------------------------
+
+CHECK_SENDMAIL () {
+
+# Cette fonction tente de fournir une condition suffisante pour savoir si la
+# machine courante permet l'envoi de mail. On choisit comme condition
+# suffisante : un demon STMP semble tourner sur la machine.
+#
+# Cette condition est suffisante, mais pas necessaire car, sur les machines
+# n'ayant pas besoin de recevoir du mail pour leurs utilisateurs, les clients
+# mail lancent eux-memes un processus SMTP (sendmail ou similaire) a la volee
+# lorsqu'un mail doit etre envoye' ; ce processus se termine des que le mail
+# est parti.
+#
+# Ainsi, sous Mac OS 10.3 et 10.4, le processus se nomme "smtpd" et est lance
+# par l'utilisateur "postfix". Malheureusement, ce processus n'existe que 
+# lorsqu'il y a du mail a traiter. Il y a donc peu de chance de pouvoir observer
+# ce processus pendant qu'il existe.
+#
+# En fait, la condition n'est meme pas suffisante, car si on peut detecter un
+# processus SMTP, rien ne garantit qu'il marche convenablement. 
+#
+# A regarder les docs (Sun, www.sendmail.com), il semble que repondre a
+# la question "Est-ce-que sendmail va marcher ?" sans tester un envoi de
+# mail n'est pas possible. Ainsi, on ne peut qu'utiliser une heuristique ;
+# celle qui est implementee ci-dessous repose sur l'existence de certains
+# fichiers et sur l'analyse des resultats de "ps".
+
+	# renvoie "cadp_mail_automatic" si sendmail semble marcher
+	if [ -f /var/lock/subsys/sendmail ]
+	then
+		echo "cadp_mail_automatic"
+	elif [ -f /var/run/sendmail.pid ]
+	then
+		echo "cadp_mail_automatic"
+	elif [ -f /etc/mail/sendmail.pid ]
+	then
+		echo "cadp_mail_automatic"
+	elif [ -f /var/spool/postfix/pid/master.pid ]
+	then
+		# cas de Postfix
+		case "$ARCH" in
+			macOS | mac86 | mac64 )
+				case `uname -r` in
+					7.* | 8.* )	
+						# cas de Mac OS X 10.3 et 10.4
+						# l'envoi de mail marchait
+						echo "cadp_mail_automatic"
+						;;
+					* )
+						# systemes plus recents : ca ne
+						# marche plus sous Mac OS X 10.8
+						# dans le doute, on refuse
+						echo "cadp_mail_failed"
+				esac
+				;;
+			* )
+				# systeme inconnu : dans le doute, on refuse
+				echo "cadp_mail_failed"
+		esac
+	else
+		PROCESS_RUNNING=`(ps -A ; ps -ax) 2>/dev/null | grep -v grep`
+		# Sous Linux, en general, un processus est dedie' au traitement des emails
+		# et porte l'un des noms filtres ci-dessous.
+		SENDMAIL_RUNNING=`((echo "$PROCESS_RUNNING" | grep sendmail) ; \
+				 (echo "$PROCESS_RUNNING" | grep exim) ; \
+				 (echo "$PROCESS_RUNNING" | grep qmail) ; \
+				 (echo "$PROCESS_RUNNING" | grep postfix)) | \
+				 wc -l`
+		if [ "$SENDMAIL_RUNNING" -eq 0 ]
+		then
+			echo "cadp_mail_failed"
+		else
+			# un (ou plusieurs) processus sendmail sont lances 
+			echo "cadp_mail_automatic"
+		fi
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_BLAT () {
+	# ici $1 vaut "1" ou "2"
+	BLAT_INSTALLED=`"$MAILER" -profile | "$CADP"/src/com/cadp_tail -n 1`
+	case "$BLAT_INSTALLED" in
+		"Failed to open registry key"*  )
+			echo "cadp_mail_unknown" ;;
+		* )
+			# ici, le premier champ de $BLAT_INSTALLED est le
+			# nom du serveur SMTP et le second champ est l'adresse
+			# e-mail de l'expediteur
+			echo "$BLAT_INSTALLED" | cut -d' ' -f$1 ;;
+	esac
+}
+
+# -----------------------------------------------------------------------------
+
+case "$1" in
+	-server )
+		case $ARCH in
+			sun3 | sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 | macOS | mac86 | mac64 )
+				CHECK_SENDMAIL ;;
+			win32 )
+				CHECK_BLAT 1 ;;
+			* )
+				echo "$COMMAND: unknown architecture $ARCH"
+				exit 1 ;;
+		esac
+		;;
+	-from )
+		case $ARCH in
+			sun3 | sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 | macOS | mac86 | mac64 )
+				CHECK_SENDMAIL ;;
+			win32 )
+				CHECK_BLAT 2 ;;
+			* )
+				echo "$COMMAND: unknown architecture $ARCH"
+				exit 1 ;;
+			esac
+		;;
+	-send )
+		if [ $# -lt 5 -o $# -gt 6 ]
+		then
+			echo "$COMMAND: incorrect number of arguments (5 or 6 arguments expected)"
+			exit 1 
+		fi
+		# formattage du sujet du message
+		case "$6" in 
+			"RFL" ) SUBJECT="Request-for-CADP-License" ;;
+			"" ) SUBJECT=`basename "$4"` ;;
+			* ) SUBJECT="$6" ;;
+		esac
+		# positionnement du "Reply-to"
+		case "$3" in
+			"-" ) FROM="" ;;
+			* )
+				case $ARCH in
+					iX86 | x64 | ia64 | macOS | mac86 | mac64 )
+						# la commande "mail" ne supporte
+						# pas (ou plus) l'option "-r".
+						# Le meme effet est obtenu en
+						# positionnant la variable
+						# d'environnement REPLYTO
+						FROM=""
+						REPLYTO="$3"
+						export REPLYTO
+						;;
+					* )
+						FROM="-r $3"
+						;;
+				esac
+		esac
+		case $ARCH in
+			sun3 | sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 | macOS | mac86 | mac64 )
+				# on est dans le cas (3) ci-dessus
+				# on ignore toujours la valeur de $2 qui est
+				# un nom (toujours vide) de serveur SMTP
+				eval "'$MAILER' $FROM -s '$SUBJECT' '$5' < '$4' $IGNORE_MAILER_OUTPUT"
+				RESULT=$?
+				# dans l'appel ci-dessus, l'instruction
+				# "eval" est indispensable pour interpreter le
+				# contenu de la variable $IGNORE_MAILER_OUTPUT
+				# lorsque celui-ci est non vide ; on doit faire
+				# tres attention aux apostrophes et guillemets
+				# pour traiter les espaces presents dans les
+				# noms de fichiers
+				;;
+			win32 )
+				# on est dans le cas (4) ci-dessus
+				"$MAILER" -install "$2" "$3" > /dev/null
+
+				# sous Windows 2000/XP, la commande ci-dessus
+				# risque vraisemblablement d'echouer si elle
+				# n'est pas executee en tant qu'administrateur,
+				# car les utilisateurs ordinaires n'ont pas le
+				# droit de modifier la base de registres. Par
+				# precaution, on redonne les parametres $2
+				# (adresse e-mail de l'emetteur) et $3 (serveur
+				# SMTP) lors de l'appel ci-dessous
+
+				"$MAILER" "$4" -t "$5" -s "$SUBJECT" -server "$2" -f "$3" > /dev/null
+			 	RESULT=$?
+				;;
+			* )
+				echo "$COMMAND: unknown architecture $ARCH"
+				exit 1
+				;;
+		esac
+
+		if [ "$VERBOSE" = 1 ]
+		then
+			if [ "$RESULT" = 0 ]
+			then
+				echo "cadp_mail_ok"
+			else
+				echo "cadp_mail_failed"
+			fi 
+			exit 0
+		else
+			exit $RESULT
+		fi
+		
+		;;
+	* )
+		echo "$COMMAND: unknown option $1"
+		exit 1
+		;;
+esac
+
+# -----------------------------------------------------------------------------
+
+

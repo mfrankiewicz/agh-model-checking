@@ -1,0 +1,33 @@
+
+process  DataOutPorts [DO, crep, io, timeout] : noexit :=
+
+	(crep !0 of PortNo ; OutPort [DO, io, timeout] (0 of PortNo, emptyl))
+
+			|||
+
+	(crep !1 of PortNo ; OutPort [DO, io, timeout] (1 of PortNo, emptyl))
+
+where
+
+(* ---------------------------------------------------------------------- *)
+
+process OutPort [DO, io, timeout] (n:PortNo, l:EnvList) : noexit :=
+  
+  io !n ?e:Env [not (e IsIn l)];
+	OutPort [DO, io, timeout] (n, insert (e, l))
+  []
+    [not (l == emptyl)] ->
+    (
+	(DO !n !head (l) ;
+	     OutPort [DO, io, timeout] (n, tail (l)))
+      []
+	(timeout !n !head (l) ;
+	     OutPort [DO, io, timeout] (n, tail (l)))
+    )
+	
+endproc
+
+(* ---------------------------------------------------------------------- *)
+
+endproc
+

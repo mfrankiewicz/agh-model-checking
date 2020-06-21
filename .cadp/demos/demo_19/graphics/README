@@ -1,0 +1,90 @@
+
+This directory contains the production cell simulation.
+It's Verison is 9.2
+Date: 	21.10.93
+
+#------------------------------------------------------------------------------
+# This file was modified by Hubert Garavel - Tue Sep 24 13:19:33 CEST 2013
+#------------------------------------------------------------------------------
+
+The following parts belong to it:
+
+1. The simulation itself:
+         tksim_9		;Main program
+	 simmotion.tcl		;Procedures for the motion and management
+	 siminit.tcl		;initial graphic procedures
+	 siminterface.tcl	;controlling procedures
+	 simmath.tcl		;mathematical procedures
+     	 simcoltab_cl.tcl	;color values for color diplay
+	 simcoltab_bw.tcl	;color values for monochrome display
+	 simerrors_eng.tcl	;english error messages 
+	 simerrors_grm.tcl	;german error messages
+	 simname_eng.tcl	;device names english
+	 simname_grm.tcl	;device names german
+	 bitmap_grey.xbm 	;containing the grey pattern which is used
+				 to draw the table in monochrome mode
+       
+2. The control panel:
+	 panel			;main program
+	 panel_grm.tcl		;build the german control panel
+	 panel_eng.tcl		;build the english control panel
+	 simcoltab_cl.tcl	;color values for color diplay
+	 simcoltab_bw.tcl	;color values for monochrome display
+  
+   NOTE: panel also uses the same simcoltab_ files like the simulation
+
+
+3. The connection program:
+	feedback_pipe 		;reads commands from stdin and send them to
+				 the simulation
+
+4. The simulation startprogram:
+	startsimu		;starts the simulation and build up all the 
+				 necessary connections
+
+All programs are written using Tk/Tcl.
+
+
+
+   Starting the simulation
+   -----------------------
+To start the simulation with the control panel just enter :  startsimu
+
+To start the simulation with your own controller enter:
+
+	startsimu -con controllername
+
+ where "controllername" is the name of your controller.
+
+The following parameters are also available:
+
+	-snc ;which causes the simulation to run in the synchrone mode,
+	      which means the controller have to send a "react" command
+	      after each command 
+
+
+	-eng ;to start the simulation using english language
+
+	-grm ;to start the simulation using german  language
+
+	-bw  ;the simulation starts in the monochrome mode 
+
+	-def ;the simulation starts in a defined state :
+		-both arms are retracted,
+		-the robot's angle is 50, so it can reach the table,
+		-the table is in bottom position and has an angle of 0 degrees,
+		-the press is in the middle position,
+		-the crane is over the deposit belt and it's magnet can 
+		 reach for a blank on the belt.
+
+Wendelin Serwe and Hubert Garavel - Fri Dec 16 12:29:44 CET 2016
+
+	When using option -snc, if option -def is absent, the initial state is
+	defined as follows:
+                -both arms are retracted,
+                -the robot's angle is 0,
+                -the table is in bottom position and has an angle of 0 degrees,
+                -the press is in the middle position,
+                -the crane is undefined and its magnet is off,
+		-the magnets of both arms of the robot are off.
+

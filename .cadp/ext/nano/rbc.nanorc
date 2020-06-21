@@ -1,0 +1,15 @@
+## Nano syntax file for the RBC language
+## Produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+## Version 1.3:RBC+1.3:SECT
+
+syntax "RBC" "\.rbc$"
+
+## Keywords
+color brightblue "\<(alternation_free|equation_length|false_constant_ratio|local_variable_ratio|number_of_blocks|number_of_variables|or_variable_alternation|or_variable_ratio|shape|sign|solve_mode|strategy|unique_resolution|variable_ratio)\>"
+
+## Operators
+color blue "\[|\]|=|\.\."
+
+## Comments
+color green "#.*"
+

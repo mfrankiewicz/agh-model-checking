@@ -1,0 +1,39 @@
+type Queue is Boolean, Element 
+   sorts 
+     Queue (*! implementedby QUEUE comparedby CMP_QUEUE
+               printedby PRINT_QUEUE *)
+   opns  
+     Nil     (*! implementedby NIL constructor *) : -> Queue
+     Enqueue (*! implementedby ENQUEUE constructor *) : Elem, Queue -> Queue
+     Dequeue (*! implementedby DEQUEUE *) : Queue -> Queue
+     Empty   (*! implementedby EMPTY *) : Queue -> Bool
+     First    (*! implementedby FIRST *) : Queue -> Elem
+     Last    (*! implementedby LAST *) : Queue -> Elem
+     Destroy (*! implementedby DESTROY *) : Elem, Queue -> Queue
+     _IsIn_  (*! implementedby ISIN *) : Elem, Queue -> Bool
+   eqns
+     forall E, E1, E2:Elem, Q:Queue
+        ofsort Queue
+          (* Dequeue (Nil) is not defined *) 
+          Dequeue (Enqueue (E, Nil)) = Nil;
+          not (Empty (Q)) => Dequeue (Enqueue (E, Q)) =
+                                Enqueue (E, Dequeue (Q));
+        ofsort Bool
+          Empty (Nil) = true;
+          Empty (Enqueue (E, Q)) = false;
+        ofsort Elem
+          (* First (Nil) is not defined *)
+          First (Enqueue (E, Nil)) = E;
+          not (Empty (Q)) => First (Enqueue (E, Q)) = First (Q);
+        ofsort Elem
+          (* Last (Nil) is not defined *)
+          Last (Enqueue (E, Q)) = E;
+        ofsort Queue
+          Destroy (E1, Nil) = Nil;
+          E1 eq E2 => Destroy (E1, Enqueue (E2, Q)) = Destroy (E1, Q);
+          E1 ne E2 => Destroy (E1, Enqueue (E2, Q)) = Enqueue (E2, Destroy (E1, Q));
+        ofsort Bool
+          E IsIn Nil = false;
+          E1 eq E2 => E1 IsIn Enqueue (E2, Q) = true;
+          E1 ne E2 => E1 IsIn Enqueue (E2, Q) = E1 IsIn Q;
+endtype

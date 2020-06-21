@@ -1,0 +1,27 @@
+% DEFAULT_PROCESS_FILE="transit_node.lotos"
+
+"transit_node.bcg" = root leaf strong reduction with bcg_min of
+    hide  ERRO, RQ, RA, IO, ADROUTE, ADPORT in
+        (
+            (
+                (
+                    (
+                        CONTROL
+                        |[CERRI, ERRO]|
+                        ERRHANDLER
+                    )
+                    |[CREP, RQ, RA, DERRI]|
+                    DATAINPORTS
+                 )
+                 |[CREP, IO, TIMEOUT]|
+                 DATAOUTPORTS
+            )
+            |[DI, DO, CO]|
+            DATAGENERATOR
+        );
+
+(* renaming labels to enable comparison with the LNT version *)
+
+"transit_node_renamed.bcg" = multiple rename using "rename.ren" in
+                                "transit_node.bcg" 
+

@@ -1,0 +1,87 @@
+#!/bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeuca_version
+#   Auteurs             :       Hubert GARAVEL et Nicolas DESCOUBES
+#   Version             :       1.19
+#   Date                :       2018/05/23 13:15:33
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+if [ $# -lt 2 ]
+then
+	echo "$COMMAND:	not enough arguments"
+	exit 1
+fi
+
+LOCATION="$1"
+KEYWORD="$2"
+
+shift
+shift
+
+# Les arguments qui restent sont ceux qui forment la commande a executer.
+# Ils se trouvent dans la variable "$@" utilisee a plusieurs reprises
+# dans la suite.
+
+if test "$LOCATION" = "/not_installed"
+then
+	echo "NOT INSTALLED"
+	exit 0
+fi
+
+if test "$KEYWORD" = "toplevel"
+then
+	ARCH=`"$CADP"/com/arch`
+	RESULT=`"$CADP"/bin.$ARCH/cadp_lib -1 | sed -e 's/BETA-VERSION//' | sed -e 's/VERSION//'`
+	if test "$RESULT" != ""
+	then
+		echo "$RESULT"
+	else
+		echo "VERSION UNKNOWN"
+	fi
+elif test "$KEYWORD" = "cadp"
+then
+	ARCH=`"$CADP"/com/arch`
+	RESULT=`"$CADP"/bin.$ARCH/cadp_lib -1`
+	if test "$RESULT" != ""
+	then
+		echo "$RESULT"
+	else
+		echo "VERSION UNKNOWN"
+	fi
+elif test "$KEYWORD" = "date"
+then
+	ARCH=`"$CADP"/com/arch`
+	RESULT=`"$CADP"/bin.$ARCH/cadp_lib -2`
+	if test "$RESULT" != ""
+	then
+		echo "$RESULT"
+	else
+		echo "VERSION UNKNOWN"
+	fi
+else
+	RESULT=`"$@" 2>&1`
+	if test $? -ne 0
+	then
+		echo "NOT AVAILABLE"
+	else
+		RESULT=`echo "$RESULT" | tr -d '\015' | grep "\<$KEYWORD\>" | "$CADP"/src/com/cadp_tail -n 1 | sed -e 's/^[^:]*:[^0-9]*\([0-9][0-9a-z.]*\).*$/\1/'`
+		if test "$RESULT" != ""
+		then
+			echo "VERSION $RESULT"
+		else
+			echo "VERSION UNKNOWN"
+		fi
+	fi
+fi
+exit 0

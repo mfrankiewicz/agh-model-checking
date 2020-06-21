@@ -1,0 +1,37 @@
+module SIZE (TYPES) is
+
+function N : Nat is
+   return 8
+end function
+
+type Pid is
+   range 0 .. 7 (* N-1 *)  of Nat
+end type
+
+type Info_Array is
+   array [0 .. 7 (* N-1 *)] of Info
+end type
+
+type Int_Array is
+   array [0 .. 7 (* N-1 *)] of Int
+end type
+
+type Job is
+   none,
+   neutral (pc: PC),
+   master (pc: PC, extension: Extension, count: Int, slaves: Nat),
+   slave (master: Pid, sp: Nat, pc: PC, index: Int)
+   with "get", "set"
+end type
+
+type Job_Stack is
+   array [0 .. 2] of Job
+end type
+
+type Info is
+   Info_C (extension: Extension, state: State, stack: Job_Stack, sp: Nat)
+   with "get", "set"
+end type
+
+end module
+

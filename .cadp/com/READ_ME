@@ -1,0 +1,10 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains various executable shell-scripts that are documented
+and can be invoked by end users.
+
+Note: The $CADP/src/com directory also contains additional shell-scripts,
+which play auxiliary roles and are not supposed to be directly invoked by
+end users.
+

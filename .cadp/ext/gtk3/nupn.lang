@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GtkSourceView version 3 definitions for the NUPN language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.3:NUPN+1.17:SECT -->
+<language id="nupn" _name="NUPN" version="2.0" _section="Sources">
+
+   <metadata>
+      <property name="mimetypes">text/x-nupn</property>
+      <property name="globs">*.nupn</property>
+   </metadata>
+
+   <styles>
+      <style id="pragma"   _name="Preprocessor"  map-to="def:preprocessor"/>
+      <style id="keyword"  _name="Keyword"       map-to="def:keyword"/>
+      <style id="operator" _name="Operator"      map-to="def:operator"/>
+   </styles>
+
+   <default-regex-options case-sensitive="true"/>
+
+   <definitions>
+      <context id="pragma" style-ref="pragma">
+         <prefix>\!</prefix>
+         <keyword>creator</keyword>
+         <keyword>multiple_arcs</keyword>
+         <keyword>multiple_initial_tokens</keyword>
+         <keyword>unit_safe</keyword>
+      </context>
+
+      <context id="keyword" style-ref="keyword">
+         <keyword>initial</keyword>
+         <keyword>labels</keyword>
+         <keyword>place</keyword>
+         <keyword>places</keyword>
+         <keyword>root</keyword>
+         <keyword>transitions</keyword>
+         <keyword>unit</keyword>
+         <keyword>units</keyword>
+      </context>
+
+      <context id="operator" style-ref="operator">
+         <match extended="true">
+            # | \.\.\.
+         </match>
+      </context>
+
+      <context id="nupn" class="no-spell-check">
+         <include>
+            <context ref="pragma"/>
+            <context ref="keyword"/>
+            <context ref="operator"/>
+         </include>
+      </context>
+
+   </definitions>
+</language>

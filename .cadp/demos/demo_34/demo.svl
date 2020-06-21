@@ -1,0 +1,380 @@
+-------------------------------------------------------------------------------
+(*
+ * Step 1: an LTS model is generated from the specification "cim.lotos"
+ * using the CAESAR.ADT and CAESAR compilers. Then, this LTS is minimized 
+ * modulo strong equivalence using BCG_MIN; this preserves the truth values 
+ * of temporal logic formulas to be applied later. The resulting LTS is named 
+ * "cim.bcg".
+ *)
+-------------------------------------------------------------------------------
+
+"cim.bcg" = strong reduction of generation of "cim.lotos";
+
+-------------------------------------------------------------------------------
+(*
+ * Step 2: the 10 MCL properties characterizing the proper functioning of the 
+ * cim architecture are verified in turn. Each property is explained informally
+ * and is specified in both MCL V3 (dataless formula) and MCL V4 (value-passing
+ * formula) as a temporal formula. Dataless formulas are checked on "cim.bcg",
+ * whereas value-passing formulas are checked on a version in which the labels
+ * have been renamed for convenience, named "cim_ren.bcg".
+ *)
+-------------------------------------------------------------------------------
+
+"cim_ren.bcg" =
+    total rename
+        "\(.*\)![PR] (\([0-9]*\))\(.*\)" -> "\1!\2\3",
+        "\(.*\)!CONS (P (\([0-9]*\)), \([0-9]*\), CONS (P (\([0-9]*\)), \([0-9]*\), CONS (P (\([0-9]*\)), \([0-9]*\), NIL)))" -> "\1!\2 !\3 !\4 !\5 !\6 !\7"
+    in "cim.bcg";
+
+-------------------------------------------------------------------------------
+
+property PROP_01
+    "There is no deadlock in the system."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+	[ true* ] < true > true;
+    expected TRUE;
+
+    -- value-passing formula (same as dataless formula for this property)
+    "cim_ren.bcg" |= with evaluator4
+        [ true* ] < true > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+% DEFAULT_MCL_LIBRARIES="standard.mcl"
+
+property PROP_02
+    "Initially, no product can be delivered before a corresponding request"
+    "has been received."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        NEVER (
+            ((not "REQUEST !1 !1")* . "OUTPUT !P (1) !1") |
+            ((not "REQUEST !1 !2")* . "OUTPUT !P (1) !2") |
+            ((not "REQUEST !1 !3")* . "OUTPUT !P (1) !3") |
+            ((not "REQUEST !2 !1")* . "OUTPUT !P (2) !1") |
+            ((not "REQUEST !2 !2")* . "OUTPUT !P (2) !2") |
+            ((not "REQUEST !2 !3")* . "OUTPUT !P (2) !3") |
+            ((not "REQUEST !3 !1")* . "OUTPUT !P (3) !1") |
+            ((not "REQUEST !3 !2")* . "OUTPUT !P (3) !2") |
+            ((not "REQUEST !3 !3")* . "OUTPUT !P (3) !3")
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	forall PrType:Nat among { 1 ... 3 }, Qty:Nat among { 1 ... 2 } .
+	    NEVER (
+                (not { REQUEST !PrType !Qty })* . { OUTPUT !PrType !Qty }
+	    );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_03
+    "Every request for a product is eventually followed by the delivery of"
+    "the desired quantity of that product."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        [ true* ] (
+            [ "REQUEST !1 !1" ] INEVITABLE ("OUTPUT !P (1) !1") and
+            [ "REQUEST !1 !2" ] INEVITABLE ("OUTPUT !P (1) !2") and
+            [ "REQUEST !2 !1" ] INEVITABLE ("OUTPUT !P (2) !1") and
+            [ "REQUEST !2 !2" ] INEVITABLE ("OUTPUT !P (2) !2") and
+            [ "REQUEST !3 !1" ] INEVITABLE ("OUTPUT !P (3) !1") and
+            [ "REQUEST !3 !2" ] INEVITABLE ("OUTPUT !P (3) !2")
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	AFTER_1_INEVITABLE_2 (
+            { REQUEST ?PrType:Nat ?Qty:Nat },
+            { OUTPUT !PrType !Qty }
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_04
+    "Since the store has a capacity of two items per product and each request"
+    "asks for at least one product item, at most two requests for a product"
+    "can be handled without taking a new corresponding raw material meanwhile."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (* Two requests may occur, but three requests cannot *)
+            'REQUEST !1 .*' .
+            (not ('REQUEST !1 .*' or 'OUTPUT !P (1) .*' or "INPUT !1"))* .
+            'REQUEST !1 .*' .
+            (not ('REQUEST !1 .*' or 'OUTPUT !P (1) .*' or "INPUT !1"))* .
+            'REQUEST !1 .*' .
+            (not ('REQUEST !1 .*' or 'OUTPUT !P (1) .*' or "INPUT !1"))* .
+            'OUTPUT !P (1) .*' .
+            (not ('REQUEST !1 .*' or 'OUTPUT !P (1) .*' or "INPUT !1"))* .
+            'OUTPUT !P (1) .*'
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	forall PrType:Nat among { 1 ... 3 } .
+	    NEVER (
+		true* .
+		(* Two requests can be handled without input, but not three *)
+		(
+		    { REQUEST !PrType ?any } .
+		    (not ({ REQUEST !PrType ?any } or { INPUT !PrType }))* .
+		    { OUTPUT !PrType ?any }
+		) { 3 }
+	    );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_05
+    "The store is initially full (every initial product request can be"
+    "fulfilled without activating the production cells), but at any moment may"
+    "potentially become empty."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        [ (not 'REQUEST.*')* ] (
+            [ "REQUEST !1 !1" ]
+                ALWAYS_1_UNTIL_2 (not 'CMD .*', "OUTPUT !P (1) !1") and
+            [ "REQUEST !1 !2" ]
+                ALWAYS_1_UNTIL_2 (not 'CMD .*', "OUTPUT !P (1) !2") and
+            [ "REQUEST !2 !1" ]
+                ALWAYS_1_UNTIL_2 (not 'CMD .*', "OUTPUT !P (2) !1") and
+            [ "REQUEST !2 !2" ]
+                ALWAYS_1_UNTIL_2 (not 'CMD .*', "OUTPUT !P (2) !2") and
+            [ "REQUEST !3 !1" ]
+                ALWAYS_1_UNTIL_2 (not 'CMD .*', "OUTPUT !P (3) !1") and
+            [ "REQUEST !3 !2" ]
+                ALWAYS_1_UNTIL_2 (not 'CMD .*', "OUTPUT !P (3) !2")
+        )
+        and
+        [ true* ]
+        <
+          true* .
+          "CMD_ST !READ !CONS (P (1), 0, CONS (P (2), 0, CONS (P (3), 0, NIL)))"
+        > true;
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	[ (not { REQUEST ?any ?any })* . { REQUEST ?PrType:Nat ?Qty:Nat } ]
+	    ALWAYS_1_UNTIL_2 (not { CMD ?any ?any }, { OUTPUT !PrType !Qty })
+	and
+	[ true* ] < true* . { CMD_ST !"READ" ?any !0 ?any !0 ?any !0 } > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_06
+    "Each time a workcell is activated, it will eventually make, one by one,"
+    "the requested quantity of products."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        [ true* ] (
+            [ "CMD !1 !1" ] INEVITABLE ("PUT !P (1)")
+            and
+            [ "CMD !1 !2" ] INEVITABLE_1_THEN_2 ("PUT !P (1)", "PUT !P (1)")
+            and
+            [ "CMD !2 !1" ] INEVITABLE ("PUT !P (2)")
+            and
+            [ "CMD !2 !2" ] INEVITABLE_1_THEN_2 ("PUT !P (2)", "PUT !P (2)")
+            and
+            [ "CMD !3 !1" ] INEVITABLE ("PUT !P (3)")
+            and
+            [ "CMD !3 !2" ] INEVITABLE_1_THEN_2 ("PUT !P (3)", "PUT !P (3)")
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	[ true* . { CMD ?PrType:Nat ?Qty:Nat } ]
+	    INEVITABLE_1_TIMES_2 ({ PUT !PrType }, Qty);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_07
+    "After receiving a command, a workcell cannot make a product before being"
+    "fed with a corresponding raw material."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        [ true* ] (
+            NEVER ('CMD !1 .*' . (not "GET !R (1)")* . "PUT !P (1)") and
+            NEVER ('CMD !2 .*' . (not "GET !R (2)")* . "PUT !P (2)") and
+            NEVER ('CMD !3 .*' . (not "GET !R (3)")* . "PUT !P (3)")
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	NEVER (
+	    true* . { CMD ?PrType:Nat ?any } .
+	    (not { GET !PrType })* . { PUT !PrType }
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_08
+    "Once the store is empty, the delivery corresponding to a product request"
+    "cannot occur before the workcell involved has successfully executed the"
+    "production command."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (* Empty store *)
+            "CMD_ST !READ !CONS (P (1), 0, CONS (P (2), 0, CONS (P (3), 0, NIL)))" .
+            (
+                ('REQUEST !1 .*' . (not "RDY !1")* . 'OUTPUT !P (1) .*') |
+                ('REQUEST !2 .*' . (not "RDY !2")* . 'OUTPUT !P (2) .*') |
+                ('REQUEST !3 .*' . (not "RDY !3")* . 'OUTPUT !P (3) .*')
+            )
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	NEVER (
+	    (* Empty store *)
+	    true* . { CMD_ST !"READ" ?any !0 ?any !0 ?any !0 } .
+	    { REQUEST ?PrType:Nat ?any } . (not { RDY !PrType })* .
+	    { OUTPUT !PrType ?any }
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_09
+    "Every time the store does not contain sufficient products to fulfill a"
+    "request, there will be supply demands for the corresponding raw material."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        [ true* ] (
+            (* Product of type 1 *)
+            [
+                "REQUEST !1 !1" .
+                (not 'REQUEST .*')* .
+                'CMD_ST !READ !.*P (1), 0.*'
+            ] INEVITABLE ("INPUT !1")
+            and
+            [
+                "REQUEST !1 !2" .
+                (not 'REQUEST .*')* .
+                'CMD_ST !READ !.*P (1), 0.*'
+            ] INEVITABLE_1_THEN_2 ("INPUT !1", "INPUT !1")
+            and
+            [
+                "REQUEST !1 !2" .
+                (not 'REQUEST .*')* .
+                'CMD_ST !READ !.*P (1), 1.*'
+            ] INEVITABLE ("INPUT !1")
+            and
+            (* Product of type 2 *)
+            [
+                "REQUEST !2 !1" .
+                (not 'REQUEST .*')* .
+                'CMD_ST !READ !.*P (2), 0.*'
+            ] INEVITABLE ("INPUT !2")
+            and
+            [
+                "REQUEST !2 !2" .
+                (not 'REQUEST .*')* .
+                'CMD_ST !READ !.*P (2), 0.*'
+            ] INEVITABLE_1_THEN_2 ("INPUT !2", "INPUT !2")
+            and
+            [
+                "REQUEST !2 !2" .
+                (not 'REQUEST .*')* .
+                'CMD_ST !READ !.*P (2), 1.*'
+            ] INEVITABLE ("INPUT !2")
+            and
+            (* Product of type 3 *)
+            [
+                "REQUEST !3 !1" .
+                (not 'REQUEST .*')* .
+                'CMD_ST !READ !.*P (3), 0.*'
+            ] INEVITABLE ("INPUT !3")
+            and
+            [
+                "REQUEST !3 !2" .
+                (not 'REQUEST .*')* .
+                'CMD_ST !READ !.*P (3), 0.*'
+            ] INEVITABLE_1_THEN_2 ("INPUT !3", "INPUT !3")
+            and
+            [
+                "REQUEST !3 !2" .
+                (not 'REQUEST .*')* . 
+                'CMD_ST !READ !.*P (3), 1.*'
+            ] INEVITABLE ("INPUT !3")
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	[
+	    true* . { REQUEST ?PrType:Nat ?Qty:Nat } .
+	    (not { REQUEST ?any ?any })* .
+	    { CMD_ST !"READ" ?any ?Qty_1:Nat ?any ?Qty_2:Nat ?any ?Qty_3:Nat }
+	] (
+	    (((PrType = 1) and (Qty_1 = 0)) or
+	     ((PrType = 2) and (Qty_2 = 0)) or
+	     ((PrType = 3) and (Qty_3 = 0)))
+	    implies
+	    INEVITABLE_1_TIMES_2 ({ INPUT !PrType }, Qty)
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_10
+    "Every time a workcell receives a command for a product, the two transport"
+    "belts will be inevitably started to carry the raw material and the"
+    "product."
+is
+    -- dataless formula
+    "cim.bcg" |= with evaluator3
+        [ true* ] (
+            [ 'CMD !1 .*' ] INEVITABLE_1_THEN_2 ('WIN !1 .*', "WOUT !P (1)")
+            and
+            [ 'CMD !2 .*' ] INEVITABLE_1_THEN_2 ('WIN !2 .*', "WOUT !P (2)")
+            and
+            [ 'CMD !3 .*' ] INEVITABLE_1_THEN_2 ('WIN !3 .*', "WOUT !P (3)")
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "cim_ren.bcg" |= with evaluator4
+	[ true* . { CMD ?PrType:Nat ?any } ]
+	    INEVITABLE_1_THEN_2 ({ WIN !PrType ?any }, { WOUT !PrType });
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+

@@ -1,0 +1,20 @@
+################################################################
+# @(#)signotin.seq	1.2 - 97/04/30 - Charles Pecheur, INRIA Rhone-Alpes
+# Each successive sequence finds a trace leading to 
+# a different kind of SIGNOTIN
+################################################################
+
+<until> [.*SIGNOTINC.*REPLY.*]
+[]
+
+<until> [.*SIGNOTINA.*NOTIFY.*]
+[]
+
+<until> [.*SIGNOTINC.*DENY.*]
+[]
+
+<until> [.*SIGNOTINA.*ERROR.*]
+[]
+
+<until> [SIGNAL.*SIGNOTIN.*] & ~[.*SIGNOTINC.*REPLY.*] & ~[.*SIGNOTINA.*ERROR.*] & ~[.*SIGNOTINC.*DENY.*] & ~[.*SIGNOTINA.*NOTIFY.*]
+[]

@@ -1,0 +1,77 @@
+#!/bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeuca_man
+#   Auteurs             :       Hubert GARAVEL, Mark JORGENSEN, Aldo MAZZILLI,
+#				Nicolas DESCOUBES
+#   Version             :       1.24
+#   Date                :       2009/11/06 10:21:39
+##############################################################################
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP"/com/arch`
+
+OPTION=$1
+TOOL=$2
+
+# -----------------------------------------------------------------------------
+
+case $OPTION in
+
+# -----------------------------------------------------------------------------
+
+	-euca )
+
+	FILE="$XEUCADIR/help/$TOOL"
+	if test -f "$FILE"
+	then
+		cat "$FILE"
+	else
+		sh "$XEUCADIR"/default/@grenoble_doc
+	fi
+
+	;;
+
+# -----------------------------------------------------------------------------
+
+	-cadp )
+
+	FILE="$CADP/man/catl/$TOOL.l"
+
+	if test -f "$FILE"
+	then
+		CATMAN="cat '$FILE'"
+	elif test -f "$FILE.gz"
+	then
+		# le GNU man compresse les fichiers catl/*.l
+		CATMAN="gunzip -c '$FILE'.gz"
+	else
+		echo "$COMMAND: cannot find $FILE nor $FILE.gz"
+		exit 1
+	fi
+
+	eval "$CATMAN" |
+	sed -e 's/.//g' -e '/^NAME/,$s/^[A-Z][A-Z_.]*(LOCAL).*$//' -e '/Last.change/d' |
+	awk '(length != 0) || ($0 != previous) { print ; previous = $0 }'
+
+	;;
+
+# -----------------------------------------------------------------------------
+
+	* )
+
+	echo "$COMMAND: unknown option $OPTION"
+
+esac
+
+# -----------------------------------------------------------------------------
+
+exit 0

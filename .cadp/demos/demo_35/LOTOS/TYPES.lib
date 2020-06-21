@@ -1,0 +1,113 @@
+library BOOLEAN, NATURAL endlib
+
+(* ------------------------------------------------------------------------- *)
+
+type RENAMED_NATURAL is NATURAL
+renamedby
+   sortnames Nat_8 for Nat
+   opnnames Plus for +
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type NATURAL_8 is BOOLEAN, RENAMED_NATURAL
+
+opns 
+   _+_ : Nat_8, Nat_8 -> Nat_8
+
+eqns
+   forall n1, n2 : Nat_8
+
+   ofsort Nat_8
+      n1 + n2 = (n1 Plus n2) mod 8;
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type PROCESS_ID is NATURAL
+renamedby sortnames Identity for Nat 
+endtype
+
+type TOPOLOGY is BOOLEAN, PROCESS_ID, NATURAL, NATURAL_8
+
+sorts Identity_List
+
+opns
+   Nil (*! constructor *) : -> Identity_List
+   Cons (*! constructor *),
+   Insert : Identity, Identity_List -> Identity_List
+   Length : Identity_List -> Nat
+   Member : Identity, Identity_List -> Bool
+
+   Connect, Neighbour : Identity, Identity -> Bool
+   Number_Neighbours : Identity -> Nat
+   Number_Neighbours_Aux : Identity, Identity -> Nat
+   Weight : Identity -> Nat_8
+
+eqns
+   forall n1, n2 : Identity,
+          ns : Identity_List
+
+   ofsort Identity_List
+      (* Insert keeps Identity_List canonical by sorting its elements *)
+      Insert (n1, Nil) = Cons (n1, Nil);
+      n1 lt n2 =>
+         Insert (n1, Cons (n2, ns)) = 
+            Cons (n1, Cons (n2, ns));
+      Insert (n1, Cons (n2, ns)) = 
+         Cons (n2, Insert (n1, ns));
+
+   ofsort Nat
+      Length (Nil) = 0 of Nat;
+      Length (Cons (n1, ns)) = Length (ns) + 1 of Nat;
+
+   ofsort Bool
+      Member (n1, Nil) = false;
+      n1 eq n2 => 
+         Member (n1, Cons (n2, ns)) = true;
+      Member (n1, Cons (n2, ns)) = Member (n1, ns);
+
+   ofsort Nat
+      Number_Neighbours (n1) = Number_Neighbours_Aux (n1, 0 of Identity);
+
+   ofsort Nat
+      n2 ge 6 of Identity =>
+         Number_Neighbours_Aux (n1, n2) = 0 of Nat;
+      Neighbour (n1, n2) =>
+         Number_Neighbours_Aux (n1, n2) = 
+            1 of Nat + Number_Neighbours_Aux (n1, Succ (n2));
+      Number_Neighbours_Aux (n1, n2) =
+         Number_Neighbours_Aux (n1, Succ (n2));
+
+   ofsort Bool
+      (* 
+       * do not modify this definition, change the Connect() operation instead
+       * Neighbour() is the symmetrical and anti-reflexive closure of Connect()
+       *)
+      n1 eq n2 =>
+         Neighbour (n1, n2) = false;
+      Connect (n1, n2) or Connect (n2, n1) =>
+         Neighbour (n1, n2) = true;
+      Neighbour (n1, n2) = false;
+
+   (**************************************************************************)
+   (*                         Instance parameters                            *)
+   (**************************************************************************)
+
+   ofsort Nat_8
+      (* you can modify the following definition; make sure that Weight()
+       * is defined for all objects (n1 in 0..5) 
+       *)
+      Weight (n1) = 1 of Nat_8; (* all objects have weight 1 *)
+
+   ofsort Bool
+      (* you can modify the following definition *)
+      (n1 eq 0) and (n2 ge 1) and (n2 le 5) =>
+         Connect (n1, n2) = true;
+      (n1 gt 0) and (n1 le 5) and (n2 eq Succ (n1 mod 5)) =>
+         Connect (n1, n2) = true;
+      (* do not move, modify, or delete the following line *)
+      Connect (n1, n2) = false;
+endtype
+
+(* ------------------------------------------------------------------------- *)

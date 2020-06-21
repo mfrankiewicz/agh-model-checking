@@ -1,0 +1,511 @@
+(****************************************************************
+ * @(#)walk_actl.xtl - 1998/02/19 - Charles Pecheur, INRIA
+ * Rhone-Alpes. Walking versions of ACTL and CTL operators
+ * Patched by Radu Mateescu on 2008/09/05. Patched by Hubert
+ * Garavel on 2014/09/17 and 2014/12/22
+ * Note: see walk.xtl for how to use the definitions provided here
+ *****************************************************************)
+
+library walk.xtl end_library
+
+(****************************************************************
+ * This library defines the same operators as the hml.xtl, actl.xtl
+ * and ctl.xtl library, with a few restrictions listed below. These
+ * operators are computed using a forward search in the graph and
+ * print a diagnostic trace describing their result when possible, as
+ * implemented in the walk.xtl library.
+ *
+ * State formulas have type boolean instead of stateset; following
+ * conventions further explained in walk.xtl. Since all operators
+ * defined here follow this convention, the simpler formulas written
+ * for actl.xtl should work with walk_actl.xtl. However, pre-defined
+ * boolean connectives on properties must be replaced by calls to
+ * W_AND, W_OR and W_NOT; the latter being particularly crucial to get
+ * coherent results in some cases.
+ *
+ * Restrictions:
+ * - all operators are macros
+ * - wdia and wbox are prefix instead of infix
+ *
+ * See actl.xtl for definitions of the ACTL operators.
+ *
+ * Implementation remark:
+ *
+ * All multistep modalities are implemented using the general
+ * W_UNTIL_F and W_UNLESS_F operators from walk.xtl, based on the
+ * following equations (with filters expressed for edges s-l->s'):
+ *
+ * lfp X . G or (F and <A> X)
+ *   = UNTIL_F((s in F) and (l in A), G)
+ *
+ * lfp X . F and (G or <A> X)
+ *   = F and lfp Y . G or <A> (F and Y)
+ *   = F and UNTIL_F((l in A) and (s' in F), G)
+ *
+ * and the same m.m. from gfp to UNLESS_F 
+ *****************************************************************)
+
+(****************************************************************
+ * WALK__OPN(S, PROP)
+ *
+ * Give a name S to PROP. Used at the outermost level ofv every
+ * operator definition, it increments the level and (if not silenced)
+ * produces a diagnostic message upon exit.
+ ****************************************************************)
+
+macro WALK__OPN(S, PROP) =
+  W_LEVEL(
+    W_DO(
+      printf(S) fby printf(" is TRUE\n"),
+      printf(S) fby printf(" is FALSE\n"),
+      PROP
+  ) )
+end_macro
+
+(****************************************************************
+ * Dia(A, F)
+ *   = <A> F
+ *   = NEXT(A, F)
+ *
+ * Dia_O(O, F)
+ *   Same as Dia(A,F) but O is an action pattern allowing variables.
+ *****************************************************************)
+ 
+macro Dia(A, PROP) =
+  WALK__OPN("Dia(A,F)",
+    W_NEXT_F(WALK__LBLIN(A), PROP)
+  )
+end_macro
+ 
+macro Dia_O(O, PROP) =
+  WALK__OPN("Dia_O(O,F)",
+    W_NEXT_O(O, PROP)
+  )
+end_macro
+
+macro Dia(PROP) =
+  WALK__OPN("Dia(F)",
+    W_NEXT_F(true, PROP)
+  )
+end_macro
+
+(****************************************************************
+ * Box(A, F)
+ *   = [A] F
+ *   = not(NEXT(A, not(F)))
+ *
+ * Box_O(O, F)
+ *   Same as Box(A,F) but O is an action pattern allowing variables.
+ *****************************************************************)
+ 
+macro Box(A, PROP) =
+  WALK__OPN("Box(A, F)",
+    W_NOT(
+      W_NEXT_F(WALK__LBLIN(A), 
+        W_NOT(PROP)
+  ) ) )
+end_macro
+ 
+macro Box_O(O, PROP) =
+  WALK__OPN("Box_O(O, F)",
+    W_NOT(
+      W_NEXT_O(O,
+        W_NOT(PROP)
+  ) ) )
+end_macro
+ 
+macro Box(PROP) =
+  WALK__OPN("Box(F)",
+    W_NOT(
+      W_NEXT_F(true, 
+        W_NOT(PROP)
+  ) ) )
+end_macro
+
+(****************************************************************
+ * EX_A(A, F) 
+ *   = <A> F
+ *   = NEXT(A, F)
+ *****************************************************************)
+
+macro EX_A(A, PROP) =
+  WALK__OPN("EX_A(A, F)",
+    W_NEXT_F(WALK__LBLIN(A), PROP)
+  )
+end_macro
+
+macro EX_TAU(PROP) =
+  EX_A(TAU, PROP)
+end_macro
+
+macro EX(PROP) =
+  WALK__OPN("EX(F)",
+    W_NEXT_F(true, PROP)
+  )
+end_macro
+
+(****************************************************************
+ * AX_A(A, F) 
+ *   = <true> true and [not(A)] false and [A] F
+ *   = not(DEADLOCK or NEXT(not(A), true) or NEXT(A, not(F)))
+ *****************************************************************)
+
+macro AX_A(A, PROP) =
+    WALK__OPN("AX_A(A, F)",
+      W_NOT(
+	W_OR(
+          W_DEADLOCK,
+	  W_OR(
+            W_NEXT_F(not(WALK__LBLIN(A)), true),
+	    W_NEXT_F(WALK__LBLIN(A), W_NOT(PROP))
+    ) ) ) )
+end_macro
+
+macro AX_TAU(PROP) =
+  AX_A(TAU, PROP)
+end_macro
+
+macro AX(PROP) =
+  WALK__OPN("AX(F)",
+    W_NOT(
+      W_OR(
+        W_DEADLOCK,
+	W_NEXT_F(true, W_NOT(PROP))
+  ) ) )
+end_macro
+
+(****************************************************************
+ *  EU_A_B(F, A, B, G) 
+ *    = lfp X . F and (<B> G or <A+TAU> X)
+ *    = lfp X . (F and <B> G) or (F and <A+TAU> X)
+ *    = UNTIL(F, A+TAU, F and NEXT(B, G))
+ *
+ * NOTE: WALK__ALLOWED is the internal pre-computed PROP1 produced by
+ * W_UNTIL.
+ *****************************************************************)
+
+macro EU_A_B(PROP1, A, B, PROP2) =
+    WALK__OPN("EU_A_B(F, A, B, G)",
+      W_AND(
+        PROP1,
+	W_UNTIL_F(
+	  andalso(
+	    WALK__LBLIN(A,TAU),
+	    WALK__TGTSAT(PROP1)
+	  ),
+	  W_NEXT_F(WALK__LBLIN(B), PROP2)
+    ) ) )
+end_macro
+
+(****************************************************************
+ * EU_A(F, A, G) 
+ *   = lfp X . G or (F and <A+TAU> X)
+ *   = UNTIL(F, A+TAU, G)
+ *****************************************************************)
+
+macro EU_A(PROP1, A, PROP2) =
+    WALK__OPN("EU_A(F, A, G)",
+      W_UNTIL_F(
+        andalso(
+          WALK__SRCSAT(PROP1), 
+          WALK__LBLIN(A,TAU)
+        ), 
+        PROP2
+    ) )
+end_macro
+
+macro EU(PROP1, PROP2) =
+    WALK__OPN("EU(F, G)",
+      W_UNTIL_F(
+        WALK__SRCSAT(PROP1), 
+        PROP2
+    ) )
+end_macro
+
+(****************************************************************
+ *  AU_A_B(F, A, B, G) 
+ *    = lfp X . F and <true> true and [B-(A+TAU)] G and
+ *        [not(A+B+TAU)] false and [(A+TAU)-B] X and [(A+TAU)*B] (X or G) 
+ *    = not(gfp X . not(F) or [true] false or <B-(A+TAU)> not(G) or
+ *        <not(A+B+TAU)> true or <(A+TAU)-B> X or <(A+TAU)*B> (X and not(G)))
+ *
+ *    <> NOT(UNLESS(true, (A+TAU)-B, not(F) or DEADLOCK or 
+ *        NEXT(B-(A+TAU), not(G)) or NEXT(not(A+B+TAU), true)))
+ *****************************************************************)
+
+macro AU_A_B(PROP1, A, B, PROP2) =
+    WALK__OPN("AU_A_B(F, A, B, G)",
+      W_NOT(
+	W_UNLESS_F(
+          andalso(
+            WALK__LBLIN(A,TAU), 
+            orelse(
+              not(WALK__LBLIN(B)),
+              not(WALK__TGTSAT(PROP2))
+            )
+          ), 
+	  W_OR(
+            W_NOT(PROP1),
+	    W_OR(
+              W_DEADLOCK,
+	      W_OR(
+                W_NEXT_F(
+                  andalso(WALK__LBLIN(B), not(WALK__LBLIN(A,TAU))), 
+                  W_NOT(PROP2)
+                ),
+		W_NEXT_F(not(WALK__LBLIN(A,B,TAU)), true)
+    ) ) ) ) ) )
+end_macro
+
+(****************************************************************
+ *  AU_A(F, A, G) 
+ *    = lfp X . G or (F and <true> true and
+ *        [not(A+TAU)] false and [A+TAU] X)
+ *    = not(gfp X . not(G) and (not(F) or [true] false or
+ *        <not(A+TAU)> true or <A+TAU> X))
+ *    = not(gfp X . (not(G) and (not(F) or [true] false or <not(A+TAU)> true))
+ *        or (not(G) and <A+TAU> X))
+ *    = NOT(UNLESS(not(G), A+TAU, 
+ *        not(G) and (not(F) or DEADLOCK or NEXT(not(A+TAU), true))))
+ *****************************************************************)
+
+macro AU_A(PROP1, A, PROP2) =
+    WALK__OPN("AU_A(F, A, G)",
+      W_OR(
+        PROP2,
+        W_NOT(
+	  W_UNLESS_F(
+	    andalso(
+	      WALK__LBLIN(A,TAU),
+	      not(WALK__TGTSAT(PROP2)) 
+	    ), 
+	    W_OR(
+              W_NOT(PROP1),
+	      W_OR(
+                W_DEADLOCK,
+		W_NEXT_F(not(WALK__LBLIN(A,TAU)), true)
+    ) ) ) ) ) )
+end_macro
+
+macro AU(PROP1, PROP2) =
+    WALK__OPN("AU(F, G)",
+      W_OR(
+        PROP2,
+        W_NOT(
+	  W_UNLESS_F(
+	    not(WALK__TGTSAT(PROP2)), 
+	    W_OR(
+              W_NOT(PROP1),
+	      W_DEADLOCK
+    ) ) ) ) )
+end_macro
+
+(****************************************************************
+ *  EF_A(A, F)
+ *    = lfp X . F or <A+TAU> X
+ *    = UNTIL(true, A+TAU, F)
+ *****************************************************************)
+
+macro EF_A(A, PROP) =
+    WALK__OPN("EF_A(A, F)",
+      W_UNTIL_F(
+        WALK__LBLIN(A,TAU), 
+        PROP
+   ) )
+end_macro
+
+macro EF(PROP) =
+  WALK__OPN("EF(F)",
+    W_UNTIL_F(true, PROP)
+  )
+end_macro
+
+(****************************************************************
+ *  AF_A(A, F) 
+ *    = lfp X . F or (<true> true and [not(A+TAU)] false and [A+TAU] X)
+ *    = not(gfp X . not(F) and 
+ *       ([true] false or <not(A+TAU)> true or <A+TAU> X))
+ *    = not(gfp X . (not(F) and ([true] false or <not(A+TAU)> true))
+ *        or (not(F) and <A+TAU> X))
+ *    = NOT(UNLESS(not(F), A+TAU, 
+ *        not(F) and (DEADLOCK or NEXT(not(A+TAU), true))))
+ *****************************************************************)
+
+macro AF_A(A, PROP) =
+    WALK__OPN("AF_A(A, F)",
+      W_OR(
+        PROP,
+	W_NOT(
+	  W_UNLESS_F(
+	    andalso(
+	      WALK__LBLIN(A,TAU),
+	      not(WALK__TGTSAT(PROP))
+	    ), 
+	    W_OR(
+              W_DEADLOCK,
+	      W_NEXT_F(not(WALK__LBLIN(A,TAU)), true)
+    ) ) ) ) )
+end_macro
+
+macro AF(PROP) =
+  WALK__OPN("AF(F)",
+    W_OR(
+      PROP,
+      W_NOT(
+        W_UNLESS_F(
+          not(WALK__TGTSAT(PROP)),
+	  W_DEADLOCK
+  ) ) ) )
+end_macro
+
+(**************************************************************** 
+ *  EG_A(A, F)
+ *    = not(AF_A(A,not(F)))
+ *    = UNLESS(F, A+TAU, 
+ *        F and (DEADLOCK or NEXT(not(A+TAU), true)))
+ *****************************************************************)
+
+macro EG_A(A, PROP) =
+    WALK__OPN("EG_A(A, F)",
+      W_AND(
+        PROP,
+	W_UNLESS_F(
+	  andalso(
+	    WALK__LBLIN(A,TAU),
+	    WALK__TGTSAT(PROP) 
+	  ), 
+	  W_OR(
+            W_DEADLOCK,
+	    W_NEXT_F(not(WALK__LBLIN(A,TAU)), true)
+    ) ) ) )
+end_macro
+
+macro EG(PROP) =
+  WALK__OPN("EG(F)",
+    W_AND(
+      PROP,
+      W_UNLESS_F(
+	WALK__TGTSAT(PROP),
+	W_DEADLOCK
+  ) ) )
+end_macro
+
+(**************************************************************** 
+ *  AG_A(A, F)
+ *    = not(EF_A(A,not(F)))
+ *    = not(UNTIL(true, A+TAU, not(F)))
+ *****************************************************************)
+
+macro AG_A(A, PROP) =
+  WALK__OPN("AG_A(A, F)",
+    W_NOT(
+      W_UNTIL_F(
+        WALK__LBLIN(A), 
+        W_NOT(PROP)
+  ) ) )
+end_macro
+
+macro AG(PROP) =
+  WALK__OPN("AG(F)",
+    W_NOT(
+      W_UNTIL_F(
+        true, 
+        W_NOT(PROP)
+  ) ) )
+end_macro
+
+(****************************************************************
+ * derived operators
+ ****************************************************************)
+
+macro Dia_2(PROP1, A, PROP2) = 
+  EU_A_B(PROP1, false, A, PROP2)
+end_macro
+
+macro Dia_2(PROP1, PROP2) = 
+  EU_A(PROP1, false, PROP2)
+end_macro
+
+macro wdia(A, PROP) =
+  EU_A_B(true, false, A, PROP)
+end_macro
+
+macro wbox(A, PROP) =
+  W_NOT(EU_A_B(true, false, A, W_NOT(PROP)))
+end_macro
+
+macro ACTL_NOT_TO_UNLESS(A, B, C) =
+  wbox(A,
+    W_NOT(
+      EF_A(not(C),
+        wdia(B, true)
+  ) ) )
+end_macro
+
+macro AFTER_POT(A, B1) =
+  wbox(A,
+    EF_A(TAU,
+      wdia(B1, true)
+  ) )
+end_macro
+
+macro AFTER_POT_2(A, B1, B2) =
+  wbox(A,
+    EF_A(TAU,
+      wdia(B1,
+        EF_A(TAU,
+          wdia(B2, true)
+  ) ) ) )
+end_macro
+
+macro AFTER_POT_3(A, B1, B2, B3) =
+  wbox(A,
+    EF_A(TAU,
+      wdia(B1,
+	EF_A(TAU,
+	  wdia(B2,
+	    EF_A(TAU,
+	      wdia(B3, true)
+  ) ) ) ) ) )
+end_macro
+
+macro ACTL_INEV(A) =
+  AU_A_B(true, true, A, true)
+end_macro
+
+macro AFTER_INEV(A1, B) =
+  wbox(A1,
+    ACTL_INEV(B)
+  )
+end_macro
+
+macro AFTER_INEV_2(A1, A2, B) =
+  wbox(A1,
+    AG_A(TAU,
+      wbox(A2,
+        ACTL_INEV(B)
+  ) ) )
+end_macro
+
+macro AFTER_INEV_3(A1, A2, A3, B) =
+  wbox(A1,
+    AG_A(TAU,
+      wbox(A2,
+	AG_A(TAU,
+	  wbox(A3,
+	    ACTL_INEV(B)
+  ) ) ) ) )
+end_macro
+
+macro AFTER_INEV_4(A1, A2, A3, A4, B) =
+  wbox(A1,
+    AG_A(TAU,
+      wbox(A2,
+	AG_A(TAU,
+	  wbox(A3,
+	    AG_A(TAU,
+	      wbox(A4,
+		ACTL_INEV(B)
+  ) ) ) ) ) ) )
+end_macro
+

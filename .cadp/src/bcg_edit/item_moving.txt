@@ -1,0 +1,23 @@
++-------------+
+| Item moving |
++-------------+
+
+The following items can be moved:
+
+   - vertices,
+
+   - control points of (symmetrical and asymmetrical) curved edges
+     and loops
+
+   - edge labels (these labels can be moved anywhere on their edges,
+     to which they always remain attached)
+
+Moving an item can be done by simple clicking on it with the left
+button, dragging it to a new position and releasing the button.
+
+Note: on slow computers, moving labels on curved edges can take some
+time, because it involves spline discretization. Reducing the value of
+the environment variable $BCG_EDIT_SPLINE_STEPS may avoid the problem.
+
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

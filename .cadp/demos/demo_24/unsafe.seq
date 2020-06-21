@@ -1,0 +1,13 @@
+################################################################
+# @(#)unsafe.seq	1.1 - 97/04/30 - Charles Pecheur, INRIA Rhone-Alpes
+# Find unsafe traces: a group stores a proposal that has not been
+# accepted by one of its members.
+# For use with hierarchy 5
+################################################################
+
+<while> ~[USER !1 !DOACCEPT.*] <until> [SIGNAL !5 !SIGSTORED.*]
+[]
+<while> ~[USER !2 !DOACCEPT.*] <until> [SIGNAL !5 !SIGSTORED.*]
+[]
+<while> ~[USER !4 !DOACCEPT.*] <until> [SIGNAL !5 !SIGSTORED.*]
+[]

@@ -1,0 +1,74 @@
+specification ARRAY_OF_BOOLEAN [PRINT] : noexit 
+
+   library BOOLEAN endlib
+   library NATURAL endlib
+
+   type TABLE is NATURAL
+      sorts TAB  (*! implementedby Tab printedby PrintTab *)
+
+      opns EMPTY (*! implementedby Empty constructor *) 
+		: -> TAB
+	   REPLACE (*! implementedby Replace constructor *)
+		: TAB, NAT, BOOL -> TAB
+	   TEST (*! implementedby Test *)
+		: TAB, NAT -> BOOL
+           SET (*! implementedby Set *) 
+		: TAB, NAT -> TAB
+           UNSET (*! implementedby Unset *)
+		: TAB, NAT -> TAB
+	   _ <* _ (*! implementedby Contained *)
+		: TAB, TAB -> BOOL
+	   _ == _ (*! implementedby EqTab *)
+		: TAB, TAB -> BOOL
+
+      eqns
+         forall N, N1, N2:NAT,
+                B:BOOL,
+                T, T1, T2:TAB
+         ofsort BOOL
+            TEST (EMPTY, N) = false;
+            N1 eq N2 => TEST (REPLACE (T, N1, B), N2) = B;
+	    N1 ne N2 => TEST (REPLACE (T, N1, B), N2) = TEST (T, N2);
+         ofsort TAB
+	    SET (T, N) = REPLACE (T, N, true);
+         ofsort TAB
+	    UNSET (T, N) = REPLACE (T, N, false);
+	 ofsort BOOL
+	    EMPTY <* T = true;
+	    REPLACE (T1, N, B) <* T2 = (TEST (T2, N) implies B) and (T1 <* T2)
+	 ofsort BOOL
+	    T1 == T2 = (T1 <* T2) and (T2 <* T1)
+    endtype
+
+behaviour
+   let One:NAT = Succ (0) in
+   let Two:NAT = One + One in
+   let Three:NAT = One + Two in
+   let Four:NAT = Two + Two in
+   let Five:NAT = Three + Two in
+      PRINT !One;
+      PRINT !Two;
+      PRINT !Three;
+      PRINT !Four;
+      PRINT !Five;
+         (
+         let T1:TAB = Empty in
+         let T2:TAB = SET (EMPTY, Five) in
+	 let T3:TAB = UNSET (T2, Five) in
+	 let T4:TAB = SET (T3, Four) in
+         let T5:TAB = SET (T4, Two) in
+         let T6:TAB = UNSET (T5, One) in
+         let T7:TAB = UNSET (T6, Five) in
+            PRINT !T1;
+            PRINT !T2;
+            PRINT !T3;
+            PRINT !T4;
+            PRINT !T5;
+            PRINT !T6;
+            PRINT !T7;
+            PRINT !T1 == T3;
+            PRINT !(T5 == T6) and (T5 == T7) and (T6 == T7);
+	    PRINT !T4 <* T7;
+	    stop
+         )
+endspec

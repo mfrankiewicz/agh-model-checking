@@ -1,0 +1,14 @@
+module HMP (CONFIGURATION, APPLICATION, DTD) is
+
+process MAIN [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG,
+              DTD_SCHEDULE_HOST_REQUESTS, DTD_DISPATCH_DUP, HOST: any] is
+   par HOST in
+      ENCORE [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG,
+              DTD_SCHEDULE_HOST_REQUESTS, DTD_DISPATCH_DUP, HOST]
+   ||
+      HOST_APPLI [HOST]
+   end par
+end process
+
+end module
+

@@ -1,0 +1,601 @@
+(* ------------------------------------------------------------------------- *)
+(* Asynchronous version of the HAVi protocol                                 *)
+(* ------------------------------------------------------------------------- *)
+
+% DEFAULT_PROCESS_FILE="HAVi_asyn.lotos"
+
+"HAVi_asyn.bcg" = root leaf strong reduction of
+    (
+        BusReset [gUpDown, gBusReset, gEvent]
+                 (consnet (consn (false), consn (false))) (* all dcms down *)
+        |[gUpDown, gBusReset]|
+        (
+            (
+                DCM [gInfo, gUpDown, gDMin, gDMout, gEvent] (1)
+                |||
+                DCM [gInfo, gUpDown, gDMin, gDMout, gEvent] (2)
+            )
+            |[gInfo, gUpDown, gDMin, gDMout]|
+            (
+                (
+                    CMM [gInfo, gUpDown, gBusReset] (1)
+                    |[gBusReset]|
+                    CMM [gInfo, gUpDown, gBusReset] (2)
+                )
+                |[gUpDown, gBusReset]|
+                (
+                    MS [gUpDown, gBusReset, gDMout, gDMin] (1)
+                    (* DM's out is MS's in and vv *)
+                    |[gBusReset]|
+                    MS [gUpDown, gBusReset, gDMout, gDMin] (2)
+                    (* DM's out is MS's in and vv *)
+                )
+            )
+        )
+    );
+
+(* ------------------------------------------------------------------------- *)
+(* Safety properties for the asynchronous version                            *)
+(* ------------------------------------------------------------------------- *)
+
+% DEFAULT_XTL_LIBRARIES="actl.xtl, macros.xtl"
+
+property SAFETY_ASYN_1
+    "If a DCM Manager becomes final leader in not UrlCapable mode, and there"
+    "were InitRequests with UrlCapable=true then a busreset event must be"
+    "pending"
+is
+    "HAVi_asyn.bcg" |= with xtl
+        let 
+	    ReqUrlCapable  : labelset  =
+	        EVAL_A (GDMIN _ ?m:raw
+	            where
+	                (m = "CONSM (DMINITREQUEST, 1, TRUE)")
+	                or
+	                (m = "CONSM (DMINITREQUEST, 2, TRUE)")
+	        )
+	        or
+	        EVAL_A (GDMOUT _ ?m:raw
+	            where
+	                (m = "CONSM (DMINITREQUEST, 1, TRUE)")
+	                or
+	                (m = "CONSM (DMINITREQUEST, 2, TRUE)")
+	        ),
+	    BusResetStart   : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+	    BusResetEnd     : labelset = EVAL_A (GBUSRESET !"BUS_RESET_END" _),
+	    BusResetEvent   : labelset = EVAL_A (GINFO _ !"BUS_RESET_EVENT"),
+	    FinalLeader     : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _),
+	    FLNotUrlCapable : labelset =
+                EVAL_A (GEVENT !"FINAL_LEADER" _ ?b:boolean where not (b))
+	in let 
+	    Ignore1 : labelset =
+                not (BusResetEvent or BusResetStart or BusResetEnd or
+                    FinalLeader),
+	    Ignore2 : labelset = not (BusResetStart or BusResetEvent)
+	in  
+	    PRINT_FORM (
+	        Box (ReqUrlCapable,
+	            AG_A (Ignore1,
+	                Box (FLNotUrlCapable,
+	                    EU_A_B (true,
+	                        Ignore2,
+	                        BusResetEvent,
+	                        true
+	                    )
+	                )
+	            )
+	        )
+	    )
+            nop
+        end_let
+        end_let;
+    expected TRUE
+end property
+
+(* ------------------------------------------------------------------------- *)
+
+property SAFETY_ASYN_2
+    "If more than one DCM Manager becomes initial or final leader, then a"
+    "busreset event must be pending"
+is
+    "HAVi_asyn.bcg" |= with xtl
+        let
+            BusResetStart   : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+            BusResetEnd     : labelset = EVAL_A (GBUSRESET !"BUS_RESET_END" _),
+            BusResetEvent   : labelset = EVAL_A (GINFO _ !"BUS_RESET_EVENT"),
+            InitLeader      : labelset = EVAL_A (GEVENT !"INIT_LEADER" _),
+            FinalLeader     : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _)
+        in let
+            Ignore1 : labelset =
+                not (BusResetEvent or BusResetStart or InitLeader or
+                    FinalLeader),
+            Ignore2 : labelset = not (BusResetStart or BusResetEvent)
+        in
+	    PRINT_FORM (
+	        Box (BusResetEnd,
+	            AG_A (Ignore1,
+	                Box (InitLeader,
+	                    AG_A (Ignore1,
+	                        Box (InitLeader,
+	                            EU_A_B (true,
+	                                Ignore2,
+                                        BusResetEvent,
+                                        true
+	                            )
+	                        )
+	                    )
+	                )
+	            )
+	        )
+	        and 
+	        Box (BusResetEnd,
+	            AG_A (Ignore1,
+	                Box (Finalleader,
+	                    AG_A (Ignore1,
+	                        Box (InitLeader or FinalLeader,
+	                            EU_A_B (true,
+	                                Ignore2,
+	                                BusResetEvent,
+	                                true
+	                            )
+	                        )
+	                    )
+	                )
+	            )
+	        )
+	    )
+            nop
+        end_let
+        end_let;
+    expected TRUE
+end property
+
+(* ------------------------------------------------------------------------- *)
+
+property SAFETY_ASYN_3
+    "If init replies/leader events carry a different Leader Id, then a bus"
+    "reset event must be pending"
+is
+    "HAVi_asyn.bcg" |= with xtl
+        let
+            BusResetStart : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+            BusResetEnd   : labelset = EVAL_A (GBUSRESET !"BUS_RESET_END" _),
+            BusResetEvent : labelset = EVAL_A (GINFO _ !"BUS_RESET_EVENT"),
+            FinalLeader   : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _),
+            InitReply     : labelset =
+                EVAL_A (GDMOUT _ ?m:raw
+                    where
+                        (m = "CONSM (DMINITREPLY, 1, FALSE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 2, FALSE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 1, TRUE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 2, TRUE)")
+                )
+                or
+                EVAL_A (GDMIN _ ?m:raw
+                    where
+                        (m = "CONSM (DMINITREPLY, 1, FALSE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 2, FALSE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 1, TRUE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 2, TRUE)")
+                )
+        in let
+            Ignore1 : labelset =
+                not (BusResetEvent or BusResetStart or BusResetEnd or
+                    InitReply or FinalLeader),
+            Ignore2 : labelset =
+                not (BusResetStart or BusResetEvent)
+        in
+	    PRINT_FORM (
+	        forall j: natural among {1 ... N} in
+	            Box (IRorFLjAsyn (j),
+	                AG_A (Ignore1,
+	                    Box (IRorFLnotjAsyn (j),
+	                        EU_A_B (true,
+	                            Ignore2,
+	                            BusResetEvent,
+	                            true
+	                        )
+	                    )
+	                )
+	            )
+	        end_forall
+	    )
+            nop
+        end_let
+        end_let;
+    expected FALSE
+end property
+
+(* ------------------------------------------------------------------------- *)
+
+% DEFAULT_XTL_LIBRARIES="walk_print_nice.xtl, walk_actl.xtl, macros.xtl"
+
+property SAFETY_ASYN_3_WITH_DIAGNOSTICS
+    "If init replies/leader events carry a different Leader Id, then a bus"
+    "reset event must be pending (with diagnostics)"
+is
+    "HAVi_asyn.bcg" |= with xtl
+        let
+            InitReply : labelset =
+                EVAL_A (GDMOUT _ ?m:raw
+                    where
+                        (m = "CONSM (DMINITREPLY, 1, FALSE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 2, FALSE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 1, TRUE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 2, TRUE)")
+                )
+                or
+                EVAL_A (GDMIN _ ?m:raw
+                    where
+                        (m = "CONSM (DMINITREPLY, 1, FALSE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 2, FALSE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 1, TRUE)")
+                        or
+                        (m = "CONSM (DMINITREPLY, 2, TRUE)")
+                ),
+            BusResetStart : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+            BusResetEnd   : labelset = EVAL_A (GBUSRESET !"BUS_RESET_END" _),
+            BusResetEvent : labelset = EVAL_A (GINFO _ !"BUS_RESET_EVENT" ),
+            FinalLeader   : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _)
+        in let
+            Ignore1 : labelset =
+                not (BusResetEvent or BusResetStart or BusResetEnd or
+                    InitReply or FinalLeader),
+            Ignore2 : labelset =
+                not (BusResetEvent or BusResetStart or BusResetEnd)
+        in
+            WALK (AG_A (true,
+                Box (IRorFLjAsyn (1),
+                    AG_A (Ignore1,
+                        Box (IRorFLnotjAsyn (1),
+                            EU_A_B (true,
+                                Ignore2,
+                                BusResetEvent,
+                                true
+                            )
+                        )
+                    )
+                )
+            ))
+            fby
+            WALK (AG_A (true,
+                Box (IRorFLjAsyn (2),
+                    AG_A (Ignore1,
+                        Box (IRorFLnotjAsyn (2),
+                            EU_A_B (true,
+                                Ignore2,
+                                BusResetEvent,
+                                true
+                            )
+                        )
+                    )
+                )
+            ))
+            fby
+            nop
+        end_let
+        end_let;
+end property
+
+(* ------------------------------------------------------------------------- *)
+(* Liveness properties for the asynchronous version                          *)
+(* ------------------------------------------------------------------------- *)
+
+% DEFAULT_XTL_LIBRARIES="actl.xtl, macros.xtl"
+
+property LIVENESS_ASYN_1
+    "Always Final Leader If One DM Up And Not BusResetStart"
+is
+    "HAVi_asyn.bcg" |= with xtl
+        let
+            BusResetStart : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+            InfoGUIDlist  : labelset = EVAL_A (GINFO _ !"GUID_LIST" _),
+            FinalLeader   : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _)
+        in let
+            Ignore  : labelset = not (BusResetStart or FinalLeader)
+        in
+	    PRINT_FORM (
+                Box (InfoGUIDlist,
+	            EU_A_B (true,
+	                Ignore,
+	                FinalLeader,
+	                true
+	            )
+	        )
+	    )
+	    nop
+	end_let
+	end_let;
+    expected FALSE
+end property
+
+(* ------------------------------------------------------------------------- *)
+
+% DEFAULT_XTL_LIBRARIES="walk_print_nice.xtl, walk_actl.xtl, macros.xtl"
+
+property LIVENESS_ASYN_1_WITH_DIAGNOSTICS
+    "Always Final Leader If One DM Up And Not BusResetStart (with diagnostics)"
+is
+    "HAVi_asyn.bcg" |= with xtl
+        let
+            BusResetStart : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+            FinalLeader   : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _),
+            InfoGUIDlist  : labelset = EVAL_A (GINFO _ !"GUID_LIST" _)
+        in let
+            Ignore  : labelset = not (BusResetStart or FinalLeader)
+        in
+	    WALK (
+                AG_A (true,
+                    (*
+                     * AG_A (true, P) for evaluating P globally, not locally
+                     * (init)
+                     *)
+	            Box (InfoGUIDlist,
+	                EU_A_B (true,
+	                    Ignore,
+	                    FinalLeader,
+	                    true
+                        )
+	            )
+	        )
+	    )
+	end_let
+	end_let;
+end property
+
+(* ------------------------------------------------------------------------- *)
+(* Synchronous version of the HAVi protocol                                  *)
+(* ------------------------------------------------------------------------- *)
+
+% DEFAULT_PROCESS_FILE="HAVi_sync.lotos"
+
+"HAVi_sync.bcg" = root leaf strong reduction of
+    (
+        BusReset [gUpDown, gBusReset, gEvent]
+                 (consnet (consn (false), consn (false))) (* all dcms down *)
+        |[gUpDown, gBusReset]|
+        (
+            (
+                (
+                    DCM [gInfo, gUpDown, gDM, gEvent] (1)
+                    |||
+                    OtherCommunications [gDM] (1)
+                )
+                |[gDM]|
+                (
+                    DCM [gInfo, gUpDown, gDM, gEvent] (2)
+                    |||
+                    OtherCommunications [gDM] (2)
+                )
+            )
+            |[gInfo, gUpDown]|
+            (
+                CMM [gInfo, gUpDown, gBusReset] (1)
+                |[gBusReset]|
+                CMM [gInfo, gUpDown, gBusReset] (2)
+            )
+        )
+    );
+
+(* ------------------------------------------------------------------------- *)
+(* Safety properties for the synchronous version                             *)
+(* ------------------------------------------------------------------------- *)
+
+% DEFAULT_XTL_LIBRARIES="actl.xtl, macros.xtl"
+
+property SAFETY_SYNC_1
+    "If a DCM Manager becomes final leader in not UrlCapable mode, and there"
+    "were InitRequests with UrlCapable=true then a busreset event must be"
+    "pending"
+is
+    "HAVi_sync.bcg" |= with xtl
+	let 
+	    ReqUrlCapable   : labelset =
+	        EVAL_A (GDM _ _ !"DMINITREQUEST" ?b:boolean where (b)),
+	    BusResetStart   : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+	    BusResetEnd     : labelset = EVAL_A (GBUSRESET !"BUS_RESET_END" _),
+	    BusResetEvent   : labelset = EVAL_A (GINFO _ !"BUS_RESET_EVENT"),
+	    FinalLeader     : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _),
+	    FLNotUrlCapable : labelset =
+                EVAL_A (GEVENT !"FINAL_LEADER" _ ?b:boolean where not (b))
+	in let 
+	    Ignore1 : labelset =
+                not (BusResetEvent or BusResetStart or BusResetEnd or
+                    FinalLeader),
+	    Ignore2 : labelset = not (BusResetStart or BusResetEvent)
+	in  
+	    PRINT_FORM (
+	        Box (ReqUrlCapable,
+	            AG_A (Ignore1,
+	                Box (FLNotUrlCapable,
+	                    EU_A_B (true,
+	                        Ignore2,
+	                        BusResetEvent,
+	                        true
+	                    )
+	                )
+	            )
+	        )
+	    )
+            nop
+        end_let
+        end_let;
+    expected TRUE
+end property
+
+(* ------------------------------------------------------------------------- *)
+
+property SAFETY_SYNC_2
+    "If more than one DCM Manager becomes initial or final leader, then a"
+    "bus reset event must be pending"
+is
+    "HAVi_sync.bcg" |= with xtl
+        let
+            BusResetStart : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+            BusResetEnd   : labelset = EVAL_A (GBUSRESET !"BUS_RESET_END" _),
+            BusResetEvent : labelset = EVAL_A (GINFO _ !"BUS_RESET_EVENT"),
+            InitLeader    : labelset = EVAL_A (GEVENT !"INIT_LEADER" _),
+            FinalLeader   : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _)
+        in let
+            Ignore1 : labelset =
+                not (BusResetEvent or BusResetStart or InitLeader or
+                    FinalLeader),
+            Ignore2 : labelset = not (BusResetStart or BusResetEvent)
+        in
+	    PRINT_FORM (
+	        Box (BusResetEnd,
+	            AG_A (Ignore1,
+	                Box (InitLeader,
+	                    AG_A (Ignore1,
+	                        Box (InitLeader,
+	                            EU_A_B (true,
+	                                Ignore2,
+	                                BusResetEvent,
+	                                true
+	                            )
+	                        )
+	                    )
+	                )
+	            )
+	        )
+	        and 
+	        Box (BusResetEnd,
+	            AG_A (Ignore1,
+	                Box (Finalleader,
+	                    AG_A (Ignore1,
+	                        Box (InitLeader or FinalLeader,
+	                            EU_A_B (true,
+	                                Ignore2,
+	                                BusResetEvent,
+	                                true
+	                            )
+	                        )
+	                    )
+	                )
+	            )
+	        )
+	    )
+            nop
+        end_let
+        end_let;
+    expected TRUE
+end property
+
+(* ------------------------------------------------------------------------- *)
+
+property SAFETY_SYNC_3
+    "Between BusReset Periods all init replies/leader events carry the same"
+    "Leader Id"
+is
+    "HAVi_sync.bcg" |= with xtl
+        let
+            BusResetStart : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+            BusResetEnd   : labelset = EVAL_A (GBUSRESET !"BUS_RESET_END" _),
+            BusResetEvent : labelset = EVAL_A (GINFO _ !"BUS_RESET_EVENT"),
+            FinalLeader   : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _),
+            InitReply     : labelset = EVAL_A (GDM _ _ !"DMINITREPLY" _)
+        in let
+            Ignore1 : labelset =
+                not (BusResetEvent or BusResetStart or BusResetEnd or
+                    InitReply or FinalLeader),
+            Ignore2 : labelset =
+                not (BusResetEvent or BusResetStart or BusResetEnd)
+        in
+	    PRINT_FORM (
+	        forall j: natural among {1 ... N} in
+	            Box (IRorFLjSync (j),
+	                AG_A (Ignore1,
+	                    Box (IRorFLnotjSync (j),
+	                        EU_A_B (true,
+	                            Ignore2,
+	                            BusResetEvent,
+	                            true
+	                        )
+	                    )
+	                )
+	            )
+	        end_forall
+	    )
+            nop
+        end_let
+        end_let;
+    expected TRUE
+end property
+
+(* ------------------------------------------------------------------------- *)
+(* Liveness properties for the synchronous version                           *)
+(* ------------------------------------------------------------------------- *)
+
+property LIVENESS_SYNC_1
+    "Always Final Leader If One DM Up And Not BusResetStart"
+is
+    "HAVi_sync.bcg" |= with xtl
+        let
+          BusResetStart : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+          InfoGUIDlist  : labelset = EVAL_A (GINFO _ !"GUID_LIST" _),
+          FinalLeader   : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _)
+        in let
+          Ignore  : labelset = not (BusResetStart or FinalLeader)
+        in
+	    PRINT_FORM (
+	        Box (InfoGUIDlist,
+	            EU_A_B (true,
+	                Ignore,
+	                FinalLeader,
+	                true
+	            )
+	        )
+	    )
+	    nop
+        end_let
+        end_let;
+    expected FALSE
+end property
+
+(* ------------------------------------------------------------------------- *)
+
+% DEFAULT_XTL_LIBRARIES="walk_print_nice.xtl, walk_actl.xtl, macros.xtl"
+
+property LIVENESS_SYNC_1_WITH_DIAGNOSTIC
+    "Always Final Leader If One DM Up And Not BusResetStart (with diagnostics)"
+is
+    "HAVi_sync.bcg" |= with xtl
+	let
+	    FinalLeader   : labelset = EVAL_A (GEVENT !"FINAL_LEADER" _ _),
+	    BusResetStart : labelset = EVAL_A (GBUSRESET !"BUS_RESET_START"),
+	    InfoGUIDlist  : labelset = EVAL_A (GINFO _ !"GUID_LIST" _)
+	in let
+	    Ignore : labelset = not (BusResetStart or FinalLeader)
+	in
+	    WALK (
+                AG_A (true,
+                    (*
+                     * AG_A (true, P) for evaluating P globally, not locally
+                     * (init)
+                     *)
+	            Box (InfoGUIDlist,
+	                EU_A_B (true,
+	                    Ignore,
+	                    FinalLeader,
+	                    true
+                        )
+	            )
+	        )
+	    )
+	end_let
+	end_let;
+end property
+
+(* ------------------------------------------------------------------------- *)
+

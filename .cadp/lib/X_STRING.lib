@@ -1,0 +1,11 @@
+type String is Character, Boolean, NaturalNumber
+   sorts String (*! implementedby ADT_STRING comparedby ADT_CMP_STRING
+                 printedby ADT_PRINT_STRING external *)
+   opns _eq_ (*! implementedby ADT_EQ_STRING external *), 
+	_ne_ (*! implementedby ADT_NE_STRING external *), 
+	_lt_ (*! implementedby ADT_LT_STRING external *), 
+	_le_ (*! implementedby ADT_LE_STRING external *), 
+	_ge_ (*! implementedby ADT_GE_STRING external *), 
+	_gt_ (*! implementedby ADT_GT_STRING external *) : String, String -> Bool
+endtype
+

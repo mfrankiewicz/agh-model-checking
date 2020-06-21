@@ -1,0 +1,22 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains various kinds of include files:
+
+	- those defining the predefined types common to many CADP tools.
+	These include files have names of the form ``adt_*.h''.
+
+	- those providing an implementation in C for the ``external''
+	abstract data types defined in the ``../lib'' directory. 
+	These include files have names of the form ``X_*.h''.
+
+	- those defining the interfaces of the OPEN/CAESAR libraries.
+	These include files have names of the form ``caesar_*.h''.
+
+	- those defining the interfaces of BCG libraries.
+	These include files have names of the form ``bcg_*.h''.
+
+	- those defining the interfaces of XTL library.
+	These include files have names of the form ``xtl*.h''.
+
+

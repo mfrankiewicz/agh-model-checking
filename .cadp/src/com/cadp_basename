@@ -1,0 +1,45 @@
+#! /bin/sh
+
+###############################################################################
+#                               C A D P
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_basename
+#   Auteurs             :       Frederic LANG et Hubert GARAVEL
+#   Version             :       1.7
+#   Date                :       2018/12/04 10:36:33
+##############################################################################
+
+ARCH=`"$CADP"/com/arch`
+
+case $ARCH in
+
+	sun5 | sun64 | sol86 | sol64 )
+
+		# Sous Solaris, il y a un probleme avec "/bin/basename" qui
+		# interprete son second argument comme une expression
+		# reguliere, ce qui peut donner un resultat different de celui
+		# qu'on obtient sous toutes les autres architectures ; par
+		# exemple "/bin/basename a_c .c" renvoie la chaine "a" alors
+		# qu'on aurait "a_c" sur les autres architectures.
+
+		# C'est pourquoi il faut plutot "/usr/xpg4/bin/basename" qui
+		# a un comportement conforme aux autres architectures ;
+		# "/usr/ucb/basename" conviendrait aussi, mais "/usr/ucb"
+		# est en voie de disparition ; le script "tst" verifie que
+		# "/usr/xpg4/bin/basename" existe
+
+		/usr/xpg4/bin/basename "$@"
+		;;
+
+	* )
+		basename "$@"
+		;;
+esac
+
+

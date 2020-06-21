@@ -1,0 +1,21 @@
+type Exp is
+   sorts Exp (*! implementedby EXP comparedby CMP_EXP printedby PRINT_EXP *)
+   opns 0 (*! implementedby ZERO *) : -> Exp
+        X1 (*! implementedby X1 *), 
+        X2 (*! implementedby X2 *), 
+        X3 (*! implementedby X3 *), 
+        X4 (*! implementedby X4 *),
+        W1 (*! implementedby W1 *), 
+        W2 (*! implementedby W2 *), 
+        W3 (*! implementedby W3 *), 
+        W4 (*! implementedby W4 *) : -> Exp
+        _+_ (*! implementedby PLUS *), 
+        _*_ (*! implementedby STAR *) : Exp, Exp -> Exp
+   eqns 
+      forall X:Exp
+      ofsort Exp
+         X + 0 = X;
+         0 + X = X;
+         X * 0 = 0;
+         0 * X = 0
+endtype

@@ -1,0 +1,24 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains the following files:
+
+ - bes.xml:         Notepad++ syntax mode for the BES format
+ - exp.xml:         Notepad++ syntax mode for the EXP format
+ - lnt.xml:         Notepad++ syntax mode for the LNT language
+ - lotos.xml:       Notepad++ syntax mode for the LOTOS language
+ - mcl.xml:         Notepad++ syntax mode for the MCL language
+ - nupn.xml:        Notepad++ syntax mode for the NUPN format
+ - rbc.xml:         Notepad++ syntax mode for the RBC format
+ - svl.xml:         Notepad++ syntax mode for the SVL language
+ - xtl.xml:         Notepad++ syntax mode for the XTL language
+
+How to use these files:
+-----------------------
+
+Follow the explanations given in Section 3 ("How to install user defined
+language file") of the following document:
+
+http://docs.notepad-plus-plus.org/index.php?title=User_Defined_Language_Files
+
+

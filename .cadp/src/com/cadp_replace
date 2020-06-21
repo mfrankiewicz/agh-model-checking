@@ -1,0 +1,130 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_replace
+#   Auteurs             :       Hubert Garavel et Wendelin Serwe
+#   Version             :       1.5
+#   Date                :       2018/05/25 17:30:30
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+ARCH=`$CADP/com/arch`
+
+# -----------------------------------------------------------------------------
+
+# verifications preliminaires
+
+if [ $# -ne 3 ]
+then
+	echo "$COMMAND: three arguments expected"
+	exit 1
+fi
+
+FILE="$1"
+DIR="$2"
+PATTERN="$3"
+
+if [ ! -f "$FILE" ]
+then
+	echo "$COMMAND: file \`\`$FILE'' does not exist"
+	exit 1
+fi
+
+if [ ! -d "$DIR" ]
+then
+        echo "$COMMAND: directory \`\`$DIR'' does not exist"
+        exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+TARGET="$DIR"/`basename "$FILE"`
+
+# phase (1) : on regarde si $TARGET n'existe pas
+
+case $ARCH in
+	sun5 | sun64 | sol86 | sol64 )
+		# sous les versions de Solaris anterieures a Solaris 11,
+		# la commande "test" predefinie de /bin/sh ne possede pas
+		# l'option -e
+		/usr/bin/test -e "$TARGET"
+		;;
+	* )
+		test -e "$TARGET"
+		;;
+esac
+		
+if [ $? != 0 ]
+then
+	# $TARGET n'existe pas
+	mv "$FILE" "$TARGET"
+	exit $?
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase (2) : on verifie que $TARGET est un fichier convenable
+
+if [ ! -f "$TARGET" ]
+then
+	echo "$COMMAND: file \`\`$TARGET'' is not a regular file"
+	exit 1
+fi
+
+if [ ! -r "$TARGET" ]
+then
+	echo "$COMMAND: file \`\`$TARGET'' is not readable"
+	exit 1
+fi
+
+if [ ! -w "$TARGET" ]
+then
+	echo "$COMMAND: file \`\`$TARGET'' is not writable"
+	exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase (3) : on examine le type du fichier $FILE
+
+case "$FILE" in 
+	*.bcg )
+		# suffixe connu correspondant a un fichier binaire
+		# on ecrase le fichier binaire sans menagement
+		mv "$FILE" "$TARGET"
+		exit $?
+		;;
+	*.exp | *.f | *.lib | *.lotos | *.ren | *.t )
+		# suffixe connu correspondant a un fichier texte
+		# on traitera ce fichier dans la phase (4)
+		;;
+	* )
+		# suffixe inconnu
+		echo "$COMMAND: unsupported file type"
+		exit 1
+esac
+
+# -----------------------------------------------------------------------------
+
+# phase (4) : on regarde si $TARGET contient la chaine $PATTERN
+
+grep "$PATTERN" "$TARGET" > /dev/null
+
+if [ $? != 0 ]
+then
+	# $TARGET ne contient pas la chaine $PATTERN
+	echo "$COMMAND: file \`\`$TARGET'' cannot be safely overwritten"
+	exit 1
+else
+	mv "$FILE" "$TARGET"
+	exit $?
+fi

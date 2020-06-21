@@ -1,0 +1,689 @@
+#! /bin/sh
+
+##############################################################################
+#                            A L D E B A R A N
+#-----------------------------------------------------------------------------
+#   INRIA Rhone-Alpes / VASY
+#   655, avenue de l'Europe
+#   38330 MONTBONNOT ST MARTIN cedex
+#-----------------------------------------------------------------------------
+#   Module             :       aldebaran
+#   Auteur             :       Frederic Lang (together with Hubert Garavel)
+#   Version            :       7.19
+#   Date               :       2018/05/23 17:33:59
+##############################################################################
+
+VERSION=7.6
+
+ARCH=`$CADP/com/arch`
+
+TMP_PREFIX=${CADP_TMP:-/tmp}/`basename "$0"`_tmp_$$
+
+#-----------------------------------------------------------------------------
+
+# variables used to store information from the command line
+
+COMMAND=
+STAT_OPTION=
+HIDE_RENAME_OPTIONS=
+OUTPUT=
+INPUT_1=
+INPUT_2=
+REQUIRED_INPUT_FILES=
+DIAGNOSTIC_FILE="aldebaran.bcg"
+
+#-----------------------------------------------------------------------------
+
+# CLEAN() removes temporary files created by this script
+
+CLEAN () {
+
+rm -f "$TMP_PREFIX"*
+}
+
+#-----------------------------------------------------------------------------
+
+# RAISE_ERROR() prints each argument as a separate line of an error message
+# and then exits
+
+RAISE_ERROR () {
+
+while [ "$1" ]
+do
+	echo "aldebaran: $1"
+	shift
+done
+CLEAN
+exit 1
+}
+
+#-----------------------------------------------------------------------------
+
+# RAISE_WARNING() prints a warning line
+
+RAISE_WARNING () {
+
+echo "aldebaran: $*"
+}
+
+#-----------------------------------------------------------------------------
+
+# SET_COMMAND() sets variable $COMMAND to $1 if it does not have a value
+# already
+
+SET_COMMAND () {
+
+if [ "$COMMAND" != "" ]
+then
+	RAISE_ERROR "too many commands: \"$COMMAND\" and \"$1\""
+else
+	COMMAND="$1"
+fi
+}
+
+#-----------------------------------------------------------------------------
+
+# EVAL_CADP() executes the command $1 and filters the messages from the
+# standard output to reduce noise
+
+EVAL_CADP () {
+
+eval "$1" | grep -v "exp2c" | grep -v "exp.open" | grep -v "bcg_open" | grep -v "cadp_cc" | tr -d '\015' | sed -e '1s/^$/ALDEBARAN_EMPTY_FIRST_LINE/' | grep -v ALDEBARAN_EMPTY_FIRST_LINE
+}
+
+#-----------------------------------------------------------------------------
+
+# SET_OPEN_TOOL() sets the variable $OPEN_TOOL as the name of the OPEN/CAESAR
+# compiler that can compile $1
+
+SET_OPEN_TOOL () {
+
+OPEN_TOOL=
+case "$1" in
+*.exp )
+	OPEN_TOOL=exp.open
+	;;
+*.bcg )
+	OPEN_TOOL=bcg_open
+	;;
+esac
+}
+
+#-----------------------------------------------------------------------------
+
+# BCG_MIN() minimizes the LTS corresponding to $2 using bcg_min with options
+# $1 and stores the result in file $3
+
+BCG_MIN () {
+
+case "$2" in
+*.exp )
+	EVAL_CADP "exp.open \"$2\" generator \"$TMP_INTERMEDIATE_1\""
+	rm -f "generator"
+	EVAL_CADP "bcg_min $1 \"$TMP_INTERMEDIATE_1\" \"$3\""
+	;;
+*.bcg )
+	EVAL_CADP "bcg_min $1 \"$2\" \"$3\""
+	;;
+esac
+}
+
+#-----------------------------------------------------------------------------
+
+# REDUCTOR() reduces $2 on the fly using reductor with options $1 and stores
+# the (not necessarily minimal) result in file $3
+
+REDUCTOR () {
+
+SET_OPEN_TOOL "$2"
+EVAL_CADP "$OPEN_TOOL \"$2\" reductor $1 \"$3\""
+rm -f "reductor"
+}
+
+#-----------------------------------------------------------------------------
+
+# HIDE_RENAME() hides and renames labels in $2 using exp.open/generator or
+# bcg_labels with options $1 and stores the result in file $3
+
+HIDE_RENAME () {
+
+case "$2" in
+*.exp )
+	EVAL_CADP "exp.open \"$2\" generator $1 \"$3\""
+	rm -f "generator"
+	;;
+*.bcg )
+	EVAL_CADP "bcg_labels $1 \"$2\" \"$3\""
+	;;
+esac
+}
+
+#-----------------------------------------------------------------------------
+
+# SET_REQUIRED_INPUT_FILES() sets variable $REQUIRED_INPUT_FILES with the
+# number of input files that should be given on the command line
+
+SET_REQUIRED_INPUT_FILES () {
+
+if [ "$REQUIRED_INPUT_FILES" = "" ]
+then
+	REQUIRED_INPUT_FILES=$1
+fi
+}
+
+#-----------------------------------------------------------------------------
+
+# phase 1) parsing aldebaran commands and options
+
+# $PRIMARY_LTS_INPUT_FORMAT is one of bcg or aut; if an input is an LTS that
+# is not in $PRIMARY_LTS_INPUT_FORMAT, it must be converted to that format
+# before $COMMAND can be executed; most often, bcg files are taken as inputs,
+# except where stated explicitly (see for instance the -sort command)
+PRIMARY_LTS_INPUT_FORMAT=bcg
+
+# $PRIMARY_LTS_OUTPUT_FORMAT is one of bcg or aut; if $COMMAND generates an
+# LTS, it will have format $PRIMARY_LTS_OUTPUT_FORMAT; this LTS will then be
+# converted into the format required by the user, if different; most often,
+# bcg files are produced, except where stated explicitly (see for instance
+# the -sort command)
+PRIMARY_LTS_OUTPUT_FORMAT=bcg
+
+while [ "$1" ]
+do
+	case "$1" in
+	-old )
+		RAISE_WARNING "option \"-old\" is no longer supported"
+		;;
+	-help | -version )
+		SET_COMMAND "$1"
+		SET_REQUIRED_INPUT_FILES 0
+		;;
+	-dead | -det | -info | -live )
+		SET_COMMAND "$1"
+		SET_REQUIRED_INPUT_FILES 1
+		;;
+	-sort )
+		SET_COMMAND "$1"
+		SET_REQUIRED_INPUT_FILES 1
+		# sorting is done on .aut files using the Unix sort command
+		PRIMARY_LTS_INPUT_FORMAT=aut
+		PRIMARY_LTS_OUTPUT_FORMAT=aut
+		;;
+	-path )
+		SET_COMMAND "$1"
+		SET_REQUIRED_INPUT_FILES 1
+		shift
+		case "$1" in
+		"" | -* )
+			RAISE_ERROR "missing or empty argument after \"$COMMAND\""
+			;;
+		esac
+		REACHABLE_NODE="$1"
+		;;
+	-dmin | -dcla | -dequ | -dord )
+		# only aldebaran.old could process those commands
+		RAISE_ERROR "option \"$1\" is no longer supported"
+		;;
+	-[bipso]min | -[bipso]cla )
+		SET_COMMAND "$1"
+		SET_REQUIRED_INPUT_FILES 1
+		;;
+	-[biops]equ | -[biops]ord )
+		SET_COMMAND "$1"
+		SET_REQUIRED_INPUT_FILES 2
+		;;
+	-output )
+		shift
+		case "$1" in
+		"" | -* )
+			RAISE_ERROR "missing or empty argument after \"-output\""
+			;;
+		esac
+		OUTPUT="$1"
+		;;
+	-std | -fly | -bdd )
+		;;
+	-stat )
+		STAT_OPTION="-stat"
+		;;
+	-bddsize | -labels )
+		OPT="$1"
+		shift
+		case "$1" in
+		"" | -* )
+			RAISE_ERROR "missing or empty argument after \"$OPT\""
+			;;
+		esac
+		RAISE_WARNING "option \"$OPT\" is no longer supported"
+		;;
+	-hide | -rename )
+		OPT=$1
+		shift
+		case "$1" in
+		"" | -* )
+			RAISE_ERROR "missing filename after \"$OPT\""
+			;;
+		esac
+		HIDE_RENAME_OPTIONS="$HIDE_RENAME_OPTIONS $OPT -total \"$1\""
+		;;
+	-* )
+		# every argument starting with '-' is an option
+		RAISE_ERROR "unknown option \"$1\""
+		;;
+	* )
+		# every argument that is not an option is an input file
+		# input files are stored in $INPUT_1 and $INPUT_2
+		if [ "$INPUT_1" ]
+		then
+			if [ "$INPUT_2" ]
+			then
+				RAISE_ERROR "too many input files: \"$INPUT_1\", \"$INPUT_2\", and \"$1\""
+			else
+				INPUT_2="$1"
+			fi
+		else
+			INPUT_1="$1"
+		fi
+		;;
+	esac
+	shift
+done
+
+# $COMMAND should be set now
+if [ "$COMMAND" = "" ]
+then
+	RAISE_ERROR "missing command"
+fi
+
+#-----------------------------------------------------------------------------
+
+# phase 2) checking number of inputs and input/output file formats
+
+if [ $REQUIRED_INPUT_FILES -eq 0 -a "$INPUT_1" != "" ]
+then
+	RAISE_ERROR "too many arguments: \"$INPUT_1\""
+fi
+
+if [ $REQUIRED_INPUT_FILES -le 1 -a "$INPUT_2" != "" ]
+then
+	RAISE_ERROR "too many arguments: \"$INPUT_1\" and \"$INPUT_2\""
+fi
+
+if [ $REQUIRED_INPUT_FILES -ge 1 -a "$INPUT_1" = "" ] || \
+   [ $REQUIRED_INPUT_FILES -ge 2 -a "$INPUT_2" = "" ]
+then
+	RAISE_ERROR "an argument (input filename) is missing"
+fi
+
+# $TMP_INPUT_1 and $TMP_INPUT_2 correspond to the files passed as inputs to
+# the CADP tools :
+#
+#	- if $INPUT_i is an explicit LTS not in $PRIMARY_LTS_INPUT_FORMAT,
+#	  then it is converted into this format and stored in $TMP_INPUT_i
+#
+#	- otherwise, $TMP_INPUT_i = $INPUT_i
+
+case "$INPUT_1" in
+"" )
+	# no input 1
+	;;
+*.exp )
+	TMP_INPUT_1="$INPUT_1"
+	;;
+*.bcg | *.aut | *.fc2 | *.seq )
+	FILE_FORMAT=`echo "$INPUT_1" | tr -d '\015' | sed -e 's/.*\(...\)$/\1/'`
+	if [ "$PRIMARY_LTS_INPUT_FORMAT" = "$FILE_FORMAT" ]
+	then
+		TMP_INPUT_1="$INPUT_1"
+	else
+		TMP_INPUT_1="${TMP_PREFIX}_input_1.$PRIMARY_LTS_INPUT_FORMAT"
+		EVAL_CADP "bcg_io \"$INPUT_1\" \"$TMP_INPUT_1\""
+	fi
+	;;
+* )
+	RAISE_ERROR "unknown extension for \"$INPUT_1\"" "\"bcg\", \"exp\", \"aut\", \"fc2\", or \"seq\" expected"
+	;;
+esac
+
+case "$INPUT_2" in
+"" )
+	# no input 2
+	;;
+*.exp )
+	TMP_INPUT_2="$INPUT_2"
+	;;
+*.bcg | *.aut | *.fc2 | *.seq )
+	FILE_FORMAT=`echo "$INPUT_1" | tr -d '\015' | sed -e 's/.*\(...\)$/\1/'`
+	if [ "$PRIMARY_LTS_INPUT_FORMAT" = "$FILE_FORMAT" ]
+	then
+		TMP_INPUT_2="$INPUT_2"
+	else
+		TMP_INPUT_2="${TMP_PREFIX}_input_2.$PRIMARY_LTS_INPUT_FORMAT"
+		EVAL_CADP "bcg_io \"$INPUT_2\" \"$TMP_INPUT_2\""
+	fi
+	;;
+* )
+	RAISE_ERROR "unknown extension for \"$INPUT_2\"" "\"bcg\", \"exp\", \"aut\", \"fc2\", or \"seq\" expected"
+	;;
+esac
+
+# the LTSs produced by the CADP tools are generally in the BCG format,
+# whereas aldebaran may require an output in the AUT format, possibly
+# on the standard output; a variable $TMP_OUTPUT is thus set to store
+# the (possibly temporary) BCG output generated by CADP; if the user
+# has not given an extension for the output, then it is considered as
+# ".bcg" by default
+
+case "$OUTPUT" in
+"" )
+	TMP_OUTPUT="${TMP_PREFIX}_output.$PRIMARY_LTS_OUTPUT_FORMAT"
+	;;
+*.aut | *.bcg )
+	FILE_FORMAT=`echo "$OUTPUT" | tr -d '\015' | sed -e 's/.*\(...\)$/\1/'`
+	if [ "$PRIMARY_LTS_OUTPUT_FORMAT" = "$FILE_FORMAT" ]
+	then
+		TMP_OUTPUT="$OUTPUT"
+	else
+		TMP_OUTPUT="${TMP_PREFIX}_output.$PRIMARY_LTS_OUTPUT_FORMAT"
+	fi
+	;;
+* )
+	OUTPUT="$OUTPUT.bcg"
+	TMP_OUTPUT="$OUTPUT"
+	;;
+esac
+
+# additional temporary intermediate files may be needed
+TMP_INTERMEDIATE_1="${TMP_PREFIX}_inter_1.bcg"
+TMP_INTERMEDIATE_2="${TMP_PREFIX}_inter_2.bcg"
+
+#-----------------------------------------------------------------------------
+
+# phase 3) processing hides and renames
+
+# hiding and renaming cannot be done using the -hide / -rename options of
+# reductor, because reductor hides / renames labels after the reduction (i.e.,
+# when writing transitions into the output bcg file), whereas aldebaran
+# must hide / rename labels before the reduction (i.e., when reading the
+# transitions from the input files)
+
+if [ "$HIDE_RENAME_OPTIONS" ]
+then
+	if [ "$TMP_INPUT_1" ]
+	then
+		HIDE_RENAME "$HIDE_RENAME_OPTIONS" "$TMP_INPUT_1" "$TMP_INTERMEDIATE_1"
+		TMP_INPUT_1="$TMP_INTERMEDIATE_1"
+	fi
+	if [ "$TMP_INPUT_2" ]
+	then
+		HIDE_RENAME "$HIDE_RENAME_OPTIONS" "$TMP_INPUT_2" "$TMP_INTERMEDIATE_2"
+		TMP_INPUT_2="$TMP_INTERMEDIATE_2"
+	fi
+fi
+
+#-----------------------------------------------------------------------------
+
+# phase 4) processing $COMMAND
+
+case "$COMMAND" in
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-version )
+	echo $VERSION
+	exit 0
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-help )
+	man aldebaran
+	exit 0
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-dead )
+	case "$TMP_INPUT_1" in
+	*.exp )
+		EXHIBITOR_DIAGNOSTIC="$TMP_PREFIX.seq"
+		EVAL_CADP "exp.open \"$TMP_INPUT_1\" exhibitor < \"$CADP\"/src/eucalyptus/deadlock.seq" | tee "$EXHIBITOR_DIAGNOSTIC"
+		grep "\*\*\* sequence found" "$EXHIBITOR_DIAGNOSTIC" > /dev/null
+		if test "$?" = 0
+		then
+		    # a deadlock was found
+		    bcg_io "$EXHIBITOR_DIAGNOSTIC" "$DIAGNOSTIC_FILE"
+		fi
+		rm -f "$EXHIBITOR_DIAGNOSTIC"
+		rm -f "exhibitor"
+		;;
+	*.bcg )
+		EVAL_CADP "bcg_info -deadlock \"$TMP_INPUT_1\""
+		;;
+	esac
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-det )
+	REDUCTOR "-trace" "$TMP_INPUT_1" "$TMP_OUTPUT"
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-info )
+	case "$TMP_INPUT_1" in
+	*.exp )
+		EVAL_CADP "exp.open -info \"$TMP_INPUT_1\""
+		;;
+	*.bcg )
+		EVAL_CADP "bcg_info \"$TMP_INPUT_1\""
+		;;
+	esac
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-live )
+	SET_OPEN_TOOL "$TMP_INPUT_1"
+	EVAL_CADP "$OPEN_TOOL \"$TMP_INPUT_1\" evaluator $STAT_OPTION -diag \"$DIAGNOSTIC_FILE\" \"$CADP/src/xtl/livelock.mcl\" | sed -e 's/FALSE/No livelock/' | sed -e 's/TRUE/There are livelocks/'"
+	rm -f "evaluator"
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-path )
+	case "$TMP_INPUT_1" in
+	*.exp )
+		RAISE_ERROR "cannot process EXP file with command \"$COMMAND\""
+		;;
+	*.bcg )
+		EVAL_CADP "bcg_info -path $REACHABLE_NODE \"$TMP_INPUT_1\""
+		;;
+	esac
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-sort )
+	case "$INPUT_1" in
+	*.exp )
+		RAISE_ERROR "cannot process EXP file with command \"$COMMAND\""
+		;;
+	esac
+	cat "$TMP_INPUT_1" | tr -d '\015' | sed -e '/^[ \t]*$/d' | head -n 1 > "$TMP_OUTPUT"
+	cat "$TMP_INPUT_1" | tr -d '\015' | sed -e '/^[ \t]*$/d' | "$CADP"/src/com/cadp_tail -n +2 | \
+		sort -b -t ',' -k1.2n,2 -k2d,2 -k3n >> "$TMP_OUTPUT"
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-*equ | -*ord )
+	# bcg_cmp will be used by default for comparisons, except when it is
+	# impossible for at least one of the following reasons:
+	# - bcg_cmp does not implement the equivalence relation
+	# - at least one of the inputs is a EXP file
+	# - a preorder comparison is required
+	TOOL="bcg_cmp"
+	case "$COMMAND" in
+	-b* )
+		RELATION="-strong"
+		;;
+	-i* )
+		RELATION="-taustar"
+		TOOL="bisimulator"
+		;;
+	-o* )
+		RELATION="-observational"
+		;;
+	-p* )
+		RELATION="-branching"
+		;;
+	-s* )
+		RELATION="-safety"
+		TOOL="bisimulator"
+		;;
+	esac
+	case "$TMP_INPUT_1" in
+	*.exp )
+		EXP_INPUT_1=TRUE
+		TOOL="bisimulator"
+		;;
+	esac
+	case "$TMP_INPUT_2" in
+	*.exp )
+		EXP_INPUT_2=TRUE
+		TOOL="bisimulator"
+		;;
+	esac
+	case "$COMMAND" in
+	-*equ )
+		COMPARISON="-equal"
+		;;
+	-*ord )
+		COMPARISON="-smaller"
+		TOOL="bisimulator"
+		;;
+	esac
+	if [ "$EXP_INPUT_1" = TRUE -a "$EXP_INPUT_2" = TRUE ]
+	then
+		RAISE_ERROR "cannot process two EXP files with command \"$COMMAND\"" "expand one as BCG or AUT file"
+	elif [ "$EXP_INPUT_2" = TRUE ]
+	then
+		# $INPUT_1 is a BCG file and $INPUT_2 a EXP file: then $INPUT_2
+		# must be the graph module for bisimulator; the arguments and
+		# potential preorder relation must be inversed
+		FILE_1="$TMP_INPUT_2"
+		FILE_2="$TMP_INPUT_1"
+		if [ "$COMPARISON" = "-smaller" ]
+		then
+			COMPARISON="-greater"
+		fi
+	else
+		FILE_1="$TMP_INPUT_1"
+		FILE_2="$TMP_INPUT_2"
+	fi
+	if [ "$TOOL" = "bisimulator" ]
+	then
+		SET_OPEN_TOOL "$FILE_1"
+		EVAL_CADP "$OPEN_TOOL \"$FILE_1\" bisimulator $STAT_OPTION -diag \"$DIAGNOSTIC_FILE\" $COMPARISON $RELATION \"$FILE_2\""
+		rm -f "bisimulator"
+	else
+		EVAL_CADP "bcg_cmp -diag \"$DIAGNOSTIC_FILE\" $RELATION \"$FILE_1\" \"$FILE_2\""
+	fi
+	;;
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+-*min | -*cla )
+	case "$COMMAND" in
+	-*cla )
+		OPT="-class"
+		;;
+	-*min )
+		OPT=
+		;;
+	esac
+	case "$COMMAND" in
+	-b* )
+		BCG_MIN "-strong $OPT" "$TMP_INPUT_1" "$TMP_OUTPUT"
+		;;
+	-p* )
+		BCG_MIN "-branching $OPT" "$TMP_INPUT_1" "$TMP_OUTPUT"
+		;;
+	-o* )
+		BCG_MIN "-observational $OPT" "$TMP_INPUT_1" "$TMP_OUTPUT"
+		;;
+	-i* )
+		if [ "$OPT" = "-class" ]
+		then
+			echo "classes d'equivalence intermediaires apres pre-traitements"
+		fi
+		REDUCTOR "-taustar $OPT" "$TMP_INPUT_1" "$TMP_INTERMEDIATE_1"
+		if [ "$OPT" = "-class" ]
+		then
+			echo "classes d'equivalence apres bisimulation"
+		fi		
+		BCG_MIN "-strong $OPT" "$TMP_INTERMEDIATE_1" "$TMP_OUTPUT"
+		;;
+	-s* )
+		if [ "$OPT" = "-class" ]
+		then
+			echo "classes d'equivalence intermediaires apres pre-traitements"
+		fi
+		REDUCTOR "-safety $OPT" "$TMP_INPUT_1" "$TMP_INTERMEDIATE_1"
+		if [ "$OPT" = "-class" ]
+		then
+			echo "classes d'equivalence apres bisimulation"
+		fi		
+		BCG_MIN "-strong $OPT" "$TMP_INTERMEDIATE_1" "$TMP_OUTPUT"
+		;;
+	esac
+	;;
+esac
+
+#-----------------------------------------------------------------------------
+
+# phase 5) finalizing the output, if any ($OUTPUT != ""):
+#
+#	- if no output file was specified on the command line, i.e.,
+#	  $OUTPUT = "", then $TMP_OUTPUT is converted into a temporary AUT
+#	  file, which is then displayed on standard output
+#
+#	- else, if $OUTPUT was in AUT format, then $TMP_OUTPUT (BCG) is
+#	  simply converted into $OUTPUT
+#
+#	- otherwise, $OUTPUT and $TMP_OUTPUT are the same files and nothing
+#	  has to be done
+
+if [ -f "$TMP_OUTPUT" -a "$OUTPUT" != "$TMP_OUTPUT" ]
+then
+	case "$OUTPUT" in
+	"" )
+		case "$TMP_OUTPUT" in
+		*.aut )
+			echo
+			cat "$TMP_OUTPUT"
+			;;
+		*.bcg )
+			EVAL_CADP "bcg_io \"$TMP_OUTPUT\" \"$TMP_PREFIX.aut\""
+			echo
+			cat "$TMP_PREFIX.aut"
+			;;
+		esac
+		;;
+	* )
+		EVAL_CADP "bcg_io \"$TMP_OUTPUT\" \"$OUTPUT\""
+		;;
+	esac
+fi
+
+#-----------------------------------------------------------------------------
+
+# phase 6) exiting
+
+CLEAN
+exit 0
+
+#-----------------------------------------------------------------------------
+

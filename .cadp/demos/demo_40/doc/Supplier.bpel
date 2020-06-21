@@ -1,0 +1,145 @@
+<!-- Supplier BPEL Process   -->
+<process name="Supplier" targetNamespace="http://ourExamples.demo.com" suppressJoinFailure="yes" xmlns:tns="http://ourExamples.demo.com" xmlns="http://schemas.xmlsoap.org/ws/2003/03/business-process/" xmlns:bpelx="http://schemas.oracle.com/bpel/extension" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ora="http://schemas.oracle.com/xpath/extension" xmlns:cx="http://schemas.collaxa.com/xpath/extension">
+	<bpelx:exec import="java.util.*"/>
+	<bpelx:exec import="com.demo.ourExamples.javaexec.DBConnection"/>
+	<bpelx:exec import="org.w3c.dom.Element"/>
+	<bpelx:exec import="java.rmi.RemoteException"/>
+	<bpelx:exec import="javax.naming.NamingException"/>
+	<!-- ================================================================= -->
+	<!-- PARTNERLINKS                                                      -->
+	<!-- List of services participating in this BPEL process               -->
+	<!-- ================================================================= -->
+	<partnerLinks>
+		<!-- The CentralStore is the service that requires the instantiation of this process -->
+		<partnerLink name="CentralStore" partnerLinkType="tns:SupplierOrder" partnerRole="orderRequester" myRole="orderProvider"/>
+	</partnerLinks>
+	<!-- ================================================================= -->
+	<!-- VARIABLES                                                         -->
+	<!-- List of messages and XML documents used within this BPEL process  -->
+	<!-- ================================================================= -->
+	<variables>
+		<!-- Reference to the message received by the CentraStore as a request for an order -->
+		<variable name="productRequest" messageType="tns:ProductRequestMessage"/>
+		<!-- Reference to the message to be sent back to the CentralStore as a response -->
+		<variable name="productResponse" messageType="tns:ProductResponseMessage"/>
+		<variable name="available" type="xsd:boolean"/>
+	</variables>
+	<!-- ================================================================= -->
+	<!-- ORCHESTRATION LOGIC                                               -->
+	<!-- Set of activities coordinating the flow of messages across the    -->
+	<!-- services integrated within this business process                  -->
+	<!-- ================================================================= -->
+	<sequence name="main">
+		<pick createInstance="yes">
+			<onMessage partnerLink="CentralStore" portType="tns:Supplier" operation="requestProduct" variable="productRequest">
+				<!-- invokation from the CentralStore -->
+				<sequence>
+					<!-- set default values -->
+					<assign>
+						<copy>
+							<from expression="false()"/>
+							<to variable="productResponse" part="response" query="/tns:ProductResponse/tns:response"/>
+						</copy>
+						<copy>
+							<from expression="false()"/>
+							<to variable="available"/>
+						</copy>
+					</assign>
+					<!-- open the connection to the db to verify the availability of the product -->
+					<bpelx:exec language="java" version="1.4">
+						<![CDATA[
+		           
+   	                //read the productId 
+   	                Element productId =(Element)getVariableData("productRequest", "order", "/tns:ProductRequest/tns:productId");                 
+                   System.out.println("prodotto "+(String) productId.getNodeValue());
+                                      
+                    //read the quanntity requested 
+   	                Element quantityReq =(Element)getVariableData("productRequest", "order", "/tns:ProductRequest/tns:quantity");    
+                        
+                    //read the DB name
+                    Element name=(Element)getVariableData("productRequest", "DBName");
+                    System.out.println("dbname "+(String) name.getNodeValue());   
+                    String dbName= (String) name.getNodeValue();
+                    System.out.println("dbname "+dbName);                
+                    //open the connection with the DB
+                    DBConnection cscDBC=new DBConnection(dbName);   
+                   
+                    
+                    if(cscDBC.isAvailable((String) productId.getNodeValue()))
+                    {
+                      System.out.println("siamo qui disponibile");
+                      setVariableData("available", new Boolean("true"));
+                    } /* if isAvailable */
+                    
+                    //close the connection with the DB
+                    cscDBC.close();
+                   
+                   ]]>
+					</bpelx:exec>
+					<switch>
+						<case condition="bpws:getVariableData('available')=true()">
+							<sequence>
+								<assign name="isAvailable">
+									<copy>
+										<from expression="true()">
+										</from>
+										<to variable="productResponse" part="response" query="/tns:ProductResponse/tns:response"/>
+									</copy>
+								</assign>
+								<!-- send the response to the CentralStore -->
+								<reply name="response" partnerLink="CentralStore" portType="tns:Supplier" operation="requestProduct" variable="productResponse"/>
+								<!-- if the order is accepted we update the stock -->
+								<bpelx:exec language="java" version="1.4">
+									<![CDATA[
+		             
+   	                             //we read the availability response  
+   	                             Element isAvailable =(Element)getVariableData("productResponse", "response", "/tns:ProductResponse/tns:response");                 
+   	                   
+                                //read the productId 
+   	                            Element productId =(Element)getVariableData("productRequest", "order", "/tns:ProductRequest/tns:productId"); 
+   	                   
+   	                            Boolean tempBool=new Boolean((String)isAvailable.getNodeValue());
+   	                   
+                                //the stock is upadated only if the requested product is available
+                                if(tempBool.booleanValue())
+                                {
+                                    //read the DB name
+                                    Element name=(Element)getVariableData("productRequest", "DBName");
+                    
+                                    String dbName= (String) name.getNodeValue();
+                             
+                                   DBConnection cscDBC=new DBConnection(dbName);   
+                            
+                                   //read the quantity requested 
+   	                               Element quantityReq =(Element)getVariableData("productRequest", "order", "/tns:ProductRequest/tns:quantity");    
+   	                         
+   	                               Integer tempInt = new Integer((String)quantityReq.getNodeValue());
+   	                        
+								   //update the quantity in the DB   	                        
+   	                               cscDBC.decrease((String)productId.getNodeValue(),tempInt.intValue());
+   	                        
+   	                               cscDBC.close();
+   	                             }                               
+                                ]]>
+								</bpelx:exec>
+							</sequence>
+						</case>
+						<otherwise>
+							<sequence>
+								<assign name="notAvailable">
+									<copy>
+										<from expression="false()">
+										</from>
+										<to variable="productResponse" part="response" query="/tns:ProductResponse/tns:response"/>
+									</copy>
+								</assign>
+								<!-- send the response to the CentralStore -->
+								<reply name="response" partnerLink="CentralStore" portType="tns:Supplier" operation="requestProduct" variable="productResponse"/>
+							</sequence>
+						</otherwise>
+					</switch>
+				</sequence>
+			</onMessage>
+		</pick>
+	</sequence>
+</process>

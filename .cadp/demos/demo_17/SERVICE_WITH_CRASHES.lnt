@@ -1,0 +1,24 @@
+module SERVICE_WITH_CRASHES (DATA) is
+
+process MAIN [OPEN, CLOSE, CRASH:ACCESS] is
+   var Ai:ADDR, E:ADDR_SET, U:ADDR_SET in
+      E := WHOLE_SET;
+      U := {};
+      loop
+         select
+            OPEN (?Ai) where member (Ai, E) and (U == {});
+            U := {Ai}
+         []
+            CLOSE (?Ai) where U == {Ai};
+            U := {}
+         []
+            CRASH (?Ai) where member (Ai, E);
+            E := remove (Ai, E);
+            U := remove (Ai, U)
+         end select
+      end loop
+   end var
+end process
+
+end module
+

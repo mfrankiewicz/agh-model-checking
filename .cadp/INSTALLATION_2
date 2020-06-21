@@ -1,0 +1,534 @@
+
+          CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+
+                            USER CUSTOMIZATION 
+
+	This document is intended to every user of the CADP software. It 
+provides instructions for setting up environment variables and startup files.
+These instructions should be followed strictly in order to ensure a proper
+functioning of the CADP software.
+
+	This document assumes that the latest available version of CADP is
+already installed and available on your site. For more information about
+CADP and its latest version, please consult the CADP Web page:
+		http://cadp.inria.fr
+
+-------------------------------------------------------------------------------
+
+1) Preliminary definitions
+
+   a) The "login shell" is the command interpreter associated to each user.
+      There are several shell interpreters ("sh", "bash", "csh", etc.).
+
+      On Unix, the login shell associated to an user named "USER" can be
+      obtained by typing either
+		grep "USER" /etc/passwd
+      or
+		ypcat passwd | grep "USER"
+      This should display one ligne in which the name of the login shell
+      occurs in last position.
+
+      On Windows, if you are using "Cygwin" in a standard way, your login
+      shell is "bash".
+
+   b) The "startup file" is a file containing a sequence of commands to
+      be executed every time you launch your login shell. Your startup
+      file is located in your home directory (see below) and its name
+      depends on your login shell:
+
+		login shell	-> name of the startup file
+		"sh"		-> "$HOME/.profile"
+		"dash"		-> "$HOME/.profile"
+		"bash"		-> "$HOME/.bash_profile"
+                                    (better than ".bashrc" or ".profile")
+		"csh"		-> "$HOME/.cshrc"
+		"ksh"		-> "$HOME/.kshrc"
+		"tcsh"		-> "$HOME/.tcshrc"
+		"zsh"		-> "$HOME/.zshenv"
+
+      On Linux/CentOS, Fedora, or RedHat, the default shell is "bash".
+      On Linux/Debian or Ubuntu, the default shell is "dash", but user
+      accounts are usually created with "bash" as the login shell.
+
+      On Windows/Cygwin, use "$HOME/.bash_profile" as your startup file.
+
+   c) An "environment variable" is a variable that stores information
+      at the operating system level. Environment variables exist both
+      in Unix and Windows.
+
+      Environment variables are usually assigned in your startup file;
+      we recommend this approach for setting up the CADP software.
+
+      Note: On Windows, user environment variables can also be assigned
+      in a different way, which depends on the version of Windows (see,
+      e.g., http://support.microsoft.com/kb/310519 for Windows XP). We
+      do not recommend such Windows-specific approach.
+
+   d) On recent operating systems, file names and directory names may
+      contain white spaces or non-ASCII Unicode characters. We recommend
+      to avoid such facilities, as they might create problems with some
+      CADP tools (especially those tools written as shell scripts), and
+      to use only ASCII characters in file and directory names.
+
+   e) On Windows, additional recommendations should be observed with
+      respect to the syntax of pathnames for directories and files, 
+      especially when setting environment variables:
+
+	- In pathnames, you should use the Unix syntax with /'s instead
+	  of the Windows syntax with :'s and \'s. For instance, you should
+	  write "/cadp" rather than "C:\cadp", "/tmp" rather than "C:\tmp",
+	  etc.
+
+	- The sub-string "//" should not be used in pathnames as it is 
+	  understood as a network path that refers to some remote machine.
+	  This is different from Unix, where "//" is equivalent to "/".
+	  Consequently, you should never set an environment variable to a 
+	  directory pathname ending with "/", as the CADP tools are likely
+	  to concatenate strings starting with an "/" after this directory
+	  pathname.
+
+-------------------------------------------------------------------------------
+
+2) Mandatory environment variables
+
+The following environment variables must be set before using CADP
+(we give below fragments of shell code to be inserted in your startup
+file in order to initialize these variables properly):
+
+	a) Variable $CADP should refer to the directory where the CADP 
+	   software is installed. To set this variable properly, you should
+	   locate the directory in which the CADP software is installed.
+	   We recommend not to install CADP in a directory with a pathname
+	   containing spaces or non-ASCII characters.
+
+	   On Unix:
+
+	   - The CADP software can either be installed in a public directory
+	     (such as "/opt/cadp" or "/usr/local/usr/cadp") if it is to be
+	     shared by several persons, or in a private directory (e.g.,
+	     $HOME/cadp) if it is to be used by one person only.
+
+	   On Windows:
+
+	   - The CADP software must be installed on the same disk as the
+	     Windows operating system itself. Usually, Windows is installed
+	     on "C:\", so should be CADP (installing CADP on another disk,
+	     such as "E:\" will not work). Thus, if the CADP software is
+	     installed in "C:\cadp" (which is the recommended location),
+	     the value of $CADP should be set to "/cadp"; do not set it
+	     to "/cygdrive/c/cadp" (incorrect) nor to "c:/cadp" (untested).
+
+	   - Caution should be taken when installing CADP manually on a file
+	     system that does not support symbolic links natively (e.g.,
+	     Microsoft's FAT and NTFS file systems). For more information,
+	     please consult file $CADP/INSTALLATION_4.
+
+	b) Variable $HOME should be set to the directory in which you store
+	   your files and documents. In particular, this directory should
+	   contain your startup file. We recommend not to put your home
+	   directory into a directory with a pathname containing spaces
+	   (such as, unfortunately, "/Documents and Settings") or non-ASCII
+	   characters.
+
+	   - On Unix, the $HOME variable is automatically set to your home 
+	     directory.
+
+	   - On Windows, the $HOME variable is not set by default, as this
+             variable is only used by Unix tools. If you are using Cygwin,
+	     the $HOME variable is set automatically to "/home/USER" (where
+	     USER is your login name) when you start a Cygwin "bash" window.
+
+	     You may wish to change this default value to another directory
+	     (for instance, the one in which you usually store your Windows
+	     documents). This can be done by setting the $HOME environment
+	     variable directly from Windows as explained above. You will 
+ 	     have to move your startup file to this directory.
+
+-------------------------------------------------------------------------------
+
+3) Optional environment variables
+
+The following environment variables can be set in order to customize the
+use of CADP to your own preferences (we give below fragments of shell code
+to be inserted in your startup file): 
+
+	a) Variable $EDITOR should refer to your favourite text editor.
+	   If this variable is not defined, its default value will be 
+	   "vi" for Solaris platforms, "vi" or another text editor for
+	   Linux platforms, and "write.exe" for Windows platforms.
+
+	   Note: for a number of popular text editors (including Emacs,
+	   Gedit, Gvim, jEdit, Nano, Notepad++, Pluma, Vim, XEmacs, etc.)
+	   CADP provides configuration files (in directory $CADP/ext)
+	   to benefit from colors and syntax-oriented edition.
+
+	b) Variable $NAVIGATOR should refer to your favourite Web browser.
+	   If this variable is not defined, CADP will attempt to find a
+	   Web browser available on the current machine (i.e., "firefox",
+	   "mozilla", etc. for Unix platforms, and "iexplore.exe" for Windows
+	   platforms).
+
+	c) Variable $PAGER should refer to your favourite utility for
+	   displaying and browsing text files. It is used by several CADP
+	   compilers to display files containing error messages or warnings.
+	   If this variable is not defined, its default value will be "more"
+	   for Unix platforms and "less -X -E" for Windows platforms.
+
+	d) Variable $CADP_BITS should be set either to "32" or "64" if
+	   - the current machine supports both 32-bit and 64-bit programs,
+	   - and if CADP binary programs exist both in 32-bit and 64-bit mode
+	     for this type of machine.
+	   If both conditions above are true, the value of $CADP_BITS will be
+	   used to select between 32-bit and 64-bit programs (if this variable
+	   is not defined, its default value will be "64"). In all other cases,
+	   it is not necessary to set the value of $CADP_BITS.
+
+	e) Variable $CADP_TMP should refer to the directory in which the
+	   CADP tools should create their temporary files. If this variable
+	   is not defined, its default value will be "/tmp". On Windows,
+	   "C:/tmp" should be a directory if Cygwin is installed in C:, or
+	   a symbolic link to "C:/cygwin/tmp" (resp., to "C:/cygwin64/tmp")
+	   if Cygwin is installed in "C:/cygwin" (resp. in "C:/cygwin64").
+	   Caution: not all the CADP tools use the $CADP_TMP variable
+	   (some tools might create temporary files at other places).
+
+	f) Variable $CADP_PDF_VIEWER should refer to the PDF (Portable
+	   Document Format) viewer available on the current machine. If this
+	   variable is not defined, its default value will be "gv" for Unix
+	   platforms, Adobe Acrobat Reader for Windows platforms, and "open"
+	   for macOS platforms.   
+
+	g) Variable $CADP_PS_VIEWER should refer to the PostScript viewer
+	   available on the current machine. If this variable is not defined,
+	   its default value will be "ghostview" for Unix platforms,
+	   "gsview32.exe" for Windows platforms, and "Preview" for macOS
+	   platforms. For more information, consult the "bcg_draw" manual
+	   page and the $CADP/INSTALLATION_WINDOWS file (if you are using
+	   Windows) and the $CADP/INSTALLATION_MACOS file (if you are
+	   using macOS).
+
+	h) Variable $CADP_PS_INTERPRETER should refer to the PostScript
+	   interpreter available on the current machine. If this variable 
+	   is not defined, its default value will be "gs" for Unix and
+	   macOS platforms, and "gswin32c.exe" for Windows platforms.
+	   For more information, consult the "bcg_draw" manual page and the
+	   $CADP/INSTALLATION_WINDOWS file (if you are using Windows) and
+	   the $CADP/INSTALLATION_MACOS file (if you are using macOS).
+
+	i) Variable $CADP_LANGUAGE can be set either to "english" (for
+	   English-speaking users) or to "french" (for French-speaking
+	   users). If this variable is not defined, its default value
+	   will be "english". Caution: not all the CADP tools offer this 
+	   choice (many tools have only English messages).
+
+	j) Variable $CADP_CC should refer to the C compiler available
+	   on the current machine. In general, we recommend not to define
+	   this variable, as the shell-script "$CADP/src/com/cadp_cc"
+	   will localize the appropriate C compiler ("cc" or "gcc") 
+	   automatically. However, there are a few particular situations
+	   in which you may have to set $CADP_CC yourself:
+
+	   - You want to pass special options to the C compiler: in such
+	     case, $CADP_CC can be set to the name of the compiler followed
+	     by the options (e.g., "gcc -ansi -O").
+
+	   - You want to use a non-standard C compiler, for instance EGCS:
+	     in such case, $CADP_CC should be set to the name of the C
+	     compiler (e.g., "/usr/bin/egcs"). This also applies if you
+	     want to use a debugging tool such as IBM Rationale's Purify
+	     or Parasoft's Insure; in such case, $CADP_CC can be set to the
+	     pathname of the tool, possibly followed by some options (e.g.,
+	     "/usr/local/pure/purify cc -g" or "insure").
+
+	   Notes to Solaris users:
+
+	   - As regards the C compiler, we recommend using the Oracle
+	     Developer Studio tools (formerly known as Sun Studio or Oracle
+	     Solaris Studio), which can be downloaded free of charge from
+	     the Oracle web site:
+             http://www.oracle.com/technetwork/server-storage/developerstudio
+	     Former versions of Developer Studio would install themselves
+	     in directory /opt/SUNWspro, whereas recent versions install in
+	     /opt/sunstudio12.1, /opt/solstudio12.2, /opt/solarisstudio12.4,
+	     /opt/developerstudio12.6, etc. For these recent versions, as the
+	     default installation path is fluctuant, we recommend to create
+	     a symbolic link named /opt/SUNWspro that points to the Developer
+	     Studio installation directory; this will enable the CADP tools
+	     to locate automatically the C compiler and related tools.
+	     
+	   - The GCC compiler can also be used. Normally, $CADP_CC needs
+	     not be set, unless $CADP_CC is located in some non-standard
+	     directory: in such case, $CADP_CC can be set to the pathname
+	     of the directory containing gcc or, even better, the GCC
+	     directory pathname should be added to the $PATH variable
+	     (see below).
+
+	   - On Solaris, you should never set the value of $CADP_CC to
+	     "/usr/ucb/cc", nor even to "cc" if your $PATH is configured
+	     in such a way that invoking "cc" invokes "/usr/ucb/cc". This
+	     could create unexpected segmentation faults and core dumps.
+
+	k) Variable $CADP_MEMORY should be set to the amount of memory
+	   (in bytes) that can be allocated by a process on the current
+	   machine; this amount of memory should include free memory and
+	   swap. This variable can be used by some CADP tools in order to
+	   optimize memory allocation. In general, we recommand not to define
+	   this variable (in such case, the amount of memory available will
+	   be computed automatically by the "$CADP/bin.*/cadp_memory" command),
+	   unless one wants to ensure deterministic executions (i.e., which
+	   do not depend on the amount of memory available at a given moment).
+
+-------------------------------------------------------------------------------
+
+4) Supported machine architectures
+
+   The CADP software is available for several types of machine architectures /
+   operating systems. The architectures / systems currently supported are:
+
+       "iX86"  : PC (Intel/AMD x86) running 32-bit Linux
+       "x64"   : PC (Intel/AMD x64) running 64-bit Linux
+       "sol86" : Sun (Intel, 32-bit mode) running Solaris 10 or 11
+       "sol64" : Sun (Intel, 64-bit mode) running Solaris 10 or 11
+       "win32" : PC (x86 or x64) running Windows 7, 8, or 10
+       "mac86" : Mac (Intel x86) running macOS 10.10 or higher
+       "mac64" : Mac (Intel x64) running macOS 10.10 or higher
+
+   Note: The "win32" architecture is supported by enhancing Windows with
+   Unix-like extensions. For information, read the instructions given in
+   file $CADP/INSTALLATION_WINDOWS, which are also available on the Web:
+       http://cadp.inria.fr/win32.html
+
+   Note: The "mac86" and "mac64" architectures require to enhance macOS with
+   complementary software that is not installed by default. For information,
+   read the instructions given in file $CADP/INSTALLATION_MACOS, which are
+   also available on the Web:
+       http://cadp.inria.fr/macOS.html
+
+   The shell-command '$CADP/com/arch' is used to determine the type of 
+   the current machine / system. In the sequel, variable $CADP_ARCH will
+   refer to the value returned by this command. 
+
+   Note: On Linux with either Intel/AMD x86, or Intel EM64T or AMD64
+   processors running in 32-bit mode, the value returned by '$CADP/com/arch'
+   ("iX86") is different from the value returned by the Linux command
+   '/bin/arch', which returns a value such as "i386", "i486", "i586", "i686",
+   etc. depending upon the processor type.
+
+   Note: On Linux with Intel EM64T or AMD64 processors running in 64-bit
+   mode, the value returned by '$CADP/com/arch' ("x64") is different from
+   the value returned by the Linux command '/bin/arch', which returns
+   "x86-64" or "x86_64".
+
+   Note: On Windows, the value returned by '$CADP/com/arch' is "win32".
+   Additional information regarding the kind of Unix-like extensions 
+   installed on your Windows system can be obtained by typing 
+   '$CADP/com/arch -detailed'.
+
+   Note: On macOS, the values returned by '$CADP/com/arch' ("mac86" in
+   32-bit mode or "mac64" in 64-bit mode) is different from the values
+   returned by the Darwin command '/usr/bin/arch', which returns either
+   "i386" or "x64_86'. 
+
+-------------------------------------------------------------------------------
+
+5) Setting the $PATH variable
+
+   The environment variable $PATH (or $path) should be modified in order
+   to include the two following directories:
+
+	"$CADP/com"       : this directory contains executable shell-scripts
+
+	"$CADP/bin.$CADP_ARCH" : this directory contains binary programs
+			         compiled for machine / system $CADP_ARCH.
+
+   The contents of the $PATH variable depends on both the architecture and
+   user's preference. Therefore, it is not possible to give here a normative
+   list of the directories that should be present in the $PATH variable. 
+   We can only report values of $PATH for which the CADP software has been 
+   found to work properly:
+
+   - On iX86 and x64:
+
+	A plausible value of variable PATH is
+	/bin:/usr/bin:/usr/bin/X11:$CADP/com:$CADP/bin.$CADP_ARCH
+
+   - On sol86 and sol64: 
+
+	A plausible value of variable PATH is 
+	/opt/SUNWspro/bin:/usr/ccs/bin:/bin:/lib:\
+	/usr/openwin/bin:$CADP/com:$CADP/bin.$CADP_ARCH
+
+   - On win32:
+
+	A plausible value of variable PATH is
+	     /bin:$ORIGINAL_PATH:$CADP/com:$CADP/bin.$CADP_ARCH
+        where ORIGINAL_PATH is a predefined variable equal, e.g., to
+             /cygdrive/c/WINDOWS/system32:/cygdrive/c/WINDOWS:\
+	     /cygdrive/c/WINDOWS/system32/Webm
+
+    - On mac86 and mac64:
+
+	A plausible value of variable PATH is
+	/bin:/usr/bin:/usr/X11R6/bin:/sw/bin:$CADP/com:$CADP/bin.$CADP_ARCH
+
+-------------------------------------------------------------------------------
+
+6) Setting the $MANPATH and $MANSECT variables
+
+   These environment variables define how the UNIX command "man" will search
+   for manual pages. Depending on the architecture, it may be necessary to
+   set these variables properly to access the CADP manual pages using "man".
+
+   Note: As an alternative to using "man", the CADP distribution provides
+   manual pages in HTML (in directory "$CADP/man/html") and in PDF (in
+   (directory "$CADP/man/pdf"). Whatever the format, the contents of manual
+   pages are the same. You can also read these pages online from:
+	http://cadp.inria.fr/man 
+
+   - On iX86 and x64: 
+
+	It is not necessary to set the $MANPATH and $MANSECT variables.
+	The "man" command will automatically search for manual pages in
+	directory "$CADP/man" if the $PATH variable contains directories of
+	the form "$CADP/com" and "$CADP/bin.*".
+
+	However, if you wish to set the $MANPATH variable yourself, you 
+	should not forget to include the empty directory, which represents 
+	the standard locations to be searched by default. For instance, if
+	you want to include the manual pages available in "$CADP/man", you
+	should also include the empty directory when setting $MANPATH, e.g.,
+           - ":$CADP/man" (empty directory first)
+           - "$CADP/man:" (empty directory last)
+	whereas setting $MANPATH to "$CADP/man" only will cause trouble,
+	since the manual pages available in "/usr/man" (for instance) will
+	no longer be available.
+
+   - On sol86, sol64, mac86, and mac64: 
+
+	The environment variable $MANPATH should be set in order to include
+	the directory "$CADP/man". The environment variable $MANSECT does
+	not need to be set or modified.
+
+   - On win32: 
+
+	The environment variable $MANPATH does not need to be set. Should 
+	it nevertheless be modified, the same remarks as for iX86/x64 apply.
+
+	Because the default configuration on Cygwin (file "/etc/man_db.conf")
+	does not give access to the local section of the manual pages, the
+	environment variable $MANSECT should be set to the value returned by
+	the command `$CADP/src/com/cadp_man -sections`.
+
+-------------------------------------------------------------------------------
+
+7) As a summary of the explanations given above, we give here some typical
+   fragments of shell to be inserted in your startup file. These fragments
+   are architecture-independent.
+
+   If your login shell is "sh", "bash", "ksh", etc., you should insert
+   in your startup file the following commands, possibly adapted (notice
+   that the "export" commands are mandatory, otherwise the values of 
+   the environment variables will not be transmitted to the sub-shells):
+
+	------------------------------------------------------------
+
+	CADP=/opt/cadp ; export CADP
+	# on Windows: CADP=/cadp ; export CADP
+
+	CADP_ARCH=`"$CADP"/com/arch`
+
+	PATH="$PATH:$CADP/bin.$CADP_ARCH:$CADP/com" ; export PATH
+
+	case "$CADP_ARCH" in
+	   sol86 | sol64 | mac86 | mac64 )
+	      MANPATH="${MANPATH:=/usr/share/man:/usr/local/man}:$CADP/man"
+	      export MANPATH
+	      ;;
+	   win32 )
+	      MANSECT=`$CADP/src/com/cadp_man -sections`
+	      export MANSECT
+	      ;;
+	esac
+
+	# Optionally, one can set the following environment variables
+        # EDITOR="..." ; export EDITOR
+        # NAVIGATOR="..." ; export NAVIGATOR
+	# CADP_BITS="..." ; export CADP_BITS
+        # CADP_PS_VIEWER="..." ; export CADP_PS_VIEWER
+        # CADP_PS_INTERPRETER="..." ; export CADP_PS_INTERPRETER
+	# CADP_LANGUAGE="french" ; export CADP_LANGUAGE
+	# CADP_CC="..." ; export CADP_CC
+
+	# It is not mandatory to set variable $CADP_TMP, which is set to
+	# "/tmp" by default, but the user can choose a different location,
+	# e.g.:
+	# CADP_TMP="$HOME/mytmp" ; export CADP_TMP
+
+	------------------------------------------------------------
+
+   On Unix, if your login shell is "csh", "tcsh", etc., you should insert
+   in your startup file ("~/.cshrc", "~/.tcshrc", etc.) the following
+   commands (possibly adapted):
+
+	------------------------------------------------------------
+
+	setenv CADP /opt/cadp
+	# on Windows: setenv CADP /cadp
+
+	set CADP_ARCH = `"$CADP"/com/arch`
+
+	set path = ($path "$CADP"/bin.$CADP_ARCH "$CADP"/com)
+
+	switch ("$CADP_ARCH")
+	   case sol86:
+	   case sol64:
+	   case mac86:
+	   case mac64:
+	      if ($?MANPATH) then
+	         setenv MANPATH "$MANPATH":"$CADP"/man
+	      else
+	         setenv MANPATH /usr/share/man:/usr/local/man:"$CADP"/man
+	      endif
+	   case win32:
+	      setenv MANSECT `$CADP/src/com/cadp_man -sections`
+	endsw
+
+	# Optionally, one can set the following environment variables
+        # setenv EDITOR "..."
+        # setenv NAVIGATOR "..."
+	# setenv CADP_BITS "..." 
+        # setenv CADP_PS_VIEWER "..."
+        # setenv CADP_PS_INTERPRETER "..."
+	# setenv CADP_LANGUAGE "french"
+	# setenv CADP_CC "..."
+
+	# It is not mandatory to set variable $CADP_TMP, which is set to
+	# "/tmp" by default, but the user can choose a different location,
+	# e.g.:
+	# setenv CADP_TMP "$HOME/mytmp"
+
+-------------------------------------------------------------------------------
+
+8) Then log out and log in again, in order to have your startup files 
+   executed.
+
+-------------------------------------------------------------------------------
+
+9) A self-diagnostic program is available to check if your installation is
+   correct and complete. This program will print useful diagnostic if
+   inconsistencies are found. This program can be invoked by typing: 
+
+	sh "$CADP"/com/tst
+
+   In particular, the "tst" command will verify the value of your $PATH
+   variable.
+
+-------------------------------------------------------------------------------
+
+10) If the CADP tools complain about protection violation, please read the 
+    instructions given in file $CADP/INSTALLATION_3 and the CADP FAQ.
+
+-------------------------------------------------------------------------------
+Written by Hubert Garavel. Last updated on 2018/05/25 18:00:48
+-------------------------------------------------------------------------------
+

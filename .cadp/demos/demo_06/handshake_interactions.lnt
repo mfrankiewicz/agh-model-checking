@@ -1,0 +1,62 @@
+module handshake_interactions (handshake_types) is
+
+-------------------------------------------------------------------------------
+
+channel CH is (ClientHello) end channel
+
+channel SH is (ServerHello) end channel
+
+channel HRR is (HelloRetryRequest) end channel
+
+channel EE is (EncryptedExtensions) end channel
+
+channel CR is (CertificateRequest) end channel
+
+channel C is (Certificate) end channel
+
+channel CV is (CertificateVerify) end channel
+
+channel F is (Finished) end channel
+
+channel EOED is (EndOfEarlyData) end channel
+
+channel A is (AlertType) end channel
+
+-------------------------------------------------------------------------------
+
+process ServerHello [serverh: SH] is
+  serverh (ServerHello (TLS12, 28byteRand, random_select_ciphers, {}))
+end process
+
+-------------------------------------------------------------------------------
+
+process HelloRetryRequest [hellorr: HRR] (in out HRR_p: HelloRetryRequest) is
+  HRR_p := HRR_p.{protocol_version -> TLS12,
+                  cipher_suite -> random_select_ciphers,
+                  extensions -> {}};
+  hellorr (HelloRetryRequest (HRR_p.protocol_version,
+                              HRR_p.cipher_suite, HRR_p.extensions))
+end process
+
+-------------------------------------------------------------------------------
+
+process CertificateVerify_S [certificatev: CV] is
+  certificatev (CertificateVerify ({rsa_pkcs1_sha256}, {}))
+end process
+
+-------------------------------------------------------------------------------
+
+process Finished_S [finished: F] is
+  finished (Finished (server_handshake_traffic_secret))
+end process
+
+-------------------------------------------------------------------------------
+
+process Finished_C [finished: F] is
+  finished (Finished (client_handshake_traffic_secret))
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

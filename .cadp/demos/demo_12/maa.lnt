@@ -1,0 +1,848 @@
+module MAA (BIT, OCTET, OCTETVALUES, BLOCK, BLOCKVALUES) is
+
+!nat_bits 32
+
+-------------------------------------------------------------------------------
+
+type Message is
+   !implementedby "MESSAGE"
+   list of Block
+   with "==", "!=", "head", "tail", "append", "reverse"
+end type
+
+-------------------------------------------------------------------------------
+
+function MakeMessage (N : Nat, in var INIT : Block, INCR : Block) : Message is
+   require N > 0;
+   var I : Nat, RESULT : Message in
+      RESULT := {};
+      for I := 1 while I <= N by I := I + 1 loop
+         RESULT := append (INIT, RESULT);
+         INIT := ADD (INIT, INCR)
+      end loop;
+      return RESULT
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function FIX1 (X : Block) : Block is
+   return (X OR x02040801) AND xBFEF7FDF   -- A = x02040801, C = xBFEF7FDF
+end function
+
+-------------------------------------------------------------------------------
+
+function FIX2 (X : Block) : Block is
+   return (X OR x00804021) AND x7DFEFBFF   -- B = x00804021, D = x7DFEFBFF
+end function
+
+-------------------------------------------------------------------------------
+
+function MUL1 (X, Y : Block) : Block is
+   var U, L, S, C : Block in
+      U := HIGH_MUL (X, Y);
+      L := LOW_MUL (X, Y);
+      S := ADD (U, L);
+      C := CAR (U, L);
+      assert (C == x00000000) or (C == x00000001);
+      return ADD (S, C)
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function MUL2 (X, Y : Block) : Block is
+   var U, L, D, F, S, E, C : Block in
+      U := HIGH_MUL (X, Y);
+      L := LOW_MUL (X, Y);
+      D := ADD (U, U);
+      E := CAR (U, U);
+      assert (E == x00000000) or (E == x00000001);
+      F := ADD (D, ADD (E, E));
+      S := ADD (F, L);
+      C := CAR (F, L);
+      assert (C == x00000000) or (C == x00000001);
+      return ADD (S, ADD (C, C))
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function MUL2A (X, Y : Block) : Block is
+   var U, L, D, S, C : Block in
+      U := HIGH_MUL (X, Y);
+      L := LOW_MUL (X, Y);
+      D := ADD (U, U);
+      S := ADD (D, L);
+      C := CAR (D, L);
+      assert (C == x00000000) or (C == x00000001);
+      return ADD (S, ADD (C, C))
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function NeedAdjust (O : Octet) : Bool is
+   return (O == x00) or (O == xFF)
+end function
+
+-------------------------------------------------------------------------------
+
+function AdjustCode (O : Octet) : Bit is
+   if NeedAdjust (O) then
+      return 1
+   else
+      return 0
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function Adjust (O, P : Octet) : Octet is
+   if NeedAdjust (O) then
+      return O xor P
+   else
+      return O
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+function PAT (X, Y : Block) : Octet is
+   return Octet (AdjustCode (X.O1), AdjustCode (X.O2),
+                 AdjustCode (X.O3), AdjustCode (X.O4),
+                 AdjustCode (Y.O1), AdjustCode (Y.O2),
+                 AdjustCode (Y.O3), AdjustCode (Y.O4))
+end function
+
+-------------------------------------------------------------------------------
+
+function BYT (X, Y : Block, out U, L : Block) is
+   var P : Octet in
+      P := PAT (X, Y);
+      U := Block (
+         Adjust (X.O1, Octet (0, 0, 0, 0, 0, 0, 0, P.B1)),
+         Adjust (X.O2, Octet (0, 0, 0, 0, 0, 0, P.B1, P.B2)),
+         Adjust (X.O3, Octet (0, 0, 0, 0, 0, P.B1, P.B2, P.B3)),
+         Adjust (X.O4, Octet (0, 0, 0, 0, P.B1, P.B2, P.B3, P.B4)));
+      L := Block (
+         Adjust (Y.O1, Octet (0, 0, 0, P.B1, P.B2, P.B3, P.B4, P.B5)),
+         Adjust (Y.O2, Octet (0, 0, P.B1, P.B2, P.B3, P.B4, P.B5, P.B6)),
+         Adjust (Y.O3, Octet (0, P.B1, P.B2, P.B3, P.B4, P.B5, P.B6, P.B7)),
+         Adjust (Y.O4, Octet (P.B1, P.B2, P.B3, P.B4, P.B5, P.B6, P.B7, P.B8)))
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function PreludeJ (J1 : Block,
+                   out var J12, J14, J16 : Block, out J18 : Block,
+                   out var J22, J24, J26 : Block, out J28 : Block) is
+   J12 := MUL1 (J1, J1);
+   J14 := MUL1 (J12, J12);
+   J16 := MUL1 (J12, J14);
+   J18 := MUL1 (J12, J16);
+   J22 := MUL2 (J1, J1);
+   J24 := MUL2 (J22, J22);
+   J26 := MUL2 (J22, J24);
+   J28 := MUL2 (J22, J26)
+end function
+
+-------------------------------------------------------------------------------
+
+function PreludeK (K1 : Block,
+                   out var K12, K14, K15, K17 : Block, out K19 : Block,
+                   out var K22, K24, K25, K27 : Block, out K29 : Block) is
+   K12 := MUL1 (K1, K1);
+   K14 := MUL1 (K12, K12);
+   K15 := MUL1 (K1, K14);
+   K17 := MUL1 (K12, K15);
+   K19 := MUL1 (K12, K17);
+   K22 := MUL2 (K1, K1);
+   K24 := MUL2 (K22, K22);
+   K25 := MUL2 (K1, K24);
+   K27 := MUL2 (K22, K25);
+   K29 := MUL2 (K22, K27)
+end function
+
+-------------------------------------------------------------------------------
+
+function Q (O : Octet) : Block is
+   var B : Block in
+      B := ADD (Block (x00, x00, x00, O), x00000001);
+      return LOW_MUL (B, B)
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function PreludeHJ (J14, J16, J18, J24, J26, J28 : Block,
+                    out H4, H6, H8 : Block) is
+   H4 := XOR (J14, J24);
+   H6 := XOR (J16, J26);
+   H8 := XOR (J18, J28)
+end function
+
+-------------------------------------------------------------------------------
+
+function PreludeHK (K15, K17, K19, K25, K27, K29 : Block, P : Octet,
+                    out var H0 : Block, out H5, H7, H9 : Block) is
+   H0 := XOR (K15, K25);
+   H5 := MUL2 (H0, Q (P));
+   H7 := XOR (K17, K27);
+   H9 := XOR (K19, K29)
+end function
+
+-------------------------------------------------------------------------------
+
+function Prelude (in J, K : Block, out X, Y, V, W, S, T : Block) is
+   var P : Octet,
+       J1, J12, J14, J16, J18, J22, J24, J26, J28 : Block,
+       K1, K12, K14, K15, K17, K22, K24, K25, K27, K19, K29 : Block,
+       H4, H0, H5, H6, H7, H8, H9 : Block in
+      BYT (J, K, ?J1, ?K1);
+      P := PAT (J, K);
+      PreludeJ (J1, ?J12, ?J14, ?J16, ?J18, ?J22, ?J24, ?J26, ?J28);
+      use J12;
+      use J22;
+      PreludeK (K1, ?K12, ?K14, ?K15, ?K17, ?K19, ?K22, ?K24, ?K25, ?K27, ?K29);
+      use K12;
+      use K22;
+      use K14;
+      use K24;
+      PreludeHJ (J14, J16, J18, J24, J26, J28, ?H4, ?H6, ?H8);
+      PreludeHK (K15, K17, K19, K25, K27, K29, P, ?H0, ?H5, ?H7, ?H9);
+      use H0;
+      BYT (H4, H5, ?X, ?Y);
+      BYT (H6, H7, ?V, ?W);
+      BYT (H8, H9, ?S, ?T)
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function MainLoop (in out X, Y, V : Block, W, B : Block) is
+   V := CYC (V);
+   var E, X1, Y1 : Block in
+      E := XOR (V, W);
+      X1 := MUL1  (XOR (X, B), FIX1 (ADD (XOR (Y, B), E)));
+      Y1 := MUL2A (XOR (Y, B), FIX2 (ADD (XOR (X, B), E)));
+      X := X1;
+      Y := Y1
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function Coda (in var X, Y, V : Block, W, S, T : Block, out Z : Block) is
+   -- Coda (two more iterations with S and T)
+   MainLoop (!?X, !?Y, !?V, W, S);
+   MainLoop (!?X, !?Y, !?V, W, T);
+   use V;
+   Z := XOR (X, Y)
+end function
+
+-------------------------------------------------------------------------------
+
+function MAC (J, K : Block, in var M : Message) : Block is
+   !implementedby "MAC"
+   -- this function is invoked externally from handwritten C code
+   require M != {};
+   var X, X0, Y, Y0, V, V0, W, S, T, Z : Block, N : Nat in
+      Prelude (J, K, ?X0, ?Y0, ?V0, ?W, ?S, ?T);
+      X := X0;
+      Y := Y0;
+      V := V0;
+      N := 0;
+      loop
+         MainLoop (!?X, !?Y, !?V, W, head (M));
+         M := tail (M);
+         N := N + 1;
+         if M == {} then
+            Coda (X, Y, V, W, S, T, ?Z);
+            return Z
+         elsif N == 256 then
+            Coda (X, Y, V, W, S, T, ?Z);
+            X := X0;
+            Y := Y0;
+            V := V0;
+            N := 0;
+            MainLoop (!?X, !?Y, !?V, W, Z)
+         end if
+      end loop
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function CHECK : int is
+   !implementedby "CHECK"
+   -- this function is invoked externally from handwritten C code
+   -- it checks the official test vectors given in [ISO 8730:1990] on the one
+   -- hand, and [ISO 8731-2:1992] and [Davies-Clayden-88] on the other hand
+
+   -- test vectors for function MUL1 - cf. Table 1 of [ISO 8731-2:1992]
+   assert MUL1 (x0000000F, x0000000E) == x000000D2;
+   assert MUL1 (xFFFFFFF0, x0000000E) == xFFFFFF2D;
+   assert MUL1 (xFFFFFFF0, xFFFFFFF1) == x000000D2;
+
+   -- test vectors for function MUL2 - cf. Table 1 of [ISO 8731-2:1992]
+   assert MUL2 (x0000000F, x0000000E) == x000000D2;
+   assert MUL2 (xFFFFFFF0, x0000000E) == xFFFFFF3A;
+   assert MUL2 (xFFFFFFF0, xFFFFFFF1) == x000000B6;
+
+   -- test vectors for function MUL2A - cf. Table 1 of [ISO 8731-2:1992]
+   assert MUL2A (x0000000F, x0000000E) == x000000D2;
+   assert MUL2A (xFFFFFFF0, x0000000E) == xFFFFFF3A;
+   assert MUL2A (x7FFFFFF0, xFFFFFFF1) == x800000C2;
+   assert MUL2A (xFFFFFFF0, x7FFFFFF1) == x000000C4;
+
+   -- test vectors for function BYT - cf. Table 2 of [ISO 8731-2:1992]
+   var U, L : Block in
+      BYT (x00000000, x00000000, ?U, ?L);
+      assert U == x0103070F;
+      assert L == x1F3F7FFF;
+      BYT (xFFFF00FF, xFFFFFFFF, ?U, ?L);
+      assert U == xFEFC07F0;
+      assert L == xE0C08000;
+      BYT (xAB00FFCD, xFFEF0001, ?U, ?L);
+      assert U == xAB01FCCD;
+      assert L == xF2EF3501
+   end var;
+
+   -- test vectors for function PAT - cf. Table 2 of [ISO 8731-2:1992]
+   assert PAT (x00000000, x00000000) == xFF;
+   assert PAT (xFFFF00FF, xFFFFFFFF) == xFF;
+   assert PAT (xAB00FFCD, xFFEF0001) == x6A;
+
+   var J1, J12, J14, J16, J18, J22, J24, J26, J28 : Block,
+       K1, K12, K14, K15, K17, K19, K22, K24, K25, K27, K29 : Block,
+       H0, H4, H5, H6, H7, H8, H9 : Block, P : Octet in
+      J1 := x00000100;
+      K1 := x00000080;
+      P  := x01;
+      PreludeJ (J1, ?J12, ?J14, ?J16, ?J18, ?J22, ?J24, ?J26, ?J28);
+      PreludeK (K1, ?K12, ?K14, ?K15, ?K17, ?K19, ?K22, ?K24, ?K25, ?K27, ?K29);
+      PreludeHJ (J14, J16, J18, J24, J26, J28, ?H4, ?H6, ?H8);
+      PreludeHK (K15, K17, K19, K25, K27, K29, P, ?H0, ?H5, ?H7, ?H9);
+
+      -- test vectors for J1i values - cf. Table 3 of [ISO 8731-2:1992]
+      assert J12 == x00010000;
+      assert J14 == x00000001;
+      assert J16 == x00010000;
+      assert J18 == x00000001;
+
+      -- test vectors for J2i values - cf. Table 3 of [ISO 8731-2:1992]
+      assert J22 == x00010000;
+      assert J24 == x00000002;
+      assert J26 == x00020000;
+      assert J28 == x00000004;
+
+      -- test vectors for Hi values - cf. Table 3 of [ISO 8731-2:1992]
+      assert H4 == x00000003;
+      assert H6 == x00030000;
+      assert H8 == x00000005;
+
+      -- test vectors for K1i values - cf. Table 3 of [ISO 8731-2:1992]
+      assert K12 == x00004000;
+      assert K14 == x10000000;
+      assert K15 == x00000008;
+      assert K17 == x00020000;
+      assert K19 == x80000000;
+
+      -- test vectors for K2i values - cf. Table 3 of [ISO 8731-2:1992]
+      assert K22 == x00004000;
+      assert K24 == x10000000;
+      assert K25 == x00000010;
+      assert K27 == x00040000;
+      assert K29 == x00000002;
+
+      -- test vectors for Hi values - cf. Table 3 of [ISO 8731-2:1992]
+      assert H0 == x00000018;
+      assert Q (P) == x00000004;
+      assert H5 == x00000060;
+      assert H7 == x00060000;
+      assert H9 == x80000002;
+
+      -- test vectors for function PAT - cf. Table 3 of [ISO 8731-2:1992]
+      assert PAT (H4, H5) == xEE;
+      assert PAT (H6, H7) == xBB;
+      assert PAT (H8, H9) == xE6;
+
+      -- test vectors for function BYT - logically inferred from Table 3
+      var U, L : Block in
+         BYT (H4, H5, ?U, ?L);
+         assert U == x01030703;
+         assert L == x1D3B7760;
+         BYT (H6, H7, ?U, ?L);
+         assert U == x0103050B;
+         assert L == x17065DBB;
+         BYT (H8, H9, ?U, ?L);
+         assert U == x01030705;
+         assert L == x80397302
+      end var
+   end var;
+
+   -- test vectors for function Main Loop - cf. Table 4 of [ISO 8731-2:1992]
+   var A, B, C, D, E, F, G, M, V, W, X0, X, Y0, Y, Z : Block in
+      -- first single-block message
+      -- input values given in Table 4
+      A  := x00000004;   -- fake "A" constant
+      B  := x00000001;   -- fake "B" constant
+      C  := xFFFFFFF7;   -- fake "C" constant
+      D  := xFFFFFFFB;   -- fake "D" constant
+      V  := x00000003;
+      W  := x00000003;
+      X0 := x00000002;
+      Y0 := x00000003;
+      M  := x00000005;
+      -- loop iteration described page 10 of [ISO 8731-2:1992]
+      V := CYC (V);            assert V == x00000006;
+      E := XOR (V, W);         assert E == x00000005;
+      X := XOR (X0, M);        assert X == x00000007;
+      Y := XOR (Y0, M);        assert Y == x00000006;
+      F := ADD (E, Y);         assert F == x0000000B;
+      G := ADD (E, X);         assert G == x0000000C;
+      F := OR (F, A);          assert F == x0000000F;
+      G := OR (G, B);          assert G == x0000000D;
+      F := AND (F, C);         assert F == x00000007;
+      G := AND (G, D);         assert G == x00000009;
+      X := MUL1 (X, F);        assert X == x00000031;
+      Y := MUL2A (Y, G);       assert Y == x00000036;
+      Z := XOR (X, Y);         assert Z == x00000007
+   end var;
+
+   var A, B, C, D, E, F, G, M, V, W, X0, X, Y0, Y, Z : Block in
+      -- second single-block message
+      -- input values given in Table 4
+      A  := x00000001;   -- fake "A" constant
+      B  := x00000004;   -- fake "B" constant
+      C  := xFFFFFFF9;   -- fake "C" constant
+      D  := xFFFFFFFC;   -- fake "D" constant
+      V  := x00000003;
+      W  := x00000003;
+      X0 := xFFFFFFFD;
+      Y0 := xFFFFFFFC;
+      M  := x00000001;
+      -- loop iteration described page 10 of [ISO 8731-2:1992]
+      V := CYC (V);            assert V == x00000006;
+      E := XOR (V, W);         assert E == x00000005;
+      X := XOR (X0, M);        assert X == xFFFFFFFC;
+      Y := XOR (Y0, M);        assert Y == xFFFFFFFD;
+      F := ADD (E, Y);         assert F == x00000002;
+      G := ADD (E, X);         assert G == x00000001;
+      F := OR (F, A);          assert F == x00000003;
+      G := OR (G, B);          assert G == x00000005;
+      F := AND (F, C);         assert F == x00000001;
+      G := AND (G, D);         assert G == x00000004;
+      X := MUL1 (X, F);        assert X == xFFFFFFFC;
+      Y := MUL2A (Y, G);       assert Y == xFFFFFFFA;
+      Z := XOR (X, Y);         assert Z == x00000006
+   end var;
+
+   var A, B, C, D, E, F, G, M, V, W, X0, X, Y0, Y, Z : Block in
+      -- third single-block message
+      -- input values given in Table 4
+      A  := x00000001;   -- fake "A" constant
+      B  := x00000002;   -- fake "B" constant
+      C  := xFFFFFFFE;   -- fake "C" constant
+      D  := x7FFFFFFD;   -- fake "D" constant
+      V  := x00000007;
+      W  := x00000007;
+      X0 := xFFFFFFFD;
+      Y0 := xFFFFFFFC;
+      M  := x00000008;
+      -- loop iteration described page 10 of [ISO 8731-2:1992]
+      V := CYC (V);            assert V == x0000000E;
+      E := XOR (V, W);         assert E == x00000009;
+      X := XOR (X0, M);        assert X == xFFFFFFF5;
+      Y := XOR (Y0, M);        assert Y == xFFFFFFF4;
+      F := ADD (E, Y);         assert F == xFFFFFFFD;
+      G := ADD (E, X);         assert G == xFFFFFFFE;
+      F := OR (F, A);          assert F == xFFFFFFFD;
+      G := OR (G, B);          assert G == xFFFFFFFE;
+      F := AND (F, C);         assert F == xFFFFFFFC;
+      G := AND (G, D);         assert G == x7FFFFFFC;
+      X := MUL1 (X, F);        assert X == x0000001E;
+      Y := MUL2A (Y, G);       assert Y == x0000001E;
+      Z := XOR (X, Y);         assert Z == x00000000
+   end var;
+
+   var A, B, C, D, E, F, G, M, V, W, X0, X, Y0, Y, Z : Block in
+      -- three-block message: first block
+      -- input values given in Table 4
+      A  := x00000002;   -- fake "A" constant
+      B  := x00000001;   -- fake "B" constant
+      C  := xFFFFFFFB;   -- fake "C" constant
+      D  := xFFFFFFFB;   -- fake "D" constant
+      V  := x00000001;
+      W  := x00000001;
+      X0 := x00000001;
+      Y0 := x00000002;
+      M  := x00000000;
+      -- loop iteration described page 10 of [ISO 8731-2:1992]
+      V := CYC (V);            assert V == x00000002;
+      E := XOR (V, W);         assert E == x00000003;
+      X := XOR (X0, M);        assert X == x00000001;
+      Y := XOR (Y0, M);        assert Y == x00000002;
+      F := ADD (E, Y);         assert F == x00000005;
+      G := ADD (E, X);         assert G == x00000004;
+      F := OR (F, A);          assert F == x00000007;
+      G := OR (G, B);          assert G == x00000005;
+      F := AND (F, C);         assert F == x00000003;
+      G := AND (G, D);         assert G == x00000001;
+      X := MUL1 (X, F);        assert X == x00000003;
+      Y := MUL2A (Y, G);       assert Y == x00000002;
+      Z := XOR (X, Y);         assert Z == x00000001;
+
+      -- three-block message: second block
+      -- input values given in Table 4
+      A  := x00000002;   -- fake "A" constant
+      B  := x00000001;   -- fake "B" constant
+      C  := xFFFFFFFB;   -- fake "C" constant
+      D  := xFFFFFFFB;   -- fake "D" constant
+      V  := x00000002;
+      W  := x00000001;
+      X0 := x00000003;
+      Y0 := x00000002;
+      M  := x00000001;
+      -- loop iteration described page 10 of [ISO 8731-2:1992]
+      V := CYC (V);            assert V == x00000004;
+      E := XOR (V, W);         assert E == x00000005;
+      X := XOR (X0, M);        assert X == x00000002;
+      Y := XOR (Y0, M);        assert Y == x00000003;
+      F := ADD (E, Y);         assert F == x00000008;
+      G := ADD (E, X);         assert G == x00000007;
+      F := OR (F, A);          assert F == x0000000A;
+      G := OR (G, B);          assert G == x00000007;
+      F := AND (F, C);         assert F == x0000000A;
+      G := AND (G, D);         assert G == x00000003;
+      X := MUL1 (X, F);        assert X == x00000014;
+      Y := MUL2A (Y, G);       assert Y == x00000009;
+      Z := XOR (X, Y);         assert Z == x0000001D;
+
+      -- three-block message: third block
+      -- input values given in Table 4
+      A  := x00000002;   -- fake "A" constant
+      B  := x00000001;   -- fake "B" constant
+      C  := xFFFFFFFB;   -- fake "C" constant
+      D  := xFFFFFFFB;   -- fake "D" constant
+      V  := x00000004;
+      W  := x00000001;
+      X0 := x00000014;
+      Y0 := x00000009;
+      M  := x00000002;
+      -- loop iteration described page 10 of [ISO 8731-2:1992]
+      V := CYC (V);            assert V == x00000008;
+      E := XOR (V, W);         assert E == x00000009;
+      X := XOR (X0, M);        assert X == x00000016;
+      Y := XOR (Y0, M);        assert Y == x0000000B;
+      F := ADD (E, Y);         assert F == x00000014;
+      G := ADD (E, X);         assert G == x0000001F;
+      F := OR (F, A);          assert F == x00000016;
+      G := OR (G, B);          assert G == x0000001F;
+      F := AND (F, C);         assert F == x00000012;
+      G := AND (G, D);         assert G == x0000001B;
+      X := MUL1 (X, F);        assert X == x0000018C;
+      Y := MUL2A (Y, G);       assert Y == x00000129;
+      Z := XOR (X, Y);         assert Z == x000000A5
+   end var;
+
+   -- test vectors of Annex E.3.3 of [ISO 8730:1990]
+   var A, B, C, D, E, F, G, M, V0, V, W, X0, X, Y0, Y : Block in
+      A  := x02040801;   -- true "A" constant
+      B  := x00804021;   -- true "B" constant
+      C  := xBFEF7FDF;   -- true "C" constant
+      D  := x7DFEFBFF;   -- true "D" constant
+      X0 := x21D869BA;
+      Y0 := x7792F9D4;
+      V0 := xC4EB1AEB;
+      W  := xF6A09667;
+      M  := x0A202020;
+      -- loop iteration on the first block M
+      V := CYC (V0);           assert V == x89D635D7;
+      E := XOR (V, W);         assert E == x7F76A3B0;
+      X := XOR (X0, M);        assert X == x2BF8499A;
+      Y := XOR (Y0, M);        assert Y == x7DB2D9F4;
+      F := ADD (E, Y);         assert F == xFD297DA4;
+      G := ADD (E, X);         assert G == xAB6EED4A;
+      F := OR (F, A);          assert F == xFF2D7DA5;
+      G := OR (G, B);          assert G == xABEEED6B;
+      F := AND (F, C);         assert F == xBF2D7D85;
+      G := AND (G, D);         assert G == x29EEE96B;
+      X := MUL1 (X, F);        assert X == x0AD67E20;
+      Y := MUL2A (Y, G);       assert Y == x30261492
+   end var;
+
+   -- test vectors for the whole algorithm - cf. Table 5 of [ISO 8731-2:1992]
+   var J, K, X, Y, V, W, S, T, Z, M1, M2 : Block in
+      -- first column of Table 5
+      J  := x00FF00FF;
+      K  := x00000000;
+      M1 := x55555555;
+      M2 := xAAAAAAAA;
+      assert PAT (J, K) == xFF;
+      Prelude (J, K, ?X, ?Y, ?V, ?W, ?S, ?T);
+      assert X == x4A645A01;
+      assert Y == x50DEC930;
+      assert V == x5CCA3239;
+      assert W == xFECCAA6E;
+      assert S == x51EDE9C7;
+      assert T == x24B66FB5;
+      -- 1st MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, M1);
+      assert X == x48B204D6;
+      assert Y == x5834A585;
+      -- 2nd MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, M2);
+      assert X == x4F998E01;
+      assert Y == xBE9F0917;
+      -- Coda: MainLoop iteration with S
+      MainLoop (!?X, !?Y, !?V, W, S);
+      assert X == x344925FC;
+      assert Y == xDB9102B0;
+      -- Coda: MainLoop iteration with T
+      MainLoop (!?X, !?Y, !?V, W, T);
+      use V;
+      assert X == x277B4B25;
+      assert Y == xD636250D;
+      Z  := XOR (X,Y);
+      assert Z == xF14D6E28
+   end var;
+
+   var J, K, X, Y, V, W, S, T, Z, M1, M2 : Block in
+      -- second column of Table 5
+      J  := x00FF00FF;
+      K  := x00000000;
+      M1 := xAAAAAAAA;
+      M2 := x55555555;
+      assert PAT (J, K) == xFF;
+      Prelude (J, K, ?X, ?Y, ?V, ?W, ?S, ?T);
+      assert X == x4A645A01;
+      assert Y == x50DEC930;
+      assert V == x5CCA3239;
+      assert W == xFECCAA6E;
+      assert S == x51EDE9C7;
+      assert T == x24B66FB5;
+      -- 1st MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, M1);
+      assert X == x6AEBACF8;
+      assert Y == x9DB15CF6;
+      -- 2nd MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, M2);
+      assert X == x270EEDAF;
+      assert Y == xB8142629;
+      -- Coda: MainLoop iteration with S
+      MainLoop (!?X, !?Y, !?V, W, S);
+      assert X == x29907CD8;
+      assert Y == xBA92DB12;
+      -- Coda: MainLoop iteration with T
+      MainLoop (!?X, !?Y, !?V, W, T);
+      use V;
+      assert X == x28EAD8B3;
+      assert Y == x81D10CA3;
+      Z  := XOR (X,Y);
+      assert Z == xA93BD410
+   end var;
+
+   var J, K, X, Y, V, W, S, T, Z, M1, M2 : Block in
+      -- third column of Table 5
+      J  := x55555555;
+      K  := x5A35D667;
+      M1 := x00000000;
+      M2 := xFFFFFFFF;
+      assert PAT (J, K) == x00;
+      Prelude (J, K, ?X, ?Y, ?V, ?W, ?S, ?T);
+      assert X == x34ACF886;
+      assert Y == x7397C9AE;
+      assert V == x7201F4DC;
+      assert W == x2829040B;
+      assert S == x9E2E7B36;
+      assert T == x13647149;
+      -- 1st MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, M1);
+      assert X == x2FD76FFB;
+      assert Y == x550D91CE;
+      -- 2nd MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, M2);
+      assert X == xA70FC148;
+      assert Y == x1D10D8D3;
+      -- Coda: MainLoop iteration with S
+      MainLoop (!?X, !?Y, !?V, W, S);
+      assert X == xB1CC1CC5;
+      assert Y == x29C1485F;
+      -- Coda: MainLoop iteration with T
+      MainLoop (!?X, !?Y, !?V, W, T);
+      use V;
+      assert X == x288FC786;
+      assert Y == x9115A558;
+      Z  := XOR (X,Y);
+      assert Z == xB99A62DE
+   end var;
+
+   var J, K, X, Y, V, W, S, T, Z, M1, M2 : Block in
+      -- fourth column of Table 5
+      J  := x55555555;
+      K  := x5A35D667;
+      M1 := xFFFFFFFF;
+      M2 := x00000000;
+      assert PAT (J, K) == x00;
+      Prelude (J, K, ?X, ?Y, ?V, ?W, ?S, ?T);
+      assert X == x34ACF886;
+      assert Y == x7397C9AE;
+      assert V == x7201F4DC;
+      assert W == x2829040B;
+      assert S == x9E2E7B36;
+      assert T == x13647149;
+      -- 1st MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, M1);
+      assert X == x8DC8BBDE;
+      assert Y == xFE4E5BDD;
+      -- 2nd MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, M2);
+      assert X == xCBC865BA;
+      assert Y == x0297AF6F;
+      -- Coda: MainLoop iteration with S
+      MainLoop (!?X, !?Y, !?V, W, S);
+      assert X == x3CF3A7D2;
+      assert Y == x160EE9B5;
+      -- Coda: MainLoop iteration with T
+      MainLoop (!?X, !?Y, !?V, W, T);
+      use V;
+      assert X == xD0482465;
+      assert Y == x7050EC5E;
+      Z  := XOR (X,Y);
+      assert Z == xA018C83B
+   end var;
+
+   var J, K, X, Y, V, W, S, T : Block in
+      -- test vectors of Annex E.3.3 of [ISO 8730:1990]
+      J  := xE6A12F07;
+      K  := x9D15C437;
+      Prelude (J, K, ?X, ?Y, ?V, ?W, ?S, ?T);
+      assert X == x21D869BA;
+      assert Y == x7792F9D4;
+      assert V == xC4EB1AEB;
+      assert W == xF6A09667;
+      assert S == x6D67E884;
+      assert T == xA511987A
+   end var;
+
+   -- test vectors for the whole algorithm
+   var B, J, K, X, Y, V, W, S, T : Block, M : Message in
+      J := x80018001;
+      K := x80018000;
+
+      -- test mentioned in Table 6 of [ISO 8731-2:1992]
+      -- iterations on a message containg 20 null blocks
+      Prelude (J, K, ?X, ?Y, ?V, ?W, ?S, ?T);
+      B := x00000000;
+      -- 1st MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x303FF4AA;
+      assert Y == x1277A6D4;
+      -- 2nd MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x55DD063F;
+      assert Y == x4C49AAE0;
+      -- 3rd MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x51AF3C1D;
+      assert Y == x5BC02502;
+      -- 4th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == xA44AAAC0;
+      assert Y == x63C70DBA;
+      -- 5th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x4D53901A;
+      assert Y == x2E80AC30;
+      -- 6th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x5F38EEF1;
+      assert Y == x2A6091AE;
+      -- 7th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == xF0239DD5;
+      assert Y == x3DD81AC6;
+      -- 8th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == xEB35B97F;
+      assert Y == x9372CDC6;
+      -- 9th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x4DA124A1;
+      assert Y == xC6B1317E;
+      -- 10th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x7F839576;
+      assert Y == x74B39176;
+      -- 11th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x11A9D254;
+      assert Y == xD78634BC;
+      -- 12th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == xD8804CA5;
+      assert Y == xFDC1A8BA;
+      -- 13th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x3F6F7248;
+      assert Y == x11AC46B8;
+      -- 14th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == xACBC13DD;
+      assert Y == x33D5A466;
+      -- 15th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x4CE933E1;
+      assert Y == xC21A1846;
+      -- 16th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == xC1ED90DD;
+      assert Y == xCD959B46;
+      -- 17th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x3CD54DEB;
+      assert Y == x613F8E2A;
+      -- 18th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == xBBA57835;
+      assert Y == x07C72EAA;
+      -- 19th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == xD7843FDC;
+      assert Y == x6AD6E8A4;
+      -- 20th MainLoop iteration
+      MainLoop (!?X, !?Y, !?V, W, B);
+      assert X == x5EBA06C2;
+      assert Y == x91896CFA;
+      -- Coda: MainLoop iteration with S
+      MainLoop (!?X, !?Y, !?V, W, S);
+      assert X == x1D9C9655;
+      assert Y == x98D1CC75;
+      -- Coda: MainLoop iteration with T
+      MainLoop (!?X, !?Y, !?V, W, T);
+      use V;
+      assert X == x7BC180AB;
+      assert Y == xA0B87B77;
+      M := MakeMessage (20, x00000000, x00000000);
+      assert MAC (J, K, M) == xDB79FBDC;
+
+      -- supplementary tests added by H. Garavel and L. Marsso
+      M := MakeMessage (16, x00000000, x07050301);
+      assert MAC (J, K, M) == x8CE37709;
+
+      M := MakeMessage (256, x00000000, x07050301);
+      assert MAC (J, K, M) == x717153D5;
+
+      M := MakeMessage (4100, x00000000, x07050301);
+      assert MAC (J, K, M) == x7783C51D
+   end var;
+   return 0
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

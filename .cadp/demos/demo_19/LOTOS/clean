@@ -1,0 +1,5 @@
+#!/bin/sh
+
+rm -f cell.lotos cell.c cell.h *.o debug.seq
+$CADP/src/com/cadp_rm driver
+

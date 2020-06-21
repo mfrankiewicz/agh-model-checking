@@ -1,0 +1,11 @@
+specification TURNTABLE [REQ, INF, CMD, ADD, REM, ERR, LAMBDA, MU, NU] : noexit
+
+behaviour
+
+library ARCHITECTURE endlib
+
+where
+
+library COMPONENTS, CONTROLLER_PAR endlib
+
+endspec

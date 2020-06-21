@@ -1,0 +1,226 @@
+(** Part of the  abstract data type definitions used in the cache memory that
+    are common to all scenarii:
+     - operations on sets of pairs (address, data)
+     - operations on memories
+     - operations on buffers of triples (address, data, boolean) where the
+       boolean is not always meaningful
+
+    For all relations such as append, update, etc. used in the program, I add
+    (if necessary and possible) a function with the same effect; this is the
+    point that makes the execution impossible for a type elem containing two
+    elements e1 and e2.
+
+    The variable part of the data type definitions defining the number of
+    processes involved in the scenario (type INDEX) and the particular data
+    abstraction of (address, datum) pairs (type ELEM) is in a separate file,
+    one for each scenario.
+**)
+
+(*---------------------------------------------------------------------------*)
+
+(** type SET_of_elem implementing sets of elements of type ELEM **)
+
+type SET_of_elem is ELEM, BOOLEAN
+   sorts set_of_elem
+   opns
+      empt_s (*! constructor *) : -> set_of_elem
+      Add (*! constructor *) : set_of_elem, elem -> set_of_elem
+      Insert : set_of_elem, elem -> set_of_elem
+      (* function Insert on sets; uses Add only if a new element is inserted;
+         elements of ELEM are inserted in the arbitrary order defined by less *)
+      IsIn : set_of_elem, elem -> Bool
+      (* "is element of" test of sets *)
+      notIsIn : set_of_elem, elem -> Bool
+      (* "is NOT element of" test of sets *)
+      (* not necessarily the negation of IsIn *)
+      _eq_ : set_of_elem, set_of_elem -> Bool
+      (* equality *)
+      allowed : set_of_elem, elem, set_of_elem -> Bool
+      (* predicate used in PI : true if a given element is not yet in a first
+         given set and if its insertion into it yields the second given set *)
+   eqns
+      forall x, y : elem,
+             S, Sp : set_of_elem
+      ofsort set_of_elem
+         Insert (S, eps) = S;
+         Insert (empt_s, x) = Add (empt_s, x);
+         Insert (Add (S, x), x) = Add (S, x);
+         (y less x) => Insert (Add (S, y), x) = Add (Add (S, y), x);
+         (* else *) Insert (Add (S, y), x) = Add (Insert (S, x), y);
+      ofsort Bool
+         IsIn (empt_s, x) = false;
+         IsIn (S, eps) = true;
+         IsIn (Add (S, x), x) = true;
+         IsIn (Add (S, y), x) = IsIn (S, x);
+         notIsIn (empt_s, x) = true;
+         notIsIn (S, eps) = true;
+         (* else *) notIsIn (S, x) = not (IsIn (S, x));
+         S eq S = true;
+         S eq Sp = false;
+         allowed (S, x, Sp) = notIsIn (S, x) and (Sp eq Insert (S, x));
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+(** TYPE MEMORY **)
+
+type MEM_of_elem is ELEM, BOOLEAN
+   sorts mem_of_elem
+   opns
+      empt_m (*! constructor *) : -> mem_of_elem
+      (* empty memory *)
+      Add (*! constructor *) : mem_of_elem, elem -> mem_of_elem
+      Insert : mem_of_elem, elem -> mem_of_elem
+      (* funtion insert on memories; uses the function first on ELEM in order
+         to decide if a given element must be added or replaces one already in
+         the memory; uses the arbitrary order less on ELEM in order to have a
+         normal form *)
+      cl : mem_of_elem, elem -> mem_of_elem
+      (* eleminates a given pair (address,datum) given by  element of ELEM
+         from a given memory *)
+      _eq_ : mem_of_elem, mem_of_elem -> Bool
+      (* equality on memories *)
+      ok : mem_of_elem, elem -> Bool
+      (* test if a given pair (address,datum) given by element of ELEM is in
+         a given MEMORY *)
+      update : mem_of_elem, elem, mem_of_elem -> Bool
+      (* predicate representing function Insert *)
+      clear : mem_of_elem, elem, mem_of_elem -> Bool
+      (* predicate representing function cl *)
+   eqns
+      forall x, y : elem,
+             M, Mp : mem_of_elem
+      ofsort mem_of_elem
+         Insert (M, eps) = M;
+         Insert (empt_m, x) = Add (empt_m, x);
+         first (x, y) => Insert (Add (M, y), x) = Add (M, x);
+         not (first (x, y)) and (y less x) => Insert (Add (M, y), x) = Add (Add (M, y), x);
+         (* else *) Insert (Add (M, y), x) = Add (Insert (M, x), y);
+      ofsort Bool
+         ok (M, eps) = true;
+         ok (empt_m, x) = false;
+         ok (Add (M, x), x) = true;
+         first (x, y) => ok (Add (M, y), x) = false;
+         (* else *) ok (Add (M, y), x) = ok (M, x);
+         M eq M = true;
+         M eq Mp = false;
+      ofsort mem_of_elem
+         cl (empt_m, x) = empt_m;
+         cl (M, eps) = M;
+         first (x, y) => cl (Add (M, x), y) = M;
+         (* else *) cl (Add (M, x), y) = Add (cl (M, y), x);
+      ofsort Bool
+         update (M, x, Mp) = (Mp eq Insert (M, x));
+         (* definition of clear supposes that ok (M, el) = true when applied *)
+         clear (M, x, Mp) = (Mp eq cl (M, x));
+endtype
+
+(*---------------------------------------------------------------------------*)
+
+(** TYPE BUFFER implementing functions and predicates on buffers containing
+     triples ((address, datum), boolean), where the pair (address, elem) is
+     represented by an element of ELEM 
+**)
+
+type BUF_of_elem is ELEM, BOOLEAN, NATURAL
+   sorts buf_of_elem
+   opns
+      empt_b (*! constructor *) : -> buf_of_elem
+      (* empty buffer *)
+      overflow (*! constructor *) : -> buf_of_elem
+      (* non-expected buffer; too long *)
+      Add (*! constructor *) : buf_of_elem, elem, Bool -> buf_of_elem
+      Enqueue : buf_of_elem, elem, Bool -> buf_of_elem
+      (* special function enqueue on buffers: eliminates consecutive elements
+	 distinguished at most by the boolean (true wins over false) *)
+      Dequeue : buf_of_elem -> buf_of_elem
+      (* function dequeue on buffers *)
+      Card : buf_of_elem -> NAT
+      (* length of the buffer ; the maximal allowed length depends on the
+	 type ELEM and the scenario *)
+      _eq_ : buf_of_elem, buf_of_elem -> Bool
+      (* equality *)
+      empty : buf_of_elem -> Bool
+      (* emptiness test on buffers *)
+      empty_true : buf_of_elem -> Bool
+      (* a given buffer contains no element with boolean = true *)
+      NotIn : buf_of_elem, elem -> Bool
+      (* tests if there exists a triple in a given buffer containing a given
+         element of ELEM *)
+      ff : buf_of_elem, elem -> Bool
+      (* predicate "is first element of" on buffers *)
+      first : buf_of_elem, elem -> Bool
+      (* predicate "is first element of" on abstract buffers *)
+      append : buf_of_elem, elem, Bool, buf_of_elem -> Bool
+      (* predicate defining function Enqueue *)
+      tail : buf_of_elem, elem, buf_of_elem -> Bool
+      (* predicate defining the inverse function of Enqueue (meaning that the
+         dequeued element may or may not be eliminated) *)
+   eqns
+      forall x, y : elem,
+             B, Bp : buf_of_elem,
+             bit, bit2 : Bool
+      ofsort NAT
+         Card (empt_b) = 0;
+         Card (overflow) = max_Card + 1; (* max_Card defined in TYPE ELEM *)
+         Card (Add (B, x, bit)) = 1 + Card (B);
+      ofsort buf_of_elem
+         Enqueue (B, eps, bit) = B;
+         Enqueue (empt_b, x, bit) = Add (empt_b, x, bit);
+         Enqueue (overflow, x, bit) = overflow;
+         Enqueue (Add (B, x, bit), x, bit) = Add (B, x, bit);
+         Enqueue (Add (B, x, bit), x, bit2) = Add (B, x, true);
+         Card (Add (B, x, bit)) lt max_Card => Enqueue (Add (B, x, bit), y, bit2) = Add (Add (B, x, bit), y, bit2);
+         (* else *) Enqueue (Add (B, x, bit), y, bit2) = overflow;
+         (* Dequeue not defined for empt_b ! *)
+         Dequeue (Add (empt_b, x, bit)) = empt_b;
+         Dequeue (overflow) = overflow;
+         (* B not empty *)
+         Dequeue (Add (B, x, bit)) = Add (Dequeue (B), x, bit);
+      ofsort bool
+         ff (empt_b, x) = false;
+         ff (overflow, x) = false;
+         ff (Add (empt_b, x, bit), x) = true;
+         ff (Add (empt_b, x, bit), y) = false;
+         ff (Add (B, x, bit), y) = ff (B, y);
+      ofsort Bool
+         B eq B = true;
+         B eq Bp = false;
+         empty (empt_b) = true;
+         (* else *) empty (B) = false;
+         empty_true (empt_b) = true;
+         empty_true (overflow) = false; (* may be true also *)
+         empty_true (Add (B, x, true)) = false;
+         empty_true (Add (B, x, false)) = empty_true (B);
+         NotIn (B, eps) = true;
+         NotIn (overflow, x) = false;
+         NotIn (empt_b, x) = true;
+         NotIn (Add (B, x, bit), x) = false;
+         NotIn (Add (B, x, bit), y) = NotIn (B, y);
+         first (B, eps) = true;
+         first (overflow, x) = true;
+         first (B, x) = ff (B, x);
+         Append (B, x, bit, Bp) = Bp eq Enqueue (B, x, bit);
+         tail (B, eps, B) = true;
+         tail (overflow, x, overflow) = true;
+         (* the following line is useless as oveflow should never be reached *)
+         Card (B) eq max_Card => tail (overflow, x, B) = true;
+         ff (B, x) => tail (B, x, Bp) = (B eq Bp) or (Bp eq Dequeue (B));
+         (* in all other cases *)
+         tail (B, x, Bp) = false;
+         (* A problem : in the buffer Out Dequeue (Out, x, Out) is not allowed;
+            this leads to overflow of buffer Inn; moreover, as each element is
+            written at ost once, this looks reasonnable.
+            The functional version of Append is simply Enqueue, and the
+            functional version of tail replaces each actual transition by
+               1) one transition replacing Bp by B
+               2) one transition replacing B by dequeue (B) under the condition
+                  that not (empty (B) or B eq overflow) and ff(B,x).
+            This forbids the successors of overflow with card = max_Card, but
+            it is not a problem as the value overflow should never be reached.
+            The solution of the above problem : 2 transitions for Inn and
+            1 transition for Out *)
+endtype
+
+(*---------------------------------------------------------------------------*)
+

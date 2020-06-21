@@ -1,0 +1,994 @@
+
+(* ------------------------------------------------------------------------- *)
+
+(*
+ * This library is used by the lnt2lotos translator
+ *
+ * It is built upon several predefined libraries of CADP (X_ACTION, X_BOOLEAN,
+ * X_NATURAL, X_INTEGER, X_REAL, X_CHARACTER, and X_STRING), which are
+ * enriched by adding more operators.
+ *
+ * Note: all binary infix operators must also be declared as binary prefix
+ * operators so as to respect lnt2lotos conventions.
+ *)
+
+(* ------------------------------------------------------------------------- *)
+
+library X_ACTION endlib
+
+(* ------------------------------------------------------------------------- *)
+
+library X_BOOLEAN endlib
+
+type BooleanExtensions is Boolean
+   opns
+      _==_ (*! implementedby ADT_EQ_BIS_BOOL external *),
+      _<>_ (*! implementedby ADT_NE_BIS_BOOL external *),
+      _/=_ (*! implementedby ADT_NE_TER_BOOL external *),
+      _lt_ (*! implementedby ADT_LT_BOOL external *),
+      _<_  (*! implementedby ADT_LT_BIS_BOOL external *),
+      _le_ (*! implementedby ADT_LE_BOOL external *),
+      _<=_ (*! implementedby ADT_LE_BIS_BOOL external *),
+      _gt_ (*! implementedby ADT_GT_BOOL external *),
+      _>_  (*! implementedby ADT_GT_BIS_BOOL external *),
+      _ge_ (*! implementedby ADT_GE_BOOL external *),
+      _>=_ (*! implementedby ADT_GE_BIS_BOOL external *) : Bool, Bool -> Bool
+
+      (* binary prefix operators *)
+      and      (*! implementedby ADT_AND_BIS external *),
+      and_then (*! implementedby ADT_AND_THEN_BIS external *),
+      or       (*! implementedby ADT_OR_BIS external *),
+      or_else  (*! implementedby ADT_OR_ELSE_BIS external *),
+      xor      (*! implementedby ADT_XOR_BIS external *),
+      implies  (*! implementedby ADT_IMPLIES_BIS external *),
+      iff      (*! implementedby ADT_IFF_BIS external *),
+      eq (*! implementedby ADT_EQ_TER_BOOL external *),
+      == (*! implementedby ADT_EQ_QUA_BOOL external *),
+      ne (*! implementedby ADT_NE_QUA_BOOL external *),
+      <> (*! implementedby ADT_NE_QUI_BOOL external *),
+      /= (*! implementedby ADT_NE_SEX_BOOL external *),
+      lt (*! implementedby ADT_LT_TER_BOOL external *),
+      <  (*! implementedby ADT_LT_QUA_BOOL external *),
+      le (*! implementedby ADT_LE_TER_BOOL external *),
+      <= (*! implementedby ADT_LE_QUA_BOOL external *),
+      gt (*! implementedby ADT_GT_TER_BOOL external *),
+      >  (*! implementedby ADT_GT_QUA_BOOL external *),
+      ge (*! implementedby ADT_GE_TER_BOOL external *),
+      >= (*! implementedby ADT_GE_QUA_BOOL external *) : Bool, Bool -> Bool
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+library X_NATURAL endlib
+
+type NaturalExtensions is Natural
+   opns
+      _/=_ (*! implementedby ADT_NE_TER_NAT external *) : Nat, Nat -> Bool
+      GET__1 (*! implementedby ADT_PRED_NAT external *) : Nat -> Nat
+      Hex__A (*! implementedby ADT_NA external *),
+      Hex__B (*! implementedby ADT_NB external *),
+      Hex__C (*! implementedby ADT_NC external *),
+      Hex__D (*! implementedby ADT_ND external *),
+      Hex__E (*! implementedby ADT_NE external *),
+      Hex__F (*! implementedby ADT_NF external *) : -> Nat
+      _BinNum_ (*! implementedby ADT_BINNUM_NAT external *),
+      _OctNum_ (*! implementedby ADT_OCTNUM_NAT external *),
+      _DecNum_ (*! implementedby ADT_DECNUM_NAT external *),
+      _HexNum_ (*! implementedby ADT_HEXNUM_NAT external *) : Nat, Nat -> Nat
+
+      (* binary prefix operators *)
+      +   (*! implementedby ADT_PLUS_BIS_NAT external *),
+      -   (*! implementedby ADT_MINUS_BIS_NAT external *),
+      *   (*! implementedby ADT_MULT_BIS_NAT external *),
+      div (*! implementedby ADT_DIV_BIS_NAT external *),
+      mod (*! implementedby ADT_MOD_BIS_NAT external *),
+      **  (*! implementedby ADT_POWER_BIS_NAT external *),
+      BinNum (*! implementedby ADT_BINNUM_BIS_NAT external *),
+      OctNum (*! implementedby ADT_OCTNUM_BIS_NAT external *),
+      DecNum (*! implementedby ADT_DECNUM_BIS_NAT external *),
+      HexNum (*! implementedby ADT_HEXNUM_BIS_NAT external *) : Nat, Nat -> Nat
+      eq (*! implementedby ADT_EQ_TER_NAT external *),
+      == (*! implementedby ADT_EQ_QUA_NAT external *),
+      ne (*! implementedby ADT_NE_QUA_NAT external *),
+      <> (*! implementedby ADT_NE_QUI_NAT external *),
+      /= (*! implementedby ADT_NE_SEX_NAT external *),
+      lt (*! implementedby ADT_LT_TER_NAT external *),
+      <  (*! implementedby ADT_LT_QUA_NAT external *),
+      le (*! implementedby ADT_LE_TER_NAT external *),
+      <= (*! implementedby ADT_LE_QUA_NAT external *),
+      gt (*! implementedby ADT_GT_TER_NAT external *),
+      >  (*! implementedby ADT_GT_QUA_NAT external *),
+      ge (*! implementedby ADT_GE_TER_NAT external *),
+      >= (*! implementedby ADT_GE_QUA_NAT external *) : Nat, Nat -> Bool
+
+      (* binary infix operators *)
+      _min_ (*! implementedby ADT_MIN_BIS_NAT external *),
+      _max_ (*! implementedby ADT_MAX_BIS_NAT external *),
+      _gcd_ (*! implementedby ADT_GCD_BIS_NAT external *),
+      _scm_ (*! implementedby ADT_SCM_BIS_NAT external *) : Nat, Nat -> Nat
+
+(*
+   eqns
+      forall m, n:Nat
+      ofsort Bool
+         m /= n = m <> n;
+      ofsort Nat
+         GET__1 (Succ (n)) = n;
+      ofsort Nat
+         Hex__A = Succ (9);
+         Hex__B = Succ (Hex__A);
+         Hex__C = Succ (Hex__B);
+         Hex__D = Succ (Hex__C);
+         Hex__E = Succ (Hex__D);
+         Hex__F = Succ (Hex__E);
+      ofsort Nat
+         BinNum (m, n) = (2 * m) + n;
+         m BinNum n = BinNum (m, n);
+      ofsort Nat
+         OctNum (m, n) = (8 * m) + n;
+         m OctNum n = OctNum (m, n);
+      ofsort Nat
+         DecNum (m, n) = (succ (9) * m) + n;
+         m DecNum n = DecNum (m, n);
+      ofsort Nat
+         HexNum (m, n) = (succ (Hex__F) * m) + n;
+         m HexNum n = HexNum (m, n);
+*)
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+library X_INTEGER endlib
+
+type IntegerExtensions is Integer
+   opns
+      _/=_ (*! implementedby ADT_NE_TER_INT external *) : Int, Int -> Bool
+      GET__1 : Int -> Nat
+      Hex__A (*! implementedby ADT_IA external *),
+      Hex__B (*! implementedby ADT_IB external *),
+      Hex__C (*! implementedby ADT_IC external *),
+      Hex__D (*! implementedby ADT_ID external *),
+      Hex__E (*! implementedby ADT_IE external *),
+      Hex__F (*! implementedby ADT_IF external *) : -> Int
+      NegNum (*! implementedby ADT_NEGNUM_INT external *) : Int -> Int
+      (* since version 4G, NegNum is deprecated and replaced with unary '-' *)
+      _BinNum_ (*! implementedby ADT_BINNUM_INT external *),
+      _OctNum_ (*! implementedby ADT_OCTNUM_INT external *),
+      _DecNum_ (*! implementedby ADT_DECNUM_INT external *),
+      _HexNum_ (*! implementedby ADT_HEXNUM_INT external *) : Int, Int -> Int
+
+      (* binary prefix operators *)
+      + (*! implementedby ADT_PLUS_BIS_INT external *),
+      - (*! implementedby ADT_MINUS_BIS_INT external *),
+      * (*! implementedby ADT_MULT_BIS_INT external *),
+      div (*! implementedby ADT_DIV_BIS_INT external *),
+      rem (*! implementedby ADT_REM_BIS_INT external *),
+      mod (*! implementedby ADT_MOD_BIS_INT external *),
+      BinNum (*! implementedby ADT_BINNUM_BIS_INT external *),
+      OctNum (*! implementedby ADT_OCTNUM_BIS_INT external *),
+      DecNum (*! implementedby ADT_DECNUM_BIS_INT external *),
+      HexNum (*! implementedby ADT_HEXNUM_BIS_INT external *) : Int, Int -> Int
+      ** (*! implementedby ADT_POWER_BIS_INT external *) : Int, Nat -> Int
+      eq (*! implementedby ADT_EQ_TER_INT external *),
+      == (*! implementedby ADT_EQ_QUA_INT external *),
+      ne (*! implementedby ADT_NE_QUA_INT external *),
+      <> (*! implementedby ADT_NE_QUI_INT external *),
+      /= (*! implementedby ADT_NE_SEX_INT external *),
+      lt (*! implementedby ADT_LT_TER_INT external *),
+      <  (*! implementedby ADT_LT_QUA_INT external *),
+      le (*! implementedby ADT_LE_TER_INT external *),
+      <= (*! implementedby ADT_LE_QUA_INT external *),
+      gt (*! implementedby ADT_GT_TER_INT external *),
+      >  (*! implementedby ADT_GT_QUA_INT external *),
+      ge (*! implementedby ADT_GE_TER_INT external *),
+      >= (*! implementedby ADT_GE_QUA_INT external *) : Int, Int -> Bool
+
+      (* binary infix operators *)
+      _min_ (*! implementedby ADT_MIN_BIS_INT external *),
+      _max_ (*! implementedby ADT_MAX_BIS_INT external *) : Int, Int -> Int
+
+   eqns
+      forall n : Nat
+      ofsort Nat
+         GET__1 (Pos (n)) = n;
+         GET__1 (Neg (n)) = n;
+(*
+   eqns
+      forall m, n:Int
+      ofsort Bool
+         m /= n = m <> n;
+      ofsort Int
+         Hex__A = Succ (9);
+         Hex__B = Succ (Hex__A);
+         Hex__C = Succ (Hex__B);
+         Hex__D = Succ (Hex__C);
+         Hex__E = Succ (Hex__D);
+         Hex__F = Succ (Hex__E);
+      ofsort Int
+         NegNum (m) = - (m);
+      ofsort Int
+         BinNum (m, n) = (2 * m) + n;
+         m BinNum n = BinNum (m, n);
+      ofsort Int
+         OctNum (m, n) = (8 * m) + n;
+         m OctNum n = OctNum (m, n);
+      ofsort Int
+         DecNum (m, n) = (succ (9) * m) + n;
+         m DecNum n = DecNum (m, n);
+      ofsort Int
+         HexNum (m, n) = (succ (Hex__F) * m) + n;
+         m HexNum n = HexNum (m, n);
+*)
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+library X_REAL endlib
+
+type RealExtensions is RealNumber, String
+   opns
+      - (*! implementedby ADT_UMINUS_REAL external *) : Real -> Real
+      abs (*! implementedby ADT_ABS_REAL external *) : Real -> Real
+      _+_ (*! implementedby ADT_PLUS_REAL external *),
+      _-_ (*! implementedby ADT_MINUS_REAL external *),
+      _*_ (*! implementedby ADT_MULT_REAL external *),
+      _/_ (*! implementedby ADT_DIV_REAL external *),
+      _**_ (*! implementedby ADT_POWER_REAL external *) : Real, Real -> Real
+      _/=_ (*! implementedby ADT_NE_TER_REAL external *) : Real, Real -> Bool
+
+      (* binary prefix operators *)
+      eq (*! implementedby ADT_EQ_TER_REAL external *),
+      == (*! implementedby ADT_EQ_QUA_REAL external *),
+      ne (*! implementedby ADT_NE_QUA_REAL external *),
+      <> (*! implementedby ADT_NE_QUI_REAL external *),
+      /= (*! implementedby ADT_NE_SEX_REAL external *),
+      lt (*! implementedby ADT_LT_TER_REAL external *),
+      <  (*! implementedby ADT_LT_QUA_REAL external *),
+      le (*! implementedby ADT_LE_TER_REAL external *),
+      <= (*! implementedby ADT_LE_QUA_REAL external *),
+      gt (*! implementedby ADT_GT_TER_REAL external *),
+      >  (*! implementedby ADT_GT_QUA_REAL external *),
+      ge (*! implementedby ADT_GE_TER_REAL external *),
+      >= (*! implementedby ADT_GE_QUA_REAL external *) : Real, Real -> Bool
+      + (*! implementedby ADT_PLUS_BIS_REAL external *),
+      - (*! implementedby ADT_MINUS_BIS_REAL external *),
+      * (*! implementedby ADT_MULT_BIS_REAL external *),
+      / (*! implementedby ADT_DIV_BIS_REAL external *),
+      ** (*! implementedby ADT_POWER_BIS_REAL external *) : Real, Real -> Real
+
+      Real (*! implementedby ADT_REAL_CONS external *) : String -> Real
+     
+      Real__0 (*! implementedby ADT_REAL_0 external *),
+      Real__1 (*! implementedby ADT_REAL_1 external *),
+      Real__2 (*! implementedby ADT_REAL_2 external *),
+      Real__3 (*! implementedby ADT_REAL_3 external *),
+      Real__4 (*! implementedby ADT_REAL_4 external *),
+      Real__5 (*! implementedby ADT_REAL_5 external *),
+      Real__6 (*! implementedby ADT_REAL_6 external *),
+      Real__7 (*! implementedby ADT_REAL_7 external *),
+      Real__8 (*! implementedby ADT_REAL_8 external *),
+      Real__9 (*! implementedby ADT_REAL_9 external *),
+      Real__Neg (*! implementedby ADT_REAL_NEG external *),
+      Real__Pos (*! implementedby ADT_REAL_POS external *),
+      Real__Dot (*! implementedby ADT_REAL_DOT external *),
+      Real__Exp (*! implementedby ADT_REAL_EXP external *) : -> String
+
+(*
+   eqns
+      forall m, n:Real
+      ofsort Bool
+         m /= n = m <> n;
+*)
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+library X_CHARACTER endlib
+
+type CharacterExtensions is Character
+   opns
+      _==_ (*! implementedby ADT_EQ_BIS_CHAR external *),
+      _<>_ (*! implementedby ADT_NE_BIS_CHAR external *),
+      _/=_ (*! implementedby ADT_NE_TER_CHAR external *),
+      _<_  (*! implementedby ADT_LT_BIS_CHAR external *),
+      _<=_ (*! implementedby ADT_LE_BIS_CHAR external *),
+      _>_  (*! implementedby ADT_GT_BIS_CHAR external *),
+      _>=_ (*! implementedby ADT_GE_BIS_CHAR external *) : Char, Char -> Bool
+
+      IsLower (*! implementedby ADT_ISLOWER_CHAR external *),
+      IsUpper (*! implementedby ADT_ISUPPER_CHAR external *),
+      IsAlpha (*! implementedby ADT_ISALPHA_CHAR external *),
+      IsAlnum (*! implementedby ADT_ISALNUM_CHAR external *),
+      IsDigit (*! implementedby ADT_ISDIGIT_CHAR external *),
+      IsXDigit (*! implementedby ADT_ISXDIGIT_CHAR external *) : Char -> Bool
+
+      ToLower (*! implementedby ADT_TOLOWER_CHAR external *),
+      ToUpper (*! implementedby ADT_TOUPPER_CHAR external *) : Char -> Char
+
+      Char__000 (*! implementedby ADT_CHAR_000 external *),
+      Char__001 (*! implementedby ADT_CHAR_001 external *),
+      Char__002 (*! implementedby ADT_CHAR_002 external *),
+      Char__003 (*! implementedby ADT_CHAR_003 external *),
+      Char__004 (*! implementedby ADT_CHAR_004 external *),
+      Char__005 (*! implementedby ADT_CHAR_005 external *),
+      Char__006 (*! implementedby ADT_CHAR_006 external *),
+      Char__007 (*! implementedby ADT_CHAR_007 external *),
+      Char__008 (*! implementedby ADT_CHAR_008 external *),
+      Char__009 (*! implementedby ADT_CHAR_009 external *),
+
+      Char__010 (*! implementedby ADT_CHAR_010 external *),
+      Char__011 (*! implementedby ADT_CHAR_011 external *),
+      Char__012 (*! implementedby ADT_CHAR_012 external *),
+      Char__013 (*! implementedby ADT_CHAR_013 external *),
+      Char__014 (*! implementedby ADT_CHAR_014 external *),
+      Char__015 (*! implementedby ADT_CHAR_015 external *),
+      Char__016 (*! implementedby ADT_CHAR_016 external *),
+      Char__017 (*! implementedby ADT_CHAR_017 external *),
+      Char__018 (*! implementedby ADT_CHAR_018 external *),
+      Char__019 (*! implementedby ADT_CHAR_019 external *),
+
+      Char__020 (*! implementedby ADT_CHAR_020 external *),
+      Char__021 (*! implementedby ADT_CHAR_021 external *),
+      Char__022 (*! implementedby ADT_CHAR_022 external *),
+      Char__023 (*! implementedby ADT_CHAR_023 external *),
+      Char__024 (*! implementedby ADT_CHAR_024 external *),
+      Char__025 (*! implementedby ADT_CHAR_025 external *),
+      Char__026 (*! implementedby ADT_CHAR_026 external *),
+      Char__027 (*! implementedby ADT_CHAR_027 external *),
+      Char__028 (*! implementedby ADT_CHAR_028 external *),
+      Char__029 (*! implementedby ADT_CHAR_029 external *),
+
+      Char__030 (*! implementedby ADT_CHAR_030 external *),
+      Char__031 (*! implementedby ADT_CHAR_031 external *),
+      Char__032 (*! implementedby ADT_CHAR_032 external *),
+      Char__033 (*! implementedby ADT_CHAR_033 external *),
+      Char__034 (*! implementedby ADT_CHAR_034 external *),
+      Char__035 (*! implementedby ADT_CHAR_035 external *),
+      Char__036 (*! implementedby ADT_CHAR_036 external *),
+      Char__037 (*! implementedby ADT_CHAR_037 external *),
+      Char__038 (*! implementedby ADT_CHAR_038 external *),
+      Char__039 (*! implementedby ADT_CHAR_039 external *),
+
+      Char__040 (*! implementedby ADT_CHAR_040 external *),
+      Char__041 (*! implementedby ADT_CHAR_041 external *),
+      Char__042 (*! implementedby ADT_CHAR_042 external *),
+      Char__043 (*! implementedby ADT_CHAR_043 external *),
+      Char__044 (*! implementedby ADT_CHAR_044 external *),
+      Char__045 (*! implementedby ADT_CHAR_045 external *),
+      Char__046 (*! implementedby ADT_CHAR_046 external *),
+      Char__047 (*! implementedby ADT_CHAR_047 external *),
+      Char__048 (*! implementedby ADT_CHAR_048 external *),
+      Char__049 (*! implementedby ADT_CHAR_049 external *),
+
+      Char__050 (*! implementedby ADT_CHAR_050 external *),
+      Char__051 (*! implementedby ADT_CHAR_051 external *),
+      Char__052 (*! implementedby ADT_CHAR_052 external *),
+      Char__053 (*! implementedby ADT_CHAR_053 external *),
+      Char__054 (*! implementedby ADT_CHAR_054 external *),
+      Char__055 (*! implementedby ADT_CHAR_055 external *),
+      Char__056 (*! implementedby ADT_CHAR_056 external *),
+      Char__057 (*! implementedby ADT_CHAR_057 external *),
+      Char__058 (*! implementedby ADT_CHAR_058 external *),
+      Char__059 (*! implementedby ADT_CHAR_059 external *),
+
+      Char__060 (*! implementedby ADT_CHAR_060 external *),
+      Char__061 (*! implementedby ADT_CHAR_061 external *),
+      Char__062 (*! implementedby ADT_CHAR_062 external *),
+      Char__063 (*! implementedby ADT_CHAR_063 external *),
+      Char__064 (*! implementedby ADT_CHAR_064 external *),
+      Char__065 (*! implementedby ADT_CHAR_065 external *),
+      Char__066 (*! implementedby ADT_CHAR_066 external *),
+      Char__067 (*! implementedby ADT_CHAR_067 external *),
+      Char__068 (*! implementedby ADT_CHAR_068 external *),
+      Char__069 (*! implementedby ADT_CHAR_069 external *),
+
+      Char__070 (*! implementedby ADT_CHAR_070 external *),
+      Char__071 (*! implementedby ADT_CHAR_071 external *),
+      Char__072 (*! implementedby ADT_CHAR_072 external *),
+      Char__073 (*! implementedby ADT_CHAR_073 external *),
+      Char__074 (*! implementedby ADT_CHAR_074 external *),
+      Char__075 (*! implementedby ADT_CHAR_075 external *),
+      Char__076 (*! implementedby ADT_CHAR_076 external *),
+      Char__077 (*! implementedby ADT_CHAR_077 external *),
+      Char__078 (*! implementedby ADT_CHAR_078 external *),
+      Char__079 (*! implementedby ADT_CHAR_079 external *),
+
+      Char__080 (*! implementedby ADT_CHAR_080 external *),
+      Char__081 (*! implementedby ADT_CHAR_081 external *),
+      Char__082 (*! implementedby ADT_CHAR_082 external *),
+      Char__083 (*! implementedby ADT_CHAR_083 external *),
+      Char__084 (*! implementedby ADT_CHAR_084 external *),
+      Char__085 (*! implementedby ADT_CHAR_085 external *),
+      Char__086 (*! implementedby ADT_CHAR_086 external *),
+      Char__087 (*! implementedby ADT_CHAR_087 external *),
+      Char__088 (*! implementedby ADT_CHAR_088 external *),
+      Char__089 (*! implementedby ADT_CHAR_089 external *),
+
+      Char__090 (*! implementedby ADT_CHAR_090 external *),
+      Char__091 (*! implementedby ADT_CHAR_091 external *),
+      Char__092 (*! implementedby ADT_CHAR_092 external *),
+      Char__093 (*! implementedby ADT_CHAR_093 external *),
+      Char__094 (*! implementedby ADT_CHAR_094 external *),
+      Char__095 (*! implementedby ADT_CHAR_095 external *),
+      Char__096 (*! implementedby ADT_CHAR_096 external *),
+      Char__097 (*! implementedby ADT_CHAR_097 external *),
+      Char__098 (*! implementedby ADT_CHAR_098 external *),
+      Char__099 (*! implementedby ADT_CHAR_099 external *),
+
+      Char__100 (*! implementedby ADT_CHAR_100 external *),
+      Char__101 (*! implementedby ADT_CHAR_101 external *),
+      Char__102 (*! implementedby ADT_CHAR_102 external *),
+      Char__103 (*! implementedby ADT_CHAR_103 external *),
+      Char__104 (*! implementedby ADT_CHAR_104 external *),
+      Char__105 (*! implementedby ADT_CHAR_105 external *),
+      Char__106 (*! implementedby ADT_CHAR_106 external *),
+      Char__107 (*! implementedby ADT_CHAR_107 external *),
+      Char__108 (*! implementedby ADT_CHAR_108 external *),
+      Char__109 (*! implementedby ADT_CHAR_109 external *),
+
+      Char__110 (*! implementedby ADT_CHAR_110 external *),
+      Char__111 (*! implementedby ADT_CHAR_111 external *),
+      Char__112 (*! implementedby ADT_CHAR_112 external *),
+      Char__113 (*! implementedby ADT_CHAR_113 external *),
+      Char__114 (*! implementedby ADT_CHAR_114 external *),
+      Char__115 (*! implementedby ADT_CHAR_115 external *),
+      Char__116 (*! implementedby ADT_CHAR_116 external *),
+      Char__117 (*! implementedby ADT_CHAR_117 external *),
+      Char__118 (*! implementedby ADT_CHAR_118 external *),
+      Char__119 (*! implementedby ADT_CHAR_119 external *),
+
+      Char__120 (*! implementedby ADT_CHAR_120 external *),
+      Char__121 (*! implementedby ADT_CHAR_121 external *),
+      Char__122 (*! implementedby ADT_CHAR_122 external *),
+      Char__123 (*! implementedby ADT_CHAR_123 external *),
+      Char__124 (*! implementedby ADT_CHAR_124 external *),
+      Char__125 (*! implementedby ADT_CHAR_125 external *),
+      Char__126 (*! implementedby ADT_CHAR_126 external *),
+      Char__127 (*! implementedby ADT_CHAR_127 external *),
+      Char__128 (*! implementedby ADT_CHAR_128 external *),
+      Char__129 (*! implementedby ADT_CHAR_129 external *),
+
+      Char__130 (*! implementedby ADT_CHAR_130 external *),
+      Char__131 (*! implementedby ADT_CHAR_131 external *),
+      Char__132 (*! implementedby ADT_CHAR_132 external *),
+      Char__133 (*! implementedby ADT_CHAR_133 external *),
+      Char__134 (*! implementedby ADT_CHAR_134 external *),
+      Char__135 (*! implementedby ADT_CHAR_135 external *),
+      Char__136 (*! implementedby ADT_CHAR_136 external *),
+      Char__137 (*! implementedby ADT_CHAR_137 external *),
+      Char__138 (*! implementedby ADT_CHAR_138 external *),
+      Char__139 (*! implementedby ADT_CHAR_139 external *),
+
+      Char__140 (*! implementedby ADT_CHAR_140 external *),
+      Char__141 (*! implementedby ADT_CHAR_141 external *),
+      Char__142 (*! implementedby ADT_CHAR_142 external *),
+      Char__143 (*! implementedby ADT_CHAR_143 external *),
+      Char__144 (*! implementedby ADT_CHAR_144 external *),
+      Char__145 (*! implementedby ADT_CHAR_145 external *),
+      Char__146 (*! implementedby ADT_CHAR_146 external *),
+      Char__147 (*! implementedby ADT_CHAR_147 external *),
+      Char__148 (*! implementedby ADT_CHAR_148 external *),
+      Char__149 (*! implementedby ADT_CHAR_149 external *),
+
+      Char__150 (*! implementedby ADT_CHAR_150 external *),
+      Char__151 (*! implementedby ADT_CHAR_151 external *),
+      Char__152 (*! implementedby ADT_CHAR_152 external *),
+      Char__153 (*! implementedby ADT_CHAR_153 external *),
+      Char__154 (*! implementedby ADT_CHAR_154 external *),
+      Char__155 (*! implementedby ADT_CHAR_155 external *),
+      Char__156 (*! implementedby ADT_CHAR_156 external *),
+      Char__157 (*! implementedby ADT_CHAR_157 external *),
+      Char__158 (*! implementedby ADT_CHAR_158 external *),
+      Char__159 (*! implementedby ADT_CHAR_159 external *),
+
+      Char__160 (*! implementedby ADT_CHAR_160 external *),
+      Char__161 (*! implementedby ADT_CHAR_161 external *),
+      Char__162 (*! implementedby ADT_CHAR_162 external *),
+      Char__163 (*! implementedby ADT_CHAR_163 external *),
+      Char__164 (*! implementedby ADT_CHAR_164 external *),
+      Char__165 (*! implementedby ADT_CHAR_165 external *),
+      Char__166 (*! implementedby ADT_CHAR_166 external *),
+      Char__167 (*! implementedby ADT_CHAR_167 external *),
+      Char__168 (*! implementedby ADT_CHAR_168 external *),
+      Char__169 (*! implementedby ADT_CHAR_169 external *),
+
+      Char__170 (*! implementedby ADT_CHAR_170 external *),
+      Char__171 (*! implementedby ADT_CHAR_171 external *),
+      Char__172 (*! implementedby ADT_CHAR_172 external *),
+      Char__173 (*! implementedby ADT_CHAR_173 external *),
+      Char__174 (*! implementedby ADT_CHAR_174 external *),
+      Char__175 (*! implementedby ADT_CHAR_175 external *),
+      Char__176 (*! implementedby ADT_CHAR_176 external *),
+      Char__177 (*! implementedby ADT_CHAR_177 external *),
+      Char__178 (*! implementedby ADT_CHAR_178 external *),
+      Char__179 (*! implementedby ADT_CHAR_179 external *),
+
+      Char__180 (*! implementedby ADT_CHAR_180 external *),
+      Char__181 (*! implementedby ADT_CHAR_181 external *),
+      Char__182 (*! implementedby ADT_CHAR_182 external *),
+      Char__183 (*! implementedby ADT_CHAR_183 external *),
+      Char__184 (*! implementedby ADT_CHAR_184 external *),
+      Char__185 (*! implementedby ADT_CHAR_185 external *),
+      Char__186 (*! implementedby ADT_CHAR_186 external *),
+      Char__187 (*! implementedby ADT_CHAR_187 external *),
+      Char__188 (*! implementedby ADT_CHAR_188 external *),
+      Char__189 (*! implementedby ADT_CHAR_189 external *),
+
+      Char__190 (*! implementedby ADT_CHAR_190 external *),
+      Char__191 (*! implementedby ADT_CHAR_191 external *),
+      Char__192 (*! implementedby ADT_CHAR_192 external *),
+      Char__193 (*! implementedby ADT_CHAR_193 external *),
+      Char__194 (*! implementedby ADT_CHAR_194 external *),
+      Char__195 (*! implementedby ADT_CHAR_195 external *),
+      Char__196 (*! implementedby ADT_CHAR_196 external *),
+      Char__197 (*! implementedby ADT_CHAR_197 external *),
+      Char__198 (*! implementedby ADT_CHAR_198 external *),
+      Char__199 (*! implementedby ADT_CHAR_199 external *),
+
+      Char__200 (*! implementedby ADT_CHAR_200 external *),
+      Char__201 (*! implementedby ADT_CHAR_201 external *),
+      Char__202 (*! implementedby ADT_CHAR_202 external *),
+      Char__203 (*! implementedby ADT_CHAR_203 external *),
+      Char__204 (*! implementedby ADT_CHAR_204 external *),
+      Char__205 (*! implementedby ADT_CHAR_205 external *),
+      Char__206 (*! implementedby ADT_CHAR_206 external *),
+      Char__207 (*! implementedby ADT_CHAR_207 external *),
+      Char__208 (*! implementedby ADT_CHAR_208 external *),
+      Char__209 (*! implementedby ADT_CHAR_209 external *),
+
+      Char__210 (*! implementedby ADT_CHAR_210 external *),
+      Char__211 (*! implementedby ADT_CHAR_211 external *),
+      Char__212 (*! implementedby ADT_CHAR_212 external *),
+      Char__213 (*! implementedby ADT_CHAR_213 external *),
+      Char__214 (*! implementedby ADT_CHAR_214 external *),
+      Char__215 (*! implementedby ADT_CHAR_215 external *),
+      Char__216 (*! implementedby ADT_CHAR_216 external *),
+      Char__217 (*! implementedby ADT_CHAR_217 external *),
+      Char__218 (*! implementedby ADT_CHAR_218 external *),
+      Char__219 (*! implementedby ADT_CHAR_219 external *),
+
+      Char__220 (*! implementedby ADT_CHAR_220 external *),
+      Char__221 (*! implementedby ADT_CHAR_221 external *),
+      Char__222 (*! implementedby ADT_CHAR_222 external *),
+      Char__223 (*! implementedby ADT_CHAR_223 external *),
+      Char__224 (*! implementedby ADT_CHAR_224 external *),
+      Char__225 (*! implementedby ADT_CHAR_225 external *),
+      Char__226 (*! implementedby ADT_CHAR_226 external *),
+      Char__227 (*! implementedby ADT_CHAR_227 external *),
+      Char__228 (*! implementedby ADT_CHAR_228 external *),
+      Char__229 (*! implementedby ADT_CHAR_229 external *),
+
+      Char__230 (*! implementedby ADT_CHAR_230 external *),
+      Char__231 (*! implementedby ADT_CHAR_231 external *),
+      Char__232 (*! implementedby ADT_CHAR_232 external *),
+      Char__233 (*! implementedby ADT_CHAR_233 external *),
+      Char__234 (*! implementedby ADT_CHAR_234 external *),
+      Char__235 (*! implementedby ADT_CHAR_235 external *),
+      Char__236 (*! implementedby ADT_CHAR_236 external *),
+      Char__237 (*! implementedby ADT_CHAR_237 external *),
+      Char__238 (*! implementedby ADT_CHAR_238 external *),
+      Char__239 (*! implementedby ADT_CHAR_239 external *),
+
+      Char__240 (*! implementedby ADT_CHAR_240 external *),
+      Char__241 (*! implementedby ADT_CHAR_241 external *),
+      Char__242 (*! implementedby ADT_CHAR_242 external *),
+      Char__243 (*! implementedby ADT_CHAR_243 external *),
+      Char__244 (*! implementedby ADT_CHAR_244 external *),
+      Char__245 (*! implementedby ADT_CHAR_245 external *),
+      Char__246 (*! implementedby ADT_CHAR_246 external *),
+      Char__247 (*! implementedby ADT_CHAR_247 external *),
+      Char__248 (*! implementedby ADT_CHAR_248 external *),
+      Char__249 (*! implementedby ADT_CHAR_249 external *),
+
+      Char__250 (*! implementedby ADT_CHAR_250 external *),
+      Char__251 (*! implementedby ADT_CHAR_251 external *),
+      Char__252 (*! implementedby ADT_CHAR_252 external *),
+      Char__253 (*! implementedby ADT_CHAR_253 external *),
+      Char__254 (*! implementedby ADT_CHAR_254 external *),
+      Char__255 (*! implementedby ADT_CHAR_255 external *) : -> Char
+
+      (* binary prefix operators *)
+      eq (*! implementedby ADT_EQ_TER_CHAR external *),
+      == (*! implementedby ADT_EQ_QUA_CHAR external *),
+      ne (*! implementedby ADT_NE_QUA_CHAR external *),
+      <> (*! implementedby ADT_NE_QUI_CHAR external *),
+      /= (*! implementedby ADT_NE_SEX_CHAR external *),
+      lt (*! implementedby ADT_LT_TER_CHAR external *),
+      <  (*! implementedby ADT_LT_QUA_CHAR external *),
+      le (*! implementedby ADT_LE_TER_CHAR external *),
+      <= (*! implementedby ADT_LE_QUA_CHAR external *),
+      gt (*! implementedby ADT_GT_TER_CHAR external *),
+      >  (*! implementedby ADT_GT_QUA_CHAR external *),
+      ge (*! implementedby ADT_GE_TER_CHAR external *),
+      >= (*! implementedby ADT_GE_QUA_CHAR external *) : Char, Char -> Bool
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+library X_STRING endlib
+
+type StringExtensions is String, Integer, RealNumber
+   opns 
+      _+_ (*! implementedby ADT_CONCAT_STRING external *),
+      _~_ (*! implementedby ADT_CONCAT_CONST_STRING external *) : 
+      String, String -> String
+      (* caution! do not invoke ~ directly in LNT programs *)
+
+      length (*! implementedby ADT_LENGTH_STRING external *) : String -> Nat
+      is_empty (*! implementedby ADT_ISEMPTY_STRING external *) : String -> Bool
+
+      _prefix_ (*! implementedby ADT_PREFIX_STRING external *),
+      _suffix_ (*! implementedby ADT_SUFFIX_STRING external *) :
+      String, Nat -> String
+
+      substr (*! implementedby ADT_SUBSTR_STRING external *) :
+      String, Nat, Nat -> String
+
+      _nth_ (*! implementedby ADT_NTH_STRING external *) :
+      String, Nat -> Char
+
+      _index_ (*! implementedby ADT_INDEX_STRING external *),
+      _rindex_ (*! implementedby ADT_RINDEX_STRING external *) :
+      String, String -> Nat
+
+      String (*! implementedby ADT_TO_STRING_NAT external *) : Nat -> String
+      String (*! implementedby ADT_TO_STRING_INT external *) : Int -> String
+      String (*! implementedby ADT_TO_STRING_CHAR external *) : Char -> String
+      String (*! implementedby ADT_TO_STRING_REAL external *) : Real -> String
+
+      _==_ (*! implementedby ADT_EQ_BIS_STRING external *),
+      _<>_ (*! implementedby ADT_NE_BIS_STRING external *),
+      _/=_ (*! implementedby ADT_NE_TER_STRING external *),
+      _<_  (*! implementedby ADT_LT_BIS_STRING external *),
+      _<=_ (*! implementedby ADT_LE_BIS_STRING external *),
+      _>_  (*! implementedby ADT_GT_BIS_STRING external *),
+      _>=_ (*! implementedby ADT_GE_BIS_STRING external *) :
+      String, String -> Bool
+
+      String__000 (*! implementedby ADT_STRING_000 external *),
+      String__001 (*! implementedby ADT_STRING_001 external *),
+      String__002 (*! implementedby ADT_STRING_002 external *),
+      String__003 (*! implementedby ADT_STRING_003 external *),
+      String__004 (*! implementedby ADT_STRING_004 external *),
+      String__005 (*! implementedby ADT_STRING_005 external *),
+      String__006 (*! implementedby ADT_STRING_006 external *),
+      String__007 (*! implementedby ADT_STRING_007 external *),
+      String__008 (*! implementedby ADT_STRING_008 external *),
+      String__009 (*! implementedby ADT_STRING_009 external *),
+
+      String__010 (*! implementedby ADT_STRING_010 external *),
+      String__011 (*! implementedby ADT_STRING_011 external *),
+      String__012 (*! implementedby ADT_STRING_012 external *),
+      String__013 (*! implementedby ADT_STRING_013 external *),
+      String__014 (*! implementedby ADT_STRING_014 external *),
+      String__015 (*! implementedby ADT_STRING_015 external *),
+      String__016 (*! implementedby ADT_STRING_016 external *),
+      String__017 (*! implementedby ADT_STRING_017 external *),
+      String__018 (*! implementedby ADT_STRING_018 external *),
+      String__019 (*! implementedby ADT_STRING_019 external *),
+
+      String__020 (*! implementedby ADT_STRING_020 external *),
+      String__021 (*! implementedby ADT_STRING_021 external *),
+      String__022 (*! implementedby ADT_STRING_022 external *),
+      String__023 (*! implementedby ADT_STRING_023 external *),
+      String__024 (*! implementedby ADT_STRING_024 external *),
+      String__025 (*! implementedby ADT_STRING_025 external *),
+      String__026 (*! implementedby ADT_STRING_026 external *),
+      String__027 (*! implementedby ADT_STRING_027 external *),
+      String__028 (*! implementedby ADT_STRING_028 external *),
+      String__029 (*! implementedby ADT_STRING_029 external *),
+
+      String__030 (*! implementedby ADT_STRING_030 external *),
+      String__031 (*! implementedby ADT_STRING_031 external *),
+      String__032 (*! implementedby ADT_STRING_032 external *),
+      String__033 (*! implementedby ADT_STRING_033 external *),
+      String__034 (*! implementedby ADT_STRING_034 external *),
+      String__035 (*! implementedby ADT_STRING_035 external *),
+      String__036 (*! implementedby ADT_STRING_036 external *),
+      String__037 (*! implementedby ADT_STRING_037 external *),
+      String__038 (*! implementedby ADT_STRING_038 external *),
+      String__039 (*! implementedby ADT_STRING_039 external *),
+
+      String__040 (*! implementedby ADT_STRING_040 external *),
+      String__041 (*! implementedby ADT_STRING_041 external *),
+      String__042 (*! implementedby ADT_STRING_042 external *),
+      String__043 (*! implementedby ADT_STRING_043 external *),
+      String__044 (*! implementedby ADT_STRING_044 external *),
+      String__045 (*! implementedby ADT_STRING_045 external *),
+      String__046 (*! implementedby ADT_STRING_046 external *),
+      String__047 (*! implementedby ADT_STRING_047 external *),
+      String__048 (*! implementedby ADT_STRING_048 external *),
+      String__049 (*! implementedby ADT_STRING_049 external *),
+
+      String__050 (*! implementedby ADT_STRING_050 external *),
+      String__051 (*! implementedby ADT_STRING_051 external *),
+      String__052 (*! implementedby ADT_STRING_052 external *),
+      String__053 (*! implementedby ADT_STRING_053 external *),
+      String__054 (*! implementedby ADT_STRING_054 external *),
+      String__055 (*! implementedby ADT_STRING_055 external *),
+      String__056 (*! implementedby ADT_STRING_056 external *),
+      String__057 (*! implementedby ADT_STRING_057 external *),
+      String__058 (*! implementedby ADT_STRING_058 external *),
+      String__059 (*! implementedby ADT_STRING_059 external *),
+
+      String__060 (*! implementedby ADT_STRING_060 external *),
+      String__061 (*! implementedby ADT_STRING_061 external *),
+      String__062 (*! implementedby ADT_STRING_062 external *),
+      String__063 (*! implementedby ADT_STRING_063 external *),
+      String__064 (*! implementedby ADT_STRING_064 external *),
+      String__065 (*! implementedby ADT_STRING_065 external *),
+      String__066 (*! implementedby ADT_STRING_066 external *),
+      String__067 (*! implementedby ADT_STRING_067 external *),
+      String__068 (*! implementedby ADT_STRING_068 external *),
+      String__069 (*! implementedby ADT_STRING_069 external *),
+
+      String__070 (*! implementedby ADT_STRING_070 external *),
+      String__071 (*! implementedby ADT_STRING_071 external *),
+      String__072 (*! implementedby ADT_STRING_072 external *),
+      String__073 (*! implementedby ADT_STRING_073 external *),
+      String__074 (*! implementedby ADT_STRING_074 external *),
+      String__075 (*! implementedby ADT_STRING_075 external *),
+      String__076 (*! implementedby ADT_STRING_076 external *),
+      String__077 (*! implementedby ADT_STRING_077 external *),
+      String__078 (*! implementedby ADT_STRING_078 external *),
+      String__079 (*! implementedby ADT_STRING_079 external *),
+
+      String__080 (*! implementedby ADT_STRING_080 external *),
+      String__081 (*! implementedby ADT_STRING_081 external *),
+      String__082 (*! implementedby ADT_STRING_082 external *),
+      String__083 (*! implementedby ADT_STRING_083 external *),
+      String__084 (*! implementedby ADT_STRING_084 external *),
+      String__085 (*! implementedby ADT_STRING_085 external *),
+      String__086 (*! implementedby ADT_STRING_086 external *),
+      String__087 (*! implementedby ADT_STRING_087 external *),
+      String__088 (*! implementedby ADT_STRING_088 external *),
+      String__089 (*! implementedby ADT_STRING_089 external *),
+
+      String__090 (*! implementedby ADT_STRING_090 external *),
+      String__091 (*! implementedby ADT_STRING_091 external *),
+      String__092 (*! implementedby ADT_STRING_092 external *),
+      String__093 (*! implementedby ADT_STRING_093 external *),
+      String__094 (*! implementedby ADT_STRING_094 external *),
+      String__095 (*! implementedby ADT_STRING_095 external *),
+      String__096 (*! implementedby ADT_STRING_096 external *),
+      String__097 (*! implementedby ADT_STRING_097 external *),
+      String__098 (*! implementedby ADT_STRING_098 external *),
+      String__099 (*! implementedby ADT_STRING_099 external *),
+
+      String__100 (*! implementedby ADT_STRING_100 external *),
+      String__101 (*! implementedby ADT_STRING_101 external *),
+      String__102 (*! implementedby ADT_STRING_102 external *),
+      String__103 (*! implementedby ADT_STRING_103 external *),
+      String__104 (*! implementedby ADT_STRING_104 external *),
+      String__105 (*! implementedby ADT_STRING_105 external *),
+      String__106 (*! implementedby ADT_STRING_106 external *),
+      String__107 (*! implementedby ADT_STRING_107 external *),
+      String__108 (*! implementedby ADT_STRING_108 external *),
+      String__109 (*! implementedby ADT_STRING_109 external *),
+
+      String__110 (*! implementedby ADT_STRING_110 external *),
+      String__111 (*! implementedby ADT_STRING_111 external *),
+      String__112 (*! implementedby ADT_STRING_112 external *),
+      String__113 (*! implementedby ADT_STRING_113 external *),
+      String__114 (*! implementedby ADT_STRING_114 external *),
+      String__115 (*! implementedby ADT_STRING_115 external *),
+      String__116 (*! implementedby ADT_STRING_116 external *),
+      String__117 (*! implementedby ADT_STRING_117 external *),
+      String__118 (*! implementedby ADT_STRING_118 external *),
+      String__119 (*! implementedby ADT_STRING_119 external *),
+
+      String__120 (*! implementedby ADT_STRING_120 external *),
+      String__121 (*! implementedby ADT_STRING_121 external *),
+      String__122 (*! implementedby ADT_STRING_122 external *),
+      String__123 (*! implementedby ADT_STRING_123 external *),
+      String__124 (*! implementedby ADT_STRING_124 external *),
+      String__125 (*! implementedby ADT_STRING_125 external *),
+      String__126 (*! implementedby ADT_STRING_126 external *),
+      String__127 (*! implementedby ADT_STRING_127 external *),
+      String__128 (*! implementedby ADT_STRING_128 external *),
+      String__129 (*! implementedby ADT_STRING_129 external *),
+
+      String__130 (*! implementedby ADT_STRING_130 external *),
+      String__131 (*! implementedby ADT_STRING_131 external *),
+      String__132 (*! implementedby ADT_STRING_132 external *),
+      String__133 (*! implementedby ADT_STRING_133 external *),
+      String__134 (*! implementedby ADT_STRING_134 external *),
+      String__135 (*! implementedby ADT_STRING_135 external *),
+      String__136 (*! implementedby ADT_STRING_136 external *),
+      String__137 (*! implementedby ADT_STRING_137 external *),
+      String__138 (*! implementedby ADT_STRING_138 external *),
+      String__139 (*! implementedby ADT_STRING_139 external *),
+
+      String__140 (*! implementedby ADT_STRING_140 external *),
+      String__141 (*! implementedby ADT_STRING_141 external *),
+      String__142 (*! implementedby ADT_STRING_142 external *),
+      String__143 (*! implementedby ADT_STRING_143 external *),
+      String__144 (*! implementedby ADT_STRING_144 external *),
+      String__145 (*! implementedby ADT_STRING_145 external *),
+      String__146 (*! implementedby ADT_STRING_146 external *),
+      String__147 (*! implementedby ADT_STRING_147 external *),
+      String__148 (*! implementedby ADT_STRING_148 external *),
+      String__149 (*! implementedby ADT_STRING_149 external *),
+
+      String__150 (*! implementedby ADT_STRING_150 external *),
+      String__151 (*! implementedby ADT_STRING_151 external *),
+      String__152 (*! implementedby ADT_STRING_152 external *),
+      String__153 (*! implementedby ADT_STRING_153 external *),
+      String__154 (*! implementedby ADT_STRING_154 external *),
+      String__155 (*! implementedby ADT_STRING_155 external *),
+      String__156 (*! implementedby ADT_STRING_156 external *),
+      String__157 (*! implementedby ADT_STRING_157 external *),
+      String__158 (*! implementedby ADT_STRING_158 external *),
+      String__159 (*! implementedby ADT_STRING_159 external *),
+
+      String__160 (*! implementedby ADT_STRING_160 external *),
+      String__161 (*! implementedby ADT_STRING_161 external *),
+      String__162 (*! implementedby ADT_STRING_162 external *),
+      String__163 (*! implementedby ADT_STRING_163 external *),
+      String__164 (*! implementedby ADT_STRING_164 external *),
+      String__165 (*! implementedby ADT_STRING_165 external *),
+      String__166 (*! implementedby ADT_STRING_166 external *),
+      String__167 (*! implementedby ADT_STRING_167 external *),
+      String__168 (*! implementedby ADT_STRING_168 external *),
+      String__169 (*! implementedby ADT_STRING_169 external *),
+
+      String__170 (*! implementedby ADT_STRING_170 external *),
+      String__171 (*! implementedby ADT_STRING_171 external *),
+      String__172 (*! implementedby ADT_STRING_172 external *),
+      String__173 (*! implementedby ADT_STRING_173 external *),
+      String__174 (*! implementedby ADT_STRING_174 external *),
+      String__175 (*! implementedby ADT_STRING_175 external *),
+      String__176 (*! implementedby ADT_STRING_176 external *),
+      String__177 (*! implementedby ADT_STRING_177 external *),
+      String__178 (*! implementedby ADT_STRING_178 external *),
+      String__179 (*! implementedby ADT_STRING_179 external *),
+
+      String__180 (*! implementedby ADT_STRING_180 external *),
+      String__181 (*! implementedby ADT_STRING_181 external *),
+      String__182 (*! implementedby ADT_STRING_182 external *),
+      String__183 (*! implementedby ADT_STRING_183 external *),
+      String__184 (*! implementedby ADT_STRING_184 external *),
+      String__185 (*! implementedby ADT_STRING_185 external *),
+      String__186 (*! implementedby ADT_STRING_186 external *),
+      String__187 (*! implementedby ADT_STRING_187 external *),
+      String__188 (*! implementedby ADT_STRING_188 external *),
+      String__189 (*! implementedby ADT_STRING_189 external *),
+
+      String__190 (*! implementedby ADT_STRING_190 external *),
+      String__191 (*! implementedby ADT_STRING_191 external *),
+      String__192 (*! implementedby ADT_STRING_192 external *),
+      String__193 (*! implementedby ADT_STRING_193 external *),
+      String__194 (*! implementedby ADT_STRING_194 external *),
+      String__195 (*! implementedby ADT_STRING_195 external *),
+      String__196 (*! implementedby ADT_STRING_196 external *),
+      String__197 (*! implementedby ADT_STRING_197 external *),
+      String__198 (*! implementedby ADT_STRING_198 external *),
+      String__199 (*! implementedby ADT_STRING_199 external *),
+
+      String__200 (*! implementedby ADT_STRING_200 external *),
+      String__201 (*! implementedby ADT_STRING_201 external *),
+      String__202 (*! implementedby ADT_STRING_202 external *),
+      String__203 (*! implementedby ADT_STRING_203 external *),
+      String__204 (*! implementedby ADT_STRING_204 external *),
+      String__205 (*! implementedby ADT_STRING_205 external *),
+      String__206 (*! implementedby ADT_STRING_206 external *),
+      String__207 (*! implementedby ADT_STRING_207 external *),
+      String__208 (*! implementedby ADT_STRING_208 external *),
+      String__209 (*! implementedby ADT_STRING_209 external *),
+
+      String__210 (*! implementedby ADT_STRING_210 external *),
+      String__211 (*! implementedby ADT_STRING_211 external *),
+      String__212 (*! implementedby ADT_STRING_212 external *),
+      String__213 (*! implementedby ADT_STRING_213 external *),
+      String__214 (*! implementedby ADT_STRING_214 external *),
+      String__215 (*! implementedby ADT_STRING_215 external *),
+      String__216 (*! implementedby ADT_STRING_216 external *),
+      String__217 (*! implementedby ADT_STRING_217 external *),
+      String__218 (*! implementedby ADT_STRING_218 external *),
+      String__219 (*! implementedby ADT_STRING_219 external *),
+
+      String__220 (*! implementedby ADT_STRING_220 external *),
+      String__221 (*! implementedby ADT_STRING_221 external *),
+      String__222 (*! implementedby ADT_STRING_222 external *),
+      String__223 (*! implementedby ADT_STRING_223 external *),
+      String__224 (*! implementedby ADT_STRING_224 external *),
+      String__225 (*! implementedby ADT_STRING_225 external *),
+      String__226 (*! implementedby ADT_STRING_226 external *),
+      String__227 (*! implementedby ADT_STRING_227 external *),
+      String__228 (*! implementedby ADT_STRING_228 external *),
+      String__229 (*! implementedby ADT_STRING_229 external *),
+
+      String__230 (*! implementedby ADT_STRING_230 external *),
+      String__231 (*! implementedby ADT_STRING_231 external *),
+      String__232 (*! implementedby ADT_STRING_232 external *),
+      String__233 (*! implementedby ADT_STRING_233 external *),
+      String__234 (*! implementedby ADT_STRING_234 external *),
+      String__235 (*! implementedby ADT_STRING_235 external *),
+      String__236 (*! implementedby ADT_STRING_236 external *),
+      String__237 (*! implementedby ADT_STRING_237 external *),
+      String__238 (*! implementedby ADT_STRING_238 external *),
+      String__239 (*! implementedby ADT_STRING_239 external *),
+
+      String__240 (*! implementedby ADT_STRING_240 external *),
+      String__241 (*! implementedby ADT_STRING_241 external *),
+      String__242 (*! implementedby ADT_STRING_242 external *),
+      String__243 (*! implementedby ADT_STRING_243 external *),
+      String__244 (*! implementedby ADT_STRING_244 external *),
+      String__245 (*! implementedby ADT_STRING_245 external *),
+      String__246 (*! implementedby ADT_STRING_246 external *),
+
+      String__247 (*! implementedby ADT_STRING_247 external *),
+      String__248 (*! implementedby ADT_STRING_248 external *),
+      String__249 (*! implementedby ADT_STRING_249 external *),
+
+      String__250 (*! implementedby ADT_STRING_250 external *),
+      String__251 (*! implementedby ADT_STRING_251 external *),
+      String__252 (*! implementedby ADT_STRING_252 external *),
+      String__253 (*! implementedby ADT_STRING_253 external *),
+      String__254 (*! implementedby ADT_STRING_254 external *),
+      String__255 (*! implementedby ADT_STRING_255 external *) : -> String
+
+      String (*! implementedby ADT_STORE_STRING external *) : String -> String
+
+      (* binary prefix operators *)
+      + (*! implementedby ADT_CONCAT_BIS_STRING external *),
+      ~ (*! implementedby ADT_CONCAT_CONST_BIS_STRING external *) :
+      String, String -> String
+      prefix (*! implementedby ADT_PREFIX_BIS_STRING external *),
+      suffix (*! implementedby ADT_SUFFIX_BIS_STRING external *) :
+      String, Nat -> String
+      nth (*! implementedby ADT_NTH_BIS_STRING external *) :
+      String, Nat -> Char
+      index (*! implementedby ADT_INDEX_BIS_STRING external *),
+      rindex (*! implementedby ADT_RINDEX_BIS_STRING external *) :
+      String, String -> Nat
+      eq (*! implementedby ADT_EQ_TER_STRING external *),
+      == (*! implementedby ADT_EQ_QUA_STRING external *),
+      ne (*! implementedby ADT_NE_QUA_STRING external *),
+      <> (*! implementedby ADT_NE_QUI_STRING external *),
+      /= (*! implementedby ADT_NE_SEX_STRING external *),
+      lt (*! implementedby ADT_LT_TER_STRING external *),
+      <  (*! implementedby ADT_LT_QUA_STRING external *),
+      le (*! implementedby ADT_LE_TER_STRING external *),
+      <= (*! implementedby ADT_LE_QUA_STRING external *),
+      gt (*! implementedby ADT_GT_TER_STRING external *),
+      >  (*! implementedby ADT_GT_QUA_STRING external *),
+      ge (*! implementedby ADT_GE_TER_STRING external *),
+      >= (*! implementedby ADT_GE_QUA_STRING external *) :
+      String, String -> Bool
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type Number is
+   sorts Number (*! implementedby ADT_NUMBER comparedby ADT_CMP_NUMBER
+                    iteratedby ADT_ENUM_FIRST_NUMBER and ADT_ENUM_NEXT_NUMBER
+                    printedby ADT_PRINT_NUMBER external *)
+   opns 0 (*! implementedby ADT_NUMBER0 external *), 
+        1 (*! implementedby ADT_NUMBER1 external *), 
+        2 (*! implementedby ADT_NUMBER2 external *), 
+        3 (*! implementedby ADT_NUMBER3 external *), 
+        4 (*! implementedby ADT_NUMBER4 external *), 
+        5 (*! implementedby ADT_NUMBER5 external *), 
+        6 (*! implementedby ADT_NUMBER6 external *), 
+        7 (*! implementedby ADT_NUMBER7 external *),
+        8 (*! implementedby ADT_NUMBER8 external *),
+        9 (*! implementedby ADT_NUMBER9 external *) : -> Number
+        _DecNum_ (*! implementedby ADT_DECNUM_NUMBER external *) : Number, Number -> Number
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type LntExtensions is
+	Action,
+	Number,
+	BooleanExtensions,
+	NaturalExtensions,
+	IntegerExtensions,
+	RealExtensions,
+	CharacterExtensions,
+	StringExtensions 
+endtype
+
+(* ------------------------------------------------------------------------- *)
+

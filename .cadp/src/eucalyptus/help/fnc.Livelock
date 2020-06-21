@@ -1,0 +1,6 @@
+Livelock prints the set of livelock states (tau circuits) contained
+in a Labelled Transition System or a network of communicating Labelled
+Transition Systems.
+ 
+ 
+EUCALYPTUS Reference Manual. Last updated 2018/05/23 12:43:42.

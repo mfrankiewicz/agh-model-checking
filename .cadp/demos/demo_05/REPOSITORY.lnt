@@ -1,0 +1,101 @@
+(*
+ * The repository is available to both TFTP protocol entities. This differs
+ * from reality but is necessary in the validation in order to check whether
+ * the file received corresponds to the one in the repository.
+ *)
+
+module REPOSITORY (FILES) is
+
+-------------------------------------------------------------------------------
+
+(*
+ * This function defines the file of the repository. It associates a filename
+ * (a natural) to a file (list of characters). In order to define a new
+ * repository, this function must be modified and the functions MAX_FILE_SIZE
+ * and MAX_FILE_INDEX must be modified accordingly.
+ *)
+
+function GET_FILE (N : NAT) : FILE is
+   if N == 1 then
+      return CONS ('A', CONS ('B', NIL))
+   elsif N == 2 then
+      return CONS ('G', CONS ('H', NIL))
+   else
+      return NIL
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+(* Test whether file F is equal to the file whose name is N. *)
+
+function COMPARE (F : FILE, N : NAT) : BOOL is
+   return EQUAL (F, GET_FILE (N))
+end function
+
+-------------------------------------------------------------------------------
+
+(*
+ * Return the size of the longest file of the repository. For performance
+ * purpose during generate, it doesn't compute the value from the repository,
+ * it must be entered manually.
+ *)
+
+function MAX_FILE_SIZE () : NAT is
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+
+(*
+ * Return the number of files in the repository. For performance purpose
+ * during generate, it doesn't compute the value from the repository, it must
+ * be entered manually.
+ *)
+
+function MAX_FILE_INDEX () : NAT is
+   return 2
+end function
+
+-------------------------------------------------------------------------------
+
+(*
+ * Test whether character C appears at position N in any
+ * of the file of the repository.
+ *)
+
+function IS_VALID [BAD_INDEX : none] (N : NAT, C : CHAR) : BOOL is
+   return IS_VALID [BAD_INDEX] (N, C, MAX_FILE_INDEX())
+end function
+
+-------------------------------------------------------------------------------
+
+(*
+ * Test whether character C appears at position N in the file whose name is M.
+ *)
+
+function IS_VALID [BAD_INDEX : none] (N : NAT, C : CHAR, M : NAT) : BOOL is
+   if M == 1 then
+      return IS_VALID [BAD_INDEX] (GET_FILE (M), N, C)
+   else
+      return IS_VALID [BAD_INDEX] (GET_FILE (M), N, C) or
+             IS_VALID [BAD_INDEX] (N, C, M - 1)
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+(* Test whether character C appears at position N in file F. *)
+
+function IS_VALID [BAD_INDEX : none] (F : FILE, N : NAT, C : CHAR) : BOOL is
+   if N > SIZE (F) then
+      return false
+   else
+      return NTH [BAD_INDEX] (F, N) eq C
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

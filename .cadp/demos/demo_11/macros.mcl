@@ -1,0 +1,43 @@
+(*
+ * macros to parameterize the check for processor extensions 
+ * hypothesis: processors with low numbers have the bitstream extension, and
+ *             processors with high numbers have the vector extension
+ *)
+
+macro dont_care (x) = ((x) = (x)) (* true *) end_macro
+
+macro bitstream (x) = ((x) < nv) end_macro
+
+macro vector (x) = not (bitstream (x)) end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+(*
+ * eventually, either
+ * (a) action "B2" is reached without any occurrence of action "B1", or
+ * (b) the system gets stuck in an cycle where processor number y waits for
+ *     its subtasks to complete
+ *)
+
+macro inevitable_without (B1, B2) =
+  [ ( not (B2) ) * ]
+  (
+    < not (B1) * . B2 > true
+    and
+    [ not { LD_RSP ?any of Nat !"WAIT_SLAVE" } ] -|
+  )
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+(*
+ * either action "B" is reached eventually, or the system gets stuck in a cycle
+ * where processor number y waits for its subtasks to complete
+ *)
+
+macro inevitable (B) =
+  inevitable_without (false, B)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+

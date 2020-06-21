@@ -1,0 +1,308 @@
+#! /bin/sh
+
+##############################################################################
+#                               S E Q . O P E N
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module             :       seq.open
+#   Auteurs            :       Hubert GARAVEL, Radu MATEESCU et Bruno ONDET
+#   Version            :       1.39
+#   Date               :       2019/07/11 21:02:38
+##############################################################################
+
+set -e
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP"/com/arch`
+CC=$CADP/src/com/cadp_cc
+
+BIN=$CADP/bin.$ARCH
+SRC=$CADP/src/open_caesar
+
+# phase 1: parsing the options
+
+CADP_SEQ_SEQNO="0"
+export CADP_SEQ_SEQNO
+
+CADP_SEQ_CACHE="0"
+export CADP_SEQ_CACHE
+
+CADP_SEQ_STAT="0"
+export CADP_SEQ_STAT
+
+while true
+do
+	if test $# -lt 1
+	then
+		echo "$COMMAND: missing \`\`.seq'' filename argument"
+		exit 1
+	fi
+	case $1 in
+		-version )
+			grep seq.open "$CADP"/VERSION |  sed -e 's/^[^0-9]*//'
+			exit 0
+			;;
+		-cache )
+			if test $# -le 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			CADP_SEQ_CACHE=$2
+			shift 2
+			;;	
+		-seqno )
+			if test $# -le 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			CADP_SEQ_SEQNO=$2
+			shift 2
+			;;	
+		-stat )
+			CADP_SEQ_STAT="1"
+			shift 1
+			;;
+		* )
+			break
+			;;
+	esac
+done
+
+# phase 2: parsing the SEQUENCE filename (the value of $FILE may contain spaces)
+
+OPEN_CAESAR_SOURCE="$1"
+export OPEN_CAESAR_SOURCE
+
+FILE=`dirname "$1"`/`"$CADP"/src/com/cadp_basename "$1" .seq`
+shift
+
+if test ! -f "$FILE.seq"
+then
+	echo "$COMMAND: file \`\`$FILE.seq'' does not exist"
+	exit 1
+fi
+
+# phase 3: passing the SEQUENCE filename to the C library
+
+OPEN_CAESAR_FILE="$FILE.seq"
+export OPEN_CAESAR_FILE
+
+# phase 4: parsing the options for cc(1) and preparing other options
+
+CPPFLAGS="-I. -I$CADP/incl -I$SRC"
+CFLAGS=""
+
+if test "$SEQOPEN" != ""
+then
+	# debugging mode used internally by the VASY team
+	LDFLAGS="-L$SEQOPEN/Executable.$ARCH -lseq_open -L$CADP/bin.$ARCH -lcaesar `$CADP/src/com/cadp_flags`"
+else
+	LDFLAGS="-L$CADP/bin.$ARCH -lseq_open -lcaesar `$CADP/src/com/cadp_flags`"
+fi
+
+while true
+do
+	if test $# -lt 1
+	then
+		echo "$COMMAND: missing user program filename (.a, .c, or .o) argument"
+		exit 1
+	fi
+	case $1 in
+		-[DI]* ) CPPFLAGS="$CPPFLAGS $1"
+			 shift
+			 ;;
+		-[lL]* ) LDFLAGS="$LDFLAGS $1"
+			 shift
+			 ;;
+		-* ) CFLAGS="$CFLAGS $1"
+		     shift
+		     ;;
+		*) break
+		   ;;
+	esac
+done
+
+# phase 5: parsing the ``.c'', ``.o'', or ``.a'' filename, possibly looking in
+#          $SRC or $BIN if the file is not present in the current directory
+
+NAME=$1
+shift
+
+case "$NAME" in
+	*.c )	
+		if test -f "$NAME"
+		then
+			PROG="$NAME"
+		elif test -f "$SRC/$NAME"
+		then
+			PROG="$SRC/$NAME"
+		else
+			echo "$COMMAND: file \`\`$NAME'' does not exist"
+			exit 1
+		fi
+		;;
+
+	*.o | *.a )
+		if test -f "$NAME"
+		then
+			PROG="$NAME"
+		elif test -f "$BIN/$NAME"
+		then
+			PROG="$BIN/$NAME"
+		else
+			echo "$COMMAND: file \`\`$NAME'' does not exist"
+			exit 1
+		fi
+		;;
+
+	* )
+		if test -f "$NAME.c"
+		then
+			PROG="$NAME.c"
+		elif test -f "$SRC/$NAME.c"
+		then
+			PROG="$SRC/$NAME.c"
+		elif test -f "$NAME.a"
+		then
+			PROG="$NAME.a"
+		elif test -f "$BIN/$NAME.a"
+		then
+			PROG="$BIN/$NAME.a"
+		elif test -f "$NAME.o"
+		then
+			PROG="$NAME.o"
+		elif test -f "$BIN/$NAME.o"
+		then
+			PROG="$BIN/$NAME.o"
+		else
+			echo "$COMMAND: cannot locate \`\`$NAME''"
+			exit 1
+		fi
+esac
+
+if test "$PROG" != "$NAME"
+then
+	echo "$COMMAND: using \`\`$PROG''"
+fi
+
+# phase 6: updating compiler options, if necessary
+
+case "$PROG" in
+	*.c )
+		CPPFLAGS_AUX=`grep '@(#)CPPFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		CFLAGS_AUX=`grep '@(#)CFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		LDFLAGS_AUX=`grep '@(#)LDFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		LD_LIBRARY_PATH_AUX=`grep '@(#)LD_LIBRARY_PATH' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		;;
+	*.o | *.a )
+		LC_CTYPE="C" ; export LC_CTYPE
+		CPPFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)CPPFLAGS' | sed -e 's/.*=//'`
+		CFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)CFLAGS' | sed -e 's/.*=//'`
+		LDFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)LDFLAGS' | sed -e 's/.*=//'`
+		LD_LIBRARY_PATH_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)LD_LIBRARY_PATH' | sed -e 's/.*=//'`
+		;;
+esac
+
+CPPFLAGS_AUX=`eval echo $CPPFLAGS_AUX`
+if test "$CPPFLAGS_AUX" != ""
+then
+	CPPFLAGS="$CPPFLAGS $CPPFLAGS_AUX"
+fi
+
+CFLAGS_AUX=`eval echo $CFLAGS_AUX`
+if test "$CFLAGS_AUX" != ""
+then
+	CFLAGS="$CFLAGS $CFLAGS_AUX"
+fi
+
+LDFLAGS_AUX=`eval echo $LDFLAGS_AUX`
+if test "$LDFLAGS_AUX" != ""
+then
+	LDFLAGS="$LDFLAGS $LDFLAGS_AUX"
+fi
+
+LD_LIBRARY_PATH_AUX=`eval echo $LD_LIBRARY_PATH_AUX`
+if test "$LD_LIBRARY_PATH_AUX" != ""
+then
+	case $ARCH in
+		macOS | mac86 | mac64 )
+			# this only works in absence of System Integrity Protection
+			DYLD_LIBRARY_PATH="$LD_LIBRARY_PATH_AUX:$DYLD_LIBRARY_PATH"
+			export DYLD_LIBRARY_PATH
+			;;
+		* )
+			LD_LIBRARY_PATH="$LD_LIBRARY_PATH_AUX:$LD_LIBRARY_PATH"
+			export LD_LIBRARY_PATH
+			;;
+	esac
+fi
+
+# phase 7: compilation and link edition of $PROG
+
+case "$PROG" in
+	*.c )
+		EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .c`
+		$CC $CPPFLAGS $CFLAGS -c "$PROG" -o "$EXEC.o"
+		$CC $CFLAGS "$EXEC.o" $LDFLAGS -o "$EXEC"
+		rm -f "$EXEC.o"
+		;;
+	*.o )
+		EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .o`
+		$CC $CFLAGS "$PROG" $LDFLAGS -o "$EXEC"
+		;;
+	*.a )
+		EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .a`
+		$CC $CFLAGS "$PROG" $LDFLAGS -o "$EXEC"
+		;;
+esac
+
+# phase 8: backward-compatibility and version management
+
+CADP_LIB=`cadp_lib libcaesar.a libseq_open.a "$PROG"`
+export CADP_LIB
+
+# recording the command-line for OCIS
+
+OPEN_CAESAR_COMMAND="$0 $*"
+export OPEN_CAESAR_COMMAND
+
+# recording the graph module for EVALUATOR 4.*
+
+if test "$SEQOPEN" != ""
+then
+	# debugging mode used internally by the VASY team
+	OPEN_CAESAR_GRAPH="$SEQOPEN/Executable.$ARCH/libseq_open.a"
+else
+	OPEN_CAESAR_GRAPH="$CADP/bin.$ARCH/libseq_open.a"
+fi
+export OPEN_CAESAR_GRAPH
+
+# updating $EXEC to cope with macOS System Integrity Protection
+
+case $ARCH in
+	macOS | mac86 | mac64 )
+		$CADP/src/com/cadp_dylib "$ARCH" "$EXEC"
+		;;
+esac
+
+# phase 9: program execution (here, "$@" denotes the arguments, if any, to
+# be passed to the program, and $# denotes the number of these arguments)
+
+if test "$#" -eq 0
+then
+	echo "$COMMAND: running \`\`$EXEC'' for \`\`$FILE.seq''"
+else
+	echo "$COMMAND: running \`\`$EXEC $@'' for \`\`$FILE.seq''"
+fi
+
+# for benchmarking, $CADP_TIME can be set to /bin/time, etc.
+${CADP_TIME:-} ./"$EXEC" "$@"
+
+exit 0
+

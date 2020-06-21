@@ -1,0 +1,82 @@
+
+(* Function definitions *)
+
+% BASE_NAME () {
+%    case $1 in
+%       co*-*-*_branching.bcg)
+%          basename $1 _branching.bcg;;
+%       co*-*-*.lotos)
+%          basename $1 .lotos;;
+%    esac
+% }
+
+% EXHIBITOR () {
+%    echo
+%    echo "Searching in $1 execution sequences matching pattern $3 of $2"
+%    case $1 in
+%       *.bcg)
+%          OPEN_TOOL="bcg_open";;
+%       *.lotos)
+%          OPEN_TOOL="lotos.open";;
+%    esac
+%    RESULT_FILE=`BASE_NAME $1`.result
+%    $OPEN_TOOL $1 exhibitor $4 -seqno $3 < $2 >> $RESULT_FILE
+%    echo "Result is stored in $RESULT_FILE"
+% }
+
+(* LOTOS files generations and minimizations *)
+
+% for PARAMS in 1-1 1-2 1a-1 1a-2 1a-3 2-1 3-1 5-1 6-1
+% do
+    "co4-${PARAMS}_branching.bcg" = branching reduction of 
+                               generation of "co4-${PARAMS}.lotos";
+% done
+
+"co4-2a-1.bcg" = strong reduction with bcg_min of 
+                 generation of "co4-2a-1.lotos";
+
+(* Verifications *)
+
+% for PARAMS in 1-1 2-1 3-1 5-1
+% do
+%    for SEQNO in 1 2 3 4 5
+%    do
+%       EXHIBITOR co4-${PARAMS}_branching.bcg signotin.seq $SEQNO "-bfs"
+%    done
+% done
+
+% for PARAMS in 1-1 1a-1
+% do
+    "co4-${PARAMS}_draw.bcg" = total rename using "short.rename" in 
+                               "co4-${PARAMS}_branching.bcg";
+%   echo
+%   echo "Drawing co4-${PARAMS}_draw.bcg in co4-${PARAMS}_draw.ps with bcg_draw"
+%   bcg_draw -ps co4-${PARAMS}_draw.bcg &
+% done
+
+%
+% EXHIBITOR co4-1-2_branching.bcg inconsistent.seq 1 "-bfs"
+% EXHIBITOR co4-1a-1_branching.bcg dead.seq 1 "-dfs -all"
+% EXHIBITOR co4-4-1.lotos scenario-4-1.seq 1 "-dfs -first"
+
+% for SEQNO in 1 2 3
+% do
+%    EXHIBITOR co4-5-1_branching.bcg unsafe.seq $SEQNO "-bfs"
+% done
+
+% EXHIBITOR co4-6-1_branching.bcg dead.seq 1 "-bfs"
+% EXHIBITOR co4-6-1_branching.bcg twogroups.seq 1 "-bfs"
+
+% rm -f co4-4-1.c co4-4-1.h co4-4-1.o
+% $CADP/src/com/cadp_rm exhibitor
+
+(* 
+ * SVL_RECORD_FOR_CLEAN is defined in $CADP/src/svl/standard. 
+ * It is used to mark the files not managed by SVL that must
+ * be removed when SVL is called with option -clean
+ *)
+% for FILE in *co4*.err co4*_draw.ps co4*.result
+% do
+% 	SVL_RECORD_FOR_CLEAN "$FILE"
+% done
+

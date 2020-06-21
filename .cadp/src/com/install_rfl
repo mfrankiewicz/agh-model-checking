@@ -1,0 +1,64 @@
+#!/bin/sh 
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       install_rfl
+#   Auteurs             :       Patrick WENDEL, Hubert GARAVEL et Nicolas
+#                               DESCOUBES
+#   Version             :       1.8
+#   Date                :       2004/10/12 12:03:49 
+##############################################################################
+
+# Il faut utiliser "$CADP/com/rfl" et non pas "$CADP_INSTALLATOR/com/rfl",
+# c'est-a-dire la commande "rfl" qui se trouve dans la distribution CADP deja 
+# installee ou venant d'etre installee, et non pas la commande "rfl" contenue
+# dans le fichier "installator.shar" dans le cas d'une installation par ".shar"
+
+# En effet, "$CADP_INSTALLATOR/com/rfl" risque d'etre trop recent par rapport
+# a la version de CADP installee. Par exemple, les versions de "rfl" qui sont
+# posterieures a aout 2001 ont besoin de "cadp_hostname" et de "cadp_tail" qui
+# n'existaient pas dans CADP 2001, et aussi de "cadp_hostinfo" qui s'appelait
+# "hostinfo" dans CADP 2001.
+
+# Ainsi, dans le cas ou l'on installe une version CADP 2001 avec Installator,
+# on sera amene a executer un "ancien" rfl contenu dans CADP 2001.
+
+# -----------------------------------------------------------------------------
+
+# Traitement de l'option "-p" de rfl (introduite en octobre 2004). Dans le
+# cas ou le "rfl" appele est plus ancien qu'octobre 2004 et ne traite pas 
+# cette option "-p", on doit l'appeler sans cette option. On detecte si "rfl"
+# peut traiter l'option "-p" en regardant si son code contient la chaine de
+# caracteres "@-p".
+
+OPTION_P_SUPPORTED=`grep -c "@-p" "$CADP/com/rfl"`
+if [ "$OPTION_P_SUPPORTED" -ge 1 ]
+then
+	# rfl traite l'option -p
+	PROTOCOL_OPTION="-p $CADP_REMOTE_ACCESS_PROTOCOL"
+else
+	# rfl ne traite pas l'option -p
+	PROTOCOL_OPTION=""
+fi
+
+# -----------------------------------------------------------------------------
+
+"$CADP/com/rfl" -d "$CADP_DIR" -i "$CADP_INFO_FILE" $PROTOCOL_OPTION $CADP_HOST_LIST > "$CADP_LICENSE_MAIL"
+
+# Note: ne surtout pas mettre de guillemets autour de $PROTOCOL_OPTION
+
+if [ $? = 0 ]
+then
+	echo END_SHELL_0
+else
+	echo END_SHELL_1
+fi
+exit 0
+

@@ -1,0 +1,107 @@
+module SCENARIO_A
+   (
+      AUTOMATON,
+      LOCAL_CONSTANTS,
+      REPOSITORY,
+      FILES,
+      MESSAGES,
+      QUEUE,
+      MEDIUM,
+      TFTP,
+      USER
+   ) is
+
+-------------------------------------------------------------------------------
+
+process TFTP_A [PUT, GET, RECEIVE, SEND, EVENT : any,
+                raise END_OF_FILE, BAD_MESSAGE, BAD_INDEX, END_OF_LIST : none]
+is
+   par PUT, GET in
+      USER [PUT, GET, EVENT, END_OF_LIST] (CONS (1, NIL), NIL of FILENAME_LIST)
+   ||
+      TFTP_PROCESS [GET, PUT, RECEIVE, SEND, EVENT,
+                    END_OF_FILE, BAD_MESSAGE, BAD_INDEX] (MAX_RETRIES_A)
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process TFTP_B [PUT, GET, RECEIVE, SEND, EVENT : any,
+                raise END_OF_FILE, BAD_MESSAGE, BAD_INDEX, END_OF_LIST : none]
+is
+   par PUT, GET in
+      USER [PUT, GET, EVENT, END_OF_LIST] (NIL of FILENAME_LIST, NIL of FILENAME_LIST)
+   ||
+      TFTP_PROCESS [GET, PUT, RECEIVE, SEND, EVENT,
+                    END_OF_FILE, BAD_MESSAGE, BAD_INDEX] (MAX_RETRIES_B)
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process RECEIVER_A [RECEIVE_A : any] is
+   loop
+      select
+         RECEIVE_A (ACK (0))
+      []
+         RECEIVE_A (ACK (1))
+      []
+         RECEIVE_A (ACK (2))
+      []
+         RECEIVE_A (ERROR of MESSAGE)
+      end select
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process RECEIVER_B [RECEIVE_B : any] is
+   loop
+      select
+         RECEIVE_B (DATA (1, 'A', false))
+      []
+         RECEIVE_B (DATA (2, 'B', true))
+      []
+         RECEIVE_B (WRQ (1))
+      []
+         RECEIVE_B (ERROR of MESSAGE)
+      end select
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process SENDER_A [SEND_A : any] is
+   loop
+      select
+         SEND_A (DATA (1, 'A', false))
+      []
+         SEND_A (DATA (2, 'B', true))
+      []
+         SEND_A (WRQ (1))
+      []
+         SEND_A (ERROR of MESSAGE)
+      end select
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process SENDER_B [SEND_B : any] is
+   loop
+      select
+         SEND_B (ACK (0))
+      []
+         SEND_B (ACK (1))
+      []
+         SEND_B (ACK (2))
+      []
+         SEND_B (ERROR of MESSAGE)
+      end select
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

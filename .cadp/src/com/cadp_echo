@@ -1,0 +1,92 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_echo
+#   Auteurs             :       Hubert GARAVEL, Frederic LANG et Marie VIDAL
+#   Version             :       1.12
+#   Date                :       2019/09/19 12:33:19
+##############################################################################
+
+ARCH=`"$CADP"/com/arch`
+
+# Voici les proprietes attendues de cette commande "cadp_echo" :
+# 1) "cadp_echo" doit reconnaitre et traiter l'option -n
+# 2) "cadp_echo" ne doit pas interpreter le caractere '\', s'il est present
+#    dans la chaine de caracteres a afficher, comme le debut d'une sequence
+#    d'echappement (par exemple, \n, \r, \001, \002, \015, etc.) : la chaine 
+#    doit etre affichee telle quelle, sans notion de sequence d'echappement
+
+case $ARCH in
+
+	sun5 | sun64 | sol86 | sol64 )
+		# Sous Solaris, il y a un double probleme avec "/bin/echo" 
+		# (identique a /usr/bin/echo) qui se comporte de maniere
+		# differente de la commande echo sous toutes les autres 
+		# architectures traitees a ce jour (iX86, x64, ia64, macOS,
+		# mac86 et win32) :
+		# - (1) /bin/echo ne reconnait pas l'option -n :
+		#       "/bin/echo -n X" affiche "-n X"
+		# - (2) /bin/echo interprete les caracteres octaux
+		#       "/bin/echo '\015'" affiche un retour a la ligne et non
+		#       pas \015 comme sur les autres architectures (voir
+		#       notamment /bin/echo sous Linux).
+
+		# Pendant longtemps on a utilise "/usr/ucb/echo" au lieu de
+		# "/bin/echo", mais "/usr/ucb" est en voie de disparition.
+		# Desormais, on utilise une emulation qui traite le probleme
+		# 1) mais pas le probleme 2)
+
+		# Pour contourner un probleme d'OpenIndiana (voir
+		# https://www.illumos.org/issues/11688), il faut utiliser
+		# "/bin/printf" au lieu de "printf"
+
+		if [ "@$1" = "@-n" ]
+		then
+			shift
+			/bin/printf "%s" "$*"
+		else
+			/bin/printf "%s\n" "$*"
+		fi
+		;;
+
+	macOS | mac86 | mac64 )
+		# - Avec MacOS X 10.4 "Tiger", on peut utiliser indifferemment
+		#   la commande predefinie "echo" du shell standard ou bien
+		#   "/bin/echo"
+		# - Avec MacOS X 10.5 "Leopard", il faut obligatoirement
+		#   utiliser "/bin/echo" pour la meme raison que sous Solaris
+		#   (affichage de '\015')
+		# - Avec MacOS X 10.6 "Snow Leopard" and 10.8 "Mountain Lion",
+		#   il faut obligatoirement utiliser "/bin/echo" parce que la
+		#   commande predefinie "echo" du shell ne supporte pas l'option
+		#   "-n"
+
+		/bin/echo "$@"
+		;;
+
+	iX86 | x64 | ia64 )
+		# Sous iX86, on ne peut pas faire confiance a la commande
+		# predefinie du shell standard "/bin/sh", car selon les
+		# distributions de Linux, ce shell peut pointer soit vers
+		# "/bin/bash" (dont la commande "echo" n'interprete pas les
+		# sequences d'echappement), soit vers "/bin/dash" (dont la
+		# commande "echo" interprete les sequences d'echappement)
+		
+		/bin/echo "$@"
+		;;
+
+	* )	# On fait confiance a la commande predefinie "echo" du shell
+		# standard "/bin/sh"
+
+		echo "$@"
+		;;
+esac
+

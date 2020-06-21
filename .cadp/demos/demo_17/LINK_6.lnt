@@ -1,0 +1,22 @@
+module LINK_6 (DATA) is
+
+process LINK [INPUT, OUTPUT:PORT] is
+   loop
+      select
+         INPUT (TOKEN);
+         OUTPUT (TOKEN)
+      []
+         INPUT (TOKEN)
+      []
+         var Ai:ADDR, B:BOOL in
+            INPUT (CLAIM, ?Ai, ?B);
+            OUTPUT (CLAIM, Ai, B)
+         end var
+      []
+         INPUT (CLAIM, ?any ADDR, ?any BOOL)
+      end select
+   end loop
+end process
+
+end module
+

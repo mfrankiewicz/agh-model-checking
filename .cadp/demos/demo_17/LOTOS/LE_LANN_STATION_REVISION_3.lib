@@ -1,0 +1,41 @@
+process STATION [OPEN, CLOSE, PRED, SUCC] (Ai:ADDR, INIT:BOOL) : noexit :=
+   ELECTION [OPEN, CLOSE, PRED, SUCC] (Ai, true, true)
+endproc
+
+process ELECTION [OPEN, CLOSE, PRED, SUCC] (Ai:ADDR, C:BOOL, B:BOOL) : noexit :=
+   SUCC !CLAIM !Ai !B;
+      ELECTION [OPEN, CLOSE, PRED, SUCC] (Ai, true, B)
+   []
+   PRED !TOKEN;
+      PRIVILEGE [OPEN, CLOSE, PRED, SUCC] (Ai, B)
+   []
+   PRED !CLAIM ?Aj:ADDR ?B0:BOOL;
+      (
+      [Ai < Aj] ->
+         SUCC !CLAIM !Aj !B0;
+            ELECTION [OPEN, CLOSE, PRED, SUCC] (Ai, C, B)
+      []
+      [Ai > Aj] ->
+         SUCC !CLAIM !Aj !B0;
+            ELECTION [OPEN, CLOSE, PRED, SUCC] (Ai, false, B)
+      []
+      [Ai == Aj] ->
+         (
+         [(B0 <> B) or not (C)] ->
+            ELECTION [OPEN, CLOSE, PRED, SUCC] (Ai, C, B)
+         []
+         [(B0 == B) and C] ->
+            PRIVILEGE [OPEN, CLOSE, PRED, SUCC] (Ai, B)
+         )
+      )
+endproc
+
+process PRIVILEGE [OPEN, CLOSE, PRED, SUCC] (Ai:ADDR, B:BOOL): noexit :=
+   OPEN !Ai;
+      CLOSE !Ai;
+         SUCC !TOKEN;
+            ELECTION [OPEN, CLOSE, PRED, SUCC] (Ai, true, not (B))
+   []
+   SUCC !TOKEN;
+      ELECTION [OPEN, CLOSE, PRED, SUCC] (Ai, true, not (B))
+endproc

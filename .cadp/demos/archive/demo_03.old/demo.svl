@@ -1,0 +1,41 @@
+
+(*
+ * This SVL script performs the following actions:
+ *
+ * 1) The service graph is produced.
+ *
+ * 2) The protocol is checked against the service modulo both safety 
+ *    equivalence and observational equivalence. Result is TRUE in both cases.
+ *
+ * 3) The erroneous protocol graph is checked against the service modulo both
+ *    safety equivalence and observational equivalence. Result is FALSE in
+ *    both cases. Diagnostic issued in files "check_safety_error.seq" and
+ *    "check_observational_error.seq" help to understand the reason of the
+ *    error.
+ *)
+
+(* production of the service graph *)
+
+"datalink_service.bcg" = generation of "datalink_service.lotos" ;
+
+(* comparison of protocol against service with safety equivalence *)
+
+"check_safety.seq" = safety comparison
+	"datalink_protocol.lotos" == "datalink_service.bcg" ;
+
+(* comparison of protocol against service with observational equivalence *)
+
+"check_observational.seq" = observational comparison
+	"datalink_protocol.lotos" == "datalink_service.bcg" ;
+
+(* comparison of erroneous protocol against service with safety equivalence *)
+
+"check_safety_error.seq" = safety comparison
+	"datalink_mistake.lotos" == "datalink_service.bcg" ;
+
+(* comparison of erroneous protocol against service with observational
+   equivalence *)
+
+"check_observational_error.seq" = observational comparison
+	"datalink_mistake.lotos" == "datalink_service.bcg" ;
+

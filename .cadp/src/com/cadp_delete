@@ -1,0 +1,74 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_delete
+#   Auteurs             :       Hubert Garavel et Wendelin Serwe
+#   Version             :       1.5
+#   Date                :       2015/10/12 10:50:53
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+# -----------------------------------------------------------------------------
+
+# verifications preliminaires
+
+if [ $# -ne 2 ]
+then
+	echo "$COMMAND: two arguments expected"
+	exit 1
+fi
+
+FILE="$1"
+PATTERN="$2"
+
+if [ ! -f "$FILE" ]
+then
+	# le fichier n'existe pas : on termine silencieusement (comme rm -f)
+	exit 0
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase (1) : on examine le type du fichier $FILE
+
+case "$FILE" in 
+	*.bcg | *.o )
+		# suffixe connu correspondant a un fichier binaire
+		# on detruit sans menagement le fichier binaire
+		rm -f "$FILE"
+		exit $?
+		;;
+	*.c | *.exp | *.f | *.fnt | *.h | *.lib | *.lnt | *.lotos | *.ren | *.t | *.tnt )
+		# suffixe connu correspondant a un fichier texte
+		# on traitera ce fichier dans la phase (2)
+		;;
+	* )
+		# suffixe inconnu
+		echo "$COMMAND: unsupported file type"
+		exit 1
+esac
+
+# -----------------------------------------------------------------------------
+
+# phase (2) : on regarde si $FILE contient la chaine $PATTERN
+
+grep "$PATTERN" "$FILE" > /dev/null
+
+if [ $? != 0 ]
+then
+	# $FILE ne contient pas la chaine $PATTERN
+	echo "$COMMAND: file \`\`$FILE'' cannot be safely deleted"
+	exit 1
+else
+	rm -f "$FILE"
+	exit $?
+fi

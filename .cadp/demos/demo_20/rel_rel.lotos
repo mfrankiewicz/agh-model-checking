@@ -1,0 +1,294 @@
+(* ========================================================================= *)
+
+specification REL_rel_FIFO [GET, CRASH] : noexit 
+
+(* Improved algorithm - 3 stations - with crashes *)
+
+   library DATA endlib
+
+behaviour
+
+   hide R_T1, R_T2, R_T3 in
+
+      	Crash_Transmitter [R_T1, R_T2, R_T3]
+
+      		|[R_T1, R_T2, R_T3]|
+
+	(
+         hide R12, R21, R13, R31 in
+
+	    Receiver_Node [R_T1, R21, R31, R12, R13, GET, CRASH] (1)
+
+		|[R12, R21, R13, R31]|
+
+	     (
+	      hide R23, R32 in
+		
+	         Receiver_Node [R_T2, R12, R32, R21, R23, GET, CRASH] (2)
+
+					|[R23, R32]|
+
+		 Receiver_Node [R_T3, R13, R23, R31, R32, GET, CRASH] (3)
+	     )
+	)
+
+where
+
+(* ------------------------------------------------------------------------- *)
+
+process Receiver_Node [R_T, RR1, RR2, RE1, RE2, GET, CRASH] 
+							(A : ADR) : noexit :=
+
+  hide DEPOSE in 
+
+	Receiver_Thread [R_T, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+
+		|[R_T, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH]|
+
+	Fail_Receiver [R_T, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+ 
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Crash_Transmitter [R_T1, R_T2, R_T3] : noexit :=
+
+   hide CRASH_T in
+      (
+      Transmitter [R_T1, R_T2, R_T3]  (1 of MSG)
+      |[R_T1, R_T2, R_T3]|
+      Fail_Transmitter [R_T1, R_T2, R_T3, CRASH_T]
+      )
+
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Transmitter [R_T1, R_T2, R_T3] (M : MSG) : noexit :=
+   [M gt N] ->
+      stop
+   []
+   [M le N] -> 
+      ( 
+      BigRel [R_T1, R_T2, R_T3] (M) 
+      >> 
+      Transmitter [R_T1, R_T2, R_T3] (Succ (M)) 
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process BigRel [R1, R2, R3] (M : MSG) : exit :=
+
+   Rel [R1, R2, R3] (M, FIRST)   (* first round send *)
+   >> 
+   Rel [R1, R2, R3] (M, SECOND)  (* second round send *)
+
+where
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Rel [R1, R2, R3] (M:MSG, T:TYPEMSG) : exit :=
+      R1 !M !T; 
+         exit
+      |||
+      R2 !M !T;
+         exit
+      |||
+      R3 !M !T;
+         exit
+   endproc 
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Fail_Transmitter [R_T1, R_T2, R_T3, CRASH_T] : noexit :=
+   R_T1 ?M:MSG ?T:TYPEMSG;
+      Fail_Transmitter [R_T1, R_T2, R_T3, CRASH_T]
+   []
+   R_T2 ?M:MSG ?T:TYPEMSG;
+      Fail_Transmitter [R_T1, R_T2, R_T3, CRASH_T]
+   []
+   R_T3 ?M:MSG ?T:TYPEMSG;
+      Fail_Transmitter [R_T1, R_T2, R_T3, CRASH_T]
+   []
+   R_T1 ?M:MSG ?T:TYPEMSG;
+      CRASH_T !M !T; 
+         stop
+   []
+   R_T2 ?M:MSG ?T:TYPEMSG;
+      CRASH_T !M !T;
+         stop
+   []
+   R_T3 ?M:MSG ?T:TYPEMSG;
+      CRASH_T !M !T;
+         stop
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process BigRel_R [R1, R2] (M : MSG) : exit :=
+
+   Rel_R [R1, R2] (M, FIRST)    (* first round send *)
+   >>
+   Rel_R [R1, R2] (M, SECOND)   (* second round send *)
+   
+where 
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process Rel_R [R1, R2] (M:MSG, T:TYPEMSG) : exit :=
+      R1 !M !T;
+         exit
+	|||
+      R2 !M !T;
+         exit
+   endproc 
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+endproc
+   
+(* ------------------------------------------------------------------------- *)
+
+process Ear [RT, RR1, RR2] : noexit :=
+   RT ?M:MSG ?T:TYPEMSG;
+      Ear [RT, RR1, RR2]
+   []
+   RR1 ?M:MSG ?T:TYPEMSG;
+      Ear [RT, RR1, RR2]
+   []
+   RR2 ?M:MSG ?T:TYPEMSG;
+      Ear [RT, RR1, RR2]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Fail_Receiver [RT, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] 
+							(A:ADR) : noexit :=
+
+   RT ?M:MSG ?T:TYPEMSG;
+      Fail_Receiver [RT, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+   []
+   RR1 ?M:MSG ?T:TYPEMSG;
+      Fail_Receiver [RT, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+   []
+   RR2 ?M:MSG ?T:TYPEMSG;
+      Fail_Receiver [RT, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+   []
+   RE1 ?M:MSG ?T:TYPEMSG;
+      Fail_Receiver [RT, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+   []
+   RE2 ?M:MSG ?T:TYPEMSG;
+      Fail_Receiver [RT, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+   []
+   GET ?A:ADR ?M:MSG;
+      Fail_Receiver [RT, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+   []
+   DEPOSE ?M:MSG;
+      Fail_Receiver [RT, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A)
+   [] 
+   RT ?M:MSG ?T:TYPEMSG; 
+      CRASH !A; 
+         Ear [RT, RR1, RR2]
+   []
+   RR1 ?M:MSG ?T:TYPEMSG;
+     CRASH !A;
+        Ear [RT, RR1, RR2]
+   []
+   RR2 ?M:MSG ?T:TYPEMSG;
+     CRASH !A;
+        Ear [RT, RR1, RR2]
+   []
+   RE1 ?M:MSG ?T:TYPEMSG;
+      CRASH !A; 
+         Ear [RT, RR1, RR2] 
+   []
+   RE2 ?M:MSG ?T:TYPEMSG;
+      CRASH !A; 
+         Ear [RT, RR1, RR2] 
+   []
+   GET ?A:ADR ?M:MSG;
+       CRASH !A;
+         Ear [RT, RR1, RR2]
+   []
+   DEPOSE ?M:MSG;
+      CRASH !A;
+         Ear [RT, RR1, RR2]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Receiver [RT, RR1, RR2, DEPOSE, GET] (A:ADR, C:MSG, B:BOOL) : noexit :=
+   choice REL_R in [RT, RR1, RR2] []
+      (
+         (
+         REL_R ? M:MSG !FIRST ;
+            (
+            [M ne C]  -> 
+                 Receiver [RT, RR1, RR2, DEPOSE, GET] (A, C, B) 
+            []
+            [M eq C] -> 
+               GET !A !M ;
+                  DEPOSE !M ;
+                     Receiver[RT, RR1, RR2, DEPOSE, GET] (A, C {+} 1, FALSE) 
+            )
+         )
+         []
+         (
+         REL_R ? M:MSG !SECOND ;
+            (
+            [M eq (C {-} 2)] -> 
+                Receiver[RT, RR1, RR2, DEPOSE, GET] (A, C, B) 
+            []
+            [(M eq (C {-} 1)) and (B eq TRUE)] -> 
+                Receiver[RT, RR1, RR2, DEPOSE, GET] (A, C, B) 
+            []
+            [(M eq (C {-} 1)) and (B eq FALSE)] -> 
+                DEPOSE !M ;
+                   Receiver[RT, RR1, RR2, DEPOSE, GET] (A, C, TRUE) 
+            )
+         )
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Thread [DEPOSE, RE1, RE2] : noexit :=
+   DEPOSE ? M:MSG ;
+     (
+        ( 
+        BigRel_R [RE1, RE2] (M) 
+        >> 
+        stop 
+        ) 
+    [> 
+       ( 
+       DEPOSE !M; 
+          Thread [DEPOSE, RE1, RE2]
+       )
+    )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Receiver_Thread [R_T, RR1, RR2, RE1, RE2, DEPOSE, GET, CRASH] (A:ADR) 
+								: noexit :=
+   (
+   Receiver [R_T, RR1, RR2, DEPOSE, GET] (A, 1 of MSG, FALSE)
+   |[DEPOSE]|
+   Thread [DEPOSE, RE1, RE2]
+   )
+   [>
+   CRASH !A;
+      Ear [R_T, RR1, RR2]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+endspec
+
+(* ========================================================================= *)

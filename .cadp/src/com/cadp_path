@@ -1,0 +1,727 @@
+#! /bin/sh
+
+###############################################################################
+#                               C A D P
+#------------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#------------------------------------------------------------------------------
+#   Module              :       cadp_path
+#   Auteur              :       Hubert Garavel
+#   Version             :       1.98
+#   Date                :       2019/02/13 12:28:55
+###############################################################################
+
+COMMAND=`basename "$0"`
+
+# $cadp is a local variable used only within this shell
+
+if [ "$CADP_INSTALLATOR" != "" ]
+then
+	# in such case, this shell-script is certainly invoked by installator
+	cadp=$CADP_INSTALLATOR
+	# do not assign $CADP here, this would confuse installator
+elif [ "$CADP" != "" ]
+then
+	cadp="$CADP"
+else
+	echo "$COMMAND: neither \$CADP nor \$CADP_INSTALLATOR is defined in the environment"
+	exit 1
+fi
+
+ARCH=`"$cadp"/com/arch`
+
+# -----------------------------------------------------------------------------
+
+CHECK_AT_LEAST_ONE_ARGUMENT() {
+	if [ $1 -lt 1 ]
+	then
+		echo "$COMMAND: at least one argument expected"
+		exit 1
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_ONE_ARGUMENT() {
+	if [ $1 -ne 1 ]
+	then
+		echo "$COMMAND: no argument should follow this option"
+		exit 1
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_TWO_ARGUMENTS() {
+	if [ $1 -ne 2 ]
+	then
+		echo "$COMMAND: one single argument should follow this option"
+		exit 1
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_WINDOWS_ONLY_OPTION() {
+	if [ "$ARCH" != win32 ]
+	then
+		echo "$COMMAND: option \`\`$1'' is only available on Windows"
+		exit 1
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+EXTRACT_REGISTRY_KEY() {
+	DIR=$1
+	KEY=$2
+	# note : on pourrait utiliser l'option "/v $KEY"  de REG QUERY, mais
+	# elle ne semble pas tres portable sur tous les shells Unix : sous XP,
+	# il faut ecrire "/v $KEY" ; sous Windows 7, il faut ecrire "-v $KEY"
+	# ou "//v $KEY" ; c'est pourquoi il vaut mieux utiliser un "grep" ;
+	# on detruit aussi les '\r' et l'on remplace les '\' par des '/' dans
+	# les pathnames
+	( $SYSTEMROOT/system32/REG QUERY "$DIR" 2> /dev/null ) |
+	grep "$KEY" |
+	tr -d '\015' |
+	sed -e 's/.*REG_SZ//' |
+	sed -e 's+\\+/+g' |
+	sed -e 's+^[ 	]*++'
+}
+
+# -----------------------------------------------------------------------------
+
+CHECK_AT_LEAST_ONE_ARGUMENT $#
+
+case "$1" in
+
+	# ---------------------------------------------------------------------
+
+	-absolute | -relative )
+		# indique si un chemin est absolu ou relatif
+		CHECK_TWO_ARGUMENTS $#
+		ABSOLUTE=0
+		RELATIVE=1
+		if [ "$ARCH" = win32 ]
+		then
+			case "$2" in
+				[A-Za-z]:* )
+					ABSOLUTE=1
+					RELATIVE=0
+					;;
+			esac
+		fi
+		case "$2" in
+			/* )
+				ABSOLUTE=1
+				RELATIVE=0
+				;;
+		esac
+		case "$1" in
+			-absolute ) echo $ABSOLUTE ;;
+			-relative ) echo $RELATIVE ;;
+		esac	
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-unixpath )
+		# sous win32, convertit les chemins d'acces Windows pour les
+		# mettre sous forme Unix (par exemple, C:/cadp sera converti
+		# en /cadp sous Cygwin installe dans C:/, en /cygdrive/c/cadp
+		# sous Cygwin installe ailleurs que dans C:/, et en /c/cadp
+		# sous Mingwin) ; sous les autres architectures que win32,
+		# laisse les chemins inchanges
+		CHECK_TWO_ARGUMENTS $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		(
+		if [ "$2" != "-" ]
+		then
+			# le chemin d'acces a convertir est fourni par $2
+			echo "$2"
+		else
+			# les chemins d'acces a convertir sont sur stdin
+			cat
+		fi
+		) |
+		if [ "$ARCH" != win32 ]
+		then
+			cat
+		else
+			DETAILED_ARCH=`"$cadp"/com/arch -detailed`
+			case "$DETAILED_ARCH" in
+			    win32-cygnus | win64-cygnus )
+				ROOT=`"$cadp"/src/com/cadp_path -rooted_cygwin`
+				# il faut mettre l'option "-r" a "read" afin
+				# de preserver les backslashes
+				while read -r LINE
+				do
+				    if [ "$ROOT" = 1 ]
+				    then
+					# Cywgin est installe dans C:/
+					case "$LINE" in
+					   [Cc]:* )
+						# on supprime la lettre de
+						# lecteur et l'on inverse les
+						# backslashes
+						echo "$LINE" |
+						sed -e 's/^..//' |
+						sed -e 's+\\+/+g'
+						;;
+					   * )
+						cygpath -u "$LINE"
+						;;
+					esac
+				    else
+					# Cygwin est installe ailleurs, par
+					# exemple dans C:/Cygwin
+					cygpath -u "$LINE"
+				    fi
+				done
+				;;
+			    win32-msys )
+				case "$2" in
+				    [A-Za-z]:/* )
+					# on transforme "c:/..." en "/c/..."
+					sed -e 's+^+/+' |
+					sed -e 's+:++'
+					;;
+				    [A-Za-z]:* )
+					# on transforme "c:..." en "/c/..."
+					sed -e 's+^+/+' |
+					sed -e 's+:+/+'
+					;;
+				    * )
+					cat
+					;;
+				esac
+				;;
+			    win32-* )
+				# par precaution
+				cat
+				;;
+			esac
+		fi
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-winpath )
+		# sous win32, convertit les chemins d'acces Unix pour les
+		# mettre sous forme Windows (par exemple, "/cygdrive/c/cadp"
+		# sera converti en "C:/cadp") ; sous les autres architectures
+		# que win32, laisse les chemins inchanges
+		CHECK_TWO_ARGUMENTS $#
+		(
+		if [ "$2" != "-" ]
+		then
+			# le chemin d'acces a convertir est fourni par $2
+			echo "$2"
+		else
+			# les chemins d'acces a convertir sont sur stdin
+			cat
+		fi
+		) |
+		if [ "$ARCH" != win32 ]
+		then
+			cat
+		else
+			DETAILED_ARCH=`"$cadp"/com/arch -detailed`
+			case "$DETAILED_ARCH" in
+			    win32-cygnus | win64-cygnus )
+				ROOT=`"$cadp"/src/com/cadp_path -rooted_cygwin`
+				while read LINE
+				do
+				    if [ "$ROOT" = 1 ]
+				    then
+					# Cywgin est installe dans C:/
+					case "$LINE" in
+					    /cygdrive/[Cc]/* )
+						# on enleve le prefixe Cygwin
+						# pour garder un chemin absolu
+						# comme avant
+						echo "$LINE" | sed -e 's+^/cygdrive/.++'
+						;;
+					    * )
+						cygpath -m "$LINE"
+						;;
+					esac
+				    else
+					# Cygwin est installe ailleurs, par
+					# exemple dans C:/Cygwin
+					cygpath -m "$LINE"
+				    fi
+				done
+				;;
+			    win32-msys )
+				case "$2" in
+				    /[A-Za-z]/* )
+					# on transforme "/c/..." en "c:/..."
+					sed -e 's+^/++' |
+					sed -e 's+/+:/+'
+					;;
+				    * )
+					cat
+					;;
+				esac
+				;;
+			    win32-* )
+				# par precaution
+				cat
+				;;
+			esac
+		fi
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-windows )
+		# renvoie le chemin Windows du repertoire WINDOWS
+		# exemple de resultat attendu : "C:/WINDOWS"
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		echo "$SYSTEMROOT" |
+		sed -e 's+\\+/+g'
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-cygwin )
+		# renvoie le chemin Windows du repertoire ou Cygwin est
+		# installe, ou bien "" si Cygwin n'est pas present
+		# exemple de resultat attendu : "C:/", "C:/Cygwin", etc.,
+		# note : "cygpath -w /" donne un resultat similaire
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		LOCATION=`EXTRACT_REGISTRY_KEY 'HKEY_LOCAL_MACHINE\SOFTWARE\Cygwin\setup' '\<rootdir\>'`
+		echo "$LOCATION"
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-rooted_cygwin )
+		# renvoie 1 si Cygwin a ete installe dans C:/ et 0 sinon
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		LOCATION=`EXTRACT_REGISTRY_KEY 'HKEY_LOCAL_MACHINE\SOFTWARE\Cygwin\setup' '\<rootdir\>'`
+		if [ "$LOCATION" = "C:\\" -o "$LOCATION" = "C:/" ]
+		then
+			echo 1
+		else
+			echo 0
+		fi
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-unrooted_cygwin )
+		# renvoie 1 si Cygwin a ete installe ailleurs que dans C:/
+		# et 0 sinon
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		LOCATION=`EXTRACT_REGISTRY_KEY 'HKEY_LOCAL_MACHINE\SOFTWARE\Cygwin\setup' '\<rootdir\>'`
+		if [ "$LOCATION" != "" -a "$LOCATION" != "C:\\" -a "$LOCATION" != "C:/" ]
+		then
+			echo 1
+		else
+			echo 0
+		fi
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-gnuwin32 )
+		# renvoie le chemin Windows du repertoire ou GnuWin32 est
+		# installe, ou bien "" si Gnuwin32 n'est pas present
+		# exemple de resultat attendu :
+		#    "C:/Program Files (x86)/GnuWin32"
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		LOCATION=`EXTRACT_REGISTRY_KEY 'HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\GnuWin32' '\<InstallPath\>'`
+		echo "$LOCATION"
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-mingwin | -mingw | -msys )
+		# renvoie le chemin Windows du repertoire ou Mingwin est
+		# installe, ou bien "" si Mingw32 n'est pas present
+		# exemple de resultat attendu :
+		#   "C:/MinGW/msys/1.0"
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		LOCATION=`EXTRACT_REGISTRY_KEY 'HKEY_CURRENT_USER\Console' 'sh.exe'`
+		# exemple de valeur attendue pour $LOCATION :
+		#    "HKEY_CURRENT_USER\Console\C:_MinGW_msys_1.0_bin_sh.exe"
+		if [ "$LOCATION" != "" ]
+		then
+			LOCATION=`echo "$LOCATION" | sed -e 's/^HKEY_CURRENT_USER.Console.//' | sed -e 's+_bin_sh.exe$++' | sed -e 's+_+/+g'`
+			echo "$LOCATION"
+			exit 0
+		fi
+
+		# la base de registre n'a pas donne l'information attendue :
+		# on essaie de tester directement le systeme de fichiers
+		LOCATION="C:/MinGW/msys/1.0"
+		UNIX_LOCATION=`"$cadp"/src/com/cadp_path -unixpath "$LOCATION"`
+
+		# (on teste sur $UNIX_LOCATION plutot que sur $LOCATION pour
+		# eviter un warning de Cygwin : "MS-DOS style path detected:
+		# C:/MinGW/msys/1.0/bin/sh.exe ...")
+
+		if [ -x "$UNIX_LOCATION/bin/sh.exe" ]
+		then
+			echo "$LOCATION"
+		else
+			echo ""
+		fi
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-drive )
+		# affiche le lecteur systeme Windows, par exemple "C:" ou "E:"
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		echo "${SYSTEMDRIVE:-C:}"
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-root )
+		# affiche le chemin d'acces a "/" (par exemple "/cygdrive/c")
+		# que l'on doit inserer avant /WINDOWS ou /Program Files
+		# notamment lorsque l'on positionne $PATH
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		DETAILED_ARCH=`"$cadp"/com/arch -detailed`
+		case "$DETAILED_ARCH" in
+			win32-cygnus | win64-cygnus )
+				RESULT=`( cd "${SYSTEMDRIVE:-C:}" ; pwd )`
+				# si Cywgin est installe dans "C:/", on aura
+				# $RESULT = "/", sinon on aura $RESULT =
+				# "/cygdrive/c" par exemple
+				if [ "$RESULT" = "/" ]
+				then
+					echo ""
+				else
+					echo "$RESULT"
+				fi
+				;;
+			* )
+				# dans tous les autres cas
+				echo ""
+				;;
+		esac
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-check_tmp )
+		# diverses verifications sur la valeur de $CADP_TMP
+		CHECK_ONE_ARGUMENT $#
+		if [ `"$cadp"/src/com/cadp_path -relative "$CADP_TMP"` = 1 ]
+		then
+			# $CADP_TMP est un chemin relatif (interdit)
+			echo "*** Variable \`\`\$CADP_TMP'' must be set to an absolute pathname"
+			echo "    (i.e., starting with \`\`/''), and not to a relative pathname"
+			echo "==> Unset this variable, or set it to an absolute pathname"
+			exit 1
+		fi
+		if [ ! -d "$CADP_TMP" -o ! -w "$CADP_TMP" ]
+		then
+			echo "*** Variable \`\`\$CADP_TMP'' does not point to a writable directory"
+			echo "==> Unset this variable, or set it to the pathname of a writable directory"
+			exit 1
+		fi
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-check_default_tmp )
+		# diverses verifications sur la valeur de "$2" qui est la
+		# valeur par defaut qui sera donnee a $CADP_TMP, que l'on
+		# suppose non positionnee (c'est-a-dire, $CADP_TMP = "")
+		CHECK_TWO_ARGUMENTS $#
+		DEFAULT="$2"
+		if [ ! -d "$DEFAULT" -o ! -w "$DEFAULT" ]
+		then
+			echo "*** \`\`$DEFAULT'' is not a writable directory"
+			echo "==> Set variable \`\`\$CADP_TMP'' explicitly to a different directory"
+			exit 1
+		fi
+		DETAILED_ARCH=`"$cadp"/com/arch -detailed`
+		case "$DETAILED_ARCH" in
+			win32-cygnus | win64-cygnus )
+				ROOT=`"$cadp"/src/com/cadp_path -rooted_cygwin`
+				if [ "$ROOT" = 0 ]
+				then
+					# Cygwin est installe ailleurs que dans
+					# "C:/", par exemple dans C:/Cygwin ;
+					if [ ! -h "C:/tmp" -a -d "C:/tmp" ]
+					then
+						# on n'a pas trouve le lien
+						# symbolique C:/tmp qui devrait
+						# exister, mais on a trouve a
+						# sa place un repertoire ; la
+						# presence de deux repertoires
+						# "/tmp" distincts (l'un pour
+						# Cygwin, l'autre pour Windows)
+						# risque de perturber les
+						# outils binaires de CADP
+						echo "*** The existence of directory \`\`C:/tmp'' is likely to cause trouble"
+						echo "==> Remove this directory  or set variable \`\`\$CADP_TMP'' explicitly"
+					fi
+				fi
+				;;
+			* )
+				# dans tous les autres cas
+				;;
+		esac
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-cadp_default_directory )
+		# affiche le chemin d'acces ou l'on conseille d'installer CADP
+		CHECK_ONE_ARGUMENT $#
+		DETAILED_ARCH=`"$cadp"/com/arch -detailed`
+		case "$DETAILED_ARCH" in
+			win32-cygnus | win64-cygnus )
+				ROOT=`"$cadp"/src/com/cadp_path -rooted_cygwin`
+				if [ "$ROOT" = 1 ]
+				then
+					# Cywgin est installe dans "C:/" : on
+					# continue de renvoyer /cadp comme on
+					# l'a toujours fait
+					echo "/cadp"
+				else
+					# Cygwin est installe ailleurs, par
+					# exemple dans C:/Cygwin : on doit
+					# imperativement fournir une lettre
+					# de lecteur Windows
+					echo ${SYSTEMDRIVE:-C:}/cadp
+				fi
+				;;
+			win32-* )
+				# dans le doute, on continue comme avant
+				echo "/cadp"
+				;;
+			* )
+				# dans tous les autres cas
+				echo "$HOME/cadp"
+				;;
+		esac
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-check_release )
+		# renvoie 1 si $2 est un repertoire qui semble contenir une
+		# installation de CADP, et 0 sinon
+		CHECK_TWO_ARGUMENTS $#
+		if [ ! -d "$2" -o ! -r "$2" -o ! -x "$2" ]
+		then
+			# $2 n'est pas un repertoire, ou bien il est illisible
+			echo 0
+		else
+			# On verifie la presence de tous les fichiers en
+			# majuscules ; ne pas tester sur INSTALLATION, ni sur
+			# INSTALLATION_[1234] car il y a eu des changements
+			# incompatibles entre les versions 97a et 97b
+			if [ -f "$2"/ADDRESSES -a \
+			     -f "$2"/HISTORY -a \
+			     -f "$2"/PREHISTORY -a \
+			     -f "$2"/READ_ME -a \
+			     -f "$2"/USERS -a \
+			     -f "$2"/VERSION ]
+			then
+				# $2 ressemble a un repertoire contenant CADP
+				echo 1
+			else
+				echo 0
+			fi
+		fi
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-cygwin_link )
+		# affiche le chemin d'acces au lien symbolique devant etre
+		# cree dans le repertoire "/" de Cygwin et pointer vers le
+		# repertoire vers lequel CADP est installe ; le resultat est,
+		# par exemple, "/cadp" si $CADP vaut "/cygdrive/c/cadp" ;
+		# le resultat vaut "" si ce lien ne doit pas exister
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		DETAILED_ARCH=`"$cadp"/com/arch -detailed`
+		case "$DETAILED_ARCH" in
+			win32-cygnus | win64-cygnus )
+				ROOT=`"$cadp"/src/com/cadp_path -rooted_cygwin`
+				if [ "$ROOT" = 1 ]
+				then
+					# Cywgin est installe dans "C:/" : le
+					# lien ne peut/doit pas exister
+					echo ""
+				else
+					# Cygwin est installe ailleurs, par
+					# exemple dans C:/Cygwin ; le pathname
+					# Windows pour $CADP (par exemple,
+					# "C:/cadp") et le pathname Cygwin
+					# (par exemple, "/cadp" qui s'expanse
+					# en fait vers "C:/cygwin/cadp") ne
+					# coincident pas ; pour surmonter ce
+					# probleme, on doit creer un lien
+					# symbolique Cygwin "C:/cygwin/cadp"
+					# -> "C:/cadp" de telle sorte que
+					# "/cadp" soit compris de la meme
+					# maniere par Windows et par Cygwin
+					# (dans ce dernier cas "/cadp" sera
+					# compris comme un lien symbolique
+					# situe dans "C:/cygwin/cadp" et
+					# pointant vers le repertoire
+					# "C:/cadp" ou la distribution CADP
+					# est effectivement installee
+					LINK=`"$CADP"/src/com/cadp_path -unixpath "$CADP"`
+					LINK=`echo "$LINK" | sed -e 's+^/cygdrive/.++'`
+					echo "$LINK"
+				fi
+				;;
+			* )
+				# dans tous les autres cas
+				echo ""
+		esac
+		;;
+
+	# ---------------------------------------------------------------------
+
+	-check_cygwin_link|-make_cygwin_link )
+		# dans les cas win32-cygnus et win64-cygnus lorsque Cygwin
+		# n'est pas installe dans "C:/", un lien symbolique (cf.
+		# option -cygwin_link) doit exister ou etre cree ; l'option
+		# -check_cygwin_link verifie l'existence et le contenu de ce
+		# lien symbolique ; l'option -make_cygwin_link le cree si
+		# cela est possible ; l'option -check_cygwin_link est appelee
+		# depuis tst avec $CADP ayant la forme "/cadp", par exemple ;
+		# l'option -make_cygwin_link est appelee depuis cadp_adjust
+		# avec $CADP ayant la forme "c:/cadp", par exemple
+		CHECK_ONE_ARGUMENT $#
+		CHECK_WINDOWS_ONLY_OPTION $1
+		LINK=`"$CADP"/src/com/cadp_path -cygwin_link`
+		if [ "$LINK" = "" ]
+		then
+			# aucun lien symbolique n'est necessaire
+			true
+		elif [ -h "$LINK" ]
+		then
+			# le lien symbolique $LINK doit exister et il existe
+			# on calcule la cible $MAP1 vers laquelle $LINK pointe
+			MAP1=`ls -l "$LINK" | sed -e "s+^.*/cygdrive/+/cygdrive/+"`
+			MAP2=`ls -l "$LINK" | sed -e "s+^.*/cygdrive/./+/+"`
+			# on calcule la cible $TARGET vers laquelle $LINK
+			# devrait pointer
+			TARGET=`"$CADP"/src/com/cadp_path -unixpath "$CADP"`
+
+			# les comparaisons de chaines ne doivent pas tenir
+			# compte de la casse, au cas ou $CADP comporterait
+			# des lettres majuscules ; on convertit donc $MAP1,
+			# $MAP2 et $TARGET en minuscules ; note : ne pas
+			# utiliser les specificites de Bash comme ${MAP1,,}
+			# car elles sont rejetees par ksh sous Solaris 11
+			NORM_MAP1=`echo "$MAP1" | tr '[:upper:]' '[:lower:]'`
+			NORM_MAP2=`echo "$MAP2" | tr '[:upper:]' '[:lower:]'`
+			NORM_TARGET=`echo "$TARGET" | tr '[:upper:]' '[:lower:]'`
+
+			if [ "$NORM_MAP1" = "$NORM_TARGET" -o "$NORM_MAP2" = "$NORM_TARGET" ]
+			then
+				if [ "$1" = "-check_cygwin_link" ]
+				then
+					echo ''
+					echo "Symbolic link \`\`$LINK -> $MAP1'' exists"
+				fi
+			else
+				if [ "$1" = "-check_cygwin_link" ]
+				then
+					echo ''
+					echo "*** Symbolic link \`\`$LINK'' exists but does not point to its expected target"
+					echo "==> Replace it by a symbolic link to \`\`C:$LINK''"
+					exit 1
+				else
+					# assert "$1" = "-make_cygwin_link"
+					echo "*** unexpected symbolic link \`\`$LINK'' exists and will not be overwritten"
+					echo "==> replace it by a symbolic link to \`\`C:$LINK''"
+					exit 1
+				fi
+			fi
+		elif [ -e "$LINK" ]
+		then
+			# $LINK existe mais n'est pas un lien symbolique
+			if [ "$1" = "-check_cygwin_link" ]
+			then
+				if [ -d "$LINK" -a `expr "$LINK" : "$HOME/.*/Release"` -eq `expr length "$LINK"` ]
+				then
+					# on est dans le cas particulier de la
+					# validation 05.* avec "try demo_00"
+					# qui travaille sur une copie de CADP
+					# contenue dans un repertoire
+					# "$HOME/.../Release" qui n'est pas
+					# un lien symbolique : on n'emet aucun
+					# message d'avertissement dans ce cas
+					true
+				else
+					echo ''
+					echo "*** \`\`$LINK'' exists but is not a symbolic link"
+					echo "==> Replace it by a symbolic link to \`\`C:$LINK''"
+					exit 1
+				fi
+			else
+				# assert "$1" = "-make_cygwin_link"
+				echo "*** \`\`$LINK'' exists but is not a symbolic link"
+				echo "==> replace it by a symbolic link to \`\`C:$LINK''"
+				exit 1
+			fi
+		else
+			# $LINK n'existe pas
+			if [ "$1" = "-check_cygwin_link" ]
+			then
+				echo ''
+				echo "*** Symbolic link \`\`$LINK'' does not exist"
+				echo "==> Create it as a symbolic link to \`\`C:$LINK''"
+				exit 1
+			else
+				# assert "$1" = "-make_cygwin_link"
+				echo "creating Cygwin symbolic link to the CADP directory"
+				TARGET=`"$CADP"/src/com/cadp_path -unixpath "$CADP"`
+				# il faut creer un lien symbolique $LINK qui
+				# pointe vers le repertoire $TARGET
+				LINK_DIR=`dirname "$LINK"`
+				mkdir -p "$LINK_DIR" 2> /dev/null
+				if [ $? != 0 ]
+				then
+					echo "*** directory \`\`$LINK_DIR'' cannot be created"
+					exit 1
+				else
+					ln -s "$TARGET" "$LINK" 2> /dev/null
+					if [ $? != 0 ]
+					then
+						echo "*** symbolic link \`\`$LINK'' cannot be created"
+						exit 1
+					fi
+				fi
+			fi
+		fi
+		;;
+
+	# ---------------------------------------------------------------------
+
+	* )
+		echo "$COMMAND: invalid argument"
+		exit 1
+esac
+
+exit 0
+

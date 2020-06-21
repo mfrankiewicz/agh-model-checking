@@ -1,0 +1,2 @@
+<until> "OPEN !A1" 
+<while> ~ "CLOSE !A1" <until> "OPEN !A2"

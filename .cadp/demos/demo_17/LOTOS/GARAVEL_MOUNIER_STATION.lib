@@ -1,0 +1,57 @@
+process STATION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai:ADDR, INIT:BOOL) : noexit :=
+   ELECTION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, true)
+   [>
+   CRASH !Ai;
+      FAIL [PRED, SUCC] (Ai)
+endproc
+
+process ELECTION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai:ADDR, B:BOOL) : noexit  :=
+   SUCC !CLAIM !Ai !B;
+      ELECTION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, B)
+   []
+   PRED !TOKEN;
+      PRIVILEGE [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, B)
+   []
+   PRED !CLAIM ?Aj:ADDR ?B0:BOOL;
+      (
+      [Ai < Aj] ->
+         ELECTION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, B)
+      []
+      [Ai > Aj] ->
+         SUCC !CLAIM !Aj !B0;
+            ELECTION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, B)
+      []
+      [Ai == Aj] ->
+         (
+         [B0 <> B] ->
+            ELECTION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, B)
+         []
+         [B0 == B] ->
+            PRIVILEGE [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, B)
+         )
+      )
+endproc
+
+process PRIVILEGE [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai:ADDR, B:BOOL): noexit :=
+   OPEN !Ai;
+      CLOSE !Ai;
+         SUCC !TOKEN;
+            ELECTION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, not (B))
+   []
+   SUCC !TOKEN;
+      ELECTION [OPEN, CLOSE, CRASH, PRED, SUCC] (Ai, not (B))
+endproc
+
+process FAIL [PRED, SUCC] (Ai:ADDR) : noexit :=
+   PRED !TOKEN;
+      SUCC !TOKEN;
+         FAIL [PRED, SUCC] (Ai)
+   []
+   PRED !CLAIM ?Aj:ADDR ?B:BOOL [Ai <> Aj];
+      SUCC !CLAIM !Aj !B;
+         FAIL [PRED, SUCC] (Ai)
+   []
+   PRED !CLAIM !Ai ?B:BOOL;
+      FAIL [PRED, SUCC] (Ai)
+endproc
+

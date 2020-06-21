@@ -1,0 +1,100 @@
+
+% echo
+% echo "verification of property S1 expressed in LOTOS"
+
+"scenario_S1.bcg" = generation of "cache_e1_I_fonc.lotos";
+
+"diag_S1.seq" =
+   observational comparison
+      strong reduction of
+         total hide all but READ, "W !E1", "CU !E1" in
+            total rename
+               "R !1 .*" -> READ,
+               "W !1 !E1" -> "W !E1",
+               "CU !1 !E1" -> "CU !E1",
+               "W !1 !E2" -> "W !E2",
+               "CU !1 !E2" -> "CU !E2"
+            in "scenario_S1.bcg"      
+      ==
+      "../S1.aut";
+
+(*---------------------------------------------------------------------------*)
+
+% echo
+% echo "verification of property S3 expressed in LOTOS"
+
+"scenario_S3.bcg" = generation of "cache_e12_I_fonc.lotos";
+
+"diag_S3.seq" =
+   safety comparison 
+      strong reduction of 
+         total hide all but 
+            "W !1 !E1", "W !1 !E2", "W !2 !E1",
+            "W !2 !E2", "CU !1 !E1", "CU !1 !E2"
+         in "scenario_S3.bcg"
+      ==
+      "../S3.aut";
+
+(*---------------------------------------------------------------------------*)
+
+% echo
+% echo "verification of property C2 expressed in LOTOS"
+
+"scenario_C2.bcg" = generation of "cache_e12_sameAddr_I_fonc.lotos";
+
+"diag_C2.seq" =
+   safety comparison 
+      strong reduction of
+         total hide all but "CU !E1", "CU !E2" in
+            total rename "CU !1 !E1" -> "CU !E1", "CU !1 !E2" -> "CU !E2" in
+               "scenario_C2.bcg"
+      ==
+      "../C2.aut";
+
+(*---------------------------------------------------------------------------*)
+
+% echo
+% echo "verification of property S2 expressed in LOTOS"
+
+"scenario_S2.bcg" = generation of "cache_e1_J_fonc.lotos";
+
+"diag_S2.seq" =
+   observational comparison 
+      strong reduction of 
+         total hide all but "W !E1", "W !E2", "CU !E1", "CU !E2" in
+            total rename
+               "W !1 !E1" -> "W !E1",
+               "W !2 !E1" -> "W !E1",
+               "W !1 !E2" -> "W !E2",
+               "W !2 !E2" -> "W !E2",
+               "CU !1 !E1" -> "CU !E1",
+               "CU !2 !E1" -> "CU !E1",
+               "CU !1 !E2" -> "CU !E2",
+               "CU !2 !E2" -> "CU !E2"
+            in "scenario_S2.bcg"
+      ==
+      "../S2.aut";
+
+(*---------------------------------------------------------------------------*)
+
+% echo
+% echo "verification of property S4 expressed in LOTOS"
+
+"scenario_S4.bcg" = generation of "cache_e12_J_4P_comp.lotos";
+
+"S4.bcg" = generation of "S4.lotos";
+
+"diag_S4.seq" =
+   tau*.a comparison
+      strong reduction of 
+         total hide all but 
+            "CU !1 !E1", 
+            "CU !1 !E2", 
+            "CU !2 !E1",
+            "CU !2 !E2"
+         in "scenario_S4.bcg"
+      <=
+      strong reduction of "S4.bcg";
+
+(*---------------------------------------------------------------------------*)
+

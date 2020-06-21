@@ -1,0 +1,1260 @@
+#! /bin/sh
+
+##############################################################################
+#                            A L D E B A R A N
+#-----------------------------------------------------------------------------
+#   INRIA Rhone-Alpes / VASY
+#   655, avenue de l'Europe
+#   38330 MONTBONNOT ST MARTIN cedex
+#-----------------------------------------------------------------------------
+#   Module             :       upc
+#   Auteur             :       Hubert Garavel, Frederic Lang, Wendelin Serwe
+#   Version            :       2.92
+#   Date               :       2020/05/03 18:42:53
+##############################################################################
+
+# This is the "User Program Conversion" shell-script for CADP.
+# It upgrades user programs to reflect latest CADP changes.
+#
+# The command-line synopsis is:
+# 	upc <key> <file-or-directory-1> <file-or-directory-2> ...
+# or
+#	upc <key>
+# The latter form is equivalent to: upc <key> $HOME
+# where $HOME is the home directory.
+
+#------------------------------------------------------------------------------
+
+COMMAND=`basename "$0"`
+
+DEBUG=""
+# DEBUG="-x"    # uncomment this line to debug sub-shells
+
+#------------------------------------------------------------------------------
+
+if [ $# = 0 ]
+then
+	echo "$COMMAND: no argument given"
+	exit 1
+fi
+
+#------------------------------------------------------------------------------
+
+KEY=$1
+case "$KEY" in
+	2015-LNT-INOUT | \
+	2016-LNT-FUNCTION-RAISES | \
+	2016-ADT-NAMING | \
+	2017-LNT-PROCESS-RAISES | \
+	2020-LNT-KEYWORDS | \
+	2020-LNT-ACCESS | \
+	2020-LNT-PRAGMAS | \
+	2020-LNT-ARROWS )
+		;;
+	* )
+		echo "$COMMAND: unknown key \`\`$KEY''"
+		exit 1
+		;;
+esac
+shift
+
+#------------------------------------------------------------------------------
+
+if [ "$CADP" = "" ]
+then
+	echo "$COMMAND: the \$CADP variable is not defined in the environment"
+	exit 1
+fi
+
+#------------------------------------------------------------------------------
+
+ARCH=`"$CADP"/com/arch`
+
+CADP_VERSION_NAME=`"$CADP"/bin.$ARCH/cadp_lib -1 |
+		   sed -e 's/^BETA-VERSION/VERSION/' |
+		   sed -e 's/\".*\"//' |
+		   sed -e 's/^VERSION.\(.\)/\1/' |
+		   sed -e 's/ //g'`
+
+#------------------------------------------------------------------------------
+
+case $ARCH in
+	sol86 | sol64 )
+		# do not use the standard "sed" that truncates long lines
+		# (with more than 4000 characters)
+		if [ -x /bin/gsed ]
+		then
+			SED="/bin/gsed"
+		elif [ -x /opt/sfw/bin/gsed ]
+		then
+			SED="/opt/sfw/bin/gsed"
+		else
+			echo "$COMMAND: gsed not found (neither in /bin nor in /opt/sfw/bin)"
+			exit 1
+		fi
+		# do not use the standard "awk" that does not support
+		# evolved string operations
+		if [ -x /bin/gawk ]
+		then
+			AWK="/bin/gawk"
+		elif [ -x /opt/sfw/bin/gawk ]
+		then
+			AWK="/opt/sfw/bin/gawk"©
+		else
+			echo "$COMMAND: gawk not found (neither in /bin nor in /opt/sfw/bin)"
+			exit 1
+		fi
+		;;
+	* )
+		SED="sed"
+		AWK="awk"
+		;;
+esac
+
+#------------------------------------------------------------------------------
+
+UPGRADED_SCRIPT=`"$CADP"/src/com/cadp_temporary $COMMAND-upgraded .sh`
+rm -f "$UPGRADED_SCRIPT" || ( echo "$COMMAND: cannot remove \`\`$UPGRADED_SCRIPT''" ; exit 1 )
+
+FIND_SCRIPT=`"$CADP"/src/com/cadp_temporary $COMMAND-find .sh`
+rm -f "$FIND_SCRIPT" || ( echo "$COMMAND: cannot remove \`\`$FIND_SCRIPT''" ; exit 1 )
+
+REPLACE_SCRIPT=`"$CADP"/src/com/cadp_temporary $COMMAND-replace .sh`
+rm -f "$REPLACE_SCRIPT" || ( echo "$COMMAND: cannot remove \`\`$REPLACE_SCRIPT''" ; exit 1 )
+
+MODIFIED_FILE=`"$CADP"/src/com/cadp_temporary $COMMAND-modified .sh`
+rm -f "$MODIFIED_FILE" || ( echo "$COMMAND: cannot remove \`\`$MODIFIED_FILE''" ; exit 1 )
+
+###############################################################################
+
+CLEANUP() {
+	rm -f "$UPGRADED_SCRIPT" "$FIND_SCRIPT" "$REPLACE_SCRIPT" "$MODIFIED_FILE"
+}
+
+###############################################################################
+
+BUILD_GENERIC_UPGRADED_SCRIPT() {
+cat << \EOF
+#! /bin/sh
+#
+# no attempt to check whether "upc" has already been applied
+#
+false
+EOF
+}
+
+###############################################################################
+
+BUILD_FIND_SCRIPT_2015_LNT_INOUT() {
+cat << \EOF
+#! /bin/sh
+grep -i '\<inout\>' "$1" > /dev/null
+EOF
+}
+
+#------------------------------------------------------------------------------
+
+BUILD_REPLACE_SCRIPT_2015_LNT_INOUT() {
+(
+cat << \EOF
+#! /bin/sh
+cat "$1" |
+$SED -r -e 's/\<inout\>/in out/g' |
+$SED -r -e 's/\<INOUT\>/IN OUT/g'
+EOF
+) | sed -e "s+^\$SED+$SED+"
+}
+
+###############################################################################
+
+BUILD_FIND_SCRIPT_2016_LNT_FUNCTION_RAISES() {
+cat << \EOF
+BEGIN {
+	IGNORECASE = 1
+	RESULT = 1   # no match found
+}
+
+function STRIP_LINE() {
+	# removing LOTOS-like comments (assuming they fit on one single line)
+	gsub ("(\\*([^*]|*[^)])*\\*)", "", $0)
+	# removing Ada-like comments
+	sub ("--.*$", "", $0)
+}
+
+{
+	STRIP_LINE()
+	if (($0 ~ "\\<function\\>") && ($0 !~ "\\<end[ 	]*function\\>")) {
+		# the current line starts a function definition
+		while (1) {
+			if ($0 ~ "\\<raises\\>") {
+				# the current line contains a "raises"
+				RESULT = 0   # match found
+				exit
+			}
+			if ($0 ~ "\\<is\\>") {
+				break
+			}
+			STATUS = getline
+			if (STATUS == 0) {
+				# end-of-file
+				RESULT = 1   # no match found
+				exit
+			} else if (STATUS == -1) {
+				# unexpected error
+				RESULT = 2
+				exit
+			}
+			# assert STATUS == 1
+			STRIP_LINE()
+		}
+		# found "is" but not "raises"	
+	}
+}
+
+END {
+	exit RESULT
+}
+EOF
+}
+
+#------------------------------------------------------------------------------
+
+BUILD_REPLACE_SCRIPT_2016_LNT_FUNCTION_RAISES() {
+cat << \EOF
+BEGIN {
+	IGNORECASE = 1
+}
+
+{
+	if (($0 !~ "\\<function\\>") || ($0 ~ "\\<end[   ]*function\\>")) {
+		# the current line does not start a function definition
+		print
+		next
+	}
+	# the current line starts a function definition
+	LINE = $0
+	while (LINE !~ "\\<is\\>" ) {
+		STATUS = getline
+		if (STATUS == 0) {
+			# end-of-file
+			break
+		}	
+		LINE = LINE "\n" $0
+	}
+	if ((LINE ~ "--") || (LINE ~ "\\(\\*")) {
+		# LINE contains an Ada-like or a LOTOS-like comment
+		# for safety, we do not try any replacement on this line
+		print LINE
+		next
+	}
+	RAISES_INDEX = match (LINE, "\\<raises\\>")
+	if (RAISES_INDEX == 0) {
+		# LINE does not contain "raises"
+		print LINE
+		next
+	}
+	# split LINE at the keyword "raises"
+	LINE_BEGIN = substr (LINE, 0, RAISES_INDEX - 1)
+	LINE_END = substr (LINE, RAISES_INDEX + 6)
+
+	IS_INDEX = match (LINE_END, "\\<is\\>")
+	if (IS_INDEX == 0) {
+		# unexpected situation
+		print LINE
+		next
+	}
+	# extract list of exceptions from LINE_END
+	EXCEPTIONS = substr (LINE_END, 0, IS_INDEX - 1)
+	LINE_END = substr (LINE_END, IS_INDEX)
+
+	# remove leading spaces in EXCEPTIONS
+	sub ("^[ 	]*", "", EXCEPTIONS)
+	# remove trailing spaces in EXCEPTIONS
+	sub ("[ 	]*$", "", EXCEPTIONS)
+
+	ARG_INDEX = match (LINE_BEGIN, "\\(")
+	if (ARG_INDEX == 0) {
+		# case of a nullary function
+		ARG_INDEX = match (LINE_BEGIN, ":")
+		if (ARG_INDEX == 0) {
+			# unexpected situation
+			print LINE
+			next
+		}
+	}
+	print substr (LINE_BEGIN, 0, ARG_INDEX - 1) "[" EXCEPTIONS "] " substr (LINE_BEGIN, ARG_INDEX) LINE_END
+}
+
+EOF
+}
+
+###############################################################################
+
+BUILD_UPGRADED_SCRIPT_2016_ADT_NAMING() {
+cat << \EOF
+#
+# (item #2236) check (using various heuristics) whether upc 2016-ADT-NAMING
+# has already been applied to this file ; if so, exit status is 0
+#
+STATUS=1
+grep 'CAESAR_ADT_FUNCNUM_' "$1" > /dev/null && STATUS=0
+if [ "$STATUS" = 0 ]
+then
+	exit $STATUS
+fi
+case "$1" in
+	*.h )	( cat "$1" | tr -d '\015' | grep '^#define CAESAR_ADT[ 	][ 	]*5[.]6$' > /dev/null ) && STATUS=0
+		if [ "$STATUS" = 0 ]
+		then
+			exit $STATUS
+		fi
+	     	( cat "$1" | tr -d '\015' | grep '^#define CAESAR_ADT_EXPERT[ 	][ 	]*5[.]6$' > /dev/null ) && STATUS=0
+		;;
+	*.f )   ( cat "$1" | tr -d '\015' | grep '^#define CAESAR_ADT_EXPERT_F[ 	][ 	]*5[.]6$' > /dev/null ) && STATUS=0
+		;;
+	*.t )   ( cat "$1" | tr -d '\015' | grep '^#define CAESAR_ADT_EXPERT_T[ 	][ 	]*5[.]6$' > /dev/null ) && STATUS=0
+		;;
+esac
+#
+# at this point, no indication that upc has already been applied
+exit $STATUS
+EOF
+}
+
+#------------------------------------------------------------------------------
+
+BUILD_FIND_SCRIPT_2016_ADT_NAMING() {
+cat << \EOF
+#! /bin/sh
+#
+# (item #2232) presence of "CAESAR_ADT_FUNC_" followed by a number and then,
+# possibly, two underscores (if the LOTOS function is overloaded)
+#
+grep 'CAESAR_ADT_FUNC_[0-9][0-9]*\>' "$1" > /dev/null ||
+grep 'CAESAR_ADT_FUNC_[0-9][0-9]*__' "$1" > /dev/null ||
+#
+# (item #2233) detection of obsolete forms of type identifiers
+#
+grep '\<CAESAR_ADT_[A-Z][A-Z_]*_CAESAR_ADT_TYPE_' "$1" > /dev/null ||
+#
+# (item #2234) detection of obsolete forms of function identifiers
+#
+grep '\<CAESAR_ADT_[0-9][0-9]*_CAESAR_ADT_FUNC_' "$1" > /dev/null ||
+grep '\<CAESAR_ADT_Get_[0-9][0-9]*_CAESAR_ADT_FUNC_' "$1" > /dev/null ||
+grep '\<CAESAR_ADT_[A-Zi][A-Zs]*_CAESAR_ADT_FUNC_' "$1" > /dev/null ||
+#
+# (item #2235) detection of obsolete testers, selectors, and iterators
+#
+grep '\<CAESAR_ADT_is_' "$1" > /dev/null ||
+grep '\<CAESAR_ADT_Get_[0-9]' "$1" > /dev/null ||
+grep '\<CAESAR_ADT_ITR_FIRST_FUNCTION_' "$1" > /dev/null ||
+grep '\<CAESAR_ADT_ITR_NEXT_FUNCTION_' "$1" > /dev/null ||
+#
+# (item #2233) detection of obsolete library identifiers, excluding the
+# identifiers starting with "CAESAR_ADT_FUNC_"
+#
+( grep 'ADT_INT\>' "$1" && ( cat "$1" | sed -e 's/CAESAR_ADT_FUNC_INT//g' | grep '\<CAESAR_ADT_[A-Z][A-Z]*_INT\>' ) ) > /dev/null ||
+( grep 'ADT_NAT\>' "$1" && ( cat "$1" | sed -e 's/CAESAR_ADT_FUNC_NAT//g' | grep '\<CAESAR_ADT_[A-Z][A-Z]*_NAT\>' ) ) > /dev/null ||
+( grep 'ADT_STRING\>' "$1" && ( cat "$1" | sed -e 's/CAESAR_ADT_FUNC_STRING//g' | grep '\<CAESAR_ADT_[A-Z][A-Z]*_STRING\>' ) ) > /dev/null ||
+( grep 'ADT_BITSTRING\>' "$1" && ( cat "$1" | sed -e 's/CAESAR_ADT_FUNC_BITSTRING//g' | grep '\<CAESAR_ADT_[A-Z][A-Z]*_BITSTRING\>' ) ) > /dev/null ||
+( grep 'ADT_DECSTRING\>' "$1" && ( cat "$1" | sed -e 's/CAESAR_ADT_FUNC_DECSTRING//g' | grep '\<CAESAR_ADT_[A-Z][A-Z]*_DECSTRING\>' ) ) > /dev/null ||
+( grep 'ADT_HEXSTRING\>' "$1" && ( cat "$1" | sed -e 's/CAESAR_ADT_FUNC_HEXSTRING//g' | grep '\<CAESAR_ADT_[A-Z][A-Z]*_HEXSTRING\>' ) ) > /dev/null ||
+( grep 'ADT_OCTSTRING\>' "$1" && ( cat "$1" | sed -e 's/CAESAR_ADT_FUNC_OCTSTRING//g' | grep '\<CAESAR_ADT_[A-Z][A-Z]*_OCTSTRING\>' ) ) > /dev/null ||
+( grep 'ADT_OCTETSTRING\>' "$1" && ( cat "$1" | sed -e 's/CAESAR_ADT_FUNC_OCTETSTRING//g' | grep '\<CAESAR_ADT_[A-Z][A-Z]*_OCTETSTRING\>' ) ) > /dev/null
+EOF
+}
+
+#------------------------------------------------------------------------------
+
+BUILD_REPLACE_SCRIPT_2016_ADT_NAMING() {
+# attention! $SED uses extended regexps: \( ... \) must be noted ( ... )
+# note: there are small risks that the proposed replacement is incorrect
+(
+cat << \EOF
+#! /bin/sh
+UP_TO_DATE="$2"
+cat "$1" |
+#
+# (item #2236) update the version number of the file, assuming that this
+# number corresponds to CAESAR.ADT 5.0 (i.e., CADP 2001 "Ottawa") or above
+# (up to CAESAR.ADT 5.5)
+#
+$SED -r -e 's/^(#define CAESAR_ADT)[ 	][ 	]*5[.][012345]$/\1 5.6/' |
+$SED -r -e 's/^(#define CAESAR_ADT_EXPERT)[ 	][ 	]*5[.][012345]$/\1 5.6/' |
+$SED -r -e 's/^(#define CAESAR_ADT_EXPERT_F)[ 	][ 	]*5[.][012345]$/\1 5.6/' |
+$SED -r -e 's/^(#define CAESAR_ADT_EXPERT_T)[ 	][ 	]*5[.][012345]$/\1 5.6/' |
+#
+# (item #2232) replace "CAESAR_ADT_FUNC_" with "CAESAR_ADT_FUNCNUM_" if it
+# is followed by a number
+#
+if [ "$UP_TO_DATE" = 0 ]
+then
+	$SED -r -e 's/CAESAR_ADT_FUNC_([0-9][0-9]*)\>/CAESAR_ADT_FUNCNUM_\1/g' |
+	$SED -r -e 's/CAESAR_ADT_FUNC_([0-9][0-9]*)__/CAESAR_ADT_FUNCNUM_\1__/g'
+else
+	cat
+fi |
+#
+# (item #2233) shorten obsolete forms of type identifiers
+#
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z_]*_)CAESAR_ADT_TYPE_/\1/g' |
+#
+# (item #2234) shorten obsolete forms of function identifiers
+#
+$SED -r -e 's/(\<CAESAR_ADT_[0-9][0-9]*_)CAESAR_ADT_FUNC_/\1/g' |
+$SED -r -e 's/(\<CAESAR_ADT_Get_[0-9][0-9]*_)CAESAR_ADT_FUNC_/\1/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Zi][A-Zs]*_)CAESAR_ADT_FUNC_/\1/g' |
+#
+# (item #2234) update obsolete library identifiers
+#
+$SED -r -e 's/\<CAESAR_ADT_FUNC_INT\>/CAESAR_%%%_FUNC_INT/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z]*)_INT\>/\1_ADT_INT/g' |
+$SED -r -e 's/\<CAESAR_ADT_FUNC_NAT\>/CAESAR_%%%_FUNC_NAT/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z]*)_NAT\>/\1_ADT_NAT/g' |
+$SED -r -e 's/\<CAESAR_ADT_FUNC_STRING\>/CAESAR_%%%_FUNC_STRING/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z]*)_STRING\>/\1_ADT_STRING/g' |
+$SED -r -e 's/\<CAESAR_ADT_FUNC_BITSTRING\>/CAESAR_%%%_FUNC_BITSTRING/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z]*)_BITSTRING\>/\1_ADT_BITSTRING/g' |
+$SED -r -e 's/\<CAESAR_ADT_FUNC_DECSTRING\>/CAESAR_%%%_FUNC_DECSTRING/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z]*)_DECSTRING\>/\1_ADT_DECSTRING/g' |
+$SED -r -e 's/\<CAESAR_ADT_FUNC_HEXSTRING\>/CAESAR_%%%_FUNC_HEXSTRING/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z]*)_HEXSTRING\>/\1_ADT_HEXSTRING/g' |
+$SED -r -e 's/\<CAESAR_ADT_FUNC_OCTSTRING\>/CAESAR_%%%_FUNC_OCTSTRING/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z]*)_OCTSTRING\>/\1_ADT_OCTSTRING/g' |
+$SED -r -e 's/\<CAESAR_ADT_FUNC_OCTETSTRING\>/CAESAR_%%%_FUNC_OCTETSTRING/g' |
+$SED -r -e 's/(\<CAESAR_ADT_[A-Z][A-Z]*)_OCTETSTRING\>/\1_ADT_OCTETSTRING/g' |
+$SED -r -e 's/\<CAESAR_%%%_FUNC_/CAESAR_ADT_FUNC_/g' |
+# undo some of the above changes that are known to be unsuitable
+$SED -r -e 's/\<CAESAR_ADT_TRACE_ADT_NAT\>/CAESAR_ADT_TRACE_NAT/g' |
+$SED -r -e 's/\<CAESAR_ADT_TRACE_ADT_INT\>/CAESAR_ADT_TRACE_INT/g' |
+#
+# (item #2235) update obsolete testers, selectors, and iterators
+#
+$SED -r -e 's/\<CAESAR_ADT_is_/CAESAR_ADT_MATCH_/g' |
+$SED -r -e 's/\<CAESAR_ADT_Get_/CAESAR_ADT_GET_/g' |
+$SED -r -e 's/\<CAESAR_ADT_ITR_FIRST_FUNCTION_/CAESAR_ADT_ITRFUNC_FIRST_/g' |
+$SED -r -e 's/\<CAESAR_ADT_ITR_NEXT_FUNCTION_/CAESAR_ADT_ITRFUNC_NEXT_/g'
+EOF
+) | sed -e "s+^\$SED+$SED+"
+}
+
+###############################################################################
+
+BUILD_FIND_SCRIPT_2017_LNT_PROCESS_RAISES() {
+cat << \EOF
+BEGIN {
+	IGNORECASE = 1
+	RESULT = 1   # no match found
+}
+
+function STRIP_LINE() {
+	# removing LOTOS-like comments (assuming they fit on one single line)
+	gsub ("(\\*([^*]|*[^)])*\\*)", "", $0)
+	# removing Ada-like comments
+	sub ("--.*$", "", $0)
+}
+
+{
+	STRIP_LINE()
+	if (($0 ~ "\\<process\\>") && ($0 !~ "\\<end[ 	]*process\\>")) {
+		# the current line starts a process definition
+		while (1) {
+			if ($0 ~ "\\<raises\\>") {
+				# the current line contains a "raises"
+				RESULT = 0   # match found
+				exit
+			}
+			if ($0 ~ "\\<is\\>") {
+				break
+			}
+			STATUS = getline
+			if (STATUS == 0) {
+				# end-of-file
+				RESULT = 1   # no match found
+				exit
+			} else if (STATUS == -1) {
+				# unexpected error
+				RESULT = 2
+				exit
+			}
+			# assert STATUS == 1
+			STRIP_LINE()
+		}
+		# found "is" but not "raises"	
+	}
+}
+
+END {
+	exit RESULT
+}
+EOF
+}
+
+#------------------------------------------------------------------------------
+
+BUILD_REPLACE_SCRIPT_2017_LNT_PROCESS_RAISES() {
+cat << \EOF
+BEGIN {
+	IGNORECASE = 1
+}
+
+{
+	if (($0 !~ "\\<process\\>") || ($0 ~ "\\<end[   ]*process\\>")) {
+		# the current line does not start a process definition
+		print
+		next
+	}
+	# the current line starts a process definition
+	LINE = $0
+	while (LINE !~ "\\<is\\>" ) {
+		STATUS = getline
+		if (STATUS == 0) {
+			# end-of-file
+			break
+		}	
+		if (($0 ~ "\\<process\\>") && ($0 !~ "\\<end[   ]*process\\>")) {
+			# it might be that the first line read did not start
+			# a process definition but, e.g., had a comment
+			# containing the word "process"; we print the lines
+			# that we have already read and resume, assuming that
+			# the current line starts a process definition
+			print LINE
+			LINE = $0
+		} else {
+			LINE = LINE "\n" $0
+		}
+	}
+	if ((LINE ~ "--") || (LINE ~ "\\(\\*")) {
+		# LINE contains an Ada-like or a LOTOS-like comment
+		# for safety, we do not try any replacement on this line
+		print LINE
+		next
+	}
+	RAISES_INDEX = match (LINE, "\\<raises\\>")
+	if (RAISES_INDEX == 0) {
+		# LINE does not contain "raises"
+		print LINE
+		next
+	}
+	# split LINE at the keyword "raises"
+	LINE_BEGIN = substr (LINE, 0, RAISES_INDEX - 1)
+	sub ("[ 	]*$", "", LINE_BEGIN);
+	if (substr (LINE_BEGIN, length (LINE_BEGIN)) != "\n") {
+		# LINE_BEGIN does not end with "\n"
+		LINE_BEGIN = LINE_BEGIN " "
+	}
+	LINE_END = substr (LINE, RAISES_INDEX + 6)
+
+	IS_INDEX = match (LINE_END, "\\<is\\>")
+	if (IS_INDEX == 0) {
+		# unexpected situation
+		print LINE
+		next
+	}
+	# extract list of exceptions from LINE_END
+	EXCEPTIONS = substr (LINE_END, 0, IS_INDEX - 1)
+	LINE_END = substr (LINE_END, IS_INDEX)
+
+	# remove leading spaces in EXCEPTIONS
+	sub ("^[ 	]*", "", EXCEPTIONS)
+	# remove trailing spaces in EXCEPTIONS
+	sub ("[ 	]*$", "", EXCEPTIONS)
+	# remove trailing "\n" in EXCEPTIONS
+	sub ("\n$", "", EXCEPTIONS)
+
+	# add "raise" keywords in EXCEPTIONS:
+
+	# first, build a regexp that matches an exception declaration, which
+	# is made of several exception identifiers followed by their type,
+	# possibly spreading over several lines
+	REGEXP_IDF = "[a-zA-Z][a-zA-Z0-9_]*"
+	REGEXP_SPACES = "[ \t\n\r]*"
+	REGEXP_LIST_SEP = REGEXP_SPACES "," REGEXP_SPACES
+	REGEXP_DECL_SEP = REGEXP_SPACES ":" REGEXP_SPACES
+	REGEXP_IDF_LIST = REGEXP_IDF "(" REGEXP_LIST_SEP REGEXP_IDF ")*"
+	REGEXP_DECL = REGEXP_IDF_LIST REGEXP_DECL_SEP REGEXP_IDF
+
+	# then, add the "raise" keyword before every exception declaration
+	EXCEPTIONS = gensub (REGEXP_DECL, "raise &", "g", EXCEPTIONS)
+
+	ARG_INDEX = match (LINE_BEGIN, "\\]")
+	if (ARG_INDEX != 0) {
+		# case of a process with gate parameters
+		print substr (LINE_BEGIN, 0, ARG_INDEX - 1) ", " EXCEPTIONS substr (LINE_BEGIN, ARG_INDEX) LINE_END
+	} else {
+		# case of a process without gate parameters
+		ARG_INDEX = match (LINE_BEGIN, "\\(")
+		if (ARG_INDEX == 0) {
+			# case of a process without gate nor data parameters
+			print LINE_BEGIN "[" EXCEPTIONS "] " LINE_END
+		} else {
+			print substr (LINE_BEGIN, 0, ARG_INDEX - 1) "[" EXCEPTIONS "] " substr (LINE_BEGIN, ARG_INDEX) LINE_END
+		}
+	}
+}
+
+EOF
+}
+
+###############################################################################
+
+BUILD_LIBRARY_LNT() {
+cat << \EOF
+function LNT_SET_KEYWORD() {
+	KEYWORD[1]  = "any";		KEYWORD[2]  = "array"
+	KEYWORD[3]  = "as";		KEYWORD[4]  = "assert"
+	KEYWORD[5]  = "break";		KEYWORD[6]  = "by"
+	KEYWORD[7]  = "case";		KEYWORD[8]  = "channel"
+	KEYWORD[9]  = "disrupt";	KEYWORD[10] = "else"
+	KEYWORD[11] = "elsif";		KEYWORD[12] = "end"
+	KEYWORD[13] = "eval";		KEYWORD[14] = "for"
+	KEYWORD[15] = "function";	KEYWORD[16] = "hide"
+	KEYWORD[17] = "if";		KEYWORD[18] = "in"
+	KEYWORD[19] = "is";		KEYWORD[20] = "list"
+	KEYWORD[21] = "loop";		KEYWORD[22] = "module"
+	KEYWORD[23] = "null";		KEYWORD[24] = "of"
+	KEYWORD[25] = "only";		KEYWORD[26] = "out"
+	KEYWORD[27] = "par";		KEYWORD[28] = "process"
+	KEYWORD[29] = "raise";		KEYWORD[30] = "return"
+	KEYWORD[31] = "select";		KEYWORD[32] = "set"
+	KEYWORD[33] = "sorted";		KEYWORD[34] = "stop"
+	KEYWORD[35] = "then";		KEYWORD[36] = "type"
+	KEYWORD[37] = "use";		KEYWORD[38] = "var"
+	KEYWORD[39] = "where";		KEYWORD[40] = "while"
+	KEYWORD[41] = "with";		KEYWORD[42] = "range"
+	KEYWORD[43] = "inout"
+}
+
+function LNT_BEGIN() {
+	# IN_COMMENT == 1 iff the line starts in a comment
+	IN_COMMENT = 0
+}
+
+function LNT_INIT() {
+        LINE = $0
+        RESULT_LINE = ""
+}
+
+function LNT_CONTINUE() {
+        return (LINE != "")
+}
+
+function LNT_SPLIT_LINE() {
+        # split LINE in three parts LINE_START LINE_SKIP LINE, where
+	# LINE_START is the (possibly empty) initial part of LINE in which
+	# searches or substitutions have to be done, LINE_SKIP is a (possibly
+	# empty) comment or string that follows LINE_START, and LINE is what
+	# remains after LINE_START and LINE_SKIP; upon return, at least
+	# LINE_START or LINE_SKIP is non-empty, i.e., the length of LINE has
+	# decreased strictly
+        if (IN_COMMENT == 0) {
+                # not in a multi-line comment
+                # looking for next comment or string
+                INDEX = match (LINE, /\(\*|--|"/)
+                if (INDEX == 0) {
+			# no comment or string on this line
+			LINE_START = LINE
+			LINE_SKIP = ""
+			LINE = ""
+		} else {
+                        # a comment or a string starts on this line
+                        SYMBOL = substr (LINE, INDEX, 1)
+                        LINE_START = substr (LINE, 1, INDEX - 1)
+                        LINE = substr (LINE, INDEX,
+                                       length (LINE) - INDEX + 1)
+                        if (SYMBOL == "(") {
+                                # LOTOS-like comment
+                                # looking for end comment
+                                INDEX = match (LINE, /\*\)/)
+                                if (INDEX == 0) {
+					# the rest of the line is a comment
+                                        IN_COMMENT = 1
+                                        LINE_SKIP = LINE
+                                        LINE = ""
+                                        return
+                                }
+                                INDEX = INDEX + 1
+                        } else if (SYMBOL == "-") {
+                                # Ada-like comment
+                                INDEX = length (LINE)
+                        } else {
+                                # string
+                                INDEX = match (LINE, /[^\\]"/)
+                                if (INDEX == 0) {
+                                        # unexpectedly, the string does not
+                                        # close on this line; we skip the line
+                                        LINE_SKIP = LINE
+                                        LINE = ""
+                                        return
+                                }
+				INDEX = INDEX + 1
+                        }
+                        LINE_SKIP = substr (LINE, 1, INDEX)
+                        LINE = substr (LINE, INDEX + 1, length (LINE) - INDEX)
+                }
+        } else {
+                # in a multi-line comment
+                # looking for comment-ending symbol
+                INDEX = match (LINE, /\*\)/)
+                if (INDEX == 0) {
+                        # the comment does not end on this line : skip the line
+                        LINE_START = ""
+                        LINE_SKIP = LINE
+                        LINE = ""
+                } else {
+                        # the comment ends at INDEX
+                        LINE_START = ""
+                        LINE_SKIP = substr (LINE, 1, INDEX + 1)
+                        LINE = substr (LINE, INDEX + 2,
+                                       length (LINE) - INDEX - 1)
+                        IN_COMMENT = 0
+                }
+        }
+}
+
+function LNT_CAT_LINE() {
+        RESULT_LINE = RESULT_LINE LINE_START LINE_SKIP
+}
+
+function LNT_PRINT_LINE () {
+        print RESULT_LINE
+}
+EOF
+}
+
+###############################################################################
+
+BUILD_FIND_SCRIPT_2020_LNT_KEYWORDS() {
+BUILD_LIBRARY_LNT
+cat << \EOF
+function LNT_FIND_KEYWORDS() {
+	for ( i in KEYWORD ) {
+		# searching KEYWORD[i] independently of the case
+		KEYLENGTH = length (KEYWORD[i])
+		BUFFER = LINE_START
+		INDEX = 1
+		while (INDEX != 0) {
+			IGNORECASE = 1
+			INDEX = match (BUFFER, "\\<" KEYWORD[i] "\\>")
+			if (INDEX != 0) {
+				# KEYWORD[i] found: if not in lowercase then
+				# exit
+				IGNORECASE = 0
+				if (substr (BUFFER, INDEX, KEYLENGTH) != KEYWORD[i]) {
+					RESULT = 0	# match found
+					exit
+				} else {
+					# searching for other occurrences of
+					# KEYWORD[i]
+					BUFFER = substr (BUFFER, INDEX + KEYLENGTH,
+						         length (BUFFER) - INDEX - KEYLENGTH + 1)
+				}
+			}
+		}
+	}
+}
+
+BEGIN {
+	LNT_BEGIN()
+	LNT_SET_KEYWORD()
+	RESULT = 1	# no match found
+}
+
+
+{
+	LNT_INIT()
+	while (LNT_CONTINUE()) {
+		LNT_SPLIT_LINE()
+		LNT_FIND_KEYWORDS()
+	}
+}
+
+END {
+	exit RESULT
+}
+EOF
+}
+
+#------------------------------------------------------------------------------
+
+BUILD_REPLACE_SCRIPT_2020_LNT_KEYWORDS() {
+BUILD_LIBRARY_LNT
+cat << \EOF
+function LNT_REPLACE_KEYWORDS() {
+	# turning all keywords to lower case in LINE_START
+	for ( i in KEYWORD ) {
+		IGNORECASE = 1
+		gsub ("\\<" KEYWORD[i] "\\>", KEYWORD[i], LINE_START) 
+	}
+}
+
+BEGIN {
+	LNT_BEGIN()
+	LNT_SET_KEYWORD()
+}
+
+{
+	LNT_INIT()
+	while (LNT_CONTINUE()) {
+		LNT_SPLIT_LINE()
+		LNT_REPLACE_KEYWORDS()
+		LNT_CAT_LINE()
+	}
+	LNT_PRINT_LINE()
+}
+EOF
+}
+
+###############################################################################
+
+BUILD_FIND_SCRIPT_2020_LNT_ACCESS() {
+BUILD_LIBRARY_LNT
+cat << \EOF
+function LNT_FIND_ACCESS() {
+	if (IN_TYPE == 0) {
+		if (LINE_START ~ "\\<type\\>") {
+			IN_TYPE = 1
+		}
+	}
+	if (IN_WITH_CLAUSE == 0) {
+		if (LINE_START ~ "\\<with\\>") {
+			IN_WITH_CLAUSE = 1
+		}
+	}
+	if (IN_WITH_CLAUSE == 1) {
+		INDEX = match (LINE_START, "\\<access\\>")
+		if (INDEX != 0) {
+			RESULT = 0	# match found
+			exit
+		}
+		if (LINE_SKIP == "\"access\"") {
+			# only case in which we search in LINE_SKIP
+			RESULT = 0	# match found
+			exit
+		}
+	}
+	if (IN_TYPE == 1) {
+		# inside a type definition : if we are in a with clause,
+		# it ends at "end type"
+		if (LINE_START ~ "\\<end\\>[ \\t][ \\t]*\\<type\\>") {
+			IN_TYPE = 0
+			IN_WITH_CLAUSE = 0
+		}
+	} else {
+		# outside a type definition : if we are in a with clause,
+		# then it is a module with clause; it ends at the next
+		# type, channel, function, or process definition
+		if ((LINE_START ~ "\\<type\\>") ||
+		    (LINE_START ~ "\\<channel\\>") ||
+		    (LINE_START ~ "\\<function\\>") ||
+		    (LINE_START ~ "\\<process\\>")) {
+			IN_WITH_CLAUSE = 0
+		}
+	}
+}
+
+BEGIN {
+	LNT_BEGIN()
+	# IN_TYPE == 1 if in a type definition
+	IN_TYPE = 0
+	# IN_WITH_CLAUSE == 1 if in a with clause
+	IN_WITH_CLAUSE = 0
+	RESULT = 1	# no match found
+}
+
+{
+	LNT_INIT()
+	while (LNT_CONTINUE()) {
+		LNT_SPLIT_LINE()
+		LNT_FIND_ACCESS()
+	}
+}
+
+END {
+	exit RESULT
+}
+EOF
+}
+
+###############################################################################
+
+BUILD_REPLACE_SCRIPT_2020_LNT_ACCESS() {
+BUILD_LIBRARY_LNT
+cat << \EOF
+function LNT_REPLACE_ACCESS() {
+	if (IN_TYPE == 0) {
+		if (LINE_START ~ "\\<type\\>") {
+			IN_TYPE = 1
+		}
+	}
+	if (IN_WITH_CLAUSE == 0) {
+		if (LINE_START ~ "\\<with\\>") {
+			IN_WITH_CLAUSE = 1
+		}
+	}
+	if (IN_WITH_CLAUSE == 1) {
+		gsub ("\\<access\\>", "element", LINE_START)
+		if (LINE_SKIP == "\"access\"") {
+			# only case in which we substitute in LINE_SKIP
+			LINE_SKIP = "\"element\""
+		}
+	} else {
+		# outside a with clause (in code, comments and strings), we
+		# replace "access" by "element" only if it is followed by an
+		# opening parenthesis, keeping the possible spacing before
+		# the parenthesis
+		LINE_START = gensub ("\\<access\\>([ \\t]*\\()",
+				     "element\\1", "g", LINE_START)
+		# we also apply this substitution in strings and comments
+		LINE_SKIP = gensub ("\\<access\\>([ \\t]*\\()",
+				    "element\\1", "g", LINE_SKIP)
+	}
+	if (IN_TYPE == 1) {
+		# inside a type definition : if we are in a with clause,
+		# it ends at "end type"
+		if (LINE_START ~ "\\<end\\>[ \\t][ \\t]*\\<type\\>") {
+			IN_TYPE = 0
+			IN_WITH_CLAUSE = 0
+		}
+	} else {
+		# outside a type definition : if we are in a with clause,
+		# then it is a module with clause; it ends at the next
+		# type, channel, function, or process definition
+		if ((LINE_START ~ "\\<type\\>") ||
+		    (LINE_START ~ "\\<channel\\>") ||
+		    (LINE_START ~ "\\<function\\>") ||
+		    (LINE_START ~ "\\<process\\>")) {
+			IN_WITH_CLAUSE = 0
+		}
+	}
+}
+
+BEGIN {
+	LNT_BEGIN()
+	# IN_TYPE == 1 if in a type definition
+	IN_TYPE = 0
+	# IN_WITH_CLAUSE == 1 if in a with clause
+	IN_WITH_CLAUSE = 0
+}
+
+{
+	LNT_INIT()
+	while (LNT_CONTINUE()) {
+		LNT_SPLIT_LINE()
+		LNT_REPLACE_ACCESS()
+		LNT_CAT_LINE()
+	}
+	LNT_PRINT_LINE()
+}
+EOF
+}
+
+###############################################################################
+
+BUILD_FIND_SCRIPT_2020_LNT_PRAGMAS() {
+cat << EOF
+#! /bin/sh
+FIND_PRAGMA() {
+	cat "\$2" | $SED -e "s/!\<\$1\>//g" | grep -i "[!]\<\$1\>"
+}
+(
+FIND_PRAGMA "bits" "\$1" ||
+FIND_PRAGMA "card" "\$1" ||
+FIND_PRAGMA "comparedby" "\$1" ||
+FIND_PRAGMA "external" "\$1" ||
+FIND_PRAGMA "implementedby" "\$1" ||
+FIND_PRAGMA "int_bits" "\$1" ||
+FIND_PRAGMA "int_check" "\$1" ||
+FIND_PRAGMA "int_inf" "\$1" ||
+FIND_PRAGMA "int_sup" "\$1" ||
+FIND_PRAGMA "iteratedby" "\$1" ||
+FIND_PRAGMA "list" "\$1" ||
+FIND_PRAGMA "nat_bits" "\$1" ||
+FIND_PRAGMA "nat_check" "\$1" ||
+FIND_PRAGMA "nat_inf" "\$1" ||
+FIND_PRAGMA "nat_sup" "\$1" ||
+FIND_PRAGMA "printedby" "\$1" ||
+FIND_PRAGMA "representedby" "\$1" ||
+FIND_PRAGMA "string_card" "\$1"
+) > /dev/null
+EOF
+}
+
+###############################################################################
+
+BUILD_REPLACE_SCRIPT_2020_LNT_PRAGMAS() {
+cat << EOF
+REPLACE_PRAGMA() {
+	$SED -e "s/!\<\$1\>/!\$2/g"
+}
+cat "\$1" |
+REPLACE_PRAGMA "[Cc][Aa][Rr][Dd]" "card" |
+REPLACE_PRAGMA "[Cc][Oo][Mm][Pp][Aa][Rr][Ee][Dd][Bb][Yy]" "comparedby" |
+REPLACE_PRAGMA "[Ee][Xx][Tt][Ee][Rr][Nn][Aa][Ll]" "external" |
+REPLACE_PRAGMA "[Ii][Mm][Pp][Ll][Ee][Mm][Ee][Nn][Tt][Ee][Dd][Bb][Yy]" "implementedby" |
+REPLACE_PRAGMA "[Ii][Nn][Tt]_[Bb][Ii][Tt][Ss]" "int_bits" |
+REPLACE_PRAGMA "[Ii][Nn][Tt]_[Cc][Hh][Ee][Cc][Kk]" "int_check" |
+REPLACE_PRAGMA "[Ii][Nn][Tt]_[Ii][Nn][Ff]" "int_inf" |
+REPLACE_PRAGMA "[Ii][Nn][Tt]_[Ss][Uu][Pp]" "int_sup" |
+REPLACE_PRAGMA "[Ii][Tt][Ee][Rr][Aa][Tt][Ee][Dd][Bb][Yy]" "iteratedby" |
+REPLACE_PRAGMA "[Ll][Ii][Ss][Tt]" "list" |
+REPLACE_PRAGMA "[Nn][Aa][Tt]_[Bb][Ii][Tt][Ss]" "nat_bits" |
+REPLACE_PRAGMA "[Nn][Aa][Tt]_[Cc][Hh][Ee][Cc][Kk]" "nat_check" |
+REPLACE_PRAGMA "[Nn][Aa][Tt]_[Ii][Nn][Ff]" "nat_inf" |
+REPLACE_PRAGMA "[Nn][Aa][Tt]_[Ss][Uu][Pp]" "nat_sup" |
+REPLACE_PRAGMA "[Pp][Rr][Ii][Nn][Tt][Ee][Dd][Bb][Yy]" "printedby" |
+REPLACE_PRAGMA "[Rr][Ee][Pp][Rr][Ee][Ss][Ee][Nn][Tt][Ee][Dd][Bb][Yy]" "representedby" |
+REPLACE_PRAGMA "[Ss][Tt][Rr][Ii][Nn][Gg]_[Cc][Aa][Rr][Dd]" "string_card"
+EOF
+}
+
+###############################################################################
+
+BUILD_FIND_SCRIPT_2020_LNT_ARROWS() {
+BUILD_LIBRARY_LNT
+cat << EOF
+function LNT_FIND_ARROWS() {
+	# do not search "=>" in comments and strings
+	if (LINE_START ~ "=>") {
+		RESULT = 0	# match found
+		exit
+	}
+}
+
+BEGIN {
+	LNT_BEGIN()
+	RESULT = 1	# no match found
+}
+
+{
+	LNT_INIT()
+	while (LNT_CONTINUE()) {
+		LNT_SPLIT_LINE()
+		LNT_FIND_ARROWS()
+	}
+}
+
+END {
+	exit RESULT
+}
+EOF
+}
+
+###############################################################################
+
+BUILD_REPLACE_SCRIPT_2020_LNT_ARROWS() {
+BUILD_LIBRARY_LNT
+cat << EOF
+function LNT_REPLACE_ARROWS() {
+	# do not replace "=>" by "->" in comments and strings
+	gsub ("=>", "->", LINE_START)
+}
+
+BEGIN {
+	LNT_BEGIN()
+}
+
+{
+	LNT_INIT()
+	while (LNT_CONTINUE()) {
+		LNT_SPLIT_LINE()
+		LNT_REPLACE_ARROWS()
+		LNT_CAT_LINE()
+	}
+	LNT_PRINT_LINE()
+}
+EOF
+}
+
+###############################################################################
+
+case "$KEY" in
+
+	2015-LNT-INOUT )
+		EXTENSION="lnt"
+		TOOL="SHELL"
+		BUILD_GENERIC_UPGRADED_SCRIPT > "$UPGRADED_SCRIPT"
+		BUILD_FIND_SCRIPT_2015_LNT_INOUT > "$FIND_SCRIPT"
+		BUILD_REPLACE_SCRIPT_2015_LNT_INOUT > "$REPLACE_SCRIPT"
+		;;
+
+	2016-LNT-FUNCTION-RAISES )
+		EXTENSION="lnt"
+		TOOL="AWK"
+		BUILD_GENERIC_UPGRADED_SCRIPT > "$UPGRADED_SCRIPT"
+		BUILD_FIND_SCRIPT_2016_LNT_FUNCTION_RAISES > "$FIND_SCRIPT"
+		BUILD_REPLACE_SCRIPT_2016_LNT_FUNCTION_RAISES > "$REPLACE_SCRIPT"
+		;;
+
+	2016-ADT-NAMING )
+		EXTENSION_FIND='-name "*.[fht]" -o -name "*.[ft]nt"'
+		TOOL="SHELL"
+		BUILD_UPGRADED_SCRIPT_2016_ADT_NAMING > "$UPGRADED_SCRIPT"
+		BUILD_FIND_SCRIPT_2016_ADT_NAMING > "$FIND_SCRIPT"
+		BUILD_REPLACE_SCRIPT_2016_ADT_NAMING > "$REPLACE_SCRIPT"
+		;;
+
+	2017-LNT-PROCESS-RAISES )
+		EXTENSION="lnt"
+		TOOL="AWK"
+		BUILD_GENERIC_UPGRADED_SCRIPT > "$UPGRADED_SCRIPT"
+		BUILD_FIND_SCRIPT_2017_LNT_PROCESS_RAISES > "$FIND_SCRIPT"
+		BUILD_REPLACE_SCRIPT_2017_LNT_PROCESS_RAISES > "$REPLACE_SCRIPT"
+		;;
+
+	2020-LNT-KEYWORDS )
+		EXTENSION="lnt"
+		TOOL="AWK"
+		BUILD_GENERIC_UPGRADED_SCRIPT > "$UPGRADED_SCRIPT"
+		BUILD_FIND_SCRIPT_2020_LNT_KEYWORDS > "$FIND_SCRIPT"
+		BUILD_REPLACE_SCRIPT_2020_LNT_KEYWORDS > "$REPLACE_SCRIPT"
+		;;
+
+	2020-LNT-ACCESS )
+		EXTENSION="lnt"
+		TOOL="AWK"
+		BUILD_GENERIC_UPGRADED_SCRIPT > "$UPGRADED_SCRIPT"
+		BUILD_FIND_SCRIPT_2020_LNT_ACCESS > "$FIND_SCRIPT"
+		BUILD_REPLACE_SCRIPT_2020_LNT_ACCESS > "$REPLACE_SCRIPT"
+		;;
+
+	2020-LNT-PRAGMAS )
+		EXTENSION="lnt"
+		TOOL="SHELL"
+		BUILD_GENERIC_UPGRADED_SCRIPT > "$UPGRADED_SCRIPT"
+		BUILD_FIND_SCRIPT_2020_LNT_PRAGMAS > "$FIND_SCRIPT"
+		BUILD_REPLACE_SCRIPT_2020_LNT_PRAGMAS > "$REPLACE_SCRIPT"
+		;;
+
+	2020-LNT-ARROWS )
+		EXTENSION="lnt"
+		TOOL="AWK"
+		BUILD_GENERIC_UPGRADED_SCRIPT > "$UPGRADED_SCRIPT"
+		BUILD_FIND_SCRIPT_2020_LNT_ARROWS > "$FIND_SCRIPT"
+		BUILD_REPLACE_SCRIPT_2020_LNT_ARROWS > "$REPLACE_SCRIPT"
+		;;
+esac
+
+if [ "$EXTENSION" != "" ]
+then
+	EXTENSION_FIND="-name '*'.$EXTENSION"
+fi
+
+#------------------------------------------------------------------------------
+
+for TARGET in ${@:-$HOME}
+do
+	if [ ! -f "$TARGET" -a ! -d "$TARGET" ]
+	then
+		echo "$COMMAND: \`\`$TARGET'' does not exist (neither a file nor a directory)"
+		CLEANUP
+		exit 1
+	elif [ -f "$TARGET" -a ! -r "$TARGET" ]
+	then
+		echo "$COMMAND: file \`\`$TARGET'' is not readable"
+		CLEANUP
+		exit 1
+	elif [ -d "$TARGET" -a ! -r "$TARGET" ]
+	then
+		echo "$COMMAND: directory \`\`$TARGET'' is not readable"
+		CLEANUP
+		exit 1
+	elif [ -d "$TARGET" -a ! -w "$TARGET" ]
+	then
+		echo "$COMMAND: directory \`\`$TARGET'' is not writable"
+		CLEANUP
+		exit 1
+	elif [ -d "$TARGET" -a ! -x "$TARGET" ]
+	then
+		echo "$COMMAND: directory \`\`$TARGET'' is not browsable"
+		CLEANUP
+		exit 1
+	fi
+
+	if [ -d "$TARGET" ]
+	then
+		# recursive search
+		eval find "$TARGET" -name SCCS -prune -o -name .svn -prune -o -name .git -prune -o -type f "\(" $EXTENSION_FIND "\)" -exec sh $DEBUG "$0" $KEY "\{\}" "\;"
+		echo ""
+	elif [ -f "$TARGET" ]
+	then
+		CORRECT_EXTENSION=`eval find "$TARGET" "\(" $EXTENSION_FIND "\)" -print`
+		if [ "$CORRECT_EXTENSION" = "" ]
+		then
+			echo "$COMMAND: \`\`$TARGET'' is kept unchanged (irrelevant extension)"
+			exit 0
+		fi
+
+		# check whether "upc" has already been applied to $TARGET
+		sh $DEBUG "$UPGRADED_SCRIPT" "$TARGET"
+		case $? in
+		0 )	ALREADY_UPGRADED=1
+			;;
+		* )	ALREADY_UPGRADED=0
+			;;
+		esac
+
+		# check whether $TARGET needs to be updated by applying "upc"
+
+		case "$TOOL" in
+		"SHELL" )
+			sh $DEBUG "$FIND_SCRIPT" "$TARGET" "$ALREADY_UPGRADED"
+			;;
+		"AWK" )
+			$AWK -f "$FIND_SCRIPT" -v "ALREADY_UPGRADED=$ALREADY_UPGRADED" "$TARGET"
+			;;
+		* )
+			echo "$COMMAND: unknown value \`\`$TOOL'' for variable \$TOOL"
+			CLEANUP
+			exit 1
+			;;
+		esac
+		# true # uncomment this line to force replacements
+		case $? in
+		0 ) 	echo ""
+			if [ "$ALREADY_UPGRADED" = 0 ]
+			then	
+				echo "$COMMAND: \`\`$TARGET'' needs to be upgraded"
+			else
+				echo "$COMMAND: \`\`$TARGET'' could be upgraded"
+			fi
+			if [ ! -w "$TARGET" ]
+			then
+				echo "     - but this file is not writable"
+				CLEANUP
+				exit 1
+			fi
+			case "$TOOL" in
+			"SHELL" )
+				sh $DEBUG "$REPLACE_SCRIPT" "$TARGET" > "$MODIFIED_FILE"
+				;;
+			"AWK" )
+				$AWK -f "$REPLACE_SCRIPT" "$TARGET" > "$MODIFIED_FILE"
+				;;
+			esac
+			cmp -s "$TARGET" "$MODIFIED_FILE"
+			if [ $? = 1 ]
+			then
+				echo ""
+				diff "$TARGET" "$MODIFIED_FILE"
+				echo ""
+				mv -i "$MODIFIED_FILE" "$TARGET"
+			else
+				echo "     - but applying changes led to no difference"
+			fi
+			;;
+		1 ) 	printf "."
+			;;
+		2 ) 	echo "$COMMAND: error processing \`\`$TARGET''"
+			CLEANUP
+			exit 1
+			;;
+		esac
+	fi
+done
+
+#------------------------------------------------------------------------------
+
+CLEANUP
+exit 0
+

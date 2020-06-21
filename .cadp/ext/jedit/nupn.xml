@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- jedit definitions for the NUPN language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.3:NUPN+1.5:SECT -->
+
+<MODE>
+  <PROPS>
+    <PROPERTY NAME="commentStart" VALUE=""/>
+    <PROPERTY NAME="commentEnd" VALUE=""/>
+    <PROPERTY NAME="lineComment" VALUE=""/>
+  </PROPS>
+
+  <RULES IGNORE_CASE="FALSE" HIGHLIGHT_DIGITS="TRUE">
+    <!-- Comments -->
+
+    <!-- Standard Operators -->
+    <SEQ TYPE="OPERATOR">...</SEQ>
+    <SEQ TYPE="OPERATOR">#</SEQ>
+
+    <KEYWORDS>
+      <!-- Reserved Words -->
+      <KEYWORD1>initial</KEYWORD1>
+      <KEYWORD1>labels</KEYWORD1>
+      <KEYWORD1>place</KEYWORD1>
+      <KEYWORD1>places</KEYWORD1>
+      <KEYWORD1>root</KEYWORD1>
+      <KEYWORD1>transitions</KEYWORD1>
+      <KEYWORD1>unit</KEYWORD1>
+      <KEYWORD1>units</KEYWORD1>
+
+      <!-- Pragmas -->
+      <MARKUP>!creator</MARKUP>
+      <MARKUP>!multiple_arcs</MARKUP>
+      <MARKUP>!multiple_initial_tokens</MARKUP>
+      <MARKUP>!unit_safe</MARKUP>
+
+    </KEYWORDS>
+
+  </RULES>
+
+  <RULES SET="INQUOTE" DEFAULT="LITERAL1" ESCAPE="\">
+    <!-- no rules -->
+  </RULES>
+
+  <RULES SET="COMMENT" DEFAULT="COMMENT1" IGNORE_CASE="TRUE">
+    <!-- no rules -->
+  </RULES>
+
+</MODE>
+

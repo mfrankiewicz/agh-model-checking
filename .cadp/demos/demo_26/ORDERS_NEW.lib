@@ -1,0 +1,71 @@
+(*============================================================================
+ "ORDERS.lib"
+         The orders library for the process-oriented description; adapted from
+         the Kenneth J. Turner description to support 
+            - each case described 
+            - the test of state variables
+         by Mihaela Sighireanu
+ *============================================================================*)
+
+(*-----------------------------------------------------------------------------
+ Order process parameterized by M_p and M_a and the fixed reference ref
+ *----------------------------------------------------------------------------*)
+  process Order_p [Request, Cancel, Invoice, Withdraw]
+   (m_p:Product, m_a:Amount, ref:Reference, prd:Product, amt:Amount, sta:Status) : noexit :=
+    [sta = None] ->
+      Request !ref ?prd:Product ?amt:Amount [(prd le m_p) and (amt le m_a) and (amt gt 0)];
+      Order_p [Request, Cancel, Invoice, Withdraw] (m_p, m_a, ref, prd, amt, Pending)
+  []
+    [sta = Pending] ->
+      (
+        Cancel !ref;
+        Order_p [Request, Cancel, Invoice, Withdraw] (m_p, m_a, ref, prd, 0 of Amount, None)
+      []
+        Withdraw !prd !amt [amt gt 0]; Invoice !ref;
+        Order_p [Request, Cancel, Invoice, Withdraw] (m_p, m_a, ref, prd, amt, Invoiced)
+     )
+  endproc (* Order_p *)
+
+(*-----------------------------------------------------------------------------
+ Order process for ref=0, M_p=0
+ *----------------------------------------------------------------------------*)
+  process Order_p0_r0 [Request, Cancel, Invoice, Withdraw] (m_a:Amount) : noexit :=
+     Order_p [Request, Cancel, Invoice, Withdraw] (0 of Product, m_a, 0 of Reference, 0 of Product, 0 of Amount, None)
+  endproc (* Order_p0_r0 *)
+
+(*-----------------------------------------------------------------------------
+ Order process for ref=1, M_p=0
+ *----------------------------------------------------------------------------*)
+  process Order_p0_r1 [Request, Cancel, Invoice, Withdraw] (m_a:Amount) : noexit :=
+     Order_p [Request, Cancel, Invoice, Withdraw] (0 of Product, m_a, Succ (0) of Reference, 0 of Product, 0 of Amount, None)
+  endproc (* Order_p0_r1 *)
+
+(*-----------------------------------------------------------------------------
+ Order process for ref=2, M_p=0
+ *----------------------------------------------------------------------------*)
+  process Order_p0_r2 [Request, Cancel, Invoice, Withdraw] (m_a:Amount) : noexit :=
+    Order_p [Request, Cancel, Invoice, Withdraw] (0 of Product, m_a, Succ (Succ (0)) of Reference, 0 of Product, 0 of Amount, None)
+  endproc (* Order_p0_r2 *)
+
+(*-----------------------------------------------------------------------------
+ Order process for ref=0, M_p=1
+ *----------------------------------------------------------------------------*)
+  process Order_p1_r0 [Request, Cancel, Invoice, Withdraw] (m_a:Amount) : noexit :=
+     Order_p [Request, Cancel, Invoice, Withdraw] (Succ (0) of Product, m_a, 0 of Reference, 0 of Product, 0 of Amount, None)
+  endproc (* Order_p1_r0 *)
+
+(*-----------------------------------------------------------------------------
+ Order process for ref=1, M_p=1
+ *----------------------------------------------------------------------------*)
+  process Order_p1_r1 [Request, Cancel, Invoice, Withdraw] (m_a:Amount) : noexit :=
+     Order_p [Request, Cancel, Invoice, Withdraw] (Succ (0) of Product, m_a, Succ (0) of Reference, 0 of Product, 0 of Amount, None)
+  endproc (* Order_p1_r0 *)
+
+(*-----------------------------------------------------------------------------
+ Order process for ref=2, M_p=1
+ *----------------------------------------------------------------------------*)
+  process Order_p1_r2 [Request, Cancel, Invoice, Withdraw] (m_a:Amount) : noexit :=
+    Order_p [Request, Cancel, Invoice, Withdraw] (Succ (0) of Product, m_a, Succ (Succ (0)) of Reference, 0 of Product, 0 of Amount, None)
+  endproc (* Order_p0_r2 *)
+
+

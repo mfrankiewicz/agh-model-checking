@@ -1,0 +1,18 @@
+type Table is Boolean, Natural
+   sorts 
+      Tab (*! implementedby TAB comparedby CMP_TAB printedby PRINT_TAB *)
+   opns
+      Empty (*! implementedby EMPTY constructor *) : -> Tab
+      Set (*! implementedby SET constructor *) : Tab, Nat -> Tab
+      Reset (*! implementedby RESET *) : Tab, Nat -> Tab
+      Test (*! implementedby TEST *) : Tab, Nat -> Bool
+   eqns
+      forall T:Tab, M, N:Nat
+      ofsort Tab
+         Reset (Empty, N) = Empty;
+         Reset (Set (T, N), N) = Reset (T, N);
+         M ne N => Reset (Set (T, M), N) = Set (Reset (T, N), M);
+      ofsort Bool
+         Test (Empty, N) = false;
+         Test (Set (T, M), N) = (M eq N) or Test (T, N);
+endtype

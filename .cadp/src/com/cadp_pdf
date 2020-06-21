@@ -1,0 +1,131 @@
+#! /bin/sh 
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_pdf
+#   Auteur              :       Remi Herilier
+#   Version             :       1.10
+#   Date                :       2017/11/13 11:07:21
+##############################################################################
+
+COMMAND=`basename "$0"`
+ 
+ARCH=`"$CADP"/com/arch`
+
+if [ "$CADP_PDF_VIEWER" = "" ]
+then
+	case $ARCH in
+		sun3 | sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 )
+			# On complete le $PATH de maniere plausible pour
+			# essayer de localiser "ghostview"
+			PATH="$PATH:/usr/bin/X11:/usr/local/bin"
+			export PATH
+
+			# valeur par defaut
+			CADP_PDF_VIEWER="gv"
+
+			# recherche d'un visualisateur disponible
+			for N in gv acroread xpdf atril evince okular kpdf gpdf kghostview
+			do
+				WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+				if [ "$WHICH_N" != "$N" ]
+				then
+					# cadp_which a trouve' le visualisateur
+					# et renvoye' le chemin d'acces complet
+					CADP_PDF_VIEWER="$N"
+					break	
+				fi
+			done
+			;;
+
+		win32 )
+			# sous Windows, on va d'abord essayer d'ouvrir le
+			# fichier avec Adobe Acrobat Reader qui est installe
+			# dans un repertoire de la forme
+			# /Program Files/Adobe/Reader ?.0/Reader.
+
+			ROOT=`"$CADP"/src/com/cadp_path -root`
+
+			PATH="$PATH:$ROOT/Program Files/Adobe/Reader 7.0/Reader:$ROOT/Program Files/Adobe/Reader 8.0/Reader:$ROOT/Program Files/Adobe/Reader 9.0/Reader"
+
+			# S'il n'est pas installe, on testera Gsview car il
+			# sait ouvrir les fichiers PDF. Sous Windows, il peut
+			# y avoir soit une version 32 bits (gsview32.exe)
+			# soit une version 64 bits (gsview64.exe)
+
+			# On complete le $PATH car il ne contient probablement
+			# pas le chemin d'acces a gsview??.exe. On suppose que
+			# l'on a l'installation par defaut dans le repertoire
+			# C:\gstools\gsview (versions 2.x) ou 
+			# C:\Program Files\gstools (version 2.7) ou
+			# C:\Ghostgum\gsview\bin (versions 3.x) ou 
+			# C:\Program Files\Ghostgum\gsview (version 4.x) ou
+			# C:\Program Files\gs\Ghostgum\gsview (version 4.9) ou
+			# C:\Program Files\Ghostgum\gsview (version 5.0)
+
+			PATH="$PATH:$ROOT/gstools/gsview:$ROOT/Program Files/gstools:$ROOT/Ghostgum/gsview:$ROOT/Program Files/Ghostgum/gsview:$ROOT/Program Files/gs/Ghostgum/gsview"
+
+			# On complete le $PATH pour permettre eventuellement
+			# l'acces a evince.exe. On suppose que l'installation
+			# a lieu dans /Program Files"/Evince-2-32.0.145 par
+			# exemple
+
+			if [ -d "$ROOT/Program Files"/Evince-*/bin ]
+			then
+				PATH="$PATH:"$ROOT`echo "Program Files"/Evince-*/bin`
+			fi
+			export PATH
+
+			# recherche d'un visualisateur disponible
+			for N in AcroRd64.exe AcroRd32.exe gsview32.exe gsview64.exe evince.exe
+			do
+				WHICH_N=`"$CADP"/src/com/cadp_which "$N"`
+				if [ "$WHICH_N" != "$N" ]
+				then
+					# cadp_which a trouve' le visualisateur
+					# et renvoye' le chemin d'acces complet
+					CADP_PDF_VIEWER="$N"
+					break	
+                                fi
+			done
+			;;
+
+		macOS | mac86 | mac64 )
+			if [ "$CADP_PDF_VIEWER" = "" ]
+			then
+				CADP_PDF_VIEWER="open"
+			fi
+			;;
+
+		* )
+            		echo "$COMMAND: unknown architecture $ARCH"
+			exit 1 ;;
+	esac
+fi
+
+# cas de l'option -default
+
+if [ "$1" = "-default" ]
+then
+	"$CADP"/src/com/cadp_which "$CADP_PDF_VIEWER"
+	exit 0
+fi
+
+"$CADP_PDF_VIEWER" "$1" 2>/dev/null
+EXIT_CODE=$?
+
+# la redirection des messages d'erreur vers /dev/null est indispensable
+# car certains outils (comme "gv") emettent divers messages a propos de
+# la "colormap" et ces messages sont repris par Tcl/Tk qui ouvre une
+# fenetre specialement pour eux. 
+
+# on renvoie le code de retour de la commande $CADP_PDF_VIEWER
+exit $EXIT_CODE
+

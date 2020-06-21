@@ -1,0 +1,88 @@
+<!-- Notepad Plus Plus definitions for the LOTOS language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.7:LOTOS+1.5:SECT -->
+<NotepadPlus>
+   <UserLang name="LOTOS" ext="lotos" udlVersion="2.1">
+      <Settings>
+         <Global caseIgnored="yes"
+                 allowFoldOfComments="yes"
+                 foldCompact="no"
+                 forcePureLC="0"
+                 decimalSeparator="2" />
+      </Settings>
+      <KeywordLists>
+         <Keywords name="Comments">00 01 02 03(* 04*)</Keywords>
+         <Keywords name="Operators1">&lt; &gt; + - / * ! ? ; ** == &lt;&gt; &lt;= &gt;= =&gt; &gt;&gt; [&gt; || |[ ]|
+   [] |||</Keywords>
+         <Keywords name="Keywords1">atomic comparedby constructor enumeratedby external implementedby iteratedby printedby</Keywords>
+         <Keywords name="Keywords2">accept actualizedby any behaviour behavior choice endlib endproc endspec endtype eqns exit for forall formaleqns formalopns formalsorts hide i in is let library noexit of ofsort opnnames opns par process renamedby sortnames sorts specification stop type using where</Keywords>
+         <Keywords name="Keywords3">false true</Keywords>
+         <Keywords name="Keywords4">BasicNaturalNumber Bit BitNatRepr BitString Bool Boolean DecDigit DecNatRepr DecString HexDigit HexNatRepr HexString NatRepresentations Nat NaturalNumber OctDigit Octet OctetString OctNatRepr OctString Set String</Keywords>
+         <Keywords name="Keywords5">and Bit1 Bit2 Bit3 Bit4 Bit5 Bit6 Bit7 Bit8 Card eq ge gt iff implies Includes Insert Ints IsIn IsSubsetOf le Length lt Minus NatNum ne not NotIn or Remove Reverse Succ Union xor</Keywords>
+         <Keywords name="Delimiters">00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23</Keywords>
+      </KeywordLists>
+      <Styles>
+         <WordsStyle name="DEFAULT"
+                     fgColor="000000"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="COMMENTS"
+                     fgColor="008000"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="LINE COMMENTS"
+                     fgColor="008000"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="KEYWORDS1"
+                     fgColor="CC6600"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="KEYWORDS2"
+                     fgColor="0000FF"
+                     bgColor="FFFFFF"
+                     fontStyle="1"
+                     nesting="0" />
+         <WordsStyle name="KEYWORDS3"
+                     fgColor="800000"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="KEYWORDS4"
+                     fgColor="0000FF"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="KEYWORDS5"
+                     fgColor="FF80C0"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="OPERATORS"
+                     fgColor="0000FF"
+                     bgColor="FFFFFF"
+                     fontStyle="1"
+                     nesting="0" />
+         <WordsStyle name="DELIMITERS1"
+                     fgColor="BF0000"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="DELIMITERS2"
+                     fgColor="BF0000"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+         <WordsStyle name="DELIMITERS3"
+                     fgColor="BF0000"
+                     bgColor="FFFFFF"
+                     fontStyle="0"
+                     nesting="0" />
+      </Styles>
+   </UserLang>
+</NotepadPlus>
+

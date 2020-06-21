@@ -1,0 +1,21 @@
+specification ALTERNATING_BIT_SERVICE [PUT, GET] : noexit 
+
+library BITALT endlib
+
+behaviour
+
+   SERVICE [PUT, GET]
+
+where
+
+(*---------------------------------------------------------------------------*)
+
+   process SERVICE [PUT, GET] : noexit :=
+      PUT ?M:MSG;  (* acquisition d'un message *)
+         GET !M;   (* livraison du message *)
+            SERVICE [PUT, GET]
+   endproc
+
+(*---------------------------------------------------------------------------*)
+
+endspec

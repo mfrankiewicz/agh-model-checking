@@ -1,0 +1,10 @@
+
+(*
+ * An LTS model is generated from the POTS specification "pots.lotos" using
+ * the CAESAR.ADT and CAESAR compilers. Then, this LTS is minimized modulo
+ * strong equivalence using BCG_MIN. The resulting LTS is named "pots.bcg".
+ *)
+
+"pots.bcg" = strong reduction of generation of "pots.lotos";
+
+

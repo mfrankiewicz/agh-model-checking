@@ -1,0 +1,131 @@
+(******************************************************************************
+ *                                X T L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       basic.xtl
+ *   Authors            :       Radu MATEESCU et Hubert GARAVEL
+ *   Version            :       1.13
+ *   Date               :       2015/01/21 10:44:22
+ *****************************************************************************)
+
+(*
+ * Basic definitions of various formulas and macros
+ *)
+
+(*===========================================================================*)
+(* Basic predicates over states and actions *)
+
+(* Predicate characterizing the initial state *)
+
+def INIT () : stateset = { init of state } end_def
+
+(*---------------------------------------------------------------------------*)
+(* Predicate characterizing the invisible (tau) actions *)
+
+def TAU ()  : labelset = { L : label where not (visible (L)) } end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * Macro for evaluation of basic predicates over actions.
+ * Example: EVAL_A (SEND ?x:integer where x < 5)
+ *)
+
+macro EVAL_A (A) = { L : label where L -> [ A ] } end_macro
+
+(*===========================================================================*)
+(* Macros for printing and commenting formulas *)
+
+(*---------------------------------------------------------------------------*)
+(*
+ * Print a boolean B, possibly accompanied by a text string TEXT.
+ * A sequence of "PRINT_BOOL" must be followed by a "nop" operator,
+ * to close the trailing "fby".
+ *)
+
+macro PRINT_BOOL (B) =
+    print ((B) of boolean) fby
+    printf ("\n\n") fby
+end_macro
+
+macro PRINT_BOOL (TEXT, B) =
+    printf ((TEXT) of string) fby
+    PRINT_BOOL (B)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * Print a boolean B, possibly accompanied by a text string TEXT.
+ * With this macro, there is no need to append a "nop" operator.
+ *)
+
+macro PRINT_BOOLEAN (B) =
+    PRINT_BOOL (B) nop
+end_macro
+
+macro PRINT_BOOLEAN (TEXT, B) =
+    PRINT_BOOL (TEXT, B) nop
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * Print a formula F, possibly accompanied by a text string TEXT.
+ * A sequence of "PRINT_FORM" must be followed by a "nop" operator,
+ * to close the trailing "fby".
+ *)
+
+macro PRINT_FORM (F) =
+    PRINT_BOOL ((F) of stateset = true of stateset)
+end_macro
+
+macro PRINT_FORM (TEXT, F) =
+    printf ((TEXT) of string) fby
+    PRINT_FORM (F)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * Print a formula F, possibly accompanied by a text string TEXT.
+ * With this macro, there is no need to append a "nop" operator.
+ *)
+
+macro PRINT_FORMULA (F) =
+    PRINT_FORM (F) nop
+end_macro
+
+macro PRINT_FORMULA (TEXT, F) =
+    PRINT_FORM (TEXT, F) nop
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * Comment a formula F. Useful for testing XTL programs, by replacing
+ * "PRINT_FORM" by "COMMENT".
+ *)
+
+macro COMMENT (F) = (* nothing *) end_macro
+
+macro COMMENT (TEXT, F) = (* nothing *) end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * Print the states satisfying a formula F. A sequence of "PRINT_STATES" must
+ * be followed by a "nop". Useful for debugging formulas, by providing a
+ * rudimentary form of diagnostic.
+ *)
+
+macro PRINT_STATES (F) =
+    print ((F) of stateset) fby
+    printf ("\n\n") fby
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Print whitespace characters *)
+
+macro newline () = printf ("\n") end_macro
+
+macro tab () = printf ("\t") end_macro
+

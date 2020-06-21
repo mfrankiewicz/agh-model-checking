@@ -1,0 +1,113 @@
+
+(* The shell variable CAESAR_OPTIONS contains the options to pass to the
+   CAESAR tool, which will generate the BCG graphs from LOTOS descriptions
+   Option -monitor will open a window with real-time information about the
+   BCG graph being generated. When a generation completes, you must press
+   the "Done" button to continue the execution of this SVL script. *)
+
+% CAESAR_OPTIONS="-monitor"
+
+(* ------------------------------------------------------------------------- *)
+
+(* We successively process "rel_rel_A.lotos" and "rel_rel_B.lotos" *)
+
+% for SPEC in "rel_rel_A" "rel_rel_B"
+% do
+
+(* The BCG graph corresponding to the LOTOS specification "$SPEC.lotos"
+   is generated. Then, hiding is performed in order to obtain an abstract 
+   version of the protocol that only refers to the actions needed for 
+   verification. Concretely, all labels of the form "CRASH ..." and 
+   "GET !2 ..." are hidden. The resulting graph is minimized for branching 
+   bisimulation, and then stored in file "$SPEC.bcg". *)
+
+"$SPEC.bcg" = branching reduction of 
+                 total hide "CRASH .*", "GET !2 .*" in 
+		    generation of "$SPEC.lotos";
+
+(* ------------------------------------------------------------------------- *)
+
+(* Then, two causality properties, expressed as graphs stored in files
+   "service_1.aut" and "service_2.aut", are checked. *) 
+
+(* The BCG graph stored in file "$SPEC.bcg" is compared with respect to
+   safety equivalence to the graph stored in file "service_1.aut". *)
+
+"diag_1_${SPEC}.seq" = safety comparison "$SPEC.bcg" == "service_1.aut";
+
+(* ------------------------------------------------------------------------- *)
+
+(* The BCG graph stored in file "$SPEC.bcg" is compared with respect to
+   tau*.a equivalence to the graph stored in file "service_2.aut". *)
+
+"diag_2_${SPEC}.seq" = tau*.a comparison "$SPEC.bcg" == "service_2.aut";
+
+% done
+
+(* ------------------------------------------------------------------------- *)
+
+(* We now illustrate how version B of the rel/REL protocol can be verified
+   compositionally. Version B of the rel/REL protocol is divided into five
+   concurrent processes: Crash_Transmitter, Fail_Receiver (instances 1 and 2),
+   and Receiver_Thread (instances 1 and 2). For each of these processes,
+   the corresponding LTS is generated and reduced modulo strong equivalence.
+   The five reduced LTSs are composed together using parallel and hiding
+   operators. The parallel composition of the minimized processes is referred
+   to as "rel_rel_B.exp". *)
+
+% DEFAULT_PROCESS_FILE="rel_rel_B.lotos"
+
+% CAESAR_OPTIONS=""
+
+"rel_rel_B.exp" = leaf strong reduction of 
+    hide R_T1, R_T2, R1, R2, DEPOSE1, DEPOSE2 in
+        (
+            Crash_Transmitter [R_T1, R_T2]
+            |[R_T1, R_T2]|
+            (
+                (
+                    Receiver_Thread [R_T1, R1, R2, DEPOSE1, GET, CRASH] (1)
+                    |[R_T1, R1, R2, GET, CRASH, DEPOSE1]|
+                    Fail_Receiver [R_T1, R1, R2, GET, DEPOSE1, CRASH] (1)
+                )
+                |[R1, R2]|
+                (
+                    Receiver_Thread [R_T2, R2, R1, DEPOSE2, GET, CRASH] (2)
+                    |[R_T2, R1, R2, GET, CRASH, DEPOSE2]|
+                    Fail_Receiver [R_T2, R2, R1, GET, DEPOSE2, CRASH] (2)
+                )
+            )
+        );
+
+(* ------------------------------------------------------------------------- *)
+
+(* Check for deadlocks *)
+
+"rel_rel_B_dead.seq" = deadlock of "rel_rel_B.exp";
+% cat rel_rel_B_dead.seq | tr -d '\015' | grep -v '^$'
+
+(* ------------------------------------------------------------------------- *)
+
+(* Check for livelocks *)
+
+"rel_rel_B_live.bcg" = livelock of "rel_rel_B.exp";
+
+(* ------------------------------------------------------------------------- *)
+
+(* 
+ * Reduce modulo branching bisimulation the LTS corresponding to "rel_rel_B.exp"
+ * after hiding all labels of the form "GET !2 *" and "CRASH !*"
+ *)
+
+"rel_rel_B_compo.bcg" = branching reduction of
+	total hide "GET !2 .*", "CRASH .*" in "rel_rel_B.exp" ;
+
+(* ------------------------------------------------------------------------- *)
+
+(* Compare the compositional LTS against the non-compositional one *)
+
+"rel_rel_service_1.seq" = branching comparison
+	"rel_rel_B_compo.bcg" == "rel_rel_B.bcg";
+
+(* ------------------------------------------------------------------------- *)
+

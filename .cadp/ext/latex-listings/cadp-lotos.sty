@@ -1,0 +1,33 @@
+%% Listings definitions for the LOTOS language
+%% produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+%% version 1.7:LOTOS+1.8:SECT
+
+\lstdefinelanguage{LOTOS}
+{
+   morekeywords=[1]{accept,actualizedby,any,behaviour,behavior,choice,
+                    endlib,endproc,endspec,endtype,eqns,exit,
+                    for,forall,formaleqns,formalopns,formalsorts,hide,
+                    i,in,is,let,library,noexit,
+                    of,ofsort,opnnames,opns,par,process,
+                    renamedby,sortnames,sorts,specification,stop,type,
+                    using,where},
+   morekeywords=[2]{atomic,comparedby,constructor,enumeratedby,external,implementedby,
+                    iteratedby,printedby},
+   morekeywords=[3]{BasicNaturalNumber,Bit,BitNatRepr,BitString,Bool,Boolean,
+                    DecDigit,DecNatRepr,DecString,HexDigit,HexNatRepr,HexString,
+                    NatRepresentations,Nat,NaturalNumber,OctDigit,Octet,OctetString,
+                    OctNatRepr,OctString,Set,String},
+   morekeywords=[4]{false,true},
+   morekeywords=[5]{and,Bit1,Bit2,Bit3,Bit4,Bit5,
+                    Bit6,Bit7,Bit8,Card,eq,ge,
+                    gt,iff,implies,Includes,Insert,Ints,
+                    IsIn,IsSubsetOf,le,Length,lt,Minus,
+                    NatNum,ne,not,NotIn,or,Remove,
+                    Reverse,Succ,Union,xor},
+   otherkeywords={<,>,+,-,/,!,
+                    ?,;,**,==,<>,<=,
+                    >=,=>,>>,[>,||,|[,
+                    ]|,[],|||},
+   sensitive=false,
+   morecomment=[s]{(*}{*)}
+}[keywords,comments]

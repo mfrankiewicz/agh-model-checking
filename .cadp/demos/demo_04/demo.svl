@@ -1,0 +1,12 @@
+
+(* the 4 graphs systol_B1.bcg, systol_F.bcg, systol_W1.bcg, and systol_W2.bcg
+   are generated and reduced for branching equivalence *)
+
+% for SCHEME in B1 F W1 W2
+% do
+
+    "systol_branching_${SCHEME}.bcg" = branching reduction of
+                                 generation of "systol_${SCHEME}.lotos" ;
+
+% done
+

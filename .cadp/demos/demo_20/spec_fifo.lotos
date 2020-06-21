@@ -1,0 +1,33 @@
+specification FIFO [GET] : noexit behaviour
+
+hide SYNC in 
+(
+
+	(P [GET, SYNC] (1 of ADR) [> Q [SYNC]) 
+		|[SYNC]|
+	(P [GET, SYNC] (2 of ADR) [> Q [SYNC]) 
+		|[SYNC]|
+	(P [GET, SYNC] (3 of ADR) [> Q [SYNC]) 
+)
+
+where 
+
+library 
+	DATA
+endlib
+
+process P [GET,SYNC] (A : ADR) : noexit :=
+
+	GET !A !1 of MSG ; SYNC ;
+		GET !A !2 of MSG ; SYNC ;
+			GET !A !3 of MSG ;
+				stop
+endproc
+
+process Q [SYNC] : noexit :=
+
+	SYNC ; Q [SYNC]
+
+endproc
+
+endspec

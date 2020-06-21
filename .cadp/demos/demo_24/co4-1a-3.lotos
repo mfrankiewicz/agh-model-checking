@@ -1,0 +1,59 @@
+
+specification CO4System [user,up1,down1,up2,down2,signal,OK] : noexit
+
+  library CO4_DATATYPES endlib
+  library Boolean, NaturalNumber endlib
+
+behaviour
+
+(
+  ( UserInput [user] [> exit )
+  |[user]|
+  KBHierarchy [user,up1,down1,up2,down2,signal]
+)
+>> Ring [OK]
+
+where
+
+  
+  process KBHierarchy [user,up1,down1,up2,down2,signal] : exit :=
+    InitIndividualKB [user,down1,up1,signal] (base1)
+    |[up1,down1]|
+    InitGroupKB [up1,down1,down2,up2,signal] (base3)
+    |[up2,down2]|
+    exit
+  endproc
+
+  
+  process UserInput [user] : noexit :=
+
+      user !base1 !doregister !base3;
+      user !base1 !doachieve !assert(white) + <>;
+      user !base1 !doachieve !assert(black) + <>;
+      user !base1 !doachieve !assert(square) + <>;
+      stop
+      |||
+      AllUserReply [user]
+
+  where
+
+    
+    process AllUserReply [user] : noexit :=
+    user ? b1 : BaseId !doaccept ?r1 : Request;
+    AllUserReply [user]
+    []
+    user ? b1 : BaseId !doreject ?r1 : Request;
+    AllUserReply [user]
+    []
+    user ? b1 : BaseId !dodeny ?r1 : Request;
+    AllUserReply [user]
+    endproc
+
+
+  endproc
+
+
+  library CO4_PROCESSES endlib
+
+endspec
+

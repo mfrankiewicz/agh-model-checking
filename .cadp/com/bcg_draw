@@ -1,0 +1,230 @@
+#! /bin/sh
+
+##############################################################################
+#                                B C G
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module             :       bcg_draw
+#   Auteurs            :       R. RUFFIOT, H. GARAVEL, M. HERBERT et W. SERWE
+#   Version            :       1.39
+#   Date               :       2018/10/16 16:20:27
+##############################################################################
+
+#-----------------------------------------------------------------------------
+
+DISPLAY_FAILED() {
+	echo "$COMMAND: unable to display the PostScript drawing of the BCG graph"
+	echo "$COMMAND: run the \`\`tst'' command and check the setting of \$CADP_PS_VIEWER"
+	exit 1
+}
+
+#-----------------------------------------------------------------------------
+
+set -e 
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP"/com/arch`
+BCG="${BCG:-$CADP}"
+TEMPORARY="${CADP_TMP:-/tmp}"
+CC="$CADP"/src/com/cadp_cc
+
+LDFLAGS="-L'$BCG'/bin.$ARCH -lbcg_draw -lBCG -lm"
+
+# default output using a ghostview-like viewer
+
+SHOW=1
+EPSF=0
+BACKGROUND=1
+
+# parsing the options
+
+GENFLAGS=""
+DRAWFLAGS=""
+REMOVE=""
+
+# default size of the bounding box (corresponding to A4 paper)
+
+BOUNDINGBOX="595 842"
+
+while true
+do
+	case "$1" in
+		-version )
+			grep BCG_VERSION_BCG_DRAW "$BCG"/incl/bcg_version.h | sed -e 's/^[#_ 	A-Za-z]*//'
+			exit 0
+			;;
+		-create | -update )
+			GENFLAGS="$GENFLAGS $1"
+			shift
+			;;
+		-remove )
+			REMOVE=1
+			shift
+			;;
+		-cc )
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			GENFLAGS="$GENFLAGS $1 '$2'"
+			shift 2
+			;;
+		-tmp )
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			TEMPORARY="$2"
+			GENFLAGS="$GENFLAGS $1 '$2'"
+			shift 2
+			;;
+		-ps )
+			DRAWFLAGS="$DRAWFLAGS -ps"
+			SHOW=0
+			EPSF=0
+			shift
+			;;
+		-eps )
+			DRAWFLAGS="$DRAWFLAGS -eps"
+			SHOW=0
+			EPSF=1
+			shift
+			;;
+		-size )
+			if test $# -lt 3
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			DRAWFLAGS="$DRAWFLAGS $1 $2 $3"
+			BOUNDINGBOX="$2 $3"
+			shift 3
+			;;
+		-paper )
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			case "$2" in
+				A0 | a0 ) # 841 mm * 1189 mm
+					BOUNDINGBOX="2384 3370"
+					;;
+				A1 | a1 ) # 594 mm * 841 mm
+					BOUNDINGBOX="1684 2384"
+					;;
+				A2 | a2 ) # 420 mm * 594 mm
+					BOUNDINGBOX="1191 1684"
+					;;
+				A3 | a3 ) # 297 mm * 420 mm
+					BOUNDINGBOX="842 1191"
+					;;
+				A4 | a4 ) # 210 mm * 297 mm
+					BOUNDINGBOX="595 842"
+					;;
+				A5 | a5 ) # 148 mm * 210 mm
+					BOUNDINGBOX="421 595"
+					;;
+				Letter | letter ) # 216 mm * 279 mm
+					BOUNDINGBOX="612 792"
+					;;
+				* ) # unknown paper size
+					echo "$COMMAND: unknown paper format \"$2\" (ignored)"
+					;;
+			esac
+			DRAWFLAGS="$DRAWFLAGS -size $BOUNDINGBOX"
+			shift 2
+			;;
+		-bg )
+			BACKGROUND=1
+			shift
+			;;
+		-fg )
+			BACKGROUND=0
+			shift
+			;;
+		* )
+			break
+			;;
+	esac
+done
+
+if test $# != 1
+then
+	echo "$COMMAND: wrong number of parameters"
+	exit 1
+fi
+
+# parsing the BCG filename (the value of $FILE may contain spaces)
+
+FILE=`dirname "$1"`/`"$CADP"/src/com/cadp_basename "$1" .bcg`
+if test ! -f "$FILE.bcg"
+then
+	echo "$COMMAND: file \`\`$FILE.bcg'' does not exist"
+	exit 1
+fi
+
+# preparing various filenames ($BCGFILE and $LIBFILE may contain spaces)
+
+BCGFILE=$FILE.bcg
+LIBFILE=${FILE}@1.o
+BINFILE=`"$CADP"/src/com/cadp_temporary -t "$TEMPORARY" $COMMAND .x`
+if test $SHOW = 0
+then
+	PSFILE=$FILE.ps
+else
+	PSFILE=`"$CADP"/src/com/cadp_temporary -t "$TEMPORARY" $COMMAND .ps`
+fi
+
+# compiling and linking
+
+eval "'$BCG'/bin.$ARCH/bcg_lib $GENFLAGS '$BCGFILE'"
+
+eval "'$CC' '$LIBFILE' $LDFLAGS -o '$BINFILE'"
+
+if test $REMOVE
+then
+	rm -f "$LIBFILE"
+fi
+
+# Generates the PostScript file
+
+"$BINFILE" $DRAWFLAGS "$BCGFILE" "$PSFILE"
+eval ${BCG_DEBUG:-"rm '$BINFILE'"}
+
+# Compute and update the actual bounding box using the "gs" tool of Ghostcript
+
+if test $EPSF = 1
+then
+	# Case of a encapsulated Postscript file
+	"$CADP"/src/com/cadp_psbox -size $BOUNDINGBOX "$PSFILE"
+else
+	# Case of a non-encapsulated Postscript file
+	# Ideally, we should recompute the bounding box in the present case;
+	# we don't do this, because it is time consuming. Alternately, we could
+	# delete the %%BoundingBox line from the non-encapsulated Postscript
+	# file; we don't do this, because BCG_EDIT needs the presence of the
+	# line with %%BoundingBox. Thus, we simply update the %%BoundingBox
+	# line based upon the value of $BOUNDINGBOX (even if this value is
+	# perhaps too large for the graph picture)
+	AUX_PSFILE=`"$CADP"/src/com/cadp_temporary -t "$TEMPORARY" $COMMAND .ps`
+	sed -e "s/^%%BoundingBox:.*/%%BoundingBox: 0 0 $BOUNDINGBOX/" < "$PSFILE" > "$AUX_PSFILE"
+	mv "$AUX_PSFILE" "$PSFILE"
+fi
+ 
+if test $SHOW = 1
+then
+	if test $BACKGROUND = 1
+	then
+		(eval "'$CADP'"/src/com/cadp_postscript ${BCG_DEBUG:-"-remove"} "'$PSFILE'" || DISPLAY_FAILED) & 
+	else
+		(eval "'$CADP'"/src/com/cadp_postscript ${BCG_DEBUG:-"-remove"} "'$PSFILE'" || DISPLAY_FAILED)
+	fi
+fi
+

@@ -1,0 +1,46 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains style files for the LaTeX "listings" package.
+For information about this package, consult:
+   http://texdoc.net/texmf-dist/doc/latex/listings/listings.pdf
+
+At present, the following files are provided:
+
+ - cadp.sty:        main entry point giving access to all CADP languages
+
+ - cadp-bes.sty:    style file for the BES format
+ - cadp-exp.sty:    style file for the EXP format
+ - cadp-lnt.sty:    style file for the LNT language
+ - cadp-lotos.sty:  style file for the LOTOS language
+ - cadp-mcl.sty:    style file for the MCL language
+ - cadp-nupn.sty:   style file for the NUPN format
+ - cadp-rbc.sty:    style file for the RBC format
+ - cadp-svl.sty:    style file for the SVL language
+ - cadp-xtl.sty:    style file for the XTL language
+
+How to use these files:
+-----------------------
+
+1) Add to your $TEXINPUTS environment variable the following path:
+
+	$CADP/ext/latex-listings
+
+  where $CADP is the pathname of the directory in which the CADP software
+  is installed on your machine.
+
+2) In the preamble of your LaTeX document, insert the following command:
+	\usepackage{cadp}
+
+3) In your LaTeX, you can now invoke:
+
+	\begin{lstlisting}[language=LNT]
+	...
+	\end{lstlistings}
+ 
+	\begin{lstlisting}[language=SVL]
+	...
+	\end{lstlistings}
+ 
+   etc.
+

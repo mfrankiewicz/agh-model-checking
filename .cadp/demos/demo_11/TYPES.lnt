@@ -1,0 +1,163 @@
+module TYPES is
+
+-------------------------------------------------------------------------------
+
+type PC is
+   DONT_CARE_1,
+   DONT_CARE_1_1, DONT_CARE_1_2, DONT_CARE_1_3,
+   DONT_CARE_2,
+   DONT_CARE_2_1, DONT_CARE_2_2, DONT_CARE_2_3,
+   DONT_CARE_3,
+   DONT_CARE_3_1, DONT_CARE_3_2, DONT_CARE_3_3,
+   DONT_CARE_4,
+   DONT_CARE_4_1, DONT_CARE_4_2, DONT_CARE_4_3,
+   DONT_CARE_5,
+   DONT_CARE_5_1, DONT_CARE_5_2, DONT_CARE_5_3,
+   DONT_CARE_6,
+   DONT_CARE_6_1, DONT_CARE_6_2, DONT_CARE_6_3,
+   DONT_CARE_7,
+   DONT_CARE_7_1, DONT_CARE_7_2, DONT_CARE_7_3,
+   DONT_CARE_8,
+   DONT_CARE_8_1, DONT_CARE_8_2, DONT_CARE_8_3,
+   DONT_CARE_9,
+   DONT_CARE_10,
+   DONT_CARE_11,
+   DONT_CARE_12,
+   DONT_CARE_13,
+   DONT_CARE_14,
+   DONT_CARE_15,
+   DONT_CARE_16,
+   DONT_CARE_17,
+   BITSTREAM_1,
+   BITSTREAM_2,
+   BITSTREAM_3,
+   BITSTREAM_4,
+   BITSTREAM_5,
+   BITSTREAM_6,
+   BITSTREAM_7,
+   BITSTREAM_8,
+   VECTOR_1,
+   VECTOR_1_1, VECTOR_1_2,
+   VECTOR_2,
+   VECTOR_3,
+   VECTOR_4,
+   VECTOR_5,
+   VECTOR_6,
+   VECTOR_7,
+   VECTOR_8,
+   VECTOR_9,
+   VECTOR_10,
+   VECTOR_11,
+   VECTOR_12,
+   VECTOR_13,
+   VECTOR_14,
+   VECTOR_15
+   with "==", "!="
+end type
+
+-------------------------------------------------------------------------------
+
+type Extension is
+   DONT_CARE, BITSTREAM, VECTOR
+   with "=="
+end type
+
+-------------------------------------------------------------------------------
+
+function compatible (a, b: Extension) : Bool is
+   -- true iff a request a can be executed on a processor with extension b
+   if a == DONT_CARE then
+      return true -- any processor can execute don't care tasks
+   else
+      return (a == b)
+   end if
+end function
+
+-------------------------------------------------------------------------------
+
+type State is
+   unknown, idle, to_wakeup, scheduled, scheduled_master, dispatched_master,
+   requested, requested_master, running, terminated
+   with "=="
+end type
+
+-------------------------------------------------------------------------------
+
+type Host_Job is
+   host_job (pc: PC, extension: Extension)
+   with "get"
+end type
+
+-------------------------------------------------------------------------------
+
+type Job_Desc is
+   NONE, EXEC (pc: PC, index: Int), WAIT_SLAVE, DONE
+   with "==", "!=", "get"
+end type
+
+-------------------------------------------------------------------------------
+
+type Job_Desc_Stack_Array is
+   array [1 .. 3] of Job_Desc
+end type
+
+-------------------------------------------------------------------------------
+
+type Job_Desc_Stack is
+   Stack (size: Nat, stack: Job_Desc_Stack_Array)
+   with "==", "get", "set"
+end type
+
+-------------------------------------------------------------------------------
+
+function empty_stack : Job_Desc_Stack is
+   return stack (0, Job_Desc_Stack_Array (NONE))
+end function
+
+-------------------------------------------------------------------------------
+
+function is_empty (s: Job_Desc_Stack) : Bool is
+   return (s.size == 0)
+end function
+
+-------------------------------------------------------------------------------
+
+function head (s: Job_Desc_Stack) : Job_Desc is
+   require s.size > 0;
+   return ((s.stack)[s.size])
+end function
+
+-------------------------------------------------------------------------------
+
+function push (j: Job_Desc, s: Job_Desc_Stack) : Job_Desc_Stack is
+   require s.size < 3;
+   var res: Job_Desc_Stack, stack: Job_Desc_Stack_Array in
+      stack := s.stack;
+      stack[s.size + 1] := j;
+      res := s.{size -> s.size + 1, stack -> stack};
+      return res
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+function pop (s: Job_Desc_Stack) : Job_Desc_Stack is
+   require s.size > 0;
+   var res: Job_Desc_Stack, stack: Job_Desc_Stack_Array in
+      stack := s.stack;
+      stack[s.size] := NONE;
+      res := s.{size -> s.size - 1, stack -> stack};
+      return res
+   end var
+end function
+
+-------------------------------------------------------------------------------
+
+type Store is
+   DUP (pc: PC, extension: Extension, c: Int)
+      with "get"
+end type
+
+-------------------------------------------------------------------------------
+
+end module

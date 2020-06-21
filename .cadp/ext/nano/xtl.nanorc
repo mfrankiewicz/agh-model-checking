@@ -1,0 +1,32 @@
+## Nano syntax file for the XTL language
+## Produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+## Version 1.4:XTL+1.3:SECT
+
+syntax "XTL" "\.xtl$"
+
+## Keywords
+color brightblue "\<(among|any|apply|assert|case|current|def|else|else_if|end_assert|end_case|end_def|end_exists|end_flag|end_for|end_forall|end_func|end_if|end_include|end_let|end_library|end_macro|end_type|end_use|exists|flag|for|forall|from|func|if|in|include|let|library|macro|of|otherwise|select|then|to|type|use|when|where|while)\>"
+
+## Pragmas
+color cyan "!\<(assignedby|comparedby|enumeratedby|implementedby|printedby)\>"
+
+## Basic Types
+color magenta "\<(action|boolean|natural|number|integer|real|character|string|raw|edge|edgeset|label|labelset|state|stateset)\>"
+
+## Constants
+color yellow "\<(empty|false|full|nop|null|number_of_edges|number_of_labels|number_of_states|true)\>"
+
+## Functions
+color blue "\<(and|and_then|card|comp|diff|div|extract|fby|iff|implies|includes|init|insert|inter|length|mod|not|or|or_else|out|pred|print|printf|replace|source|succ|target|union|visible)\>"
+
+## Operators
+color blue "_|@|->|<\||\|>|\.\.\."
+
+## Strings
+color red "'[^']*'"
+color red ""[^"]*""
+color red "`[^`]*`"
+
+## Comments
+color green start="\(\*" end="\*\)"
+

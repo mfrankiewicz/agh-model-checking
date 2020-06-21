@@ -1,0 +1,20 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains a derived version of the Boehm-Demers garbage
+collector package (version 7.6.4), which will allow the "-gc" options of 
+"caesar" and "lotos.open" to work properly.
+
+The Boehm-Demers garbage collector is a conservative (possibly incremental/
+generational) garbage collecting storage allocator that is intended to be 
+used as a plug-in replacement for C's malloc. For detailed information, see
+	http://www.hboehm.info/gc/
+
+For the associated copyright notice, see the credits section in the 
+$CADP/README file.
+
+This directory contains for each architecture $ARCH currently supported
+(see the list of supported architectures in the INSTALLATION_2 file), a 
+sub-directory named bin.$ARCH that contains the GC library (named libgc.a)
+compiled for architecture $ARCH.
+

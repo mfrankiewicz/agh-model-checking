@@ -1,0 +1,65 @@
+module BIT is
+
+type BIT is
+   !implementedby "ADT_BIT"
+   !comparedby "ADT_CMP_BIT"
+   !iteratedby "ADT_ENUM_FIRST_BIT", "ADT_ENUM_NEXT_BIT"
+   !printedby "ADT_PRINT_BIT"
+   0 !implementedby "ADT_ZERO_BIT",
+   1 !implementedby "ADT_ONE_BIT"
+   with "eq", "ne", "lt", "le", "ge", "gt"
+end type
+
+-------------------------------------------------------------------------------
+
+function not (B : Bit) : Bit is
+   !implementedby "ADT_NOT_BIT"
+   case B in
+     0 -> return 1
+   | 1 -> return 0
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function _and_ (B1, B2 : Bit) : Bit is
+   !implementedby "ADT_AND_BIT"
+   case B1 in
+     0 -> return 0
+   | 1 -> return B2
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function _or_ (B1, B2 : Bit) : Bit is
+   !implementedby "ADT_OR_BIT"
+   case B1 in
+     0 -> return B2
+   | 1 -> return 1
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function _xor_ (B1, B2 : Bit) : Bit is
+   !implementedby "ADT_XOR_BIT"
+   case B1 in
+     0 -> return B2
+   | 1 -> return not (B2)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function NatNum (B : Bit) : Nat is
+   !implementedby "ADT_NATNUM_BIT"
+   case B in
+     0 -> return 0
+   | 1 -> return 1
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+end module

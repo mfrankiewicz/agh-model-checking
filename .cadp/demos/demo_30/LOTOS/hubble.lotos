@@ -1,0 +1,90 @@
+(******************************************************************************
+ *        THE HUBBLE SPACE TELESCOPE
+ *-----------------------------------------------------------------------------
+ *   Module       :       hubble.lotos
+ *   Authors      :       H. Hermanns and H. Garavel
+ *   Version      :       2.1
+ *   Date         :       2002/10/12 15:25:01
+ *****************************************************************************)
+
+specification HUBBLE [LAMBDA, MU, NU] : noexit
+
+   (* The Hubble space telescope                                         *
+    *         specified in LOTOS,                                        *
+    *         transformed into an Interactive Markov Chain               *
+    *         reduced to a Continuous Time Markov Chain, and             *
+    *         analysed at various time points (see demo.svl)             *
+    *                                                                    *
+    * Based on a specification sketched in                               *
+    *                                                                    *
+    *   H. Hermanns. Construction and Verification of Performance and    *
+    *    Reliability Models. Bulletin of the EATCS 74:135-154, 2001.     *
+    *                                                                    *
+    *   H. Garavel simplified the LOTOS code                             *
+    *                                                                    *
+    *)
+
+   library
+      BOOLEAN, NATURAL
+   endlib
+
+behaviour
+
+   HUBBLE [LAMBDA, MU, NU]
+
+where
+
+(*--------------------------------------------------------------------------*)
+
+   process HUBBLE [LAMBDA, MU, NU] : noexit :=
+      hide FAIL in
+         (
+            (
+               GYRO [LAMBDA, FAIL]
+               |||
+               GYRO [LAMBDA, FAIL]
+               |||
+               GYRO [LAMBDA, FAIL]
+               |||
+               GYRO [LAMBDA, FAIL]
+               |||
+               GYRO [LAMBDA, FAIL]
+               |||
+               GYRO [LAMBDA, FAIL]
+            )
+            |[FAIL]|
+            CONTROLLER [FAIL, MU, NU] (6, false)
+            >> (* System reset after rescue by the space mission *)
+            HUBBLE [LAMBDA, MU, NU]
+         )
+   endproc
+
+(*--------------------------------------------------------------------------*)
+
+   process GYRO [LAMBDA, FAIL] : exit :=
+      (LAMBDA; FAIL; stop) [> exit
+   endproc
+
+(*--------------------------------------------------------------------------*)
+
+   process CONTROLLER [FAIL, MU, NU] (C : Nat, SLEEP : Bool) : exit :=
+      FAIL; (* Ah, a gyro failed. Let's count down. *)
+         CONTROLLER [FAIL, MU, NU] (C - 1, SLEEP)
+      []
+      [(C < 3) and not (SLEEP)] ->
+         MU; (* Hubble starts tumbling. Time to turn on the sleep mode. *)
+            CONTROLLER [FAIL, MU, NU] (C, true)
+      []
+      [SLEEP] ->
+         NU; (* Sleep mode is on. Waiting for rescue by the space mission *)
+            exit
+      []
+      [C = 0] ->
+         i; (* No gyros left. Crash! *)
+            stop
+   endproc
+
+(*--------------------------------------------------------------------------*)
+
+endspec
+

@@ -1,0 +1,63 @@
+(******************************************************************************
+ * BOOKSTORE.lib: data type of bookstores for the book auction example
+ *
+ * Bookstores are sets of triples <book, q, inv>, represented as lists, where
+ *  - book is a book (cf BOOK.lib),
+ *  - q is the number of available copies of the book, and
+ *  - inv is the invariant associated to the book (cf INVARIANT.lib)
+ *****************************************************************************)
+
+type BOOKSTORE is
+   NATURAL, BOOLEAN, BOOK, INVARIANT
+   sorts BookStore
+   opns 
+        (* constructors *)
+        emptyBS (*! constructor *) : -> BookStore
+        addBS   (*! constructor *) : Book, Nat, Inv, BookStore -> BookStore
+        (* operations *)
+        retrieveInv   : Nat, BookStore -> Inv
+        retrievePrice : Nat, BookStore -> Nat
+        isAvailable   : Nat, BookStore -> Bool
+        isIn          : Nat, BookStore -> Bool
+        decrease      : Nat, Nat, BookStore -> BookStore
+   eqns
+      (* Each operation is defined by three equations, describing a recursive
+       * traversal of the list. The first equation describes the terminal case,
+       * the second corresponds to the handling of the case where the book
+       * has been found, and the third equation describes the recursive call
+       *)
+      forall r, q, q1, q2 : Nat,
+             b, b1        : Book,
+             iv, iv1      : Inv,
+             bs           : BookStore
+      ofsort Inv
+         (* retrieve(r, emptyBS) = error *)
+         ref (b) == r =>
+            retrieveInv (r, addBS (b, q, iv, bs)) = iv;
+         not (ref (b) == r) =>
+            retrieveInv (r, addBS (b, q, iv, bs)) = retrieveInv (r, bs);
+      ofsort Nat
+         (* retrieve(r, emptyBS) = error *)
+         ref (b) == r =>
+            retrievePrice (r, addBS (b, q, iv, bs)) = price (b);
+         not (ref (b) == r) =>
+            retrievePrice (r, addBS (b, q, iv, bs)) = retrievePrice (r, bs);
+      ofsort Bool
+         isAvailable (r, emptyBS) = false;
+         ref (b) == r =>
+            isAvailable (r, addBS (b, q, iv, bs)) = (q > 0);
+         not (ref (b) == r) =>
+            isAvailable (r, addBS (b, q, iv, bs)) = isAvailable (r, bs);
+      ofsort Bool
+         isIn (r, emptyBS) = false;
+         ref (b) == r =>
+            isIn (r, addBS (b, q, iv, bs)) = true;
+         not (ref (b) == r) =>
+            isIn (r, addBS (b, q, iv, bs)) = isIn (r, bs);
+      ofsort BookStore
+         (* decrease(r, q, emptyBS) = error *)
+         ref (b) == r =>
+            decrease (r, q1, addBS (b, q2, iv, bs)) = addBS (b, q2 - q1, iv, bs);
+         not (ref (b) == r) =>
+            decrease (r, q1, addBS (b, q2, iv, bs)) = decrease (r, q1, bs);
+endtype

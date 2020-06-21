@@ -1,0 +1,24 @@
+(******************************************************************************
+ * SUPPLIER.lib:
+ * Process definition for the stock management system [Chirichiello-Salaun-05]
+ *
+ * A supplier can receive requests from the central store. If the stock permits,
+ * the request is fulfilled, and the stock updated. 
+ * The production of items by a supplier is not modeled: the stock of a supplier
+ * only decreases.
+ *****************************************************************************)
+
+process Supplier [request, ok, nok] (s : Stock) : noexit :=
+   request ?id : Nat ?q : Nat;
+      (
+         [isAvailable (id, q, s)] ->
+            ok;
+               Supplier [request, ok, nok] (decrease (id, q, s))
+         []
+         [not (isAvailable (id, q, s))] ->
+            nok;
+               Supplier [request, ok, nok] (s)
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)

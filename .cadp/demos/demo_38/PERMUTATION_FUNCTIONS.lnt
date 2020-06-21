@@ -1,0 +1,93 @@
+-------------------------------------------------------------------------------
+-- PERMUTATION_FUNCTIONS.lnt -- 1.9 -- 2015/09/11 11:04:16 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module PERMUTATION_FUNCTIONS (TYPES) is
+
+-------------------------------------------------------------------------------
+-- E: expansion of a 32-bit vector to a 48-bit vector
+
+function E (X: BIT32) : BIT48 is
+   return MK_48 (X.B32, X.B1,  X.B2,  X.B3,  X.B4,  X.B5,
+                 X.B4,  X.B5,  X.B6,  X.B7,  X.B8,  X.B9,
+                 X.B8,  X.B9,  X.B10, X.B11, X.B12, X.B13,
+                 X.B12, X.B13, X.B14, X.B15, X.B16, X.B17,
+                 X.B16, X.B17, X.B18, X.B19, X.B20, X.B21,
+                 X.B20, X.B21, X.B22, X.B23, X.B24, X.B25,
+                 X.B24, X.B25, X.B26, X.B27, X.B28, X.B29,
+                 X.B28, X.B29, X.B30, X.B31, X.B32, X.B1)
+end function
+
+-------------------------------------------------------------------------------
+-- IP: initial permutation
+
+function IP (X: BIT64) : BIT64 is
+   return MK_64 (X.B58, X.B50, X.B42, X.B34, X.B26, X.B18, X.B10, X.B2,
+                 X.B60, X.B52, X.B44, X.B36, X.B28, X.B20, X.B12, X.B4,
+                 X.B62, X.B54, X.B46, X.B38, X.B30, X.B22, X.B14, X.B6,
+                 X.B64, X.B56, X.B48, X.B40, X.B32, X.B24, X.B16, X.B8,
+                 X.B57, X.B49, X.B41, X.B33, X.B25, X.B17, X.B9,  X.B1,
+                 X.B59, X.B51, X.B43, X.B35, X.B27, X.B19, X.B11, X.B3,
+                 X.B61, X.B53, X.B45, X.B37, X.B29, X.B21, X.B13, X.B5,
+                 X.B63, X.B55, X.B47, X.B39, X.B31, X.B23, X.B15, X.B7)
+end function
+
+-------------------------------------------------------------------------------
+-- IIP: inverse initial permutation
+
+function IIP (X: BIT64) : BIT64 is
+   return MK_64 (X.B40, X.B8,  X.B48, X.B16, X.B56, X.B24, X.B64, X.B32,
+                 X.B39, X.B7,  X.B47, X.B15, X.B55, X.B23, X.B63, X.B31,
+                 X.B38, X.B6,  X.B46, X.B14, X.B54, X.B22, X.B62, X.B30,
+                 X.B37, X.B5,  X.B45, X.B13, X.B53, X.B21, X.B61, X.B29,
+                 X.B36, X.B4,  X.B44, X.B12, X.B52, X.B20, X.B60, X.B28,
+                 X.B35, X.B3,  X.B43, X.B11, X.B51, X.B19, X.B59, X.B27,
+                 X.B34, X.B2,  X.B42, X.B10, X.B50, X.B18, X.B58, X.B26,
+                 X.B33, X.B1,  X.B41, X.B9,  X.B49, X.B17, X.B57, X.B25)
+end function
+
+-------------------------------------------------------------------------------
+-- P: permutation
+
+function P (X: BIT32) : BIT32 is
+   return MK_32 (X.B16, X.B7,  X.B20, X.B21,
+                 X.B29, X.B12, X.B28, X.B17,
+                 X.B1,  X.B15, X.B23, X.B26,
+                 X.B5,  X.B18, X.B31, X.B10,
+                 X.B2,  X.B8,  X.B24, X.B14,
+                 X.B32, X.B27, X.B3,  X.B9,
+                 X.B19, X.B13, X.B30, X.B6,
+                 X.B22, X.B11, X.B4,  X.B25)
+end function
+
+-------------------------------------------------------------------------------
+-- PC1: permuted choice 1
+
+function PC1 (X: BIT64) : BIT56 is
+   return MK_56 (X.B57, X.B49, X.B41, X.B33, X.B25, X.B17, X.B9,
+                 X.B1,  X.B58, X.B50, X.B42, X.B34, X.B26, X.B18,
+                 X.B10, X.B2,  X.B59, X.B51, X.B43, X.B35, X.B27,
+                 X.B19, X.B11, X.B3,  X.B60, X.B52, X.B44, X.B36,
+   
+                 X.B63, X.B55, X.B47, X.B39, X.B31, X.B23, X.B15,
+                 X.B7,  X.B62, X.B54, X.B46, X.B38, X.B30, X.B22,
+                 X.B14, X.B6,  X.B61, X.B53, X.B45, X.B37, X.B29,
+                 X.B21, X.B13, X.B5,  X.B28, X.B20, X.B12, X.B4)
+end function
+
+-------------------------------------------------------------------------------
+-- PC2: permuted choice 2
+
+function PC2 (X: BIT56) : BIT48 is
+   return MK_48 (X.B14, X.B17, X.B11, X.B24, X.B1,  X.B5,
+                 X.B3,  X.B28, X.B15, X.B6,  X.B21, X.B10,
+                 X.B23, X.B19, X.B12, X.B4,  X.B26, X.B8,
+                 X.B16, X.B7,  X.B27, X.B20, X.B13, X.B2,
+                 X.B41, X.B52, X.B31, X.B37, X.B47, X.B55,
+                 X.B30, X.B40, X.B51, X.B45, X.B33, X.B48,
+                 X.B44, X.B49, X.B39, X.B56, X.B34, X.B53,
+                 X.B46, X.B42, X.B50, X.B36, X.B29, X.B32)
+end function
+
+end module
+

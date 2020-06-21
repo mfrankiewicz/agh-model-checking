@@ -1,0 +1,11 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains Tcl/Tk code:
+
+- "main.tcl" implements the (sequential) monitor available during the
+  generation of BCG graphs (see "man bcg_write" for information).
+
+- "distributor.tcl" implements the (distributed) monitor available
+  when using the Distributor tool (see "man distributor" for information).
+ 

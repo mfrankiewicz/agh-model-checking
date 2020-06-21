@@ -1,0 +1,71 @@
+(******************************************************************************
+ *                     P R O D U C T I O N    C E L L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	cell.lnt
+ *   Auteurs		:	Hubert GARAVEL and Wendelin SERWE
+ *   Version		:	1.18
+ *   Date		: 	2013/09/27 16:24:15
+ *****************************************************************************)
+
+module CELL (TYPES, CHANNELS, CONTROLLER, DISPATCHER) is
+
+-------------------------------------------------------------------------------
+
+process MAIN [GET_STATUS: STATUS,
+              BLANK_ADD, 
+              PRESS_UPWARD, PRESS_STOP, PRESS_DOWNWARD,
+              ARM1_FORWARD, ARM1_STOP, ARM1_BACKWARD,
+              ARM2_FORWARD, ARM2_STOP, ARM2_BACKWARD,
+              ARM1_MAG_ON, ARM1_MAG_OFF,
+              ARM2_MAG_ON, ARM2_MAG_OFF,
+              ROBOT_LEFT, ROBOT_STOP, ROBOT_RIGHT,
+              TABLE_LEFT, TABLE_STOP_H, TABLE_RIGHT,
+              TABLE_UPWARD, TABLE_STOP_V, TABLE_DOWNWARD,
+              CRANE_TO_BELT2, CRANE_STOP_H, CRANE_TO_BELT1,
+              CRANE_LIFT, CRANE_STOP_V, CRANE_LOWER,
+              CRANE_MAG_ON, CRANE_MAG_OFF,
+              BELT1_START, BELT1_STOP,
+              BELT2_START, BELT2_STOP: NONE] is
+   hide
+      G1: PRESS_POSITION,
+      G2: ARM1_EXTENSION,
+      G3: ARM2_EXTENSION, 
+      G6: ROBOT_ANGLE,
+      G7: TABLE_POSITION,
+      G8: TABLE_ANGLE,
+      G9: CRANE_POSITION,
+      G10: CRANE_HEIGHT,
+      G12, G13: BOOL
+   in
+      par G1, G2, G3, G6, G7, G8, G9, G10, G12, G13 in
+         DISPATCHER [GET_STATUS, G1, G2, G3, G6, G7, G8, G9, G10, G12, G13]
+                     (false) -- or true to sequentialize events
+       ||
+         CONTROLLER [G1, G2, G3, G6, G7, G8, G9, G10, G12, G13,
+                     PRESS_UPWARD, PRESS_STOP, PRESS_DOWNWARD,
+                     ARM1_FORWARD, ARM1_STOP, ARM1_BACKWARD,
+                     ARM2_FORWARD, ARM2_STOP, ARM2_BACKWARD,
+                     ARM1_MAG_ON, ARM1_MAG_OFF,
+                     ARM2_MAG_ON, ARM2_MAG_OFF,
+                     ROBOT_LEFT, ROBOT_STOP, ROBOT_RIGHT,
+                     TABLE_LEFT, TABLE_STOP_H, TABLE_RIGHT,
+                     TABLE_UPWARD, TABLE_STOP_V, TABLE_DOWNWARD,
+                     CRANE_TO_BELT2, CRANE_STOP_H, CRANE_TO_BELT1,
+                     CRANE_LIFT, CRANE_STOP_V, CRANE_LOWER,
+                     CRANE_MAG_ON, CRANE_MAG_OFF,
+                     BELT1_START, BELT1_STOP,
+                     BELT2_START, BELT2_STOP,
+                     BLANK_ADD]
+      end par
+   end hide
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

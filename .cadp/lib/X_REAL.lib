@@ -1,0 +1,17 @@
+type RealNumber is Boolean
+   sorts Real (*! implementedby ADT_REAL comparedby ADT_CMP_REAL
+                 printedby ADT_PRINT_REAL external *)
+   opns _eq_ (*! implementedby ADT_EQ_REAL external *), 
+	_ne_ (*! implementedby ADT_NE_REAL external *), 
+	_lt_ (*! implementedby ADT_LT_REAL external *), 
+	_le_ (*! implementedby ADT_LE_REAL external *), 
+	_gt_ (*! implementedby ADT_GT_REAL external *), 
+	_ge_ (*! implementedby ADT_GE_REAL external *),
+        _==_ (*! implementedby ADT_EQ_BIS_REAL external *),
+        _<>_ (*! implementedby ADT_NE_BIS_REAL external *),
+        _<_ (*! implementedby ADT_LT_BIS_REAL external *),
+        _<=_ (*! implementedby ADT_LE_BIS_REAL external *),
+        _>_ (*! implementedby ADT_GT_BIS_REAL external *),
+        _>=_ (*! implementedby ADT_GE_BIS_REAL external *) : Real, Real -> Bool
+endtype
+

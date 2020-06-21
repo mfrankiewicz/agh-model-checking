@@ -1,0 +1,56 @@
+(* File:         p1394.lotos
+ * Abstract:     P1394 Protocol
+ * Author:       Mihaela SIGHIREANU
+ * Version:      1.6
+ * Date:         1997/03/05 12:11:36
+ *)
+(* ========================================================================= *)
+  
+specification P1394 [LDreq, LDcon, LDind, LDres, PDind, PDreq, PAcon, PAreq, PCind, arbresgap, losesignal] : noexit
+
+library
+   BOOLEAN,
+   DATA,
+   NATURALNUMBER
+endlib
+
+behaviour
+(*   hide PDind, PDreq, PAcon, PAreq, PCind, arbresgap, losesignal in *)
+      (
+       (
+       Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (Succ (Succ (Succ (0))), 0, void)
+       |[LDreq, LDcon, LDind, LDres]|
+       Trans [LDreq, LDcon, LDind, LDres] (Succ (Succ (Succ (0))), 0)
+       )
+      |||
+       (
+       Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (Succ (Succ (Succ (0))), Succ (0), void)
+       |[LDreq, LDcon, LDind, LDres]|
+       Trans [LDreq, LDcon, LDind, LDres]  (Succ (Succ (Succ (0))), Succ (0))
+       )
+      |||
+       (
+       Link0 [LDreq, LDcon, LDind, LDres, PDreq, PDind, PAreq, PAcon, PCind] (Succ (Succ (Succ (0))), Succ (Succ (0)), void)
+       |[LDreq, LDcon, LDind, LDres]|
+       Trans [LDreq, LDcon, LDind, LDres] (Succ (Succ (Succ (0))), Succ (Succ (0)))
+       )
+      )
+      |[PDind, PDreq, PAcon, PAreq, PCind]|
+      BusIdle [PAreq, PDreq, PDind, PAcon, PCind, arbresgap, losesignal] (Succ (Succ (Succ (0))), init (Succ (Succ (Succ (0)))))
+
+where
+
+(* ------------------------------------------------------------------------- *)
+
+   library
+      APPLIC_SCEN1,
+      TRANS_ORIG,
+      LINK,
+      BUS
+   endlib
+   
+(* ------------------------------------------------------------------------- *)
+
+endspec
+
+(* ========================================================================= *)

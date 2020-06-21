@@ -1,0 +1,38 @@
+module CONFIGURATION (PROCESSOR, DTD) is
+
+function NB_BITSTREAM_PROCESSORS : Nat is
+  return 2
+end function
+
+function NB_VECTOR_PROCESSORS : Nat is
+  return 6
+end function
+
+process ENCORE [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG,
+                DTD_SCHEDULE_HOST_REQUESTS, DTD_DISPATCH_DUP, HOST : any] is
+   par ST, LD_RQ, LD_RSP, WAKEUP, BOOT in
+      par
+         PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG] (Pid (0), BITSTREAM)
+      ||
+         PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG] (Pid (1), BITSTREAM)
+      ||
+         PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG] (Pid (2), VECTOR)
+      ||
+         PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG] (Pid (3), VECTOR)
+      ||
+         PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG] (Pid (4), VECTOR)
+      ||
+         PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG] (Pid (5), VECTOR)
+      ||
+         PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG] (Pid (6), VECTOR)
+      ||
+         PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG] (Pid (7), VECTOR)
+      end par
+   ||
+      DTD [HOST, ST, LD_RQ, LD_RSP, WAKEUP, BOOT,
+           DTD_SCHEDULE_HOST_REQUESTS, DTD_DISPATCH_DUP]
+   end par
+end process
+
+end module
+

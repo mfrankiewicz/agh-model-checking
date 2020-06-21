@@ -1,0 +1,187 @@
+(* Original specification of the protocol by D. Hogrefe (April 1991) *)
+
+specification Inres_Protocol[ISAPini,ISAPres]:noexit
+
+library BOOLEAN endlib
+library INRES_PROTOCOL endlib
+
+behaviour
+  hide MSAP1,MSAP2 in
+            Station_Ini[ISAPini,MSAP1]
+  |[MSAP1]| Medium[MSAP1,MSAP2]
+  |[MSAP2]| Station_Res[MSAP2,ISAPres]
+
+  where
+
+  process Medium [MSAP1,MSAP2] :noexit:=
+        Channel[MSAP1,MSAP2]
+    ||| Channel[MSAP2,MSAP1]
+
+    where
+      process Channel[a,b] :noexit:=
+        a?d:MSP [isMDATreq(d)];
+       (b?d:MSP [isMDATind(d)];Channel[a,b]
+      []Channel[a,b])
+      endproc (* Channel *)
+  endproc (* Medium *)
+
+    process Station_Ini[ISAPini,MSAP1] :noexit:=
+    hide IPdu_ini in
+                  Initiator[ISAPini,IPdu_ini]
+     |[IPdu_ini]| Coder[IPdu_ini,MSAP1]
+
+    where
+
+    process Initiator[ISAP,IPdu] :noexit:=
+     (Connectionphase[ISAP,IPdu]
+    >>Dataphase[ISAP,IPdu] (succ(0)))
+    [>Disconnection[ISAP,IPdu]
+
+      where
+
+      process Connectionphase[ISAP,IPdu] :exit:=
+        Connectrequest[ISAP,IPdu]
+      >>accept z:DecNumb in Wait[ISAP,IPdu](z)
+
+        where
+
+        process Connectrequest[ISAP,IPdu] :exit(DecNumb):=
+         (ISAP?sp:SP;([isICONreq(sp)]->IPdu!CR;exit(s(0))
+                    [][not(isICONreq(sp))]->Connectrequest[ISAP,IPdu])
+         (* User errors are ignored *)
+        []IPdu?ipdu:IPDU[not(isDR(ipdu))];Connectrequest[ISAP,IPdu])
+         (* DR is only accepted by process Disconnection *)
+         (* System errors are ignored *)
+        endproc (* Connectrequest *)
+
+        process Wait[ISAP,IPdu](z:DecNumb) :exit:=
+         (IPdu?ipdu:IPDU[not(isDR(ipdu))];([isCC(ipdu)]
+                                               ->ISAP!ICONconf;exit
+                                          [][not(isCC(ipdu))]
+                                               ->Wait[ISAP,IPdu](z))
+         (* DR is only accepted by process Disconnection *)
+         (* System errors are ignored *)
+        []i;([z < 4]->IPdu!CR;Wait[ISAP,IPdu](s(z))
+           [][z == 4]->ISAP!IDISind;Connectionphase[ISAP,IPdu])
+             (* Timeout *)
+        []ISAP?sp:SP[not(isIDISind(sp))];Wait[ISAP,IPdu](z))
+         (* User errors are ignored *)
+        endproc (* Wait *)
+      endproc (* Connectionphase *)
+
+      process Dataphase[ISAP,IPdu](number:Sequencenumber) :noexit:=
+        Readytosend[ISAP,IPdu](number)
+        (* 1 is the first Sequencenumber *)
+      >>accept z:DecNumb,number:Sequencenumber,olddata:ISDU
+             in Sending[ISAP,IPdu](z,number,olddata)
+        (* z is number of sendings. At the beginning z=1 *)
+        where
+        process Readytosend[ISAP,IPdu](number:Sequencenumber):
+                    exit(DecNumb,Sequencenumber,ISDU):=
+         (ISAP?sp:SP;
+                 ([isIDATreq(sp)]
+                    ->IPdu!DT(number,Data(sp));exit(s(0),number,Data(sp))
+                [][not(isIDATreq(sp))]->Readytosend[ISAP,IPdu](number))
+        []IPdu?ipdu:IPDU[not(isDR(ipdu))];Readytosend[ISAP,IPdu](number))
+        endproc (* Readytosend *)
+
+      process Sending[ISAP,IPdu]
+                 (z:DecNumb,number:Sequencenumber,olddata:ISDU):noexit:=
+       (IPdu?ipdu:IPDU[not(isDR(ipdu))];
+             ([isAK(ipdu) and (num(ipdu) eq number)]
+                                  ->Dataphase [ISAP,IPdu](succ(number))
+            [][isAK(ipdu) and (num(ipdu) ne number)  and  (z < 4)]
+                      ->IPdu!DT(number,olddata);
+                               Sending[ISAP,IPdu](s(z),number,olddata)
+       (* The Initiator shall not resend more than 4 times in case of *)
+       (* faulty transmission *)
+            [][isAK(ipdu) and (num(ipdu) ne number)  and  (z == 4)]
+                      ->IPdu!DR;ISAP!IDISind;Initiator[ISAP,IPdu]
+            [][not(isAK(ipdu))]->Sending[ISAP,IPdu](z,number,olddata))
+      []i;([z < 4]->IPdu!DT(number,olddata);
+                      Sending[ISAP,IPdu](s(z),number,olddata)
+         [][z == 4]->ISAP!IDISind;Initiator[ISAP,IPdu])
+      []ISAP?sp:SP[not(isIDATreq(sp))];
+                      Sending[ISAP,IPdu](z,number,olddata))
+      endproc (* Sending *)
+    endproc (* Dataphase *)
+
+    process Disconnection[ISAP,IPdu]:noexit:=
+      IPdu!DR;ISAP!IDISind;Initiator[ISAP,IPdu]
+    endproc (* Disconnection *)
+  endproc (* Initiator *)
+
+  process Coder[IPdu,MSAP] :noexit:=
+   (IPdu?ipdu:IPDU;MSAP!MDATreq(ipdu);Coder[IPdu,MSAP]
+  []MSAP?sp:MSP;IPdu!data(sp);Coder[IPdu,MSAP])
+  endproc (* Coder *)
+endproc (* Station_Ini *)
+
+  process Station_Res[MSAP2,ISAPres] :noexit:=
+  hide IPdu_res in
+                   Responder[ISAPres,IPdu_res]
+      |[IPdu_res]|Coder[IPdu_res,MSAP2]
+
+  where
+
+  process Responder[ISAP,IPdu]:noexit:=
+   (Connectionphase[ISAP,IPdu]
+  >>Dataphase[ISAP,IPdu](succ(1)))
+  [>Disconnection[ISAP,IPdu]
+
+    where
+
+    process Connectionphase[ISAP,IPdu]:exit:=
+      Connectrequest[ISAP,IPdu]
+    >>Wait[ISAP,IPdu]
+
+      where
+
+      process Connectrequest[ISAP,IPdu]:exit:=
+       (IPdu?ipdu:IPDU;([isCR(ipdu)]->ISAP!ICONind;exit
+                      [][not(isCR(ipdu))]->Connectrequest[ISAP,IPdu])
+           (* System errors are ignored *)
+      []ISAP!ICONresp;Connectrequest[ISAP,IPdu])
+           (* User errors are ignored *)
+      endproc (* Connectrequest *)
+
+      process Wait[ISAP,IPdu] :exit:=
+       (IPdu?ipdu:IPDU;Wait[ISAP,IPdu]
+           (* System errors are ignored *)
+      []ISAP!ICONresp;IPdu!CC;exit)
+      endproc (* Wait *)
+    endproc (* Connectionphase *)
+
+    process Dataphase[ISAP,IPdu](number:Sequencenumber):noexit:=
+           (* number is the last acknowledged Sequencenumber *)
+     (IPdu?ipdu:IPDU;([isDT(ipdu) and (num(ipdu) eq succ(number))]
+                         ->ISAP!IDATind(data(ipdu));IPdu!AK(num(ipdu));
+                              Dataphase[ISAP,IPdu](succ(number))
+                    [][isDT(ipdu) and (num(ipdu) eq number)]
+                         ->IPdu!AK(num(ipdu));
+                              Dataphase[ISAP,IPdu](number)
+                    [][isCR(ipdu)]->ISAP!ICONind;Wait[ISAP,IPdu]
+                    [][not(isDT(ipdu) or isCR(ipdu))]
+                         ->Dataphase[ISAP,IPdu](number))
+    []ISAP!ICONresp;Dataphase[ISAP,IPdu](number))
+         (* User errors are ignored *)
+      where
+
+      process Wait[ISAP,IPdu]:noexit:=
+       (IPdu?ipdu:IPDU;Wait[ISAP,IPdu]
+           (* System errors are ignored *)
+      []ISAP!ICONresp;IPdu!CC;Dataphase[ISAP,IPdu](succ(1)))
+      endproc (* Wait *)
+    endproc (* Dataphase *)
+
+    process Disconnection[ISAP,IPdu] :noexit:=
+      ISAP!IDISreq;IPdu!DR;Responder[ISAP,IPdu]
+    endproc (* Disconnection *)
+  endproc (* Responder *)
+
+  process Coder[IPdu,MSAP] :noexit:=
+    (IPdu?ipdu:IPDU;MSAP!MDATreq(ipdu);Coder[IPdu,MSAP]
+   []MSAP?sp:MSP;IPdu!data(sp);Coder[IPdu,MSAP])
+  endproc (* Coder *)
+endproc (* Station_Res *)
+endspec

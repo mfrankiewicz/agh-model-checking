@@ -1,0 +1,29 @@
+
+(* three disks in position 0, 1, 2 -- controller in position 7 *)
+
+specification SCSI [ARB, CMD, REC, LAMBDA, MU] : noexit behaviour
+
+   (
+   DISK [ARB, CMD, REC, MU] (0 of NUM, 0 of NAT, false)
+   |[ARB]|
+   DISK [ARB, CMD, REC, MU] (1 of NUM, 0 of NAT, false)
+   |[ARB]|
+   DISK [ARB, CMD, REC, MU] (2 of NUM, 0 of NAT, false)
+   |[ARB]|
+   NO_DEVICE [ARB] (3 of NUM)
+   |[ARB]|
+   NO_DEVICE [ARB] (4 of NUM)
+   |[ARB]|
+   NO_DEVICE [ARB] (5 of NUM)
+   |[ARB]|
+   NO_DEVICE [ARB] (6 of NUM)
+   )
+   |[ARB, CMD, REC]|
+   CONTROLLER [ARB, CMD, REC, LAMBDA] (7 of NUM, 7 of NUM, ZERO_0127)
+
+where
+
+   library TYPES, CONTROLLER, DISK, NO_DEVICE endlib
+
+endspec
+

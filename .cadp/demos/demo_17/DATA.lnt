@@ -1,0 +1,61 @@
+module DATA is
+
+-------------------------------------------------------------------------------
+
+type FRAME is
+   -- message frames
+   TOKEN, CLAIM
+end type
+
+type STATE is
+   -- state values
+   ALPHA, BETA, GAMMA
+   with "==", "!="
+end type
+
+type ADDR is
+   -- addresses of stations
+   A1, A2, A3
+   with "==", "!=", "<", ">", "<=", ">="
+end type
+
+type ADDR_SET is
+   set of ADDR
+   with "==", "member", "remove"
+end type
+
+-------------------------------------------------------------------------------
+
+function WHOLE_SET : ADDR_SET is
+   return { A1, A2, A3 }
+end function
+
+-------------------------------------------------------------------------------
+
+channel ACCESS is
+   (ADDR)
+end channel
+
+channel PORT is
+   (FRAME),
+   (FRAME, ADDR),
+   (FRAME, ADDR, BOOL)
+end channel
+
+-------------------------------------------------------------------------------
+
+process PRIVILEDGE [OPEN, CLOSE:ACCESS, SUCC:PORT] (Ai:ADDR) is
+   -- here, station Ai has priviledge to access the shared resource
+   select
+      null -- station Ai decides not to access the shared resource
+   []
+      OPEN (Ai); -- station Ai accesses the shared resource
+      CLOSE (Ai) -- station Ai releases the shared resource
+   end select;
+   SUCC (TOKEN) -- station Ai passes the token to the next station
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

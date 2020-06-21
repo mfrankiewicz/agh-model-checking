@@ -1,0 +1,481 @@
+(******************************************************************************
+ *                              E V A L U A T O R
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       divbranching.mcl
+ *   Author             :       Radu MATEESCU
+ *   Version            :       1.4
+ *   Date               :       2015/02/24 10:09:36
+ *****************************************************************************)
+
+(*
+ * This file provides the definitions in MCL of several temporal operators
+ * adequate w.r.t. divergence-sensitive branching bisimulation (divbranching).
+ * When checking a formula that contains only these operators, one can minimize
+ * the LTS modulo divbranching before carrying out the verification, without
+ * changing the interpretation of the formula. This may improve the performance
+ * of verification, especially if maximal hiding w.r.t. the formula is applied
+ * before minimization [Mateescu-Wijs-14].
+ * 
+ * The following operators are provided:
+ *   - The operators of ACTL\X [Fantechi-Gnesi-Ristori-92] defined in the
+ *     library actl_x.mcl (included below).
+ *   - The operators of the modal mu-calculus fragment "Lmu-dsbr" proposed
+ *     in [Mateescu-Wijs-14], which are defined below.
+ *   - The deadlock freedom property is expressed in a form allowing one to
+ *     hide all actions in the LTS, and to reduce the LTS modulo divbranching,
+ *     before carrying out the verification.
+ * These operators can be freely combined with the Boolean operators and the
+ * fixed point operators of MCL.
+ * 
+ * References:
+ * 
+ * [Fantechi-Gnesi-Ristori-92] A. Fantechi, S. Gnesi, and G. Ristori.
+ *   "From ACTL to Mu-Calculus." Proceedings of the ERCIM Workshop on Theory
+ *   and Practice in Verification, pp. 3-10, 1992.
+ * 
+ * [Mateescu-Wijs-14] R. Mateescu and A. Wijs.
+ *   "Property-Dependent Reductions Adequate with Divergence-Sensitive
+ *   Branching Bisimulation." Science of Computer Programming 96(3):354-376,
+ *   2014.
+ *)
+
+(*===========================================================================*)
+(* Operators of ACTL\X *)
+
+library actl_x.mcl end_library
+
+(*===========================================================================*)
+(* Operators of Lmu-dsbr *)
+
+(*
+ * We now provide the definition of Lmu-dsbr in MCL. Lmu-dsbr is equally
+ * expressive to mu-ACTL\X, the logic extending ACTL\X with fixed point
+ * operators, defined in [Fantechi-Gnesi-Ristori-92]. However, Lmu-dsbr
+ * offers a different set of temporal operators than mu-ACTL\X, making the
+ * specification of certain properties more succinct.
+ * 
+ * This logic is interpreted on an LTS M = (S, A, T, s0), where:
+ *   - S is the set of states
+ *   - A is the set of actions
+ *   - T included in S * A * S is the transition relation
+ *   - s0 in S is the initial state.
+ * 
+ * The invisible action is denoted by tau. Visible actions are denoted by
+ * a1, a2, etc. Visible or invisible actions are denoted by b1, b2, etc.
+ * A transition (s1, b, s2) in T, also denoted by s1-b->s2, means that the
+ * system can move from state s1 to state s2 by performing action b.
+ * 
+ * The interpretation of an action formula Ai on A is denoted by [[Ai]],
+ * the subset of actions in A which satisfy Ai. The interpretation of a
+ * state formula P on M is denoted by [[P]], the subset of states in S
+ * which satisfy P.
+ * 
+ * The action formulas A1 and A2 in the definitions below should respect
+ * the following conditions:
+ *   - tau in [[A1]]
+ *   - not (tau in [[A2]])
+ * i.e., A1 may denote visible or invisible actions and A2 must denote
+ * visible actions only. This is required by the definition of Lmu-dsbr and
+ * is essential to guarantee the adequacy of this logic w.r.t. divbranching.
+ *
+ * Equivalences between Lmu-dsbr and ACTL\X operators:
+ *
+ * UW_DIA (P1, A1, P2) = EU_A (P1, A1, P2)
+ * 
+ * UW_BOX (P1, A1, P2) = not EU_A (P1, A1, not P2)
+ * 
+ * W_DIA (P1, A1, A2, P2) = EU_A_A (P1, A1, A2, P2)
+ * 
+ * W_BOX (P1, A1, A2, P2) = not EU_A_A (P1, A1, A2, not P2)
+ * 
+ * W_LOOPING (P1, A1) = nu X . EF_A (A1, X)
+ * 
+ * W_SATURATION (P1, A1) = mu X . AG_A (A1, X)
+ * 
+ * AU_A (P1, A1, P2) =
+ *     UW_BOX (not P2, A1,
+ *         P2 or (P1 and not DEADLOCK_DIVBRANCHING and
+ *                W_BOX (not P2, tau, not A1, false))
+ *     ) and W_SATURATION (not P2, A1)
+ * 
+ * AU_A_A (P1, A1, A2, P2) =
+ *     nu X . (
+ *         UW_BOX (not A2,
+ *             P1 and not DEADLOCK_DIVBRANCHING and
+ *             W_BOX (not (A1 or A2), false) and
+ *             W_BOX (A2 and not A1, P2) and
+ *             W_BOX (A1 and A2, P2 or X) and X)
+ *     )
+ *     and
+ *     nu X . (W_SATURATION (not A2) and W_BOX (not A2, A1 and A2, P2 or X))
+ *     and
+ *     mu X . W_BOX (not A2, A1 and A2, P2 or X)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Ultra weak modalities *)
+
+(*
+ * < (P1 ? . A1)* > P2
+ * 
+ * [[ < (P1 ? . A1)* > P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . (bj in [[ A1 ]] and sj in [[ P1 ]])
+ *               and
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro UW_DIA (P1, A1, P2) =
+    < if (P1) then (A1) end if* > (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * < A1* > P2 = < (true ? . A1)* > P2
+ * 
+ * [[ < A1* > P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . bj in [[ A1 ]]
+ *               and
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro UW_DIA (A1, P2) =
+    < (A1)* > (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * << >> P2 = < (true ? . tau)* > P2
+ * 
+ * [[ << >> P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . bj = tau
+ *               and
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro UW_DIA (P2) =
+    < tau* > (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ (P1 ? . A1)* ] P2
+ * 
+ * [[ [ (P1 ? . A1)* ] P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . (
+ *               forall 1<=j<k . (bj in [[ A1 ]] and sj in [[ P1 ]])
+ *               implies
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro UW_BOX (P1, A1, P2) =
+    [ if (P1) then (A1) end if* ] (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ A1* ] P2 = [ (true ? . A1)* ] P2
+ * 
+ * [[ [ A1* ] P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . (
+ *               forall 1<=j<k . bj in [[ A1 ]]
+ *               implies
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro UW_BOX (A1, P2) =
+    [ (A1)* ] (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [[ ]] P2 = [ (true ? . tau)* ] P2
+ * 
+ * [[ [[ ]] P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . (
+ *               forall 1<=j<k . bj = tau
+ *               implies
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro UW_BOX (P2) =
+    [ tau* ] (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Weak modalities *)
+
+(*
+ * < (P1 ? . A1)* . P1 ? . A2 > P2
+ * 
+ * [[ < (P1 ? . A1)* . P1 ? . A2 > P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . (bj in [[ A1 ]] and sj in [[ P1 ]])
+ *               and
+ *               sk in [[ P1 ]] and bk in [[ A2 ]] and sk+1 in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro W_DIA (P1, A1, A2, P2) =
+    < if (P1) then (A1) end if* .
+      if (P1) then (A2) end if > (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * < A1* . A2 > P2 = < (true ? . A1)* . true ? . A2 > P2
+ * 
+ * [[ < A1* . A2 > P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . bj in [[ A1 ]]
+ *               and
+ *               bk in [[ A2 ]] and sk+1 in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro W_DIA (A1, A2, P2) =
+    < (A1)* . (A2) > (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * < tau* . A2 > P2 = < (true ? . tau)* . true ? . A2 > P2
+ * 
+ * [[ < tau* . A2 > P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . bj = tau
+ *               and
+ *               bk in [[ A2 ]] and sk+1 in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro W_DIA (A2, P2) =
+    < tau* . (A2) > (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ (P1 ? . A1)* . P1 ? . A2 ] P2
+ * 
+ * [[ [ (P1 ? . A1)* . P1 ? . A2 ] P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . (
+ *               (forall 1<=j<k . (bj in [[ A1 ]] and sj in [[ P1 ]])
+ *               and
+ *               sk in [[ P1 ]] and bk in [[ A2 ]])
+ *               implies
+ *               sk+1 in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro W_BOX (P1, A1, A2, P2) =
+    [ if (P1) then (A1) end if* .
+      if (P1) then (A2) end if ] (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ A1* . A2 ] P2 = [ (true ? . A1)* . true ? . A2 ] P2
+ * 
+ * [[ [ A1* . A2 ] P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . (
+ *               (forall 1<=j<k . bj in [[ A1 ]] and bk in [[ A2 ]])
+ *               implies
+ *               sk+1 in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro W_BOX (A1, A2, P2) =
+    [ (A1)* . (A2) ] (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ tau* . A2 ] P2 = [ (true ? . tau)* . true ? . A2 ] P2
+ * 
+ * [[ [ tau* . A2 ] P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . (
+ *               (forall 1<=j<k . bj = tau and bk in [[ A2 ]])
+ *               implies
+ *               sk+1 in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro W_BOX (A2, P2) =
+    [ tau* . (A2) ] (P2)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Weak fairness operators *)
+
+(*
+ * < P1 ? . A1 > @
+ * 
+ * [[ < P1 ? . A1 > @ ]] =
+ *     { s | s1=s and
+ *           forall k>=1 . (
+ *               sk -bk-> sk+1 and sk in [[ P1 ]] and bk in [[ A1 ]]
+ *           )
+ *     }
+ *)
+
+macro W_LOOPING (P1, A1) =
+    < if (P1) then (A1) end if > @
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * < A1 > @ = < true ? . A1 > @
+ * 
+ * [[ < A1 > @ ]] =
+ *     { s | s1=s and
+ *           forall k>=1 . (
+ *               sk -bk-> sk+1 and bk in [[ A1 ]]
+ *           )
+ *     }
+ *)
+
+macro W_LOOPING (A1) =
+    < (A1) > @
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * < tau > @ = < true ? . tau > @
+ * 
+ * [[ < tau > @ ]] =
+ *     { s | s1=s and
+ *           forall k>=1 . (
+ *               sk -bk-> sk+1 and bk in [[ tau ]]
+ *           )
+ *     }
+ *)
+
+macro W_LOOPING () =
+    < tau > @
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ P1 ? . A1 ] -|
+ * 
+ * [[ [ P1 ? . A1 ] -| ]] =
+ *     { s | s1=s and
+ *           exists k>=1 . (
+ *               not sk -bk-> sk+1 or not sk in [[ P1 ]] or not bk in [[ A1 ]]
+ *           )
+ *     }
+ *)
+
+macro W_SATURATION (P1, A1) =
+    [ if (P1) then (A1) end if ] -|
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ A1 ] -| = [ true ? . A1 ] -|
+ * 
+ * [[ [ A1 ] -| ]] =
+ *     { s | s1=s and
+ *           exists k>=1 . (
+ *               not sk -bk-> sk+1 or not bk in [[ A1 ]]
+ *           )
+ *     }
+ *)
+
+macro W_SATURATION (A1) =
+    [ (A1) ] -|
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ tau ] -| = [ true ? . tau ] -|
+ * 
+ * [[ [ tau ] -| ]] =
+ *     { s | s1=s and
+ *           exists k>=1 . (
+ *               not sk -bk-> sk+1 or not bk in [[ tau ]]
+ *           )
+ *     }
+ *)
+
+macro W_SATURATION () =
+    [ tau ] -|
+end_macro
+
+(*===========================================================================*)
+(* Derived operators *)
+
+(*
+ * Deadlock freedom (absence of deadlock states).
+ * 
+ * With respect to divbranching, a deadlock state does not have any outgoing
+ * transition sequence leading to a visible action or to a divergence
+ * (tau-cycle). This can be expressed as follows in Lmu-dsbr:
+ * 
+ *   DEADLOCK_DIVBRANCHING = W_BOX (not tau, false) and W_SATURATION ()
+ * 
+ * or, equivalently, in MCL:
+ * 
+ *   DEADLOCK_DIVBRANCHING = [ tau* . not tau ] false and [ tau ] -|
+ * 
+ * or, equivalently, in plain Lmu:
+ * 
+ *   DEADLOCK_DIVBRANCHING = mu Y . ([ true ] false or
+ *                                   ([ not tau ] false and [ tau ] Y))
+ * 
+ * Unfortunately, these formulas do not allow one to hide any action in the
+ * LTS before carrying out the verification [Mateescu-Wijs-14], and therefore
+ * they do not make possible any LTS reduction modulo divbranching.
+ * 
+ * However, when checking the absence of deadlocks, i.e., the formula
+ * 
+ *   [ true* ] not DEADLOCK_DIVBRANCHING
+ * 
+ * the equivalent MCL formula below can be used, which allows one to hide
+ * all actions in the LTS, and therefore provides the maximal possible
+ * reduction (modulo strong or divbranching bisimulation) before verification.
+ *)
+
+macro DEADLOCK_FREEDOM () =
+    [ true* ] < true > true
+end_macro
+
+(*---------------------------------------------------------------------------*)
+

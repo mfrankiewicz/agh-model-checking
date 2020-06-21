@@ -1,0 +1,30 @@
+
+(*****************************************************************************
+ * Requirement 7
+ * Onhook and Offhook alternate.
+ *****************************************************************************)
+
+nu ExpectOffHook . (
+    [ "S !1 !ONH" ] false and
+    [ 'S !1 !OFFH ![AB]SUBSC' ]
+	nu Expect_OnHook . (
+	    [ "S !1 !ONH" ] ExpectOffHook and
+	    [ 'S !1 !OFFH ![AB]SUBSC' ] false and
+	    [ not ("S !1 !ONH" or 'S !1 !OFFH ![AB]SUBSC') ] Expect_OnHook
+	) and
+    [ not ("S !1 !ONH" or 'S !1 !OFFH ![AB]SUBSC') ] ExpectOffHook
+)
+
+and
+
+nu ExpectOffHook . (
+    [ "S !2 !ONH" ] false and
+    [ 'S !2 !OFFH ![AB]SUBSC' ]
+	nu Expect_OnHook . (
+	    [ "S !2 !ONH" ] ExpectOffHook and
+	    [ 'S !2 !OFFH ![AB]SUBSC' ] false and
+	    [ not ("S !2 !ONH" or 'S !2 !OFFH ![AB]SUBSC') ] Expect_OnHook
+	) and
+    [ not ("S !2 !ONH" or 'S !2 !OFFH ![AB]SUBSC') ] ExpectOffHook
+)
+

@@ -1,0 +1,73 @@
+(* 
+   defect process PI without buffer OUT, and consequently AD
+   (i.e. which may not read the pairs e1 (,e2) visible in the scenario)
+
+   contains the functional version with non-deterministic tail on 
+   buffer Inn only
+*)
+
+process PI [diag, sync, w, r, mw, cu, mr, cl] (ind:index,
+                                               C:mem_of_elem,
+                                               Inn:buf_of_elem) : noexit :=
+   sync;
+      (
+         (* for DEBUGGING *)
+         [Inn eq overflow] ->
+            diag !overflow !1 of NAT;
+               PI [diag, sync, w, r, mw, cu, mr, cl] (ind, C, Inn)
+         (* end DEBUGGING *)
+         []
+         (
+            choice el:elem []
+               w !ind !el [datum (ind, el)];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, C, Inn)
+         )
+         []
+         (
+            choice el:elem []
+               r !ind !el [ok (C, el) and (true and empty_true (Inn))];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, C, Inn)
+         )
+         []
+         (
+            choice el:elem []
+               mw !ind !el [datum (ind, el)];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, C, Enqueue (Inn, el, true))
+         )
+         []
+         mw ?j:index ?el:elem [not (j eq ind)];
+            PI [diag, sync, w, r, mw, cu, mr, cl] (ind, C, Enqueue (Inn, el, false))
+         []
+         (
+            choice el:elem []
+               (
+                  cu !ind !el [first (Inn, el)];
+                     PI [diag, sync, w, r, mw, cu, mr, cl] (ind, Insert (C, el), Inn)
+                  []
+                  cu !ind !el [first (Inn, el) and not (((el eq eps) or (Inn eq overflow)) or empty (Inn))];
+                     PI [diag, sync, w, r, mw, cu, mr, cl] (ind, Insert (C, el), Dequeue (Inn))
+               )
+         )
+         []
+         (* the condition "not (ok (C, el)) and NotIn (Inn, el)" is added in order
+            to have a bit less idle transitions *)
+         mr !ind ?el:elem [not (ok (C, el)) and NotIn (Inn, el)];
+            PI [diag, sync, w, r, mw, cu, mr, cl] (ind, C, Enqueue (Inn, el, false))
+         []
+         (* the condition "not (el eq eps)" is only added to have a bit less idle
+            transitions *)
+         (
+            choice el:elem []
+               cl !ind !el [ok (C, el) and not (el eq eps)];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, cl (C, el), Inn)
+         )
+         []
+         (* passive synchros when other processes are active *)
+         (
+            choice G in [r, w, cu, mr, cl] []
+               G ?j:index ?el:elem [not (j eq ind)];
+                  PI [diag, sync, w, r, mw, cu, mr, cl] (ind, C, Inn)
+         )
+      )
+endproc (* PI *)
+

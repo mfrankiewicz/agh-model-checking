@@ -1,0 +1,12 @@
+type Character is Boolean, NaturalNumber
+   sorts Char (*! implementedby ADT_CHAR comparedby ADT_CMP_CHAR
+                 iteratedby ADT_ENUM_FIRST_CHAR and ADT_ENUM_NEXT_CHAR
+                 printedby ADT_PRINT_CHAR external *)
+   opns _eq_ (*! implementedby ADT_EQ_CHAR external *), 
+	_ne_ (*! implementedby ADT_NE_CHAR external *), 
+	_lt_ (*! implementedby ADT_LT_CHAR external *), 
+	_le_ (*! implementedby ADT_LE_CHAR external *), 
+	_ge_ (*! implementedby ADT_GE_CHAR external *), 
+	_gt_ (*! implementedby ADT_GT_CHAR external *) : Char, Char -> Bool
+endtype
+

@@ -1,0 +1,76 @@
+specification BRP_SERVICE [INPUT, OUTPUT] : noexit
+
+library
+   TYPES
+endlib
+
+behaviour
+
+   SENDING_CLIENT [INPUT]
+   |[INPUT]|
+   SERVICE [INPUT, OUTPUT]
+
+where
+
+   process SENDING_CLIENT [INPUT] : noexit :=
+      choice N : Nat []
+         [N > 0] ->
+            INPUT ! cons_msg (N);
+               INPUT ? I0 : Ind;
+                  SENDING_CLIENT [INPUT]
+   endproc
+
+   process SERVICE [INPUT, OUTPUT] : noexit :=
+      INPUT ? M : Msg;
+         (
+         [length (M) > 0] ->
+            SERVICE_1 [INPUT, OUTPUT] (M, length (M))
+         []
+         [length (M) == 0] ->
+            SERVICE [INPUT, OUTPUT]
+         )
+
+   where
+
+      process SERVICE_1 [INPUT, OUTPUT] (M : Msg, L : Nat) : noexit :=
+         i;
+            ([length (M) == L] ->
+               INPUT ! confirm (M);
+                  SERVICE [INPUT, OUTPUT]
+            []
+            [length (M) < L] ->
+               INPUT ! confirm (M);
+                  OUTPUT ! I_NOK;
+                     SERVICE [INPUT, OUTPUT]
+            )
+         []
+         i;
+            OUTPUT ! head (M) ! indication (length (M) == L, length (M) == 1);
+               (
+               [length (M) == 1] ->
+                  (
+                  i;
+                     INPUT ! I_OK;
+                        SERVICE [INPUT, OUTPUT]
+                  []
+                  i;
+                     INPUT ! I_DK;
+                        SERVICE [INPUT, OUTPUT]
+                  )
+               []
+               [length (M) > 1] ->
+                  (
+                  i;
+                     SERVICE_1 [INPUT, OUTPUT] (tail (M), L)
+                  []
+                  i;
+                     INPUT ! I_NOK;
+                        OUTPUT ! I_NOK;
+                           SERVICE [INPUT, OUTPUT]
+                  )
+               )
+      endproc
+
+   endproc
+
+endspec

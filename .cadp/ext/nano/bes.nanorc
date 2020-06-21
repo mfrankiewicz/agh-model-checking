@@ -1,0 +1,18 @@
+## Nano syntax file for the BES language
+## Produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+## Version 1.3:BES+1.3:SECT
+
+syntax "BES" "\.bes$"
+
+## Keywords
+color brightblue "\<(block|end|is|mode|mu|nu|unique)\>"
+
+## Constants
+color yellow "\<(false|true)\>"
+
+## Functions
+color blue "\<(and|or)\>"
+
+## Comments
+color green start="\(\*" end="\*\)"
+

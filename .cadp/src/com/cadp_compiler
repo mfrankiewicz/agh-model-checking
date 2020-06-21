@@ -1,0 +1,213 @@
+#! /bin/sh 
+
+###############################################################################
+#                              C A E S A R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_compiler
+#   Auteurs             :       Wendelin SERWE et Hubert GARAVEL
+#   Version             :       1.17
+#   Date                :       2018/12/05 16:04:33
+##############################################################################
+
+# ce script determine le nom et la version du compilateur C et l'affiche sous
+# la forme "cc", "icc", "gcc", ou "unknown", suivi d'un tiret, suivi du
+# numero de version, et suivi d'autres informations. Par exemple, 
+#   cc-5.8 Patch 121015-06 2007/10/03
+#   gcc-3.4.3 (csl-sol210-3_4-branch+sol_rpath)
+#   gcc-4.1.2 20061115 (prerelease) (Debian 4.1.1-21)
+#   icc-10.1 IA-32 Build 20071116 Package ID: l_cc_p_10.1.011
+#   icc-11.0 IA-64 Build 20081105 Package ID: l_cproc_p_11.0.074 
+
+# utilisation :
+#	cadp_compiler [path-vers-un-compilateur]
+# si l'argument est absent, on le remplace par le resultat de la commande
+# `cadp_cc -default`
+
+# -----------------------------------------------------------------------------
+
+if [ $# -gt 0 ]
+then
+	CC=`$CADP/src/com/cadp_which "$1"`
+else
+	CC=`$CADP/src/com/cadp_cc -default`
+fi
+
+# -----------------------------------------------------------------------------
+
+if [ ! -f "$CC" -o ! -x "$CC" ]
+then
+	echo "unknown-1 ($CC)"
+	exit 0
+fi
+
+# -----------------------------------------------------------------------------
+
+# resultats des appels a Sun cc avec l'option -V 
+# (le compilateur de Sun ne comprend que cette option)
+# le resultat est toujours ecrit sur stderr et le code de retour est 1
+# la premiere ligne est de la forme :
+#       cc: Sun C 5.8 Patch 121015-06 2007/10/03
+#       cc: Sun C 5.9 Linux_i386 Patch 124871-01 2007/07/31
+#	cc: Sun C 5.10 SunOS_i386 2009/06/03
+#	cc: Sun C 5.11 SunOS_i386 145355-02 2010/12/08
+#	cc: Studio 12.6 Sun C 5.15 SunOS_i386 2017/05/30
+
+# cette premiere ligne est suivie d'une seconde :
+#       usage: cc [ options] files.  Use 'cc -flags' for details
+
+# -----------------------------------------------------------------------------
+
+# gcc n'accepte pas l'option -V
+# le code de retour est different de 0
+
+# resultats des appels a gcc avec l'option -v
+# le resultat est toujours ecrit sur stderr et le code de retour est toujours 0
+# la derniere ligne est de la forme :
+# 	gcc version 2.95.4 20011002 (Debian prerelease)
+# 	gcc version 2.96 20000731 (Turbolinux 2.96-9)
+# 	gcc version 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
+# 	gcc version 3.4.5 (mingw special)
+# 	gcc version 4.0.1 (Apple Computer, Inc. build 5370)
+# 	gcc version 4.0.1 (Apple Inc. build 5488)
+# 	gcc version 4.1.2 20061115 (prerelease) (Debian 4.1.1-21)
+# 	gcc version 4.1.2 20071124 (Red Hat 4.1.2-42)
+#	gcc version 6.4.0 (OpenIndiana 6.4.0-OI-3)
+
+# resultats des appels a gcc avec l'option --version
+# le resultat est toujours ecrit sur stdout et le code de retour est toujours 0
+# la premiere ligne de stdout est de la forme :
+# 	2.95.2
+# 	2.95.4
+# 	gcc (GCC) 3.2 20020927 (prerelease)
+# 	gcc (GCC) 3.2.2 20030222 (Red Hat Linux 3.2.2-5)
+# 	gcc (GCC) 3.3.2 20031005 (Debian prerelease)
+# 	gcc (GCC) 3.4.3 (csl-sol210-3_4-branch+sol_rpath)
+# 	gcc (GCC) 3.4.4 (cygming special, gdc 0.12, using dmd 0.125)
+# 	gcc (GCC) 4.1.2 20071124 (Red Hat 4.1.2-42)
+#	gcc (OpenIndiana 6.4.0-OI-3) 6.4.0
+# 	i386-mingw32msvc-gcc (GCC) 3.4.5 (mingw special)
+# 	powerpc-apple-darwin8-gcc-4.0.1 (GCC) 4.0.1 (Apple Computer, Inc. build 5370)
+# 	i686-apple-darwin9-gcc-4.0.1 (GCC) 4.0.1 (Apple Inc. build 5488)
+
+# -----------------------------------------------------------------------------
+
+# clang/gcc n'accepte pas l'option -V
+# le code de retour est different de 0
+
+# resultats des appels a clang/gcc avec l'option -v
+# le resultat est toujours ecrit sur stderr et le code de retour est toujours 0
+# la derniere ligne est inexploitable ("Thread model: posix")
+# mais la sortie contient une ligne de la forme
+#	Apple LLVM version 5.0 (clang-500.2.79) (based on LLVM 3.3svn)
+#	Apple LLVM version 9.0.0 (clang-900.0.39.2)
+#	Debian clang version 3.5.0-10 (tags/RELEASE_350/final) (based on LLVM 3.5.0)
+#	clang version 4.0.1 (tags/RELEASE_401/final)
+
+# resultats des appels a clang/gcc avec l'option --version
+# le resultat est surtout ecrit sur stdout et le code de retour est toujours 0
+# si on l'appelle avec gcc, le compilateur ecrit une ligne inutile sur stderr
+# la premiere ligne de stdout est de la forme :
+#	Apple LLVM version 5.0 (clang-500.2.79) (based on LLVM 3.3svn)
+#	Apple LLVM version 9.0.0 (clang-900.0.39.2)
+#	Debian clang version 3.5.0-10 (tags/RELEASE_350/final) (based on LLVM 3.5.0)
+#	clang version 4.0.1 (tags/RELEASE_401/final)
+
+# -----------------------------------------------------------------------------
+
+# resultats des appels a icc avec l'option -V
+# le code de retour est toujours 0
+# la premiere ligne est de la forme :
+# 	Intel(R) C Compiler for applications running on IA-32, Version 10.1    Build 20080801 Package ID: l_cc_p_10.1.018
+# 	Intel(R) C Compiler for applications running on IA-32, Version 10.1    Build 20071116 Package ID: l_cc_p_10.1.011
+#	Intel(R) C IA-64 Compiler for applications running on IA-64, Version 10.1    Build 20080312 Package ID: l_cc_p_10.1.015
+#	Intel(R) C IA-64 Compiler Professional for applications running on IA-64, Version 11.0    Build 20081105 Package ID: l_cproc_p_11.0.074
+
+# resultats des appels a icc avec l'option -v
+# le code de retour est toujours 0
+# une seule ligne de la forme :
+# 	Version 10.1
+
+# resultats des appels a icc avec l'option --version
+# le code de retour est toujours 0
+# la premiere ligne est de la forme :
+# 	icc (ICC) 10.1 20071116
+#	icc (ICC) 10.1 20080312
+# 	icc (ICC) 10.1 20080801
+
+# -----------------------------------------------------------------------------
+
+# on s'assure que les compilateurs emettront leurs messages en anglais
+
+unset LANG
+LC_ALL="C"
+export LC_ALL
+
+# -----------------------------------------------------------------------------
+
+# phase 1 : tentative de reconnaitre Gcc en appelant le compilateur avec 
+# l'option -v (reconnue par gcc, clang et icc, mais pas par Sun cc)
+
+PREFIX='^gcc[ ]version[ ]'
+RESULT=`($CC -v 2>&1 < /dev/null) | grep "$PREFIX" | sed -e "s/$PREFIX//" | sed -e "s/[ ]*$//"`
+
+if [ "$RESULT" != "" ]
+then
+	echo "gcc-$RESULT"
+	exit 0
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 2 : tentative de reconnaitre Clang en appelant le compilateur avec 
+# l'option -v (reconnue par gcc, clang et icc, mais pas par Sun cc)
+
+PREFIX='^clang[ ]version[ ]'
+RESULT=`($CC -v 2>&1 < /dev/null) | sed -e 's/^Apple[ ]LLVM/clang/' | sed -e 's/^Debian[ ]clang/clang/' | grep "$PREFIX" | sed -e "s/$PREFIX//"`
+
+if [ "$RESULT" != "" ]
+then
+	echo "clang-$RESULT"
+	exit 0
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 3 : tentative de reconnaitre le compilateur C de Sun en appelant le
+# compilateur avec l'option -V (reconnue par Sun cc et icc, mais pas par gcc)
+
+PREFIX='^cc:[ ]Sun[ ]C[ ]'
+RESULT=`($CC -V 2>&1 < /dev/null) | sed -e 's/^cc:[ ]Studio[ ][0-9.]*/cc:/' | grep "$PREFIX" | sed -e "s/$PREFIX//"`
+
+if [ "$RESULT" != "" ]
+then
+	echo "cc-$RESULT"
+	exit 0
+fi
+
+# -----------------------------------------------------------------------------
+
+# phase 4 : tentative de reconnaitre le compilateur Icc d'Intel en appelant le
+# compilateur avec l'option -V (reconnue par Sun cc et icc, mais pas par gcc) ;
+# on recupere l'information IA-32 ou IA-64 pour la placer juste avant "Build"
+
+PREFIX='Intel(R)[ ]C[ ].*Compiler[ ].*for[ ]applications[ ]running[ ]on[ ]'
+RESULT=`($CC -V 2>&1 < /dev/null) | grep "$PREFIX" | sed -e "s/$PREFIX\([^,]*\),[ ]Version[ ]\([^ ]*\)[ ]*\(.*\)/\2 \1 \3/"`
+
+if [ "$RESULT" != "" ]
+then
+        echo "icc-$RESULT"
+        exit 0
+fi
+
+# -----------------------------------------------------------------------------
+
+echo "unknown-2 ($CC)"
+exit 0
+
+# -----------------------------------------------------------------------------

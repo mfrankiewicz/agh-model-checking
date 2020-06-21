@@ -1,0 +1,92 @@
+specification DISTRIBUTED_SUMMATION [START, ANSWER, REPORT] : noexit
+
+library TYPES endlib
+
+behaviour
+
+(*
+ * the synchronizations between processes P_0 to P_5 are described using the
+ * "m among n" synchronization operator in the SVL script
+ *)
+
+stop
+
+where
+
+(* initial state *)
+
+process P_INIT [START, ANSWER, REPORT] (id:Identity) : noexit :=
+
+   [id eq 0] ->
+      (*
+       * id is the main process, so it starts immediately in the active state;
+       * the last data parameter of P_ACTIVE below states that id expects an
+       * ANSWER or START message from each of its neighbours
+       *)
+      P_ACTIVE [START, ANSWER, REPORT] (id, Weight (id), Nil, 0 of Identity, Number_Neighbours (id))
+   []
+   [not (id eq 0)] ->
+      (*
+       * id is not the main process and one of its neighbours, which is by now
+       * considered as its parent, starts id; the last data parameter of
+       * P_ACTIVE below states that id expects an ANSWER or START message from
+       * each of its neighbours except its parent, who already sent a START
+       *)
+      START !id ?j:Identity;
+         P_ACTIVE [START, ANSWER, REPORT] (id, Weight (id), Insert (j, Nil), j, Number_Neighbours (id) - 1)
+
+endproc
+
+(* active state *)
+
+process P_ACTIVE [START, ANSWER, REPORT] (id:Identity, sum:Nat_8, started_neighbours:Identity_List, parent:Identity, waiting:Nat) : noexit :=
+   
+   (* 
+    * id tells its neighbours except its parent (which was initially in the 
+    * started_neighbours list) to start; those neighbours that were not yet
+    * active will go into the active state, considering id as their parent;
+    * those neighbours that were already active will simply decrement their
+    * waiting counter
+    *)
+   START ?j:Identity !id [Neighbour (id, j) and not (Member (j, started_neighbours))];
+      P_ACTIVE [START, ANSWER, REPORT] (id, sum, Insert (j, started_neighbours), parent, waiting)
+   []
+   [waiting > 0] ->
+      (*
+       * id is still expecting some messages from its neighbours and one of 
+       * them sends its result: id adds it to its sum and decrements its
+       * waiting counter
+       *)
+      ANSWER !id ?j:Identity ?m:Nat_8;
+         P_ACTIVE [START, ANSWER, REPORT] (id, sum + m, started_neighbours, parent, waiting - 1)
+   []
+   [waiting > 0] ->
+      (* 
+       * id is still expecting some messages from its neighbours and its 
+       * neighbour j tells it to start, but id is already started; id simply
+       * count this START message as one of the messages it was expecting by 
+       * decrementing its waiting counter
+       *)
+      START !id ?j:Identity;
+         P_ACTIVE [START, ANSWER, REPORT] (id, sum, started_neighbours, parent, waiting - 1)
+   []
+   [(Length (started_neighbours) eq Number_Neighbours (id)) and (waiting eq 0)] ->
+      (* 
+       * all id's neighbours have been started and id has received all the
+       * messages it was expecting
+       *)
+      (
+         [id eq 0] ->
+            (* id is the main process, so it reports the final sum *)
+            REPORT !sum;
+               stop
+         []
+         [not (id eq 0)] ->
+            (* id is not the main process and sends its sum to its parent *)
+            ANSWER !parent !id !sum;
+               stop
+      )
+endproc
+
+endspec
+

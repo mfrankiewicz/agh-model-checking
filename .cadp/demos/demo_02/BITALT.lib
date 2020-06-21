@@ -1,0 +1,18 @@
+library 
+   BOOLEAN, NATURAL
+endlib 
+
+type BIT is
+   sorts BIT 
+   opns 0 (*! constructor *),
+        1 (*! constructor *) : -> BIT
+        not : BIT -> BIT
+   eqns
+      ofsort BIT
+         not (0) = 1;
+         not (1) = 0;
+endtype
+
+type MESSAGES is NATURAL renamedby
+   sortnames MSG for NAT
+endtype

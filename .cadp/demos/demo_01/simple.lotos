@@ -1,0 +1,10 @@
+specification BITALT [PUT, GET] : noexit behaviour 
+                P [PUT, GET]
+
+where
+
+        process P [PUT, GET] : noexit :=
+                PUT; P [GET, PUT]
+        endproc
+
+endspec

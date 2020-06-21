@@ -1,0 +1,294 @@
+(******************************************************************************
+ *        Dynamic Reconfiguration Protocol for Agent-Based Applications
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module       :       SPEC.lotos
+ *   Authors      :       M. Aguilar Cornejo, H. Garavel and R. Mateescu
+ *   Version      :       1.8
+ *   Date         :       2001/07/09 14:50:46
+ *****************************************************************************)
+
+specification RECONFIGURATION_PROTOCOL [SEND, RECV, INBUS, OUTBUS] : noexit
+
+library DATA endlib
+
+(*****************************************************************************
+ *
+ * Architecture of the protocol
+ *
+ *****************************************************************************)
+
+behaviour
+
+   (
+      Agent [INBUS, OUTBUS] (DEAD, agent1@site1, {}, false)
+      |||
+      Agent [INBUS, OUTBUS] (DEAD, agent2@site1, {}, false)
+      |||
+      Configurator [INBUS, OUTBUS] (nil, agent1@site1 +
+                                        (agent2@site1 +
+                                         {}))
+   )
+   |[INBUS, OUTBUS]|
+   Bus [INBUS, OUTBUS] (<>)
+
+where
+
+(*****************************************************************************
+ *
+ * Configurator agent
+ *
+ *****************************************************************************)
+
+process Configurator [SEND, RECV] (C:Config, R:AddrSet) : noexit :=
+   (* ADD: add a new agent to the application *)
+   (choice A:Addr []
+    [(A notin C) and (A isin R)] ->
+       SEND !A !confaddr !ADD !dummy !dummy;
+          RECV !confaddr !A !ACK !dummy !dummy;
+             Configurator [SEND, RECV] (insert (A & {}, C), remove (A, R))
+   )
+   []
+   (* DELETE: delete an agent from the application *)
+   (choice A:Addr []
+    [A isin C] ->
+       Passivate [SEND, RECV] (cps (A, C)) >>
+          SEND !A !confaddr !DELETE !dummy !dummy;
+             RECV !confaddr !A !ACK !dummy !dummy;
+                Activate [SEND, RECV] (A, A, cps (A, C)) >>
+                   Configurator [SEND, RECV] (delete (A, C), insert (A, R))
+   )
+   []
+   (* BIND: add a new output channel to an agent *)
+   (choice A2:Addr []
+    [A2 isin C] ->
+       (choice A3:Addr []
+        [(A3 isin C) and (A2 ne A3) and not (A3 isin getchan (A2, C))] ->
+        (* forbid self-referencing channels *)
+           SEND !A2 !confaddr !BIND !A3 !dummy;
+              RECV !confaddr !A2 !ACK !dummy !dummy;
+                 SEND !A3 !A2 !SERVICE !dummy !dummy;
+                    Configurator [SEND, RECV] (addchan (A2, A3, C), R)
+       )
+   )
+   []
+   (* REBIND: change an existing communication channel *)
+   (choice A:Addr []
+    [A isin C] ->
+       (choice A2:Addr []
+        (* forbid self-referencing channels *)
+        [(A2 isin C) and (A2 notin getchan (A, C)) and (A ne A2)] ->
+           (choice A1:Addr []
+            [A1 isin getchan (A, C)] ->
+               SEND !A !confaddr !PASSIVATE !dummy !dummy;
+                  RECV !confaddr !A !ACK !dummy !dummy;
+                     SEND !A1 !confaddr !FLUSH !dummy !dummy;
+                        RECV !confaddr !A1 !ACK !dummy !dummy;
+                           SEND !A !confaddr !REBIND !A1 !A2;
+                              RECV !confaddr !A !ACK !dummy !dummy;
+                                 Configurator [SEND, RECV] (setchan (A, A1, A2, C), R)
+           )
+       )
+   )
+   []
+   (* MOVE: move an agent to another site *)
+   (choice A:Addr []
+    [A isin C] ->
+       (choice S:SiteId []
+          (let A2:Addr = newaddr (S, C) in
+             [A2 ne confaddr] -> 
+             (* new valid address *)
+                Passivate [SEND, RECV] (cps (A, C)) >>
+                   SEND !A !confaddr !MOVE !A2 !dummy;
+                      RECV !confaddr !A2 !ACK !dummy !dummy;
+                         Activate [SEND, RECV] (A, A2, cps (A, C)) >>
+                            Configurator [SEND, RECV] (setaddr (A, A2, setchan (cps (A, C), A, A2, C)), R)
+          )
+       )
+   )
+endproc
+
+(*****************************************************************************
+ *
+ * Auxiliary process for making passive a set of agents
+ *
+ *****************************************************************************)
+
+process Passivate [SEND, RECV] (AS:AddrSet) : exit :=
+   [card (AS) > 0] ->
+   (let A:Addr = pick (AS) in
+      SEND !A !confaddr !PASSIVATE !dummy !dummy;
+         RECV !confaddr !A !ACK !dummy !dummy;
+            Passivate [SEND, RECV] (remove (A, AS))
+   )
+   []
+   [card (AS) = 0] ->
+      exit
+endproc
+
+(*****************************************************************************
+ *
+ * Auxiliary process for making active a set of agents
+ *
+ *****************************************************************************)
+
+process Activate [SEND, RECV] (A1, A2:Addr, AS:AddrSet) : exit :=
+   [card (AS) > 0] ->
+   (let A:Addr = pick (AS) in
+      SEND !A !confaddr !ACTIVATE !A1 !A2;
+         RECV !confaddr !A !ACK !dummy !dummy;
+            Activate [SEND, RECV] (A1, A2, remove (A, AS))
+   )
+   []
+   [card (AS) = 0] ->
+      exit
+endproc
+
+(*****************************************************************************
+ *
+ * Application agent
+ *
+ *****************************************************************************)
+
+process Agent [SEND, RECV] (S:State, A:Addr, R:AddrSet, B:Bool) : noexit :=
+   [S eq DEAD] ->
+      RECV !A !confaddr !ADD !dummy !dummy;
+         SEND !confaddr !A !ACK !dummy !dummy;
+            Agent [SEND, RECV] (ACTIVE, A, {}, false)
+   []
+   [S eq ACTIVE] ->
+   (
+      (* receive an application event *)
+      RECV !A ?A1:Addr !SERVICE !dummy !dummy [A ne A1];
+      (
+         [not (empty (R))] ->
+            (choice A2:Addr []
+             [A2 isin R] ->
+                (* react to the event *)
+                SEND !A2 !A !SERVICE !dummy !dummy;
+                   Agent [SEND, RECV] (S, A, R, B)
+            )
+         []
+         (* silently ignore the event *)
+         Agent [SEND, RECV] (S, A, R, B)
+      )
+      []
+      RECV !A !confaddr !BIND ?A2:Addr !dummy [(A ne A2) and (R eq {})];
+         SEND !confaddr !A !ACK !dummy !dummy;
+            Agent [SEND, RECV] (S, A, insert (A2, R), B)
+      []
+      RECV !A !confaddr !PASSIVATE !dummy !dummy;
+         SEND !confaddr !A !ACK !dummy !dummy;
+            Agent [SEND, RECV] (PASSIVE, A, R, B)
+      []
+      RECV !A !confaddr !MOVE ?A2:Addr !dummy;
+         SEND !confaddr !A2 !ACK !dummy !dummy;
+            Agent [SEND, RECV] (S, A2, R, B)
+      []
+      RECV !A !confaddr !FLUSH !dummy !dummy;
+         SEND !confaddr !A !ACK ! dummy !dummy;
+            Agent [SEND, RECV] (S, A, R, B)
+      []
+      RECV !A !confaddr !DELETE !dummy !dummy;
+         SEND !confaddr !A !ACK !dummy !dummy;
+            Agent [SEND, RECV] (DEAD, A, R, B)
+   )
+   []
+   [S eq PASSIVE] ->
+   (
+      (* receive and store an application event *)
+      RECV !A ?A1:Addr !SERVICE !dummy !dummy [A ne A1];
+         Agent [SEND, RECV] (S, A, R, true)
+      []
+      RECV !A !confaddr !ACTIVATE ?A1:Addr ?A2:Addr [(A ne A2) and (A1 eq A2)];
+      (* agent A1 has been deleted *)
+      (
+         [B] ->
+         (
+            (choice A3:Addr []
+             [A3 isin remove (A1, R)] ->
+                (* react to the event received when the agent was passive *)
+                SEND !A3 !A !SERVICE !dummy !dummy;
+                   SEND !confaddr !A !ACK !dummy !dummy;
+                      Agent [SEND, RECV] (ACTIVE, A, remove (A1, R), false)
+            )
+            []
+            (* silently ignore the event *)
+            SEND !confaddr !A !ACK !dummy !dummy;
+               Agent [SEND, RECV] (ACTIVE, A, remove (A1, R), false)
+         )
+         []
+         [not (B)] ->
+            SEND !confaddr !A !ACK !dummy !dummy;
+               Agent [SEND, RECV] (ACTIVE, A, remove (A1, R), false)
+      )
+      []
+      RECV !A !confaddr !ACTIVATE ?A1:Addr ?A2:Addr [(A ne A2) and (A1 ne A2)];
+      (
+         [B and not (empty (R))] ->
+         (
+            (choice A3:Addr []
+             [A3 isin replace (A1, A2, R)] ->
+                (* react to the event received when the agent was passive *)
+                SEND !A3 !A !SERVICE !dummy !dummy;
+                   SEND !confaddr !A !ACK !dummy !dummy;
+                      Agent [SEND, RECV] (ACTIVE, A, replace (A1, A2, R), false)
+            )
+            []
+            (* silently ignore the event *)
+            SEND !confaddr !A !ACK !dummy !dummy;
+               Agent [SEND, RECV] (ACTIVE, A, replace (A1, A2, R), false)
+         )
+         []
+         [not (B) or empty (R)] ->
+            SEND !confaddr !A !ACK !dummy !dummy;
+               Agent [SEND, RECV] (ACTIVE, A, replace (A1, A2, R), false)
+      )
+      []
+      RECV !A !confaddr !REBIND ?A1:Addr ?A2:Addr [A ne A2];
+      (
+         [B and not (empty (R))] ->
+         (
+            (choice A3:Addr []
+             [A3 isin replace (A1, A2, R)] ->
+                (* react to the event received when the agent was passive *)
+                SEND !A3 !A !SERVICE !dummy !dummy;
+                   SEND !confaddr !A !ACK !dummy !dummy;
+                      Agent [SEND, RECV] (ACTIVE, A, replace (A1, A2, R), false)
+            )
+            []
+            (* silently ignore the event *)
+            SEND !confaddr !A !ACK !dummy !dummy;
+               Agent [SEND, RECV] (ACTIVE, A, replace (A1, A2, R), false)
+         )
+         []
+         [not (B) or empty (R)] ->
+            SEND !confaddr !A !ACK !dummy !dummy;
+               Agent [SEND, RECV] (ACTIVE, A, replace (A1, A2, R), false)
+      )
+   )
+endproc
+
+(*****************************************************************************
+ *
+ * Software bus (communication medium)
+ *
+ *****************************************************************************)
+
+process Bus [INBUS, OUTBUS] (B:Buffer) : noexit :=
+   INBUS ?R:Addr ?S:Addr ?D:Cmd ?A1:Addr ?A2:Addr;
+      Bus [INBUS, OUTBUS] (B + Message (R, S, D, A1, A2))
+   []
+   [not (empty (B))] ->
+   (let M:Msg = head (B) in
+      OUTBUS !getrcv (M) !getsnd (M) !getcmd (M) !getad1 (M) !getad2 (M);
+         Bus [INBUS, OUTBUS] (tail (B))
+   )
+endproc
+
+endspec
+

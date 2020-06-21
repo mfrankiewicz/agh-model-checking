@@ -1,0 +1,57 @@
+type Set is Boolean, NaturalNumber, Element
+   sorts
+      Set (*! implementedby SET comparedby CMP_SET printedby PRINT_SET *)
+   opns
+      {}           (*! implementedby SET_EMPTY constructor *) : -> Set
+      Add          (*! implementedby SET_ADD constructor *),
+      Insert       (*! implementedby SET_INSERT *),
+      Remove       (*! implementedby SET_REMOVE *) : Element, Set  -> Set
+      _IsIn_       (*! implementedby SET_ISIN *), 
+      _NotIn_      (*! implementedby SET_NOTIN *) : Element, Set  -> Bool
+      _Union_      (*! implementedby SET_UNION *), 
+      _Ints_       (*! implementedby SET_INTS *), 
+      _Minus_      (*! implementedby SET_MINUS *) : Set, Set -> Set
+      _eq_         (*! implementedby SET_EQ *),
+      _ne_         (*! implementedby SET_NE *), 
+      _Includes_   (*! implementedby SET_INCLUDES *), 
+      _IsSubsetOf_ (*! implementedby SET_ISSUBSETOF *): Set, Set -> Bool
+      Card         (*! implementedby SET_CARD *) : Set -> Nat
+   eqns
+      forall x, y:Element, s, t:Set
+         ofsort Set
+            Insert (x, {}) = Add (x, {});
+            x eq y => Insert (x, Add (y, s)) = Add (x, s);
+            x ne y => Insert(x, Add (y, s)) = Add (y, Insert (x, s));
+         ofsort Set
+            Remove (x, {}) = {};
+            x eq y => Remove (x, Add (y, s)) = Remove (x, s);
+            x ne y => Remove (x, Add (y, s)) = Add (y, Remove (x, s));
+         ofsort Bool
+            x IsIn {} = false;
+            x eq y => x IsIn Add (y, s) = true;
+            x ne y => x IsIn Add (y, s) = x IsIn s;
+         ofsort Bool
+            x NotIn s = not (x IsIn s);
+         ofsort Set
+            {} Union s = s;
+            Add (x, s) Union t = Add (x, s Union t);
+         ofsort Set
+            {} Ints s = {};
+            x IsIn t => Add (x, s) Ints t = Add (x, s Ints t);
+            x NotIn t => Add (x, s) Ints t = s Ints t;
+         ofsort Set
+            s Minus {} = s;
+            s Minus Add (x, t) = Remove (x, s) Minus t
+         ofsort Bool
+            s Includes {} = true;
+            s Includes Add (x, t) = x IsIn s and (s Includes t);
+         ofsort Bool
+            s IsSubsetOf t = t Includes s;
+         ofsort Bool
+            s eq t = (s Includes t) and (t Includes s);
+         ofsort Bool
+            s ne t = not (s eq t)
+         ofsort Nat
+            Card ({}) = 0;
+	    Card (Add (x, s)) = Succ (Card (s))
+endtype

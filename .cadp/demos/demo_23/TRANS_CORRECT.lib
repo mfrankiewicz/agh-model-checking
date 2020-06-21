@@ -1,0 +1,68 @@
+(* ------------------------------------------------------------------------- *)
+
+   process Trans [LDreq, LDcon, LDind, LDres]
+                 (n: Nat, id: Nat)
+                 : noexit
+   :=
+   hide TDreq, TX0 in 
+      ((TransRes [LDreq, LDcon, LDind, LDres, TDreq, TX0] (n, id)
+        |[TX0]|
+        TransReq [LDreq, LDcon, LDind, LDres, TX0] (n, id)
+       )
+      |[TDreq]|
+      Application [TDreq] (n, id)
+      )
+   endproc
+
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+   process TransReq [LDreq, LDcon, LDind, LDres, TX0]
+                     (n: Nat, id: Nat)
+                     : noexit
+   :=
+      LDind !id ?l: LIN_DIND;
+      ([is_broadrec (l)] -> 
+         (* LDres !id !a !no_op; *)
+         TransReq [LDreq, LDcon, LDind, LDres, TX0] (n, id)
+       []
+       [not (is_broadrec (l))] ->      
+         (choice a: ACK []
+          ((* concatenated response = lock transaction *)
+	    TX0;
+            LDres !id !a !hold;
+            TransReq [LDreq, LDcon, LDind, LDres, TX0] (n, id)
+	  [] 
+           (* split response *)
+           LDres !id !a !release;
+            TransReq [LDreq, LDcon, LDind, LDres, TX0] (n, id)
+         ))
+      )
+   endproc
+ 
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)
+
+
+   process TransRes [LDreq, LDcon, LDind, LDres, TDreq, TX0]
+                      (n: Nat, id: Nat)
+                      : noexit
+   :=
+      TDreq !id ?dest: Nat ?h: HEADER ?d: DATA [dest le n];
+	(TX0; exit (dest, h, d) [] exit (dest, h, d)) >> 
+        accept dest: Nat, h: HEADER, d: DATA in (
+         LDreq !id !dest !h !d;
+            ([dest eq n] ->
+               LDcon !id !broadsent;
+               TransRes [LDreq, LDcon, LDind, LDres, TDreq, TX0] (n, id)
+             []
+             [dest ne n] ->
+              (choice a: ACK []
+                  LDcon !id !ackrec (a);
+                  TransRes [LDreq, LDcon, LDind, LDres, TDreq, TX0] (n, id))
+             []
+             LDcon !id !ackmiss;
+               TransRes [LDreq, LDcon, LDind, LDres, TDreq, TX0] (n, id)
+           )
+         )
+   endproc
+ 
+   (* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: *)

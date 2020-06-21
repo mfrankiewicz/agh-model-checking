@@ -1,0 +1,148 @@
+(******************************************************************************
+ *                     P R O D U C T I O N    C E L L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	STATES.lnt
+ *   Auteurs		:	Hubert GARAVEL and Wendelin SERWE
+ *   Version		:	1.6
+ *   Date		: 	2017/02/24 16:31:42
+ *****************************************************************************)
+
+module STATES (TYPES) with "==" is
+
+(* ========================================================================= *)
+
+type TWO_STATE is
+   -- this type is used in processes P2, P3, P7, P8, P9, and P10
+   1, 2
+end type
+
+-------------------------------------------------------------------------------
+
+function SUCC (S: TWO_STATE) : TWO_STATE is
+   case S in
+      1 -> return 2
+    | 2 -> return 1
+   end case
+end function
+
+(* ========================================================================= *)
+
+type THREE_STATE is
+   -- this type is used in process P1
+   1, 2, 3
+end type
+
+-------------------------------------------------------------------------------
+
+function SUCC (S: THREE_STATE) : THREE_STATE is
+   case S in
+      1 -> return 2
+    | 2 -> return 3
+    | 3 -> return 1
+   end case
+end function
+
+(* ========================================================================= *)
+
+type ELEVEN_STATE is
+   -- this type is used in process P6
+   i1, i2, i3, i4, 1, 2, 3, 4, 5, 6, 7
+end type
+
+-------------------------------------------------------------------------------
+
+function SUCC (S: ELEVEN_STATE) : ELEVEN_STATE is
+   case S in
+      i1 -> return i2
+    | i2 -> return i3
+    | i3 -> return i4
+    | i4 -> return  1
+    |  1 -> return  2
+    |  2 -> return  3
+    |  3 -> return  4
+    |  4 -> return  5
+    |  5 -> return  6
+    |  6 -> return  7
+    |  7 -> return  1
+   end case
+end function
+
+(* ========================================================================= *)
+
+-- functions that return "true" when a particular engine has reached
+-- a specified limit of movement, so that a state change is required
+
+-------------------------------------------------------------------------------
+
+function LIMIT_PRESS_POSITION (STATE: THREE_STATE, VALUE: PRESS_POSITION) : BOOL is
+   return ((STATE == 1) and (VALUE == PRESS_BOTTOM)) or
+          ((STATE == 2) and (VALUE == PRESS_MIDDLE)) or
+          ((STATE == 3) and (VALUE == PRESS_TOP))
+end function
+
+-------------------------------------------------------------------------------
+
+function LIMIT_ARM1_EXTENSION (STATE: TWO_STATE, VALUE: ARM1_EXTENSION) : BOOL is
+   return ((STATE == 1) and (VALUE == ARM1_MIN)) or
+          ((STATE == 2) and (VALUE == ARM1_MAX))
+end function
+
+-------------------------------------------------------------------------------
+
+function LIMIT_ARM2_EXTENSION (STATE: TWO_STATE, VALUE: ARM2_EXTENSION) : BOOL is
+   return ((STATE == 1) and (VALUE == ARM2_MAX)) or
+          ((STATE == 2) and (VALUE == ARM2_MIN))
+end function
+
+-------------------------------------------------------------------------------
+
+function LIMIT_ROBOT_ANGLE (STATE: ELEVEN_STATE, VALUE: ROBOT_ANGLE) : BOOL is
+   return ((STATE == i1) and (VALUE == ROBOT_15))  or
+          ((STATE == i2) and (VALUE == ROBOT_50))  or
+          ((STATE == i3) and (VALUE == ROBOT_15))  or
+          ((STATE == i4) and (VALUE == ROBOT_M70)) or
+          ((STATE ==  1) and (VALUE == ROBOT_M90)) or
+          ((STATE ==  2) and (VALUE == ROBOT_M70)) or
+          ((STATE ==  3) and (VALUE == ROBOT_15))  or
+          ((STATE ==  4) and (VALUE == ROBOT_50))  or
+          ((STATE ==  5) and (VALUE == ROBOT_35))  or
+          ((STATE ==  6) and (VALUE == ROBOT_15))  or
+          ((STATE ==  7) and (VALUE == ROBOT_M70))
+end function
+
+-------------------------------------------------------------------------------
+
+function LIMIT_TABLE_POSITION (STATE: TWO_STATE, VALUE: TABLE_POSITION) : BOOL is
+   return ((STATE == 1) and (VALUE == TABLE_BOTTOM)) or
+          ((STATE == 2) and (VALUE == TABLE_TOP))
+end function
+
+-------------------------------------------------------------------------------
+
+function LIMIT_TABLE_ANGLE (STATE: TWO_STATE, VALUE: TABLE_ANGLE) : BOOL is
+   return ((STATE == 1) and (VALUE == ANGLE_MIN)) or
+          ((STATE == 2) and (VALUE == ANGLE_MAX))
+end function
+
+-------------------------------------------------------------------------------
+
+function LIMIT_CRANE_POSITION (STATE: TWO_STATE, VALUE: CRANE_POSITION) : BOOL is
+   return ((STATE == 1) and (VALUE == CRANE_OVER_DEPOSIT_BELT)) or
+          ((STATE == 2) and (VALUE == CRANE_OVER_FEED_BELT))
+end function
+
+-------------------------------------------------------------------------------
+
+function LIMIT_CRANE_HEIGHT (STATE: TWO_STATE, VALUE: CRANE_HEIGHT) : BOOL is
+   return ((STATE == 1) and (VALUE == CRANE_HIGH)) or
+          ((STATE == 2) and (VALUE == CRANE_LOW))
+end function
+
+-------------------------------------------------------------------------------
+
+end module

@@ -1,0 +1,253 @@
+(*
+   INRES protocol specification, by K. H. Pang at INT (August 1992, V6)
+   changes wrt V4
+     - added LOSS gate in medium and station_ini
+     - split event sequences to avoid deadlocks ( processname2[...] )
+     - removed coder from specification
+     - Added Channel loss
+     - Changed Responder disconnection code to discard ipdus
+       received during disconnection
+*)
+
+Specification Inres_Protocol[ISAPini,ISAPres]:noexit
+
+library BOOLEAN endlib
+library INRES_PROTOCOL endlib
+
+behaviour
+  hide MSAP1,MSAP2,LOSS in 
+              Station_Ini[ISAPini,MSAP1,LOSS](1 of DecNumb)
+              (* maximum number of transmissions equal to 1 *)
+    |[MSAP1,LOSS]| Medium[MSAP1,MSAP2,LOSS]
+    |[MSAP2]| Station_Res[MSAP2,ISAPres]
+
+  where
+
+(*********************************************************************)
+
+  process Medium [MSAP1,MSAP2,LOSS] :noexit:=
+        Channel[MSAP1,MSAP2,LOSS]
+    ||| Channel_without_loss[MSAP2,MSAP1]
+
+    where
+
+    process Channel[a,b,LOSS] :noexit:=
+      a?d:MSP [isMDATreq(d)];
+      (  b!MDATind(data(d));Channel[a,b,LOSS]
+       []LOSS;Channel[a,b,LOSS]
+      ) 
+    endproc (* Channel *)
+
+    process Channel_without_loss[a,b]:noexit:=
+      a?d:MSP [isMDATreq(d)];
+        b!MDATind(data(d));Channel_without_loss[a,b]
+    endproc (* Channel_without_loss *)
+
+  endproc (* Medium *)
+
+(*********************************************************************)
+
+  process Station_Ini[ISAPini,MSAP1,LOSS](max:DecNumb) :noexit:=
+
+      Initiator[ISAPini,MSAP1,LOSS](max) [> Disconnection[ISAPini,MSAP1,LOSS](max)
+
+      where
+
+      (*------------------------------------------------------*)
+
+      process Initiator[ISAP,MSAP,LOSS](max:DecNumb) :noexit:=
+        Connectionphase[ISAP,MSAP,LOSS](max)
+          >> Dataphase[ISAP,MSAP,LOSS] (succ(0),max)
+
+        where
+
+        (*..................................................*)
+
+        process Connectionphase[ISAP,MSAP,LOSS](max:DecNumb) :exit:=
+          Connectrequest[ISAP,MSAP]
+            >> accept z:DecNumb in Wait[ISAP,MSAP,LOSS](z,max)
+
+          where
+
+          process Connectrequest[ISAP,MSAP] :exit(DecNumb):=
+            ISAP!ICONreq;Connectrequest2[ISAP,MSAP]
+
+	    where
+
+	    process Connectrequest2[ISAP,MSAP]:exit(DecNumb):=
+	        MSAP!MDATreq(CR);exit(s(0))
+                (* User errors are ignored *)
+              []MSAP!MDATind(CC);Connectrequest2[ISAP,MSAP]
+              [](choice x:SequenceNumber []
+                 MSAP!MDATind(AK(x));Connectrequest2[ISAP,MSAP])
+                (* DR is only accepted by process Disconnection *)
+                (* System errors are ignored *)
+	    endproc (* Connectrequest2 *)
+          endproc (* Connectrequest *)
+
+          process Wait[ISAP,MSAP,LOSS](z,max:DecNumb) :exit:=
+            MSAP!MDATind(CC);ISAP!ICONconf;exit
+          [](choice x:SequenceNumber []
+             MSAP!MDATind(AK(x));Wait[ISAP,MSAP,LOSS](z,max))
+           (* DR is only accepted by process Disconnection *)
+           (* System errors are ignored *)
+          []LOSS;(
+                 [z <  max]->MSAP!MDATreq(CR);Wait[ISAP,MSAP,LOSS](s(z),max)
+               [][z == max]->ISAP!IDISind;Connectionphase[ISAP,MSAP,LOSS](max)
+              ) 
+            (* Timeout *)
+          endproc (* Wait *)
+        endproc (* Connectionphase *)
+
+        (*....................................................*)
+
+        process Dataphase[ISAP,MSAP,LOSS](number:Sequencenumber,max:DecNumb) :noexit:=
+          Readytosend[ISAP,MSAP](number) (* 1 is the first Sequencenumber *)
+            >>accept z:DecNumb,number:Sequencenumber,olddata:ISDU
+              in Sending[ISAP,MSAP,LOSS](z,number,olddata,max)
+               (* z is number of sendings. At the beginning z=1 *)
+
+          where
+
+          process Readytosend[ISAP,MSAP](number:Sequencenumber):
+            exit(DecNumb,Sequencenumber,ISDU):=
+             (choice y:ISDU []
+              ISAP !IDATreq(y);MSAP!MDATreq(DT(number,y));exit(s(0),number,y))
+            []MSAP!MDATind(CC);Readytosend[ISAP,MSAP](number)
+            [](choice x:SequenceNumber []
+               MSAP!MDATind(AK(x));Readytosend[ISAP,MSAP](number))
+          endproc (* Readytosend *)
+
+          process Sending[ISAP,MSAP,LOSS]
+            (z:DecNumb,number:Sequencenumber,olddata:ISDU,max:DecNumb):noexit:=
+            (
+             choice x:SequenceNumber [] MSAP!MDATind(AK(x)); 
+              (
+                 [(x eq number)]->Dataphase [ISAP,MSAP,LOSS](succ(number),max)
+               [][(x ne number) and (z < max)]->MSAP!MDATreq(DT(number,olddata));
+                                                Sending[ISAP,MSAP,LOSS](s(z),number,olddata,max)
+               (* The Initiator shall not resend more than max times in case of *)
+               (* faulty transmission *)
+               [][(x ne number) and (z == max)]->ISAP!IDISind;
+                                                 Initiator[ISAP,MSAP,LOSS](max)
+              )
+            )
+          []MSAP!MDATind(CC);Sending[ISAP,MSAP,LOSS](z,number,olddata,max)
+          []LOSS;(
+                 [z <  max]->MSAP!MDATreq(DT(number,olddata));
+                             Sending[ISAP,MSAP,LOSS](s(z),number,olddata,max)
+               [][z == max]->ISAP!IDISind;Initiator[ISAP,MSAP,LOSS](max)
+              )
+          endproc (* Sending *)
+        endproc (* Dataphase *)
+
+        (*......................................................*)
+
+      endproc (* Initiator *)
+
+      (*-------------------------------------------------------*)
+
+      process Disconnection[ISAP,MSAP,LOSS](max:DecNumb):noexit:=
+        MSAP!MDATind(DR);ISAP!IDISind;Station_Ini[ISAP,MSAP,LOSS](max)
+      endproc (* Disconnection *)
+
+      (*-------------------------------------------------------*)
+
+  endproc (* Station_Ini *)
+
+(*********************************************************************)
+
+  process Station_Res[MSAP2,ISAPres] :noexit:=
+      Connectrequest[ISAPres,MSAP2] 
+        >>(
+           (Wait[ISAPres,MSAP2]>>Dataphase[ISAPres,MSAP2](succ(1)))
+             [>Disconnection[ISAPres,MSAP2]  
+          )
+
+      where
+
+      (*--------------------------------------------------------*)
+
+      process Connectrequest[ISAP,MSAP]:exit:=
+        (
+           MSAP!MDATind(CR);ISAP!ICONind;exit
+         [](choice x:SequenceNumber, y:ISDU [] 
+            MSAP!MDATind(DT(x,y));Connectrequest[ISAP,MSAP])
+           (* System errors are ignored *)
+        )
+      endproc (* Connectrequest *)
+
+      (*--------------------------------------------------------*)
+
+      process Wait[ISAP,MSAP] :exit:=
+        ISAP!ICONresp;Wait2[ISAP,MSAP]
+
+        where
+
+        process Wait2[ISAP,MSAP] :exit:=
+             MSAP!MDATind(CR);Wait2[ISAP,MSAP]
+           [](choice x:SequenceNumber, y:ISDU []
+              MSAP!MDATind(DT(x,y));Wait2[ISAP,MSAP])
+             (* System errors are ignored *)
+           []MSAP!MDATreq(CC);exit
+        endproc (* Wait2 *)
+      endproc (* Wait *)
+
+      (*-------------------------------------------------------*)
+
+      process Dataphase[ISAP,MSAP](number:Sequencenumber):noexit:=
+            (* number is the last acknowledged Sequencenumber *)
+       (
+        choice x:SequenceNumber, y:ISDU [] MSAP!MDATind(DT(x,y));
+          (
+           [x eq succ(number)]->ISAP!IDATind(y);Dataphase2[ISAP,MSAP](x)
+	   []
+           [x eq number]->Dataphase2[ISAP,MSAP](x)
+          )
+       )
+      []MSAP!MDATind(CR);ISAP!ICONind;Wait[ISAP,MSAP]
+   
+        where
+
+        process Wait[ISAP,MSAP]:noexit:=
+          ISAP!ICONresp;Wait2[ISAP,MSAP]
+
+	  where
+
+	  process Wait2[ISAP,MSAP]:noexit:=
+	      MSAP!MDATind(CR);Wait2[ISAP,MSAP]
+            [](choice x:SequenceNumber, y:ISDU [] MSAP!MDATind(DT(x,y));Wait2[ISAP,MSAP])
+              (* System errors are ignored *)
+            []MSAP!MDATreq(CC);Dataphase[ISAP,MSAP](succ(1))
+	  endproc (* Wait2 *)
+        endproc (* Wait *)
+
+	process Dataphase2[ISAP,MSAP](x:Sequencenumber):noexit:=
+	  MSAP!MDATreq(AK(x));Dataphase[ISAP,MSAP](x)
+	  []
+	  MSAP!MDATind(CR);ISAP!ICONind;Wait[ISAP,MSAP]
+	endproc (* Dataphase2 *)
+      endproc (* Dataphase *)
+
+      (*-------------------------------------------------------*)
+
+      process Disconnection[ISAP,MSAP] :noexit:=
+        ISAP!IDISreq;Disc2[ISAP,MSAP]
+
+        where
+ 
+        (* Disc2 allows Responder to reject all ipdus while it is disconnecting *)
+        process Disc2[ISAP,MSAP] :noexit:=
+          MSAP!MDATreq(DR);Station_Res[MSAP,ISAP]
+        []MSAP!MDATind(CR);Disc2[ISAP,MSAP]
+        [](choice x:SequenceNumber, y:ISDU [] MSAP!MDATind(DT(x,y));Disc2[ISAP,MSAP])
+        endproc (* Disc2 *) 
+      endproc (* Disconnection *)
+
+      (*-------------------------------------------------------*)
+
+  endproc (* Station_Res *)
+
+(*********************************************************************)
+
+endspec (* Inres_Protocol *)

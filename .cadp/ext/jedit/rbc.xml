@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- jedit definitions for the RBC language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.3:RBC+1.5:SECT -->
+
+<MODE>
+  <PROPS>
+    <PROPERTY NAME="commentStart" VALUE=""/>
+    <PROPERTY NAME="commentEnd" VALUE=""/>
+    <PROPERTY NAME="lineComment" VALUE="#"/>
+  </PROPS>
+
+  <RULES IGNORE_CASE="FALSE" HIGHLIGHT_DIGITS="TRUE">
+    <!-- Comments -->
+    <EOL_SPAN TYPE="COMMENT2">#</EOL_SPAN>
+
+    <!-- Standard Operators -->
+    <SEQ TYPE="OPERATOR">..</SEQ>
+    <SEQ TYPE="OPERATOR">=</SEQ>
+    <SEQ TYPE="OPERATOR">]</SEQ>
+    <SEQ TYPE="OPERATOR">[</SEQ>
+
+    <KEYWORDS>
+      <!-- Reserved Words -->
+      <KEYWORD1>alternation_free</KEYWORD1>
+      <KEYWORD1>equation_length</KEYWORD1>
+      <KEYWORD1>false_constant_ratio</KEYWORD1>
+      <KEYWORD1>local_variable_ratio</KEYWORD1>
+      <KEYWORD1>number_of_blocks</KEYWORD1>
+      <KEYWORD1>number_of_variables</KEYWORD1>
+      <KEYWORD1>or_variable_alternation</KEYWORD1>
+      <KEYWORD1>or_variable_ratio</KEYWORD1>
+      <KEYWORD1>shape</KEYWORD1>
+      <KEYWORD1>sign</KEYWORD1>
+      <KEYWORD1>solve_mode</KEYWORD1>
+      <KEYWORD1>strategy</KEYWORD1>
+      <KEYWORD1>unique_resolution</KEYWORD1>
+      <KEYWORD1>variable_ratio</KEYWORD1>
+
+    </KEYWORDS>
+
+  </RULES>
+
+  <RULES SET="INQUOTE" DEFAULT="LITERAL1" ESCAPE="\">
+    <!-- no rules -->
+  </RULES>
+
+  <RULES SET="COMMENT" DEFAULT="COMMENT1" IGNORE_CASE="TRUE">
+    <!-- no rules -->
+  </RULES>
+
+</MODE>
+

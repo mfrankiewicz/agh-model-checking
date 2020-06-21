@@ -1,0 +1,86 @@
+#! /bin/sh
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_setup
+#   Auteur              :       Hubert Garavel
+#   Version             :       1.6
+#   Date                :       2013/09/20 14:25:37
+##############################################################################
+
+# syntaxe permise pour cette commande :
+# cadp_upgrade 
+# cadp_upgrade -upgrade
+# cadp_upgrade -query -upgrade
+
+COMMAND=`basename "$0"`
+
+#-----------------------------------------------------------------------------
+
+if [ ! -d "$HOME" -o ! -r "$HOME" -o ! -w "$HOME" ]
+then
+	echo "$COMMAND: environment variable \$HOME is improperly set"
+	exit 1
+fi
+
+#-----------------------------------------------------------------------------
+
+CADP_CONFIG=$HOME/.config/cadp
+
+mkdir -p "$CADP_CONFIG"
+
+#-----------------------------------------------------------------------------
+
+case "$1" in
+	-query )
+		QUERY="-i"
+		shift
+		;;
+	* )
+		QUERY=""
+		;;
+esac
+
+#-----------------------------------------------------------------------------
+
+case "$1" in
+	-upgrade )
+		# deplacement du fichier ~/.ocisrc
+
+		if [ -f "$HOME/.ocisrc" ]
+		then
+			echo "$COMMAND: moving \`\`$HOME/.ocisrc'' to \`\`$CADP_CONFIG/ocisrc''"
+			mv $QUERY "$HOME/.ocisrc" "$CADP_CONFIG/ocisrc"
+		fi
+
+		# deplacement du fichier ~/.xeucarc
+
+		if [ -f "$HOME/.xeucarc" ]
+		then
+			echo "$COMMAND: moving \`\`$HOME/.xeucarc'' to \`\`$CADP_CONFIG/xeucarc''"
+			mv $QUERY "$HOME/.xeucarc" "$CADP_CONFIG/xeucarc"
+		fi
+
+		# deplacement du repertoire ~/.contributor
+
+		if [ -d "$HOME/.contributor" ]
+		then
+			echo "$COMMAND: moving \`\`$HOME/.contributor'' to \`\`$CADP_CONFIG/contributor''"
+			mv $QUERY "$HOME/.contributor" "$CADP_CONFIG/contributor"
+		fi
+
+		;;
+
+	* )
+		;;
+esac
+
+#-----------------------------------------------------------------------------
+

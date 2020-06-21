@@ -1,0 +1,12 @@
+rename
+"ADD (0, ADD (1, EMPTYSET))" -> "{0, 1}"
+"ADD (1, ADD (0, EMPTYSET))" -> "{1, 0}"
+"ADD (0, EMPTYSET)" -> "{0}"
+"ADD (1, EMPTYSET)" -> "{1}" 
+"EMPTYSET" -> "{}" 
+"INSERT (0, INSERT (1, EMPTYL))" -> "{0, 1}"
+"INSERT (1, INSERT (0, EMPTYL))" -> "{1, 0}"
+"INSERT (0, EMPTYL)" -> "{0}"
+"INSERT (1, EMPTYL)" -> "{1}" 
+"EMPTYL" -> "{}"
+

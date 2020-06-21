@@ -1,0 +1,108 @@
+module APPLICATION (TYPES) is
+
+-- application with N main tasks, each with a dup of one bitstream subtask and
+-- a dup of two vector subtasks (where N is the total number of processors)
+
+function first (i: Nat) : PC is
+  case i in
+    0 -> return DONT_CARE_1_1
+  | 1 -> return DONT_CARE_2_1
+  | 2 -> return DONT_CARE_3_1
+  | 3 -> return DONT_CARE_4_1
+  | 4 -> return DONT_CARE_5_1
+  | 5 -> return DONT_CARE_6_1
+  | 6 -> return DONT_CARE_7_1
+  | 7 -> return DONT_CARE_8_1
+  | any -> return DONT_CARE_1_1 -- to avoid a warning from lnt2lotos
+  end case
+end function
+
+function next (pc: PC) : PC is
+  case pc in
+    DONT_CARE_1_1 -> return DONT_CARE_1_2
+  | DONT_CARE_1_2 -> return DONT_CARE_1_3
+  | DONT_CARE_2_1 -> return DONT_CARE_2_2
+  | DONT_CARE_2_2 -> return DONT_CARE_2_3
+  | DONT_CARE_3_1 -> return DONT_CARE_3_2
+  | DONT_CARE_3_2 -> return DONT_CARE_3_3
+  | DONT_CARE_4_1 -> return DONT_CARE_4_2
+  | DONT_CARE_4_2 -> return DONT_CARE_4_3
+  | DONT_CARE_5_1 -> return DONT_CARE_5_2
+  | DONT_CARE_5_2 -> return DONT_CARE_5_3
+  | DONT_CARE_6_1 -> return DONT_CARE_6_2
+  | DONT_CARE_6_2 -> return DONT_CARE_6_3
+  | DONT_CARE_7_1 -> return DONT_CARE_7_2
+  | DONT_CARE_7_2 -> return DONT_CARE_7_3
+  | DONT_CARE_8_1 -> return DONT_CARE_8_2
+  | DONT_CARE_8_2 -> return DONT_CARE_8_3
+  | any -> return DONT_CARE_1_1 -- to avoid a warning from lnt2lotos
+  end case
+end function
+
+function bitstream (pc: PC) : PC is
+  case pc in
+    DONT_CARE_1_1 -> return BITSTREAM_1
+  | DONT_CARE_2_1 -> return BITSTREAM_2
+  | DONT_CARE_3_1 -> return BITSTREAM_3
+  | DONT_CARE_4_1 -> return BITSTREAM_4
+  | DONT_CARE_5_1 -> return BITSTREAM_5
+  | DONT_CARE_6_1 -> return BITSTREAM_6
+  | DONT_CARE_7_1 -> return BITSTREAM_7
+  | DONT_CARE_8_1 -> return BITSTREAM_8
+  | any -> return DONT_CARE_1_1 -- to avoid a warning from lnt2lotos
+  end case
+end function
+
+function vector (pc: PC) : PC is
+  case pc in
+    DONT_CARE_1_2 -> return VECTOR_1
+  | DONT_CARE_2_2 -> return VECTOR_2
+  | DONT_CARE_3_2 -> return VECTOR_3
+  | DONT_CARE_4_2 -> return VECTOR_4
+  | DONT_CARE_5_2 -> return VECTOR_5
+  | DONT_CARE_6_2 -> return VECTOR_6
+  | DONT_CARE_7_2 -> return VECTOR_7
+  | DONT_CARE_8_2 -> return VECTOR_8
+  | any -> return DONT_CARE_1_1 -- to avoid a warning from lnt2lotos
+  end case
+end function
+
+process EXECUTE [ST, MSG: any]
+                (id: Pid, j: Job_Desc, in out s: Job_Desc_Stack) is
+  case get_PC (j) of PC in
+    DONT_CARE_1_1 | DONT_CARE_2_1 | DONT_CARE_3_1 | DONT_CARE_4_1
+  | DONT_CARE_5_1 | DONT_CARE_6_1 | DONT_CARE_7_1 | DONT_CARE_8_1 ->
+      MASTER [ST, MSG]
+             (DONT_CARE, DONT_CARE_1,
+              bitstream (get_PC (J)), BITSTREAM, 1 of Int,
+              next (get_PC (J)), ID, !?S)
+  | DONT_CARE_1_2 | DONT_CARE_2_2 | DONT_CARE_3_2 | DONT_CARE_4_2
+  | DONT_CARE_5_2 | DONT_CARE_6_2 | DONT_CARE_7_2 | DONT_CARE_8_2 ->
+      MASTER [ST, MSG]
+             (DONT_CARE, DONT_CARE_2,
+              vector (get_PC (J)), VECTOR, 2 of Int,
+              next (get_PC (J)), ID, !?S)
+  | DONT_CARE_1_3 | DONT_CARE_2_3 | DONT_CARE_3_3 | DONT_CARE_4_3
+  | DONT_CARE_5_3 | DONT_CARE_6_3 | DONT_CARE_7_3 | DONT_CARE_8_3 ->
+      LEAF [MSG] (DONT_CARE, DONT_CARE_3, ID)
+  | BITSTREAM_1 | BITSTREAM_2 | BITSTREAM_3 | BITSTREAM_4 | BITSTREAM_5
+  | BITSTREAM_6 | BITSTREAM_7 | BITSTREAM_8 ->
+      SLAVE [MSG] (BITSTREAM, BITSTREAM_1, ID, get_Index (J))
+  | VECTOR_1 | VECTOR_2 | VECTOR_3 | VECTOR_4 | VECTOR_5 | VECTOR_6
+  | VECTOR_7 | VECTOR_8 ->
+      SLAVE [MSG] (VECTOR, VECTOR_1, ID, get_Index (J))
+  | any -> null -- to avoid a warning from lnt2lotos
+  end case
+end process
+
+process HOST_APPLI [HOST: any] is
+  var i: Nat in
+    for i := 0 while i < N by i := i + 1 loop 
+      HOST (!HOST_JOB (first (i), DONT_CARE))
+    end loop;
+    stop
+  end var
+end process
+
+end module
+

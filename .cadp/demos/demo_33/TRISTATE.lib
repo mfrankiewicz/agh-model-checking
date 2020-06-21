@@ -1,0 +1,20 @@
+type TRISTATE_T is BOOLEAN
+
+   sorts TRISTATE
+
+   opns
+      BOTTOM   (*! constructor *) : -> TRISTATE
+      TOPTRUE  (*! constructor *) : -> TRISTATE
+      TOPFALSE (*! constructor *) : -> TRISTATE
+      BOOL : TRISTATE -> BOOL
+      _eq_ : TRISTATE, TRISTATE -> BOOL
+
+   eqns forall V1, V2 : TRISTATE
+      ofsort BOOL
+         BOOL (TOPTRUE) = TRUE;
+         BOOL (TOPFALSE) = FALSE;
+      ofsort BOOL
+         V1 eq V1 = TRUE;
+         V1 eq V2 = FALSE
+
+endtype

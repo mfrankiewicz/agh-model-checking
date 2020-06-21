@@ -1,0 +1,18 @@
+
+-------------------------------------------------------------------------------
+-- generation of the service graph, renaming in labels all values DATA (N)
+-- into N to match those labels generated from the LNT specification
+-------------------------------------------------------------------------------
+
+"SERVICE.bcg" = multiple rename "DATA (\([0-9]\))" -> "\1" in
+                generation of "SERVICE.lotos" ;
+
+-------------------------------------------------------------------------------
+-- generation of the protocol graph, renaming in labels all values DATA (N)
+-- into N to match those labels generated from the LNT specification
+-------------------------------------------------------------------------------
+
+"PROTOCOL.bcg" = multiple rename "DATA (\([0-9]\))" -> "\1" in
+                 generation of "PROTOCOL.lotos" ;
+
+

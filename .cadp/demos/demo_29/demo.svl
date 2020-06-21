@@ -1,0 +1,626 @@
+
+-- Step 1:
+-- =======
+-- The LNT specification of the protocol "SPEC.lnt" is compiled using the
+-- LNT2LOTOS, CAESAR.ADT and CAESAR compilers. The generated labelled
+-- transition system is named "SPEC.bcg".
+
+"SPEC.bcg" = generation of "SPEC.lnt";
+
+-------------------------------------------------------------------------------
+
+-- Step 2:
+-- =======
+-- "SPEC.bcg" is minimized modulo strong equivalence. This generates the file
+-- "SPEC_strong.bcg".
+
+"SPEC_strong.bcg" = strong reduction of "SPEC.bcg";
+
+-------------------------------------------------------------------------------
+
+-- Step 3:
+-- =======
+-- Satisfaction of several correctness properties (written in MCL)
+-- characterizing the safety and liveness of each reconfiguration
+-- primitive is checked on the resulting LTS. This is done by using
+-- the BCG_OPEN and either the EVALUATOR 3 or EVALUATOR 4 tools on the
+-- BCG file "SPEC_strong.bcg".
+
+property PROP_01
+    "Deadlock freedom."
+is
+    "SPEC_strong.bcg" |= with evaluator3
+        [ true* ] < true > true;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+% DEFAULT_MCL_LIBRARIES="standard.mcl"
+% DEFAULT_EVALUATOR3_LIBRARIES="macros_v3.mcl"
+% DEFAULT_EVALUATOR4_LIBRARIES="macros_v4.mcl"
+
+property PROP_02
+    "Each command is eventually followed by an acknowledgement."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        AFTER_1_INEVITABLE_2 (
+            CMD_ADD ('1', '1') or
+            CMD_BIND ('1', '1', '1', '2') or
+            CMD_BIND ('1', '1', '2', '1') or
+            CMD_BIND ('1', '1', '2', '2') or
+            CMD_MOVE ('1', '2', '1', '1') or
+            CMD_MOVE ('2', '2', '1', '1') or
+            CMD_PASSIVATE ('1', '1') or
+            CMD_ACTIVATE ('1', '1', '1', '2', '2', '1') or
+            CMD_ACTIVATE ('1', '1', '2', '1', '1', '2') or
+            CMD_ACTIVATE ('1', '1', '2', '2', '2', '1'),
+            CMD_ACK ('1', '1')
+        )
+        and
+        AFTER_1_INEVITABLE_2 (
+            CMD_BIND ('1', '2', '1', '1') or
+            CMD_BIND ('1', '2', '2', '1') or
+            CMD_BIND ('1', '2', '2', '2') or
+            CMD_MOVE ('1', '1', '1', '2') or
+            CMD_MOVE ('2', '1', '1', '2') or
+            CMD_PASSIVATE ('1', '2') or
+            CMD_ACTIVATE ('1', '2', '1', '1', '2', '2') or
+            CMD_ACTIVATE ('1', '2', '2', '1', '2', '2') or
+            CMD_ACTIVATE ('1', '2', '2', '2', '1', '1'),
+            CMD_ACK ('1', '2')
+        )
+        and
+        AFTER_1_INEVITABLE_2 (
+            CMD_BIND ('2', '1', '1', '1') or
+            CMD_BIND ('2', '1', '1', '2') or
+            CMD_MOVE ('1', '2', '2', '1') or
+            CMD_MOVE ('2', '2', '2', '1') or
+            CMD_PASSIVATE ('2', '1') or
+            CMD_ACTIVATE ('2', '1', '1', '1', '1', '2') or
+            CMD_ACTIVATE ('2', '1', '1', '2', '1', '1'),
+            CMD_ACK ('2', '1')
+        )
+        and
+        AFTER_1_INEVITABLE_2 (
+            CMD_ADD ('2', '2') or
+            CMD_BIND ('2', '2', '1', '1') or
+            CMD_BIND ('2', '2', '1', '2') or
+            CMD_MOVE ('1', '1', '2', '2') or
+            CMD_MOVE ('2', '1', '2', '2') or
+            CMD_PASSIVATE ('2', '2') or
+            CMD_ACTIVATE ('2', '2', '1', '1', '1', '2') or
+            CMD_ACTIVATE ('2', '2', '1', '2', '1', '1'),
+            CMD_ACK ('2', '2')
+        );
+    expected TRUE;
+ 
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+	AFTER_1_INEVITABLE_2 (
+            { INBUS ?A:Nat ?S:Nat ?any ?any
+                    ?"ADD"|"DELETE"|"BIND"|"PASSIVATE"|"ACTIVATE" ... }
+            |
+            { INBUS ... !"MOVE" ?A:Nat ?S:Nat ?any ?any },
+            CMD_ACK (A, S)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_03
+    "Alternation of commands and acknowledgements (starting with a command)."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        ALTERNATE_1_THEN_2 (
+            CMD_ADD ('1', '1') or
+            CMD_DELETE ('1', '1') or
+            CMD_BIND ('1', '1', '1', '2') or
+            CMD_BIND ('1', '1', '2', '1') or
+            CMD_BIND ('1', '1', '2', '2') or
+            CMD_MOVE ('1', '2', '1', '1') or
+            CMD_MOVE ('2', '1', '1', '1') or
+            CMD_MOVE ('2', '2', '1', '1') or
+            CMD_PASSIVATE ('1', '1') or
+            CMD_ACTIVATE ('1', '1', '1', '2', '2', '1') or
+            CMD_ACTIVATE ('1', '1', '2', '1', '1', '2') or
+            CMD_ACTIVATE ('1', '1', '2', '1', '2', '1') or
+            CMD_ACTIVATE ('1', '1', '2', '2', '2', '1'),
+            CMD_ACK ('1', '1')
+        )
+        and
+        ALTERNATE_1_THEN_2 (
+            CMD_BIND ('1', '2', '1', '1') or
+            CMD_BIND ('1', '2', '2', '1') or
+            CMD_BIND ('1', '2', '2', '2') or
+            CMD_MOVE ('1', '1', '1', '2') or
+            CMD_MOVE ('2', '1', '1', '2') or
+            CMD_PASSIVATE ('1', '2') or
+            CMD_ACTIVATE ('1', '2', '1', '1', '2', '2') or
+            CMD_ACTIVATE ('1', '2', '2', '1', '2', '2') or
+            CMD_ACTIVATE ('1', '2', '2', '2', '1', '1'),
+            CMD_ACK ('1', '2')
+        )
+        and
+        ALTERNATE_1_THEN_2 (
+            CMD_ADD ('2', '1') or
+            CMD_DELETE ('2', '1') or
+            CMD_BIND ('2', '1', '1', '1') or
+            CMD_BIND ('2', '1', '1', '2') or
+            CMD_MOVE ('1', '1', '2', '1') or
+            CMD_MOVE ('1', '2', '2', '1') or
+            CMD_MOVE ('2', '2', '2', '1') or
+            CMD_PASSIVATE ('2', '1') or
+            CMD_ACTIVATE ('2', '1', '1', '1', '1', '1') or
+            CMD_ACTIVATE ('2', '1', '1', '1', '1', '2') or
+            CMD_ACTIVATE ('2', '1', '1', '2', '1', '1'),
+            CMD_ACK ('2', '1')
+        )
+        and
+        ALTERNATE_1_THEN_2 (
+            CMD_ADD ('2', '2') or
+            CMD_BIND ('2', '2', '1', '1') or
+            CMD_BIND ('2', '2', '1', '2') or
+            CMD_MOVE ('1', '1', '2', '2') or
+            CMD_MOVE ('2', '1', '2', '2') or
+            CMD_PASSIVATE ('2', '2') or
+            CMD_ACTIVATE ('2', '2', '1', '1', '1', '2') or
+            CMD_ACTIVATE ('2', '2', '1', '2', '1', '1'),
+            CMD_ACK ('2', '2')
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+        nu Alternate (A, S:Nat:=0, Expect_Ack:Bool:=false) . (
+            [
+                { INBUS ?A1:Nat ?S1:Nat ?any ?any
+                  ?"ADD"|"DELETE"|"BIND"|"PASSIVATE"|"ACTIVATE" ... }
+                |
+                { INBUS ... !"MOVE" ?A1:Nat ?S1:Nat ?any ?any }
+            ]        (not Expect_Ack and Alternate (A1, S1, true))
+            and
+            [ { INBUS ?any ?any ?A1:Nat ?S1:Nat !"ACK" ... } ]
+                (Expect_Ack and (A1 = A) and (S1 = S) and
+                 Alternate (0, 0, false))
+            and
+            [ not { INBUS ?any ?any ?any ?any
+                    ?"ADD"|"DELETE"|"BIND"|"MOVE"|"PASSIVATE"|"ACTIVATE"|"ACK"
+                    ... } ]
+                Alternate (A, S, Expect_Ack)
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_04
+    "Each command sent to the bus is eventually delivered to its receiver."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        AFTER_1_INEVITABLE_2 (CMD_ADD ('1', '1'),
+                              REC_ADD ('1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_ADD ('2', '2'),
+                              REC_ADD ('2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('1', '1', '1', '2'),
+                              REC_BIND ('1', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('1', '1', '2', '1'),
+                              REC_BIND ('1', '1', '2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('1', '1', '2', '2'),
+                              REC_BIND ('1', '1', '2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('1', '2', '1', '1'),
+                              REC_BIND ('1', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('1', '2', '2', '1'),
+                              REC_BIND ('1', '2', '2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('1', '2', '2', '2'),
+                              REC_BIND ('1', '2', '2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('2', '1', '1', '2'),
+                              REC_BIND ('2', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('2', '1', '1', '1'),
+                              REC_BIND ('2', '1', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('2', '2', '1', '1'),
+                              REC_BIND ('2', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_BIND ('2', '2', '1', '2'),
+                              REC_BIND ('2', '2', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_MOVE ('1', '1', '1', '2'),
+                              REC_MOVE ('1', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_MOVE ('1', '1', '2', '2'),
+                              REC_MOVE ('1', '1', '2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_MOVE ('1', '2', '1', '1'),
+                              REC_MOVE ('1', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_MOVE ('1', '2', '2', '1'),
+                              REC_MOVE ('1', '2', '2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_MOVE ('2', '1', '1', '2'),
+                              REC_MOVE ('2', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_MOVE ('2', '1', '2', '2'),
+                              REC_MOVE ('2', '1', '2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_MOVE ('2', '2', '1', '1'),
+                              REC_MOVE ('2', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_MOVE ('2', '2', '2', '1'),
+                              REC_MOVE ('2', '2', '2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_PASSIVATE ('1', '1'),
+                              REC_PASSIVATE ('1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_PASSIVATE ('1', '2'),
+                              REC_PASSIVATE ('1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_PASSIVATE ('2', '1'),
+                              REC_PASSIVATE ('2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_PASSIVATE ('2', '2'),
+                              REC_PASSIVATE ('2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('1', '1', '1', '2', '2', '1'),
+                              REC_ACTIVATE ('1', '1', '1', '2', '2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('1', '1', '2', '1', '1', '2'),
+                              REC_ACTIVATE ('1', '1', '2', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('1', '1', '2', '2', '2', '1'),
+                              REC_ACTIVATE ('1', '1', '2', '2', '2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('1', '2', '1', '1', '2', '2'),
+                              REC_ACTIVATE ('1', '2', '1', '1', '2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('1', '2', '2', '1', '2', '2'),
+                              REC_ACTIVATE ('1', '2', '2', '1', '2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('1', '2', '2', '2', '1', '1'),
+                              REC_ACTIVATE ('1', '2', '2', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('2', '1', '1', '1', '1', '2'),
+                              REC_ACTIVATE ('2', '1', '1', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('2', '1', '1', '2', '1', '1'),
+                              REC_ACTIVATE ('2', '1', '1', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('2', '2', '1', '1', '1', '2'),
+                              REC_ACTIVATE ('2', '2', '1', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACTIVATE ('2', '2', '1', '2', '1', '1'),
+                              REC_ACTIVATE ('2', '2', '1', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACK ('1', '1'),
+                              REC_ACK ('1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACK ('1', '2'),
+                              REC_ACK ('1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACK ('2', '1'),
+                              REC_ACK ('2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_ACK ('2', '2'),
+                              REC_ACK ('2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('1', '1', '1', '2'),
+                              REC_SERVICE ('1', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('1', '1', '2', '1'),
+                              REC_SERVICE ('1', '1', '2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('1', '1', '2', '2'),
+                              REC_SERVICE ('1', '1', '2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('1', '2', '1', '1'),
+                              REC_SERVICE ('1', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('1', '2', '2', '1'),
+                              REC_SERVICE ('1', '2', '2', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('1', '2', '2', '2'),
+                              REC_SERVICE ('1', '2', '2', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('2', '1', '1', '1'),
+                              REC_SERVICE ('2', '1', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('2', '1', '1', '2'),
+                              REC_SERVICE ('2', '1', '1', '2')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('2', '2', '1', '1'),
+                              REC_SERVICE ('2', '2', '1', '1')) and
+        AFTER_1_INEVITABLE_2 (CMD_SERVICE ('2', '2', '1', '2'),
+                              REC_SERVICE ('2', '2', '1', '2'));
+    expected TRUE;
+
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+        AFTER_1_INEVITABLE_2 (
+            { INBUS ?A1:Nat ?S1:Nat ?any ?any ?C:String ...
+              where C = "ADD" or C = "DELETE" or C = "PASSIVATE" },
+            { OUTBUS !A1 !S1 ?any ?any !C ... }
+        )
+        and
+        AFTER_1_INEVITABLE_2 (
+            { INBUS ?A1:Nat ?S1:Nat ?any ?any ?C:String ?A2:Nat ?S2:Nat ...
+              where C = "BIND" or C = "MOVE" },
+            { OUTBUS !A1 !S1 ?any ?any !C !A2 !S2 ... }
+        )
+        and
+        AFTER_1_INEVITABLE_2 (
+            { INBUS ?A1:Nat ?S1:Nat ... !"ACTIVATE" ?A2:Nat ?S2:Nat
+              ?A3:Nat ?S3:Nat },
+            { OUTBUS !A1 !S1 ?any ?any !"ACTIVATE" !A2 !S2 !A3 !S3 }
+        )
+        and
+        AFTER_1_INEVITABLE_2 (
+            { INBUS ?any ?any ?A1:Nat ?S1:Nat !"ACK" ... },
+            { OUTBUS ?any ?any !A1 !S1 !"ACK" ... }
+        )
+        and
+        AFTER_1_INEVITABLE_2 (
+            { INBUS ?A1:Nat ?S1:Nat ?A2:Nat ?S2:Nat !"SERVICE" ... },
+            { OUTBUS !A1 !S1 !A2 !S2 !"SERVICE" ... }
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_05
+    "Initially, no event can be sent before at least an agent has been"
+    "created."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        NEVER (
+            (not CMD_ADD)* .
+            CMD_BIND or
+            CMD_MOVE or
+            CMD_PASSIVATE or
+            CMD_ACTIVATE or
+            CMD_ACK or
+            CMD_SERVICE
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+        NEVER (
+          (not { INBUS ?any ?any ?any ?any !"ADD" ... })* .
+          { INBUS ?any ?any ?any ?any
+            ?"DELETE"|"BIND"|"MOVE"|"PASSIVATE"|"ACTIVATE"|"ACK"|"SERVICE"
+            ... }
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_06
+    "Initially, no application event can be sent before the underlying channel"
+    "has been created."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        NOT_1_BEFORE_2 (CMD_SERVICE ('1', '2', '1', '1'),
+                        CMD_BIND ('1', '1', '1', '2') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('2', '1', '1', '1'),
+                        CMD_BIND ('1', '1', '2', '1') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('2', '2', '1', '1'),
+                        CMD_BIND ('1', '1', '2', '2') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('1', '1', '1', '2'),
+                        CMD_BIND ('1', '2', '1', '1') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('2', '1', '1', '2'),
+                        CMD_BIND ('1', '2', '2', '1') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('2', '2', '1', '2'),
+                        CMD_BIND ('1', '2', '2', '2') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('1', '1', '2', '1'),
+                        CMD_BIND ('2', '1', '1', '1') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('1', '2', '2', '1'),
+                        CMD_BIND ('2', '1', '1', '2') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('1', '1', '2', '2'),
+                        CMD_BIND ('2', '2', '1', '1') or CMD_MOVE) and
+        NOT_1_BEFORE_2 (CMD_SERVICE ('1', '2', '2', '2'),
+                        CMD_BIND ('2', '2', '1', '2') or CMD_MOVE);
+    expected TRUE;
+
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+        forall A1,A2,S1,S2:Nat among { 1 ... 2 } .
+            NOT_1_BEFORE_2 (
+                { INBUS !A1 !S1 !A2 !S2 !"SERVICE" ... },
+                { INBUS !A2 !S2 ?any ?any !"BIND" !A1 !S1 ... }
+            );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_07
+    "There is no event sent to an agent such that the agent migrates to"
+    "another site before receiving it."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (
+                (CMD_SERVICE ('1', '1') .
+                (not REC_SERVICE ('1', '1'))* .
+                REC_MOVE ('1', '1'))
+            |
+                (CMD_SERVICE ('1', '2') .
+                (not REC_SERVICE ('1', '2'))* .
+                REC_MOVE ('1', '2'))
+            |
+                (CMD_SERVICE ('2', '1') .
+                (not REC_SERVICE ('2', '1'))* .
+                REC_MOVE ('2', '1'))
+            |
+                (CMD_SERVICE ('2', '2') .
+                (not REC_SERVICE ('2', '2'))* .
+                REC_MOVE ('2', '2'))
+            )
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+        NOT_1_TO_2_UNLESS_3 (
+            { INBUS ?A:Nat ?S:Nat ?any ?any !"SERVICE" ... },
+            { OUTBUS !A !S ?any ?any !"MOVE" ... },
+            { OUTBUS !A !S ?any ?any !"SERVICE" ... }
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_08
+    "After a command for moving an agent has been sent, the agent cannot"
+    "receive any application event until it completes its migration."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (
+                (CMD_MOVE ('1', '1', '1', '2') .
+                (not CMD_ACK ('1', '2'))* .
+                REC_SERVICE ('1', '1'))
+            |
+                (CMD_MOVE ('1', '1', '2', '2') .
+                (not CMD_ACK ('2', '2'))* .
+                REC_SERVICE ('1', '1'))
+            |
+                (CMD_MOVE ('1', '2', '1', '1') .
+                (not CMD_ACK ('1', '1'))* .
+                REC_SERVICE ('1', '2'))
+            |
+                (CMD_MOVE ('1', '2', '2', '1') .
+                (not CMD_ACK ('2', '1'))* .
+                REC_SERVICE ('1', '2'))
+            |
+                (CMD_MOVE ('2', '1', '1', '2') .
+                (not CMD_ACK ('1', '2'))* .
+                REC_SERVICE ('2', '1'))
+            |
+                (CMD_MOVE ('2', '1', '2', '2') .
+                (not CMD_ACK ('2', '2'))* .
+                REC_SERVICE ('2', '1'))
+            |
+                (CMD_MOVE ('2', '2', '1', '1') .
+                (not CMD_ACK ('1', '1'))* .
+                REC_SERVICE ('2', '2'))
+            |
+                (CMD_MOVE ('2', '2', '2', '1') .
+                (not CMD_ACK ('2', '1'))* .
+                REC_SERVICE ('2', '2'))
+            )
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+        NOT_1_TO_2_UNLESS_3 (
+            { INBUS ?A1:Nat ?S1:Nat ?any ?any !"MOVE" ?A2:Nat ?S2:Nat ... },
+            { OUTBUS !A1 !S1 ?any ?any !"SERVICE" ... },
+            { INBUS ?any ?any !A2 !S2 !"ACK" ... }
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_09
+    "There is no event sent through a channel such that the channel is rebound"
+    "before the event has been delivered."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (
+                (CMD_SERVICE ('1', '1', '1', '2') .
+                (not REC_SERVICE ('1', '1', '1', '2'))* .
+                CMD_REBIND ('1', '2', '1', '1'))
+            |
+                (CMD_SERVICE ('1', '1', '2', '1') .
+                (not REC_SERVICE ('1', '1', '2', '1'))* .
+                CMD_REBIND ('2', '1', '1', '1'))
+            |
+                (CMD_SERVICE ('1', '1', '2', '2') .
+                (not REC_SERVICE ('1', '1', '2', '2'))* .
+                CMD_REBIND ('2', '2', '1', '1'))
+            |
+                (CMD_SERVICE ('1', '2', '1', '1') .
+                (not REC_SERVICE ('1', '2', '1', '1'))* .
+                CMD_REBIND ('1', '1', '1', '2'))
+            |
+                (CMD_SERVICE ('1', '2', '2', '1') .
+                (not REC_SERVICE ('1', '2', '2', '1'))* .
+                CMD_REBIND ('2', '1', '1', '2'))
+            |
+                (CMD_SERVICE ('1', '2', '2', '2') .
+                (not REC_SERVICE ('1', '2', '2', '2'))* .
+                CMD_REBIND ('2', '2', '1', '2'))
+            |
+                (CMD_SERVICE ('2', '1', '1', '1') .
+                (not REC_SERVICE ('2', '1', '1', '1'))* .
+                CMD_REBIND ('1', '1', '2', '1'))
+            |
+                (CMD_SERVICE ('2', '1', '1', '2') .
+                (not REC_SERVICE ('2', '1', '1', '2'))* .
+                CMD_REBIND ('1', '2', '2', '1'))
+            |
+                (CMD_SERVICE ('2', '2', '1', '1') .
+                (not REC_SERVICE ('2', '2', '1', '1'))* .
+                CMD_REBIND ('1', '1', '2', '2'))
+            |
+                (CMD_SERVICE ('2', '2', '1', '2') .
+                (not REC_SERVICE ('2', '2', '1', '2'))* .
+                CMD_REBIND ('1', '2', '2', '2'))
+            )
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+        NOT_1_TO_2_UNLESS_3 (
+            { INBUS ?A1:Nat ?S1:Nat ?A2:Nat ?S2:Nat !"SERVICE" ... },
+            { INBUS !A2 !S2 ?any ?any !"REBIND" !A1 !S1 ... },
+            { OUTBUS !A1 !S1 !A2 !S2 !"SERVICE" ... }
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property PROP_10
+    "An agent that has been removed from the application cannot execute"
+    "anymore."
+is
+    -- dataless formula
+    "SPEC_strong.bcg" |= with evaluator3
+        macro BAD_SEQUENCE (I, J) =
+            (
+            CMD_DELETE (I, J) .
+            (not (CMD_ADD (I, J) or CMD_MOVE_TO (I, J)))* .
+            REC_ACK (I, J) .
+            (not (CMD_ADD (I, J) or CMD_MOVE_TO (I, J)))* .
+            (ANY_EVENT (I, J) and not (CMD_ADD (I, J) or CMD_MOVE_TO (I, J)))
+            )
+        end_macro
+        NEVER (
+            true* .
+            (
+                BAD_SEQUENCE ('1', '1') |
+                BAD_SEQUENCE ('2', '1')
+            )
+        );
+    expected TRUE;
+
+    -- value-passing formula
+    "SPEC_strong.bcg" |= with evaluator4
+        NEVER (
+            true* .
+            { INBUS ?A:Nat ?S:Nat ?any ?any !"DELETE" ... } .
+            (not (CMD_ADD (A, S) or CMD_MOVE_TO (A, S)))* .
+            REC_ACK (A, S) .
+            (not (CMD_ADD (A, S) or CMD_MOVE_TO (A, S)))* .
+            ANY_EVENT (A, S) and not (CMD_ADD (A, S) or CMD_MOVE_TO (A, S))
+        );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+-- Step 4:
+-- =======
+-- Generation and minimization of the LOTOS specification
+
+% (cd LOTOS ; echo "" ; svl)
+
+-------------------------------------------------------------------------------
+
+-- Step 5:
+-- =======
+-- One checks that "LOTOS/SPEC_strong.bcg" and "SPEC_strong.bcg" are bisimilar,
+-- which proves that the LOTOS and LNT specifications are equivalent.
+
+"DIAG.bcg" = strong comparison "LOTOS/SPEC_strong.bcg" == "SPEC_strong.bcg";
+
+-------------------------------------------------------------------------------
+
+-- Cleanup
+% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"
+
+-------------------------------------------------------------------------------

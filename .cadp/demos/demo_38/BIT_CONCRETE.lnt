@@ -1,0 +1,15 @@
+-------------------------------------------------------------------------------
+-- BIT_CONCRETE.lnt -- 1.8 -- 2015/09/11 11:04:16 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module BIT_CONCRETE is
+
+type BIT is
+   -- bit data type with two different values
+   0 !implementedby "BIT_ZERO",
+   1 !implementedby "BIT_ONE"
+   with "=="
+end type
+
+end module
+

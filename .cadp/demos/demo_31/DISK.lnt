@@ -1,0 +1,38 @@
+module DISK (TYPES) is
+
+-------------------------------------------------------------------------------
+
+process DISK [ARB : WIRE, CMD : NUM, REC : NUM, MU : NUM] (N : NUM) is
+   var
+      L : NAT,
+      READY : BOOL,
+      W : WIRE
+   in
+      L := 0;
+      READY := FALSE;
+      loop
+	 select
+	    CMD (N);
+	    L := L + 1
+	 []
+	    ARB (?W) where not (READY) and C_PASS (W, N)
+	 []
+	    only if not (READY) and (L > 0) then
+	       MU (N); -- Markov delay inserted here
+	       L := L - 1;
+	       READY := TRUE
+	    end if
+	 []
+	    ARB (?W) where READY and C_LOSS (W, N)
+	 []
+	    ARB (?W) where READY and C_WIN (W, N);
+	    REC (N);
+	    READY := FALSE
+	 end select
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module

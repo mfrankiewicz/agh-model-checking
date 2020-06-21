@@ -1,0 +1,164 @@
+
+(*===========================================================================*)
+(* Events concerning some agent *)
+
+macro ANY_EVENT (A, S) =
+    {
+	?any                      (* INBUS or OUTBUS *)
+	?A1:Nat ?S1:Nat           (* agent (receiver or sender) *)
+	?A2:Nat ?S2:Nat           (* agent (sender or receiver) *)
+	...                       (* command and other agents *)
+	where
+	(A1 = (A) and S1 = (S)) or (A2 = (A) and S2 = (S))
+    }
+end_macro
+
+(*===========================================================================*)
+(* Macros for command ADD *)
+
+macro CMD_ADD () = { INBUS ... !"ADD" ?any ?any ?any ?any } end_macro
+ 
+(*---------------------------------------------------------------------------*)
+
+macro CMD_ADD (A, S) = { INBUS !(A) !(S) ?any ?any !"ADD" ... } end_macro
+
+macro REC_ADD (A, S) = { OUTBUS !(A) !(S) ?any ?any !"ADD" ... } end_macro
+
+(*===========================================================================*)
+(* Macros for command DELETE *)
+
+macro CMD_DELETE (A, S) = { INBUS !(A) !(S) ?any ?any !"DELETE" ... } end_macro
+
+macro REC_DELETE (A, S) = { OUTBUS !(A) !(S) ?any ?any !"DELETE" ... } end_macro
+
+(*===========================================================================*)
+(* Macros for command BIND *)
+
+macro CMD_BIND () = { INBUS ... !"BIND" ?any ?any ?any ?any } end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_BIND (A1, S1, A2, S2) =
+    { INBUS !(A1) !(S1) ?any ?any !"BIND" !(A2) !(S2) ... }
+end_macro
+
+macro REC_BIND (A1, S1, A2, S2) =
+    { OUTBUS !(A1) !(S1) ?any ?any !"BIND" !(A2) !(S2) ... }
+end_macro
+
+(*===========================================================================*)
+(* Macros for command REBIND *)
+
+macro CMD_REBIND (A1, S1, A2, S2) =
+    { INBUS !(A1) !(S1) ?any ?any !"REBIND" !(A2) !(S2) ... }
+end_macro
+
+macro REC_REBIND (A1, S1, A2, S2) =
+    { OUTBUS !(A1) !(S1) ?any ?any !"REBIND" !(A2) !(S2) ... }
+end_macro
+
+(*===========================================================================*)
+(* Macros for command MOVE *)
+
+macro CMD_MOVE () = { INBUS ... !"MOVE" ?any ?any ?any ?any } end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_MOVE (A, S) = { INBUS !(A) !(S) ?any ?any !"MOVE" ... } end_macro
+
+macro REC_MOVE (A, S) = { OUTBUS !(A) !(S) ?any ?any !"MOVE" ... } end_macro
+
+macro CMD_MOVE_TO (A, S) = { INBUS ... !"MOVE" !(A) !(S) ?any ?any } end_macro
+
+macro REC_MOVE_TO (A, S) = { OUTBUS ... !"MOVE" !(A) !(S) ?any ?any } end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_RECONF (A, S) = CMD_MOVE (A, S) end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_MOVE (A1, S1, A2, S2) =
+    { INBUS !(A1) !(S1) ?any ?any !"MOVE" !(A2) !(S2) ... }
+end_macro
+
+macro REC_MOVE (A1, S1, A2, S2) =
+    { OUTBUS !(A1) !(S1) ?any ?any !"MOVE" !(A2) !(S2) ... }
+end_macro
+
+(*===========================================================================*)
+(* Macros for command PASSIVATE *)
+
+macro CMD_PASSIVATE () =
+    { INBUS ... !"PASSIVATE" ?any ?any ?any ?any }
+end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_PASSIVATE (A, S) =
+    { INBUS !(A) !(S) ?any ?any !"PASSIVATE" ... }
+end_macro
+
+macro REC_PASSIVATE (A, S) =
+    { OUTBUS !(A) !(S) ?any ?any !"PASSIVATE" ... }
+end_macro
+
+(*===========================================================================*)
+(* Macros for command ACTIVATE *)
+
+macro CMD_ACTIVATE () = { INBUS ... !"ACTIVATE" ?any ?any ?any ?any } end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_ACTIVATE (A, S) =
+    { INBUS !(A) !(S) ?any ?any !"ACTIVATE" ... }
+end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_ACTIVATE (A1, S1, A2, S2, A3, S3) =
+    { INBUS !(A1) !(S1) ... !"ACTIVATE" !(A2) !(S2) !(A3) !(S3) }
+end_macro
+
+macro REC_ACTIVATE (A1, S1, A2, S2, A3, S3) =
+    { OUTBUS !(A1) !(S1) ... !"ACTIVATE" !(A2) !(S2) !(A3) !(S3) }
+end_macro
+
+(*===========================================================================*)
+(* Macros for acknowledgement *)
+
+macro CMD_ACK () = { INBUS ... !"ACK" ?any ?any ?any ?any } end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_ACK (A, S) = { INBUS ?any ?any !(A) !(S) !"ACK" ... } end_macro
+
+macro REC_ACK (A, S) = { OUTBUS ?any ?any !(A) !(S) !"ACK" ... } end_macro
+
+(*===========================================================================*)
+(* Macros for SERVICE event *)
+
+macro CMD_SERVICE () = { INBUS ... !"SERVICE" ?any ?any ?any ?any } end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_SERVICE (A, S) =
+    { INBUS !(A) !(S) ?any ?any !"SERVICE" ... }
+end_macro
+
+macro REC_SERVICE (A, S) =
+    { OUTBUS !(A) !(S) ?any ?any !"SERVICE" ... }
+end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_SERVICE  (A1, S1, A2, S2) =
+    { INBUS !(A1) !(S1) !(A2) !(S2) !"SERVICE" ... }
+end_macro
+
+macro REC_SERVICE  (A1, S1, A2, S2) =
+    { OUTBUS !(A1) !(S1) !(A2) !(S2) !"SERVICE" ... }
+end_macro
+
+(*===========================================================================*)
+

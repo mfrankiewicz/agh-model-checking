@@ -1,0 +1,33 @@
+
+(*
+ * Step 1: an LTS model is generated from the POTS specification "pots.lnt".
+ * Then, this LTS is minimized modulo strong equivalence using BCG_MIN; this
+ * preserves the truth values of temporal logic formulas to be applied later.
+ * The resulting LTS is named "pots.bcg".
+ *)
+
+"pots.bcg" = strong reduction of generation of "pots.lnt";
+
+(*
+ * Step 2: the 17 requirements characterizing the proper functioning of the 
+ * POTS, which are contained in the files named "requirement*.mcl", are 
+ * verified in turn. Each requirement is explained informally in the ".mcl"
+ * file and is specified as a temporal formula in the input language of 
+ * EVALUATOR 3.0 (regular alternation-free mu-calculus).
+ *)
+
+% for N in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17
+% do
+        verify "requirement$N.mcl" in "pots.bcg";
+% done
+
+-------------------------------------------------------------------------------
+
+(* generation of the original LOTOS specification *)
+
+% (cd LOTOS ; echo "" ; svl)
+
+(* comparison of the graphs generated from LOTOS and LNT *)
+
+"diag.bcg" = strong comparison "pots.bcg" == "LOTOS/pots.bcg" ;
+

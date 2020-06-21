@@ -1,0 +1,250 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+The present file provides information about the early versions of CAESAR.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 1.0 --- October 87
+
+	First demonstration of TILT, the preliminary version of CAESAR, in 
+Toulouse, for the final review of the ESPRIT/SEDOS/C2 project. The front-end 
+of TILT was written by Ahmed Serhrouchni (INRIA, Rocquencourt). Further work 
+has been carried on at LGI-IMAG (Grenoble) under scientific direction of
+Joseph Sifakis and Jacques Voiron.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 1.1 --- December 87
+
+	General: option handling has been changed. New options were introduced,
+such as ``english'', ``french'', ``systemV'', ``berkeley'' and most of the tool
+options.
+   
+	Analysis: upgrade to SYNTAX 2.0. Since the available front-end was not
+complete, a sub-project was started to produce a new front-end which would 
+fully implement LOTOS definition. Pascal Bouchon and Jean-Michel Houdouin 
+started to work on this topic under scientific responsibility of Hubert 
+Garavel. 
+
+	Expansion: detection of non-injective gate relabellings.
+
+	Generation: two bugs fixed in the translation of the ``[>'' operator.
+Generation of non-recursive process-instantiations was enhanced: less epsilon-
+transitions are created, speed increases by a factor of 2. The ABLE attribute 
+was introduced in order to compute the HOLD attribute required for  the ``[>''
+operator only when necessary; this saves a lot of memory.
+
+	Simulation: creation of interfaces for PIPN, MEC and ALDEBARAN. The 
+hashing function for markings and positions was improved. Edges are no longer 
+kept in memory but flushed on a file as they are produced. The theoretical 
+simulation algorithm was improved: the number of states was divided by 1.5-4
+and the number of edges by 3-10.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 1.2 --- January 88
+
+	Simulation: the simulator was entirely re-designed. A subtle bug was
+fixed, leading to a new algorithm. The structure of states was simplified:
+now, a state is a position whereas it used to be a set of positions. Positions
+are no longer recorded in a table, but temporarily kept in a stack.
+	Marking and state tables managements were changed. According to
+database theory, a distinction was made between primary-access and secondary-
+access. The primary-access suppresses the need for stacking states. Memory 
+allocation overhead is reduced by using pagination. The secondary-access uses
+B-trees.
+	The number of marking-to-marking and context-to-context copies was
+carefully minimized. Operations on states are replaced by direct and faster 
+manipulations of markings and contexts. The input and output markings of each 
+transition are stored into marking table.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 1.3 --- March 88
+
+	Analysis: a complete specification of LOTOS static semantics using 
+attribute grammars [Bouchon-Houdouin-88] was written to provide a basis for
+the front-end realization.
+
+	Generation: a more compact representation for places was adopted.
+
+	Optimization: major improvements. The first optimization aimed at 
+eliminating places and epsilon$transitions created by recursive process-
+instantiations. Benefits of optimization are substantial: the number of places
+decreases by 15-30%, that of transitions by 7-30%, that of states by 10-40%,
+that of edges by 5-45%. Moreover the total time was divided by a factor of
+2-113 (the larger the graph, the greater the factor).
+
+	Simulation: the internal bit-strings representing markings were packed;
+this leads to a logarithmic reduction of their size and speed increase.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 1.4 --- March 88
+
+	Simulation: the secondary-access policy for the marking table and the
+state table was rethought: B-trees are replaced by hash tables, which turned
+out to be more efficient.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 2.0 --- May 88
+
+	Analysis: the abstract tree structure was extended. Integration between
+the new front-end and the improved back-end was achieved.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 2.1 --- June 88
+
+	Analysis: upgrade to SYNTAX 3.4. Library inclusion was handled.
+
+	Concrete types: Christian Bard started a derived project, CAESAR.ADT.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 2.2 --- July 88
+
+	Analysis: the abstract tree was simplified.
+
+	Error handling: Detailed diagnostics were added, as well as the 
+``error'' option.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 2.3 --- August 88
+
+	Analysis: upgrade to SYNTAX 4.3b.
+
+	Restriction: this phase was added.
+
+	Expansion: a bug was fixed, concerning the ``par'' operator.
+
+	Error handling: syntactic error recovery was specified.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 2.4 --- September 88
+
+	Concrete types: interface with concrete types was designed, using 
+special comments. The table management for C identifiers was added. The ``map''
+option was introduced. Connection to early versions of CAESAR.ADT succeeded.
+
+	Generation: deadlocks are reported in a more user-friendly fashion. 
+
+	Optimization: this phase was entirely rewritten. The first optimization
+was generalized to merge binary fork epsilon-transitions into n-ary fork 
+epsilon-transitions, with satisfactorily results: in some cases the execution 
+time was divided by 2_000! A second optimization was added, which turned out
+not to be so efficient.
+
+	Memory management: two ad hoc memory schemes (remanent and dynamic) 
+were designed and used in front-end and back-end (this was already done in 
+simulation phase). A dynamic allocation policy was successfully applied to 
+ALDEBARAN. Table parameters, which used to be statically determined, are now
+dynamically adjusted to their optimal value. Machine-dependent assumptions were carefully isolated. 
+
+	Error handling: an English translation of error diagnostics was 
+provided, in expectation of FORTE'88 demos.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 2.5 --- November 88
+
+	Analysis: upgrade to SYNTAX 3.5. Several bugs were fixed in library 
+inclusion, operations binding and signature analysis phases.
+
+	Restriction: value parameters are no longer prohibited after keyword 
+``specification''.
+
+	Generation: by using remanent and dynamic allocators, substantial 
+memory savings were obtained. Full generation of actions was completed. Actions
+and offers are printed on the ``.net'' file.
+
+	Error handling: quality of English messages improved. Two minor bugs 
+were fixed.
+
+	General: porting CAESAR on VAX UNIX 4.3BSD was successfully experienced
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 2.6 --- January 89
+
+	Expansion: a minor bug in process parameter list was fixed. Expansion 
+algorithm was also modified to implement ``inline'' expansion of non recursive 
+process definitions, which is faster and requires less memory.
+
+	Generation: the process instantiation generation algorithm improved.
+The ``.net'' file format was extended, as to list state variables.
+
+	Optimization: three data optimizations (V0, V1 and V2) were introduced.
+They aim at reducing the number of state variables by removing unused variables
+and useless assignments.
+	
+	Simulation: simulation algorithm was modified to meet new requirements.
+
+	Memory management: with Jean-Claude Fernandez's help, fine tuning was
+done for SUN and VAX.
+
+	General: the abstract tree was cleaned by removing useless fields.
+
+	Error handling: detailed warnings were created to explain recursion
+through the hiding operator and non-injective gate relabellings.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 3.0 --- February 89
+
+	Generation: useless transition attributes were removed. This saves 17 
+bytes per transition.
+
+	Optimization: all existing optimizations were fully re-designed. 
+Optimization E4 was strengthened. Optimization E5 was introduced.
+
+	Concrete types: from now on, default C identifiers (prefixed by 
+``CAESAR_'') are created only when they are needed, and not systematically.
+This saves a significant amount of main memory.
+
+	Simulation: in order to handle the data part of LOTOS, the simulation 
+algorithm was entirely modified. Previous versions didn't generate a simulator
+program. Marking table, context table and state table were merged into a single
+table. Consequently the number of states is currently unbounded (no longer
+limited to 65_000): for instance a graph was produced with 800_000 states and 
+3_500_000 edges. The new version is much faster than previous ones (except for 
+small LOTOS programs without values, due to the overhead generated by the UNIX 
+C compiler invocation).
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 3.1 --- April 89
+
+	Optimization: the ``safety'' option was introduced.
+
+	Error handling: a bug concerning the display of non-matching rendez-
+vous was fixed.
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 3.2 --- June 89
+
+	Concrete types: a single ``.h'' file is used instead of a ``.h'' per 
+LOTOS type, which could have raised naming problems.
+
+	Simulation: the graph format for AUTO was updated. Both files 
+``name.c'' and ``name.x'' are deleted when simulation terminates. 
+
+-------------------------------------------------------------------------------
+
+CAESAR VERSION 3.3 --- January 89
+
+	Expansion: a bug was fixed in the expansion mechanism for formal sorts
+of process value parameters.
+
+	Simulation: the graph format for PIPN is updated to handle values. A 
+bug concerning the inclusion of the ``name.h' file was fixed.
+
+-------------------------------------------------------------------------------
+
+< further changes are described in the file named HISTORY > 
+

@@ -1,0 +1,633 @@
+#! /bin/sh
+
+###############################################################################
+#                           O P E N / C A E S A R
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module             :       lotos.open
+#   Auteur             :       Hubert GARAVEL
+#   Version            :       2.92
+#   Date               :       2020/02/11 17:12:14
+###############################################################################
+
+set -e
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP"/com/arch`
+CC=$CADP/src/com/cadp_cc
+
+# constant for optimization
+
+DIRECT_GENERATION="(direct) caesar"
+
+# setting cleanup
+
+trap 'exit 1' 1 2 3 13 14 15
+
+# -----------------------------------------------------------------------------
+
+VERBOSE_ECHO() {
+if test "$VERBOSITY" = 2
+then
+	# this script was invoked with option -verbose
+	echo $*
+fi
+}
+
+# -----------------------------------------------------------------------------
+
+ECHO() {
+if test "$VERBOSITY" -ge 1
+then
+	# this script was not invoked with option -silent
+	echo $*
+fi
+}
+
+# -----------------------------------------------------------------------------
+
+IN_CURRENT_DIRECTORY() {
+DIR=`dirname "$1"`
+if test ! -d "$DIR"
+then
+	# file $1 does not exist (in a non-existing directory)
+	echo 0
+elif test "`(cd \"$DIR\" ; pwd)`" = "`pwd`"
+then
+	# file $1 is in the current directory
+	echo 1
+else
+	# file $1 is not in the current directory
+	echo 0
+fi
+}
+
+# -----------------------------------------------------------------------------
+
+# phase 0: selecting configuration parameters
+
+if test "$CADP_DEBUG" = "garavel"
+then
+	BASE=$HOME/Parallelisme/OpenCaesar
+	BIN=$HOME/Parallelisme/Public.$ARCH	
+	INCL=$BASE/Lib
+	LIB=$BASE/Lib/Executable.$ARCH
+	SRC=$BASE/Applications
+	AUX="-I$CADP/incl"
+	(cd $INCL; ./make)
+else
+	BIN=$CADP/bin.$ARCH
+	INCL=$CADP/incl
+	LIB=$CADP/bin.$ARCH
+	SRC=$CADP/src/open_caesar
+	AUX=""
+fi
+
+# phase 1: parsing the options for CAESAR and CAESAR.ADT
+
+CAESARFLAGS=""
+CAESARADTFLAGS=""
+MODE=link_mode
+GC=no
+VERBOSITY=1
+# 2 if option -verbose, 0 if option -silent; default value: 1
+LNT=0
+# 1 if option -lnt; default value: 0
+
+while true
+do
+	if test $# -lt 1
+	then
+		echo "$COMMAND: missing LOTOS filename argument"
+		exit 1
+	fi
+	case "$1" in
+		-link )
+			MODE=link_mode
+			shift
+			;;
+		-include )
+			MODE=include_mode
+			shift
+			;;
+		-lnt )
+			# undocumented option used by lnt.open
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			LNT=1
+			LNT_LOCATION="$2"
+			shift 2
+			;;
+		-aldebaran | -analysis | -bcg | -exec | -graph | \
+		-monitor | -newstyle | -oldstyle | -open | -simulator )
+			echo "$COMMAND: improper option $1 (ignored)"
+			shift
+			;;
+		-e7 | -e7old | -exit | -gradual | -network | -nupn | \
+		-prenupn | -safety | -v3 | -v4 )
+			# one-word options for Caesar only
+			CAESARFLAGS="$CAESARFLAGS $1"
+			shift
+			;;
+		-root | -trigger )
+			# two-word options for Caesar only
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			CAESARFLAGS="$CAESARFLAGS $1 '$2'"
+			shift 2
+			;;
+		-debug | -external | -indent | -infix | -macro | -prefix | \
+		-trace )
+			# one-word options for Caesar.adt only
+			CAESARADTFLAGS="$CAESARADTFLAGS $1"
+			shift
+			;;
+		-numeral )
+			# two-word options for Caesar.adt only
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			CAESARADTFLAGS="$CAESARADTFLAGS $1 '$2'"
+			shift 2
+			;;
+		-cc | -more )
+			# two-word options for both Caesar and Caesar.adt
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			CAESARFLAGS="$CAESARFLAGS $1 '$2'"
+			CAESARADTFLAGS="$CAESARADTFLAGS $1 '$2'"
+			shift 2
+			;;
+		-gc )
+			# special one-word option for Caesar and Caesar.adt
+			CAESARFLAGS="$CAESARFLAGS $1"
+			GC=yes
+			shift
+			;;
+		-silent )
+			# special one-word option for Caesar and Caesar.adt
+			CAESARFLAGS="$CAESARFLAGS $1"
+			CAESARADTFLAGS="$CAESARADTFLAGS $1"
+			VERBOSITY=0
+			shift
+			;;
+		-verbose )
+			# special one-word option for Caesar and Caesar.adt
+			CAESARFLAGS="$CAESARFLAGS $1"
+			CAESARADTFLAGS="$CAESARADTFLAGS $1"
+			VERBOSITY=2
+			shift
+			;;
+		-comments | -english | -error | -french | -force | -functionality | \
+		-iso | -map | -version | -warning | \
+		-* )
+			# one-word options for both Caesar and Caesar.adt
+			CAESARFLAGS="$CAESARFLAGS $1"
+			CAESARADTFLAGS="$CAESARADTFLAGS $1"
+			shift
+			;;
+		* )
+			break
+			;;
+	esac
+done
+
+if [ $VERBOSITY = 1 ]
+then
+	# this script was not invoked with -silent or -verbose option
+	CAESARFLAGS="$CAESARFLAGS -silent"
+	CAESARADTFLAGS="$CAESARADTFLAGS -silent"
+fi
+
+# phase 2: parsing the LOTOS filename ($ROOT and $SPEC may contain spaces)
+
+if test "$OPEN_CAESAR_SOURCE" = ""
+then
+	# here, $OPEN_CAESAR_SOURCE has not been set by lnt.open
+	OPEN_CAESAR_SOURCE="$1"
+	export OPEN_CAESAR_SOURCE
+fi
+
+if test `IN_CURRENT_DIRECTORY "$1"` = "0"
+then
+	echo "$COMMAND: file \`\`$1'' is not in the current directory"
+	exit 1
+fi
+
+case "$1" in
+   *.lotos ) 	ROOT=`"$CADP"/src/com/cadp_basename "$1" .lotos`
+		SPEC=$1
+		;;
+   *.lot )	ROOT=`"$CADP"/src/com/cadp_basename "$1" .lot`
+		SPEC=$1
+		;;
+   *.l )	ROOT=`"$CADP"/src/com/cadp_basename "$1" .l`
+		SPEC=$1
+		;;
+   * )		if test -f "$1.lotos"
+		then
+			ROOT=$1
+			SPEC=$1.lotos
+		elif test -f "$1.lot"
+		then
+			ROOT=$1
+			SPEC=$1.lot
+		elif test -f "$1.l"
+		then
+			ROOT=$1
+			SPEC=$1.l
+		else
+			echo "$COMMAND: file \`\`$1.lotos'' does not exist"
+			exit 1
+		fi
+		;;
+esac
+
+if test "$SPEC" = "$1" -a ! -f "$SPEC"
+then
+	echo "$COMMAND: file \`\`$SPEC'' does not exist"
+	exit 1
+fi
+
+shift
+
+# phase 3: parsing the options for cc(1) and preparing other options
+
+CPPFLAGS="-I. -I$INCL -I$SRC $AUX"
+CFLAGS=""
+LDFLAGS="-L$LIB -lcaesar"
+
+if test $GC = yes
+then
+	LDFLAGS="$LDFLAGS -L$CADP/gc/bin.$ARCH -lgc"
+fi
+
+while true
+do
+	if test $# -lt 1
+	then
+		echo "$COMMAND: missing user program filename (.a, .c, or .o) argument"
+		exit 1
+	fi
+	case "$1" in
+		-[DI]* ) CPPFLAGS="$CPPFLAGS $1"
+			 shift
+			 ;;
+		-[lL]* ) LDFLAGS="$LDFLAGS $1"
+			 shift
+			 ;;
+		-* ) CFLAGS="$CFLAGS $1"
+		     shift
+		     ;;
+		*) break
+		   ;;
+	esac
+done
+
+# phase 4: parsing the ``.c'', ``.o'' or ``.a'' filename, possibly looking in
+#          $SRC or $BIN if the file is not present in the current directory
+
+NAME="$1"
+shift
+
+case "$NAME" in
+	*.c )	
+		if test -f "$NAME"
+		then
+			PROG="$NAME"
+		elif test -f "$SRC/$NAME"
+		then
+			PROG="$SRC/$NAME"
+		else
+			echo "$COMMAND: file \`\`$NAME'' does not exist"
+			exit 1
+		fi
+		;;
+
+	*.o | *.a )
+		if test -f "$NAME"
+		then
+			PROG="$NAME"
+		elif test -f "$BIN/$NAME"
+		then
+			PROG="$BIN/$NAME"
+		else
+			echo "$COMMAND: file \`\`$NAME'' does not exist"
+			exit 1
+		fi
+		;;
+
+	* )
+		if test -f "$NAME.c"
+		then
+			PROG="$NAME.c"
+		elif test -f "$SRC/$NAME.c"
+		then
+			PROG="$SRC/$NAME.c"
+		elif test -f "$NAME.a"
+		then
+			PROG="$NAME.a"
+		elif test -f "$BIN/$NAME.a"
+		then
+			PROG="$BIN/$NAME.a"
+		elif test -f "$NAME.o"
+		then
+			PROG="$NAME.o"
+		elif test -f "$BIN/$NAME.o"
+		then
+			PROG="$BIN/$NAME.o"
+		else
+			echo "$COMMAND: cannot locate \`\`$NAME''"
+			exit 1
+		fi
+esac
+
+# detection of particular cases in which CAESAR can be called directly rather
+# than lotos.open + generator, leading to better performance (as CAESAR is
+# natively more efficient than generator + OPEN/CAESAR)
+
+MONITOR=""
+if test "$PROG" = "$SRC/generator.c" -o "$PROG" = "$SRC/generator2.c"
+then
+	if test "$1" = "-monitor"
+	then
+		MONITOR="$1 "
+		shift
+	fi
+	if test $# = 1
+	then
+		# this case correspond to the following invocations:
+		# lotos.open $SPEC generator  [-monitor] $1
+		# lotos.open $SPEC generator2 [-monitor] $1
+
+		if test `IN_CURRENT_DIRECTORY "$1"` = "1" -a \
+			`"$CADP"/src/com/cadp_basename "$1" .bcg` = "$ROOT"
+		then
+			# here, $1 is equal to [`pwd`/]$ROOT[.bcg]
+			PROG=$DIRECT_GENERATION
+			RENAMED_RESULT=""
+		elif test ! -f $ROOT.bcg
+		then
+			# here, caesar will first generate a file named
+			# $ROOT.bcg (we make sure that such file does not
+			# exist, so as not to overwrite it) and then $ROOT.bcg
+			# will be renamed into the expected file name, which
+			# is $RENAMED_RESULT
+			PROG=$DIRECT_GENERATION
+			RENAMED_RESULT=`dirname $1`/`"$CADP"/src/com/cadp_basename "$1" .bcg`.bcg
+		fi
+	fi
+fi
+
+if test "$PROG" != "$NAME"
+then
+	ECHO "$COMMAND: using \`\`$PROG''"
+fi
+
+# phase 5: invoking CAESAR.ADT (if needed) and CAESAR
+
+ENDLIB=`grep -i -c "\<endlib\>" "$SPEC" || true`
+
+ENDTYPE=`grep -i -c "\<endtype\>" "$SPEC" || true`
+
+if test $ENDLIB != 0 -o $ENDTYPE != 0
+then
+	ECHO "$COMMAND: calling \`\`caesar.adt $CAESARADTFLAGS $ROOT''"
+	eval $BIN/caesar.adt $CAESARADTFLAGS "$ROOT"
+	if [ -f "$ROOT.err" ]
+	then
+		ECHO ''
+	else
+		VERBOSE_ECHO ''
+	fi
+fi
+
+if test $LNT != 0
+then
+	ECHO "$COMMAND: calling \`\`lnt_check'' for \`\`$ROOT.h''"
+	"$LNT_LOCATION"/src/com/lnt_check "$ROOT.h"
+	if [ -f "$ROOT.err" ]
+	then
+		ECHO ''
+	else
+		VERBOSE_ECHO ''
+	fi
+fi
+
+if test "$PROG" = "$DIRECT_GENERATION"
+then
+	# particular case in which CAESAR is invoked directly
+	ECHO "$COMMAND: calling \`\`caesar $MONITOR$CAESARFLAGS $ROOT''"
+	eval ${CADP_TIME:-} $BIN/caesar $MONITOR $CAESARFLAGS "$ROOT"
+	STATUS=$?
+	if test "$RENAMED_RESULT" != ""
+	then
+		mv -f $ROOT.bcg $RENAMED_RESULT
+	fi
+	exit $STATUS
+fi
+
+ECHO "$COMMAND: calling \`\`caesar $CAESARFLAGS -open $ROOT''"
+eval $BIN/caesar $CAESARFLAGS -open "$ROOT"
+if [ -f "$ROOT.err" ]
+then
+	ECHO ''
+else
+	VERBOSE_ECHO ''
+fi
+
+# phase 6: updating compiler options, if necessary
+
+case "$PROG" in
+	*.c )
+		CPPFLAGS_AUX=`grep '@(#)CPPFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		CFLAGS_AUX=`grep '@(#)CFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		LDFLAGS_AUX=`grep '@(#)LDFLAGS' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		LD_LIBRARY_PATH_AUX=`grep '@(#)LD_LIBRARY_PATH' "$PROG" | sed -e 's/.*".*=\(.*\)".*/\1/' | sed -e 's/\\\"/"/g'`
+		;;
+	*.o | *.a )
+		LC_CTYPE="C" ; export LC_CTYPE
+		CPPFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)CPPFLAGS' | sed -e 's/.*=//'`
+		CFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)CFLAGS' | sed -e 's/.*=//'`
+		LDFLAGS_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)LDFLAGS' | sed -e 's/.*=//'`
+		LD_LIBRARY_PATH_AUX=`strings "$PROG" 2> /dev/null | grep '@(#)LD_LIBRARY_PATH' | sed -e 's/.*=//'`
+		;;
+esac
+
+CPPFLAGS_AUX=`eval echo $CPPFLAGS_AUX`
+if test "$CPPFLAGS_AUX" != ""
+then
+	CPPFLAGS="$CPPFLAGS $CPPFLAGS_AUX"
+fi
+
+CFLAGS_AUX=`eval echo $CFLAGS_AUX`
+if test "$CFLAGS_AUX" != ""
+then
+	CFLAGS="$CFLAGS $CFLAGS_AUX"
+fi
+
+LDFLAGS_AUX=`eval echo $LDFLAGS_AUX`
+if test "$LDFLAGS_AUX" != ""
+then
+	LDFLAGS="$LDFLAGS $LDFLAGS_AUX"
+fi
+
+# remove -lm if present in $LDFLAGS (-lm will be added later by cadp_flags)
+LDFLAGS=`echo "$LDFLAGS" | sed -e 's/[ ]-lm[ ]/ /g' | sed -e 's/[ ]-lm$//g'`
+
+# add link edit flags provided by cadp_flags
+LDFLAGS="$LDFLAGS `$CADP/src/com/cadp_flags`"
+
+LD_LIBRARY_PATH_AUX=`eval echo $LD_LIBRARY_PATH_AUX`
+if test "$LD_LIBRARY_PATH_AUX" != ""
+then
+	case $ARCH in
+		macOS | mac86 | mac64 )
+			# this only works in absence of System Integrity Protection
+			DYLD_LIBRARY_PATH="$LD_LIBRARY_PATH_AUX:$DYLD_LIBRARY_PATH"
+			export DYLD_LIBRARY_PATH
+			;;
+		* )
+			LD_LIBRARY_PATH="$LD_LIBRARY_PATH_AUX:$LD_LIBRARY_PATH"
+			export LD_LIBRARY_PATH
+			;;
+	esac
+fi
+
+# phase 7: selecting include or link mode
+
+case "$PROG" in
+	*.c )
+		if test $MODE = link_mode
+		then
+			VERBOSE_ECHO "$COMMAND: using link mode"
+		elif test $MODE = include_mode
+		then
+			VERBOSE_ECHO "$COMMAND: using include mode"
+		fi
+		;;
+	*.o )
+		if test $MODE = link_mode
+		then
+			VERBOSE_ECHO "$COMMAND: using link mode"
+		elif test $MODE = include_mode
+		then
+			echo "$COMMAND: cannot use include mode with a \`\`.o'' file"
+			exit 1
+		fi
+		;;
+	*.a )
+		if test $MODE = link_mode
+		then
+			VERBOSE_ECHO "$COMMAND: using link mode"
+		elif test $MODE = include_mode
+		then
+			echo "$COMMAND: cannot use include mode with a \`\`.o'' file"
+			exit 1
+		fi
+		;;
+esac
+
+# phase 8: compiling and link editing in include mode
+
+if test $MODE = include_mode
+then
+	TEMPORARY=`"$CADP"/src/com/cadp_temporary $COMMAND .c`
+	EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .c`
+	VERBOSE_ECHO "$COMMAND: preparing temporary file \`\`$TEMPORARY''"
+	echo "#include \"${ROOT}.c\"" > $TEMPORARY
+	echo "#include \"${PROG}\"" >> $TEMPORARY
+	$CC $CFLAGS $CPPFLAGS $TEMPORARY -o $EXEC $LDFLAGS
+	rm -f $TEMPORARY
+fi
+	
+# phase 9: compiling and link editing in link mode
+
+if test $MODE = link_mode
+then
+
+	COMPILED=`find "./$ROOT.o" -prune -newer "$ROOT.c" -print 2>/dev/null || true`
+	if test $COMPILED
+	then
+		VERBOSE_ECHO "$COMMAND: (\`\`$ROOT.o'' already exists and is up to date)"
+		VERBOSE_ECHO ''
+	else
+		VERBOSE_ECHO "$CC $CFLAGS $CPPFLAGS -c $ROOT.c -o $ROOT.o"
+		$CC $CFLAGS $CPPFLAGS -c "$ROOT.c" -o "$ROOT.o"
+	fi
+
+	case "$PROG" in
+		*.c )
+			EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .c`
+			VERBOSE_ECHO "$CC $CFLAGS $CPPFLAGS -c $PROG -o $EXEC.o"
+			$CC $CFLAGS $CPPFLAGS -c "$PROG" -o "$EXEC.o"
+			VERBOSE_ECHO "$CC $CFLAGS $EXEC.o $ROOT.o -o $EXEC $LDFLAGS"
+			$CC $CFLAGS "$EXEC.o" "$ROOT.o" -o "$EXEC" $LDFLAGS
+			;;
+		*.o )
+			EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .o`
+			VERBOSE_ECHO "$CC $CFLAGS $ROOT.o $PROG -o $EXEC $LDFLAGS"
+			$CC $CFLAGS "$ROOT.o" "$PROG" -o "$EXEC" $LDFLAGS
+			;;
+		*.a )
+			EXEC=`"$CADP"/src/com/cadp_basename "$PROG" .a`
+			VERBOSE_ECHO "$CC $CFLAGS $ROOT.o $PROG -o $EXEC $LDFLAGS"
+			$CC $CFLAGS "$ROOT.o" "$PROG" -o "$EXEC" $LDFLAGS
+			;;
+	esac
+fi
+
+# phase 10: backward-compatibility and version management
+
+CADP_LIB=`cadp_lib libcaesar.a "$PROG"`
+export CADP_LIB
+
+# recording the command-line for OCIS
+
+OPEN_CAESAR_COMMAND="$0 $*"
+export OPEN_CAESAR_COMMAND
+
+# recording the graph module for EVALUATOR 4.*
+
+OPEN_CAESAR_GRAPH="$ROOT.o"
+export OPEN_CAESAR_GRAPH
+
+# updating $EXEC to cope with macOS System Integrity Protection
+case $ARCH in
+	macOS | mac86 | mac64 )
+		$CADP/src/com/cadp_dylib "$ARCH" "$EXEC"
+		;;
+esac
+
+# phase 11: running $EXEC (here, "$@" denotes the arguments, if any, to
+# be passed to the program, and $# denotes the number of these arguments)
+
+if test $? = 0
+then
+	if test "$#" -eq 0 -a "@$MONITOR" = "@"
+	then
+		ECHO "$COMMAND: running \`\`$EXEC'' for \`\`$SPEC''"
+	else
+		ECHO "$COMMAND: running \`\`$EXEC $MONITOR$@'' for \`\`$SPEC''"
+	fi
+	# for benchmarking, $CADP_TIME can be set to /bin/time, etc.
+	${CADP_TIME:-} ./"$EXEC" $MONITOR "$@"
+else
+	exit 1
+fi
+

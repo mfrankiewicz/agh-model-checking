@@ -1,0 +1,13 @@
+module SERVICE_WITHOUT_CRASHES (DATA) is
+
+process MAIN [OPEN, CLOSE:ACCESS] is
+   loop
+      var Ai:ADDR in
+         OPEN (?Ai); -- station Ai accesses the shared resource
+         CLOSE (Ai)  -- station Ai releases the shared resource
+      end var
+   end loop
+end process
+
+end module
+

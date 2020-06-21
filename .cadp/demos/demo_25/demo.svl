@@ -1,0 +1,373 @@
+
+% DEFAULT_PROCESS_FILE="cfs.lotos"
+
+% CAESAR_OPTIONS="-gc"
+
+% DEFAULT_XTL_LIBRARIES="walk_print_nice.xtl, walk_actl.xtl, macros.xtl"
+
+------------------------------------------------------------------------------
+-- Definition of five properties for the CFS protocol
+------------------------------------------------------------------------------
+
+property CFS_PROPERTY_1 (SPEC)
+    "Trace to global deadlock"
+is
+    "$SPEC.bcg" |= with xtl
+        WALK_UNTIL (W_DEADLOCK);
+end property
+
+------------------------------------------------------------------------------
+
+property CFS_PROPERTY_2 (SPEC)
+    "Trace to non-deterministic state"
+is
+    "$SPEC.bcg" |= with xtl
+        WALK_UNTIL (W_NONDTM);
+end property
+
+------------------------------------------------------------------------------
+
+property CFS_PROPERTY_3 (SPEC)
+    "All sites can always eventually perform a request"
+is
+    "$SPEC.bcg" |= with xtl
+        WALK (
+            AG (W_AND (EF (Dia_O (CFSREQ !"SITE1" _, true)),
+                EF (Dia_O (CFSREQ !"SITE2" _, true))
+            ))
+        );
+end property
+
+------------------------------------------------------------------------------
+
+property CFS_PROPERTY_4 (SPEC)
+    "1 and 2 cannot write simultaneously"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            BW1A : labelset = EVAL_A (CFSANS !"SITE1" !"BEGINWRITE"),
+            BW2A : labelset = EVAL_A (CFSANS !"SITE2" !"BEGINWRITE"),
+            EW1R : labelset = EVAL_A (CFSREQ !"SITE1" !"ENDWRITE")
+        in
+            WALK (AG (Box (BW1A, AG_A (not (EW1R), Box (BW2A, false)))))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+
+property CFS_PROPERTY_5 (SPEC)
+    "2 cannot read while 1 is writing"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            BW1A : labelset = EVAL_A (CFSANS !"SITE1" !"BEGINWRITE"),
+            EW1R : labelset = EVAL_A (CFSREQ !"SITE1" !"ENDWRITE"),
+            R2A : labelset = EVAL_A (CFSANS !"SITE2" !"READ")
+        in
+            WALK (AG (Box (BW1A, AG_A (not (EW1R), Box (R2A, false)))))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+-- Generation of "cfs123.bcg" using abstraction and compositional minimization
+------------------------------------------------------------------------------
+
+"site123medium.bcg" = generation of 
+    leaf branching reduction of
+        (
+            (
+                OutputCell1with23 
+                |||
+                OutputCell2with13
+                |||
+                OutputCell3with12
+            )
+            |[ SEND, RCV ]|
+            (
+                Master1with23
+                |||
+                Site2with13
+                |||
+                Site3with12
+            )
+        );
+
+"cfs123.bcg" = branching reduction of 
+    generation of hide "SEND", "RCV" in "site123medium.bcg";
+
+------------------------------------------------------------------------------
+-- Verification of the above five properties on "cfs123.bcg"
+------------------------------------------------------------------------------
+
+check CFS_PROPERTY_1 ("cfs123");
+check CFS_PROPERTY_2 ("cfs123");
+check CFS_PROPERTY_3 ("cfs123");
+check CFS_PROPERTY_4 ("cfs123");
+check CFS_PROPERTY_5 ("cfs123");
+
+------------------------------------------------------------------------------
+-- Definition of nine properties (expressed at data access level) for CFS
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_1 (SPEC)
+    "No global deadlock"
+is
+    "$SPEC.bcg" |= with xtl
+        WALK (AG (W_NOT (W_DEADLOCK)));
+end property
+
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_2 (SPEC)
+    "No non-determinism"
+is
+    "$SPEC.bcg" |= with xtl
+        WALK (AG (W_NOT (W_NONDTM)));
+end property
+
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_3 (SPEC)
+    "All sites can always read and write"
+is
+    "$SPEC.bcg" |= with xtl
+        WALK (AG (W_AND (EF (Dia_O (READ !"SITE1" _, true)),
+            W_AND (EF (Dia_O (READ !"SITE2" _, true)),
+                W_AND (EF (Dia_O (READ !"SITE3" _, true)),
+                    W_AND (EF (Dia_O (WRITE !"SITE1" _, true)),
+                        W_AND (EF(Dia_O (WRITE !"SITE2" _, true)),
+                        EF (Dia_O (WRITE !"SITE3" _, true))
+                        )
+                    )
+                )
+            )
+        )));
+end property
+
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_4 (SPEC)
+    "Between writes, one site always reads the same value"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            ANYWRITE : labelset = EVAL_A (WRITE _ _)
+        in
+            WALK (AG (Box_O (READ ?S1:Site ?V1:Val, AG_A (not (ANYWRITE),
+                Box_O (READ !S1 ?V2:Val, V1 = V2)
+            ))))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_5 (SPEC)
+    "Between writes, two sites always read the same value"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            ANYWRITE : labelset = EVAL_A (WRITE _ _)
+        in
+            WALK (AG (Box_O (READ ?S1:Site ?V1:Val, AG_A (not (ANYWRITE),
+                Box_O (READ ?S2:Site ?V2:Val where S1 <> S2, V1 = V2)
+            ))))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_6 (SPEC)
+    "Before another write, one site always reads V after it has written V"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            ANYWRITE : labelset = EVAL_A (WRITE _ _)
+        in
+            WALK (AG (Box_O (WRITE ?S1:Site ?V1:Val, AG_A (not (ANYWRITE),
+                Box_O (READ !S1 ?V2:Val, V1 = V2)
+            ))))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_7 (SPEC)
+    "Before another write, one site always reads V after another site has"
+    "written V"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            ANYWRITE : labelset = EVAL_A (WRITE _ _)
+        in
+            WALK (AG (Box_O (WRITE ?S1:Site ?V1:Val, AG_A (not (ANYWRITE),
+                Box_O (READ ?S2:Site ?V2:Val where S1 <> S2, V1 = V2)
+            ))))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_8 (SPEC)
+    "Under fairness assumption, all sites eventually read V after a write V"
+    "and before another write"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            ANYWRITE : labelset = EVAL_A (WRITE _ _)
+        in
+            WALK (AG (Box_O (WRITE ?S1:Site ?V1:Val, AG_A (not (ANYWRITE),
+                W_AND (EF_A (not (ANYWRITE), Dia_O (READ !"SITE1" !V1, true)),
+                    W_AND (EF_A (not (ANYWRITE),
+                        Dia_O (READ !"SITE2" !V1, true)),
+                        EF_A (not (ANYWRITE), Dia_O (READ !"SITE3" !V1, true))
+                    )
+                )
+            ))))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+
+property DATA_PROPERTY_9 (SPEC)
+    "After a site writes V and before another write, when another site"
+    "reads V, it cannot read another value afterwards"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            ANYWRITE : labelset = EVAL_A (WRITE _ _)
+        in
+            (***
+             * Note: the following property implies all sites read values in
+             * the order in which they are written. In turn, this is a stronger
+             * property than sequential coherency, which requires that all
+             * events are observed in the same order at all sites.
+             ***)
+            WALK (AG (Box_O (WRITE ?S1:Site ?V1:Val, AG_A (not (ANYWRITE),
+                Box_O (READ ?S2:Site !V1, AG_A (not (ANYWRITE),
+                    Box_O (READ !S2 ?V2:Val, V1=V2)
+                ))
+            ))))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+-- Generation of "abstract123.bcg" using abstraction and compositionality
+------------------------------------------------------------------------------
+
+"complete123.bcg" = root leaf branching reduction of 
+    (
+        "site123medium.bcg"
+        |[ CFSREQ, CFSANS, SEND ]|
+        (
+            InitMemory
+            |[ READ, WRITE ]|
+            (
+                GeneralUser [read,write,cfsreq,cfsans] (site1)
+                |||
+                GeneralUser [read,write,cfsreq,cfsans] (site2)
+                |||
+                GeneralUser [read,write,cfsreq,cfsans] (site3)
+            )
+        )
+    );
+
+"abstract123.bcg" = branching reduction of
+    gate hide "CFS...", "SEND", "RCV" in "complete123.bcg";
+
+------------------------------------------------------------------------------
+-- Verification of the above nine properties on "abstract123.bcg"
+------------------------------------------------------------------------------
+
+check DATA_PROPERTY_1 ("abstract123");
+check DATA_PROPERTY_2 ("abstract123");
+check DATA_PROPERTY_3 ("abstract123");
+check DATA_PROPERTY_4 ("abstract123");
+check DATA_PROPERTY_5 ("abstract123");
+check DATA_PROPERTY_6 ("abstract123");
+check DATA_PROPERTY_7 ("abstract123");
+check DATA_PROPERTY_8 ("abstract123");
+check DATA_PROPERTY_9 ("abstract123");
+
+------------------------------------------------------------------------------
+-- Definition of one property (at data access level) for two CFS pages
+------------------------------------------------------------------------------
+
+property DATA_12_PROPERTY_1 (SPEC)
+    "After a site writes V1 to A1 and V2 to A2 and before another write, when"
+    "another site reads V2 in A2, it cannot read anything else than V1 in A1"
+    "afterwards"
+is
+    "$SPEC.bcg" |= with xtl
+        (****************************************************************
+          The signature of transitions is:
+            READ ?A:Addr ?S:Site ?V:Val
+            WRITE ?A:Addr ?S:Site ?V:Val
+          meaning site S reads/writes value V at address A.
+        ****************************************************************)
+        let 
+            ANYWRITE : labelset = EVAL_A (WRITE _ _ _)
+        in
+            (*
+             * Note: violation of the following property implies violation of
+             * sequential coherency, because it means that two consecutive
+             * write on one site are seen in a different order on another site
+             *)
+            WALK (AG (Box_O (WRITE ?A1:Addr ?S1:Site ?V1:Val,
+                AG_A (not (ANYWRITE), Box_O (WRITE ?A2:Addr !S1 ?V2:Val,
+                    AG_A (not (ANYWRITE), Box_O (READ !A2 ?S2:Site !V2,
+                        AG_A (not (ANYWRITE),
+                            Box_O (READ !A1 !S2 ?V3:Val, V1 = V3)
+                        )
+                    ))
+                ))
+            )))
+        end_let;
+end property
+
+------------------------------------------------------------------------------
+-- Generation of "abstract123_12.bcg" modelling two concurrent CFS pages
+------------------------------------------------------------------------------
+
+"abstract123_12.bcg" = branching reduction of
+    (
+        (
+            total rename "\([A-Z0-9]*\) \(.*\)" -> "\1 !ADDR1 \2" in
+                "abstract123.bcg"
+        )
+        |||
+        (
+            total rename "\([A-Z0-9]*\) \(.*\)" -> "\1 !ADDR2 \2" in
+                "abstract123.bcg"
+        )
+    );
+
+------------------------------------------------------------------------------
+-- Evaluation of the above property on "abstract123_12.bcg"
+------------------------------------------------------------------------------
+
+check DATA_12_PROPERTY_1 ("abstract123_12");
+
+------------------------------------------------------------------------------
+-- Evaluation of the above properties DATA_PROPERTY_* and CFS_PROPERTY_* on
+-- "complete123.bcg". A few checks have been commented out because they
+-- take too long for a demo example.
+------------------------------------------------------------------------------
+
+check DATA_PROPERTY_1 ("complete123");
+check DATA_PROPERTY_2 ("complete123");
+-- check DATA_PROPERTY_3 ("complete123");
+check DATA_PROPERTY_4 ("complete123");
+check DATA_PROPERTY_5 ("complete123");
+-- check DATA_PROPERTY_6 ("complete123");
+check DATA_PROPERTY_7 ("complete123");
+-- check DATA_PROPERTY_8 ("complete123");
+-- check DATA_PROPERTY_9 ("complete123");
+
+check CFS_PROPERTY_1 ("complete123");
+check CFS_PROPERTY_2 ("complete123");
+check CFS_PROPERTY_3 ("complete123");
+check CFS_PROPERTY_4 ("complete123");
+check CFS_PROPERTY_5 ("complete123");
+
+------------------------------------------------------------------------------
+

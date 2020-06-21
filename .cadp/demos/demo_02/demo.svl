@@ -1,0 +1,587 @@
+(*
+ * Step 1:
+ * -------
+ * The LOTOS specifications of both the service "bitalt_service.lotos" and 
+ * the protocol "bitalt_protocol.lotos" are compiled using the CAESAR.ADT 
+ * and CAESAR compilers. The generated labelled transition systems are named 
+ * respectively "bitalt_service.bcg" and "bitalt_protocol.bcg".
+ *)
+
+"bitalt_service.bcg" = generation of "bitalt_service.lotos";
+
+"bitalt_protocol.bcg" = generation of "bitalt_protocol.lotos";
+
+(* ========================================================================= *)
+
+(*
+ * Step 2:
+ * -------
+ * "bitalt_protocol.bcg" is minimized modulo strong equivalence and 
+ * alternatively modulo branching equivalence. This generates two files,
+ * respectively "bitalt_strong.bcg" and "bitalt_branching.bcg". In the second
+ * case, it is easy to check that the specification is OK (i.e. the service
+ * is reliable, without loss of messages)
+ *)
+
+"bitalt_strong.bcg" = strong reduction of "bitalt_protocol.bcg";
+
+"bitalt_branching.bcg" = branching reduction of "bitalt_protocol.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 3:
+ * -------
+ * The specification of the protocol is compared with the specification of 
+ * the service, for branching equivalence.
+ *)
+
+"diag_bitalt_branching.seq" = branching comparison 
+		"bitalt_protocol.lotos" == "bitalt_service.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 4:
+ * -------
+ * "bitalt_mistake.lotos" is a variant of "bitalt_protocol.lotos" with an 
+ * error volontarily introduced. This LOTOS specification is compared 
+ * with the protocol (respectively the service) for strong (respectively 
+ * branching) equivalence to check that the specifications are not equivalent.
+ *)
+
+"diag_mistake_strong.bcg" = strong comparison 
+		"bitalt_mistake.lotos" == "bitalt_strong.bcg";
+
+"diag_service_branching.seq" = branching comparison 
+		"bitalt_mistake.lotos" == "bitalt_service.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 5:
+ * -------
+ * Satisfaction or non-satisfaction of several correctness properties 
+ * characterizing the proper behaviour of the protocol are checked on the
+ * proptocol, the service, and the erroneous specification respectively.
+ * Each property is verified in 3 different ways:
+ * 1) using BCG_OPEN and EVALUATOR 3 to check an MCL V3 formula
+ * 2) on-the-fly using OPEN/CAESAR and EVALUATOR 4 to check an MCL V4 formula
+ * 3) using XTL to verify an XTL program
+ *)
+
+"bitalt_mistake.bcg" = generation of "bitalt_mistake.lotos";
+
+% DEFAULT_MCL_LIBRARIES="standard.mcl"
+% DEFAULT_XTL_LIBRARIES="actl.xtl, macros.xtl"
+
+% for VERSION in bitalt_protocol bitalt_service bitalt_mistake
+% do
+
+(* Number of messages *)
+% N=4
+
+-------------------------------------------------------------------------------
+
+property P1 (SPEC, RESULT)
+    "Initially, a PUT action will be eventually reached"
+    (*
+     * This property should be false for the protocol, because of the
+     * livelocks (tau-circuits) present in the LOTOS specification
+     *)
+is
+    "$SPEC.bcg" |= with evaluator3
+        INEVITABLE ('PUT.*');
+    expected "$RESULT";
+
+    "$SPEC.lotos" |= with evaluator4
+	INEVITABLE ({ PUT ?any });
+    expected "$RESULT";
+
+    "$SPEC.bcg" |= with xtl
+        PRINT_FORMULA (INIT implies AU_A_B (true, true, EVAL_A (PUT _), true));
+    expected "$RESULT"; 
+end property
+
+% case $VERSION in
+%     bitalt_protocol | bitalt_mistake )
+          -- the property should be false for both the protocol and the
+          -- erroneous specification
+          check P1 ("$VERSION", FALSE);
+%     ;;
+%     bitalt_service )
+          -- the property should be true for the service
+          check P1 ("$VERSION", TRUE);
+%     ;;
+% esac
+
+-------------------------------------------------------------------------------
+
+property P2 (SPEC)
+    "Initially, a PUT action will be fairly reached"
+is
+    "$SPEC.bcg" |= with evaluator3
+        [ (not 'PUT.*')* ] SOME (true* . 'PUT.*');
+    expected TRUE;
+
+    "$SPEC.lotos" |= with evaluator4
+	[ (not { PUT ?any })* ] SOME (true* . { PUT ?any });
+    expected TRUE;
+
+    "$SPEC.bcg" |= with xtl
+        let PUT_any : labelset = EVAL_A (PUT _)
+        in
+            PRINT_FORMULA (AG_A (not (PUT_any), EF (Dia (PUT_any, true))))
+        end_let;
+    expected TRUE;
+end property
+
+check P2 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property P3 (SPEC)
+    "Initially, no GET action can be reached before the corresponding PUT"
+is
+    "$SPEC.bcg" |= with evaluator3
+        NEVER (
+            ((not 'PUT !0')* . 'GET !0') |
+            ((not 'PUT !1')* . 'GET !1') |
+            ((not 'PUT !2')* . 'GET !2') |
+            ((not 'PUT !3')* . 'GET !3') |
+            ((not 'PUT !4')* . 'GET !4')
+        );
+    expected TRUE;
+
+    "$SPEC.lotos" |= with evaluator4
+	forall msg:nat among { 0 ... $N } .
+	    NEVER ((not { PUT !msg })* . { GET !msg });
+    expected TRUE;
+
+    "$SPEC.bcg" |= with xtl
+        PRINT_FORMULA (
+            INIT implies
+            forall M : natural among { 0 ... N } in
+                AG_A (not (isPUT (M)), Box (isGET (M), false))
+            end_forall
+        );
+    expected TRUE;
+end property
+
+check P3 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property P4 (SPEC, RESULT)
+    "Between two consecutive PUT actions, there is a corresponding GET"
+is
+    "$SPEC.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (
+              ('PUT !0' . (not 'GET !0')*) |
+              ('PUT !1' . (not 'GET !1')*) |
+              ('PUT !2' . (not 'GET !2')*) |
+              ('PUT !3' . (not 'GET !3')*) |
+              ('PUT !4' . (not 'GET !4')*)
+            ) .
+            'PUT.*'
+        );
+    expected "$RESULT";
+
+    "$SPEC.lotos" |= with evaluator4
+	NEVER (true* . { PUT ?msg:nat } . (not { GET !msg })* . { PUT ?any });
+    expected "$RESULT";
+
+    "$SPEC.bcg" |= with xtl
+        PRINT_FORMULA (
+            AG (
+                forall M : natural among { 0 ... N } in
+                    Box (isPUT (M),
+                         AG_A (not (isGET (M)), Box (EVAL_A (PUT _), false)))
+                end_forall
+            )
+        );
+    expected "$RESULT"
+end property
+
+% case $VERSION in
+%     bitalt_protocol | bitalt_service )
+          -- the property should be true for both the protocol and the service
+          check P4 ("$VERSION", TRUE);
+%     ;;
+%     bitalt_mistake )
+          -- the property should be false for the erroneous specification
+          check P4 ("$VERSION", FALSE);
+%     ;;
+% esac
+
+-------------------------------------------------------------------------------
+
+property P5 (SPEC)
+    "Between two consecutive GET actions, there is a corresponding PUT"
+is
+    "$SPEC.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            'GET.*' .
+            (
+                ((not 'PUT !0')* . 'GET !0') |
+                ((not 'PUT !1')* . 'GET !1') |
+                ((not 'PUT !2')* . 'GET !2') |
+                ((not 'PUT !3')* . 'GET !3') |
+                ((not 'PUT !4')* . 'GET !4')
+            )
+        );
+     expected TRUE;
+
+    "$SPEC.lotos" |= with evaluator4
+	forall msg:nat among { 0 ... $N } .
+	  NEVER (true* . { GET ?any } . (not { PUT !msg })* . { GET !msg });
+    expected TRUE;
+
+    "$SPEC.bcg" |= with xtl
+        PRINT_FORMULA (
+            AG (
+                Box (EVAL_A (GET _),
+                    forall M : natural among { 0 ... N } in
+                        AG_A (not (isPUT (M)), Box (isGET (M), false))
+                    end_forall
+                )
+            )
+        );
+    expected TRUE
+end property
+
+check P5 ("$VERSION");
+
+-------------------------------------------------------------------------------
+
+property P6 (SPEC, RESULT)
+    "After a PUT action, the corresponding GET is eventually reachable"
+    (*
+     * This property should be false for the protocol, because of the
+     * livelocks (tau-circuits) present in the LOTOS specification
+     *)
+is
+    "$SPEC.bcg" |= with evaluator3
+        AFTER_1_INEVITABLE_2 ('PUT !0', 'GET !0') and
+        AFTER_1_INEVITABLE_2 ('PUT !1', 'GET !1') and
+        AFTER_1_INEVITABLE_2 ('PUT !2', 'GET !2') and
+        AFTER_1_INEVITABLE_2 ('PUT !3', 'GET !3') and
+        AFTER_1_INEVITABLE_2 ('PUT !4', 'GET !4');
+    expected "$RESULT";
+
+    "$SPEC.lotos" |= with evaluator4
+        AFTER_1_INEVITABLE_2 ({ PUT ?msg:nat }, { GET !msg });
+    expected "$RESULT";
+
+    "$SPEC.bcg" |= with xtl
+        PRINT_FORMULA (
+            AG (
+                forall M : natural among { 0 ... N } in
+                    Box (isPUT (M), AU_A_B (true, true, isGET (M), true))
+                end_forall
+            )
+        );
+    expected "$RESULT";
+end property
+
+% case $VERSION in
+%     bitalt_protocol | bitalt_mistake )
+          -- the property should be false for both the protocol and the
+          -- erroneous specification
+          check P6 ("$VERSION", FALSE);
+%     ;;
+%     bitalt_service )
+          -- the property should be true for the service
+          check P6 ("$VERSION", TRUE);
+%     ;;
+% esac
+
+-------------------------------------------------------------------------------
+
+property P7 (SPEC, RESULT)
+    "After a PUT action, the corresponding GET is fairly reachable"
+is
+    "$SPEC.bcg" |= with evaluator3
+        AFTER_1_FAIRLY_2 ('PUT !0', 'GET !0') and
+        AFTER_1_FAIRLY_2 ('PUT !1', 'GET !1') and
+        AFTER_1_FAIRLY_2 ('PUT !2', 'GET !2') and
+        AFTER_1_FAIRLY_2 ('PUT !3', 'GET !3') and
+        AFTER_1_FAIRLY_2 ('PUT !4', 'GET !4');
+    expected "$RESULT";
+
+    "$SPEC.lotos" |= with evaluator4
+	AFTER_1_FAIRLY_2 ({ PUT ?msg:nat }, { GET !msg });
+    expected "$RESULT";
+
+    "$SPEC.bcg" |= with xtl
+        PRINT_FORMULA (
+            AG (
+                forall M : natural among { 0 ... N } in
+                    Box (isPUT (M),
+                        AG_A (not (isGET (M)), EF (Dia (isGET (M), true))))
+                end_forall
+            )
+        );
+    expected "$RESULT"
+end property
+
+% case $VERSION in
+%     bitalt_protocol | bitalt_service )
+          -- the property should be true for both the protocol and the service
+          check P7 ("$VERSION", TRUE);
+%     ;;
+%     bitalt_mistake )
+          -- the property should be false for the erroneous specification
+          check P7 ("$VERSION", FALSE);
+%     ;;
+% esac
+
+-------------------------------------------------------------------------------
+
+property P8 (SPEC, RESULT)
+    "From the initial state, there is a strict alternation between PUT and GET"
+    "actions, starting with a PUT; Moreover, after every PUT (resp. GET)"
+    "action, a GET (resp. PUT) is always potentially reachable; This formula"
+    "expresses in a condensed way the 7 previous properties"
+is
+    "$SPEC.bcg" |= with evaluator3
+        nu ExpectPUT . (
+            SOME (true* . 'PUT.*')
+            and
+            [ 'PUT !0' ] nu ExpectGET_0 . (
+                SOME (true* . 'GET !0')
+                and
+                NEVER ('PUT.*')
+                and
+                NEVER ('GET.*' and not 'GET !0')
+                and
+                [ 'GET !0' ] ExpectPUT
+                and
+                [ "i" ] ExpectGET_0
+            )
+            and
+            [ 'PUT !1' ] nu ExpectGET_1 . (
+                SOME (true* . 'GET !1')
+                and
+                NEVER ('PUT.*')
+                and
+                NEVER ('GET.*' and not 'GET !1')
+                and
+                [ 'GET !1' ] ExpectPUT
+                and
+                [ "i" ] ExpectGET_1
+            )
+            and
+            [ 'PUT !2' ] nu ExpectGET_2 . (
+                SOME (true* . 'GET !2')
+                and
+                NEVER ('PUT.*')
+                and
+                NEVER ('GET.*' and not 'GET !2')
+                and
+                [ 'GET !2' ] ExpectPUT
+                and
+                [ "i" ] ExpectGET_2
+            )
+            and
+            [ 'PUT !3' ] nu ExpectGET_3 . (
+                SOME (true* . 'GET !3')
+                and
+                NEVER ('PUT.*')
+                and
+                NEVER ('GET.*' and not 'GET !3')
+                and
+                [ 'GET !3' ] ExpectPUT
+                and
+                [ "i" ] ExpectGET_3
+            )
+            and
+            [ 'PUT !4' ] nu ExpectGET_4 . (
+                SOME (true* . 'GET !4')
+                and
+                NEVER ('PUT.*')
+                and
+                NEVER ('GET.*' and not 'GET !4')
+                and
+                [ 'GET !4' ] ExpectPUT
+                and
+                [ "i" ] ExpectGET_4
+            )
+            and
+            NEVER ('GET.*')
+            and
+            [ "i" ] ExpectPUT
+        );
+    expected "$RESULT";
+
+    "$SPEC.lotos" |= with evaluator4
+        nu Expect (put_or_get:bool := true, crt_msg:nat := 0) . (
+           if put_or_get then
+               SOME (true* . { PUT ?any })
+               and
+               NEVER ({ GET ?any })
+               and
+               [ { PUT ?msg:nat } ] Expect (false, msg)
+           else
+               SOME(true* . { GET !crt_msg })
+               and
+               [ { GET ?msg:nat } ] ((msg = crt_msg) and Expect (true, 0))
+               and
+               NEVER ({ PUT ?any })
+           end if
+           and
+           [ tau ] Expect (put_or_get, crt_msg)
+       );
+    expected "$RESULT";
+
+    "$SPEC.bcg" |= with xtl
+        PRINT_FORMULA (
+            (* starting from the initial state *)
+            INIT implies
+            (* for all possible values of messages *)
+            forall M : natural among { 0 ... N } in
+                let PUT_M : labelset = isPUT (M),
+                    GET_M : labelset = isGET (M),
+                    PUT_any : labelset = EVAL_A (PUT _),
+                    GET_any : labelset = EVAL_A (GET _)
+                in
+                gfp_2 (
+                    (* a sending is expected *)
+                    EXPECT_PUT,
+                        (*
+                         * it is always possible to reach the sending of a
+                         * message
+                         *)
+                        EF (Dia (PUT_any, true))
+                        and
+                        (* after sending M, the reception of M is expected *)
+                        Box (PUT_M, EXPECT_GET)
+                        and
+                        (* no reception is allowed *)
+                        Box (GET_any, false)
+                        and
+                        (* invisible actions are ignored *)
+                        Box (TAU, EXPECT_PUT),
+                    (* the reception of M is expected *)
+                    EXPECT_GET,
+                        (* it is always possible to reach the reception of M *)
+                        EF (Dia (GET_M, true))
+                        and
+                        (* no sending is allowed *)
+                        Box (PUT_any, false)
+                        and
+                        (* no reception of another message is allowed *)
+                        Box (GET_any and not (GET_M), false)
+                        and
+                        (* after receiving M, another sending is expected *)
+                        Box (GET_M, EXPECT_PUT)
+                        and
+                        (* invisible actions are ignored *)
+                        Box (TAU, EXPECT_GET)
+                )
+                end_let
+            end_forall
+        );
+    expected "$RESULT"
+end property
+
+% case $VERSION in
+%     bitalt_protocol | bitalt_service )
+          -- the property should be true for both the protocol and the service
+          check P8 ("$VERSION", TRUE);
+%     ;;
+%     bitalt_mistake )
+          -- the property should be false for the erroneous specification
+          check P8 ("$VERSION", FALSE);
+%     ;;
+% esac
+
+-------------------------------------------------------------------------------
+
+% done
+
+(* ========================================================================= *)
+
+(*
+ * Step 6:
+ * -------
+ * The next steps shows how the alternating bit protocol can be verified
+ * compositionally. First, for each of the four concurrent processes of
+ * the alternating bit protocol (namely, TRANSMITTER, RECEIVER, MEDIUM1,
+ * and MEDIUM2), the corresponding LTS is generated and reduced modulo
+ * strong equivalence. The reduced LTSs are then composed together using
+ * parallel and hiding operators. The parallel composition of the minimized
+ * LTSs is referred to as "bitalt_protocol.exp".
+ *)
+
+% DEFAULT_PROCESS_FILE="bitalt_protocol.lotos"
+
+"bitalt_protocol.exp" = leaf strong reduction of 
+    hide SDT, RDT, RDTe, RACK, SACK, SACKe in
+        (
+            (
+                TRANSMITTER [PUT, SDT, SACK, SACKe] (0 of BIT)
+                |||
+                RECEIVER [GET, RDT, RDTe, RACK] (0 of BIT)
+            )
+            |[SDT, RDT, RDTe, RACK, SACK, SACKe]|
+            (
+                MEDIUM1 [SDT, RDT, RDTe]
+                |||
+                MEDIUM2 [RACK, SACK, SACKe]
+            )
+        );
+
+(* ========================================================================= *)
+
+(*
+ * Step 7:
+ * -------
+ * Then, this parallel composition is compared on the fly, modulo strong
+ * equivalence, to the LTS generated non-compositionally for the protocol.
+ *)
+
+"diag_strong.seq" = strong comparison
+        "bitalt_protocol.exp" == "bitalt_protocol.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 8:
+ * -------
+ * Then, this parallel composition is compared on the fly, modulo branching
+ * equivalence, to the LTS generated non-compositionally for the service.
+ *)
+
+"diag_branching.seq" = branching comparison
+        "bitalt_protocol.exp" == "bitalt_service.bcg";
+
+(* ========================================================================= *)
+
+(*
+ * Step 9:
+ * -------
+ * Then, one checks on the fly for the existence of deadlocks and livelocks
+ * in this parallel composition.
+ *)
+
+"bitalt_dead.seq" = deadlock of "bitalt_protocol.exp";
+
+"bitalt_live.bcg" = livelock of "bitalt_protocol.exp";
+
+(* ========================================================================= *)
+
+(*
+ * Step 10:
+ * -------
+ * Finally, one turns this parallel composition into an explicit LTS that is
+ * then minimized for branching bisimulation.
+ *)
+
+"bitalt_explicit.bcg" = branching reduction of "bitalt_protocol.exp";
+
+(* ========================================================================= *)
+

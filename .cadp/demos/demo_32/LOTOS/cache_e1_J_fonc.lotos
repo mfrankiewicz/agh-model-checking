@@ -1,0 +1,35 @@
+(* Susanne Graf :  cache_e1_J_fonc.lotos *)
+
+(* scenario for the verification of property S2 :
+   two processes, one element e1
+   PJ has a buffer Out and may write e1
+   PI has no buffer Out and may not write e1
+*)
+
+(* Composition expression of the global cache memory system
+   using adt definitions of ELEM_E1_J.lib (one elem, 2 processes, PJ writes)
+   and process definitions MEMORY_FONC_T, PI_SSOUT_FONC_T_NDET, and
+   PJ_SSVAR_EPS_OUT
+*)
+
+specification cache [diag, w, r, mw, cu, mr, cl] : noexit
+
+   library
+      BOOLEAN, NATURAL, TYPES_COMMON, ELEM_E1_J
+   endlib
+
+behaviour
+
+   hide sync in
+      MEMORY [sync, mw, mr] (empt_m)
+      |[sync, mw, mr]|
+      (
+         PI [diag, sync, w, r, mw, cu, mr, cl] (1 of index, empt_m, empt_b)
+         |[sync, mw, w, r, cu, mr, cl]|
+         PJ [sync, w, r, mw, cu, mr, cl] (2 of index, empt_s, empt_b)
+      )
+where
+   library
+      MEMORY_FONC_T, PI_SSOUT_FONC_T_NDET, PJ_SSVAR_EPS_OUT
+   endlib
+endspec

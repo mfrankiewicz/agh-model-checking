@@ -1,0 +1,23 @@
+#!/bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeuca_echo
+#   Auteur              :       Jean-Michel FRUME
+#   Version             :       1.4
+#   Date                :       2003/07/22 15:38:29
+##############################################################################
+
+# Ce fichier permet a l'IHM d'effectuer des echo sur des chaines de 
+# caracteres sans afficher la commande echo sur la fenetre de droite.
+# Ces chaines sont ensuite recuperes par l'IHM afin qu'elle sache qu'une
+# commande (ou suite de commandes) est terminee.
+
+echo "$@"

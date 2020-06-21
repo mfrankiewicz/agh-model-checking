@@ -1,0 +1,101 @@
+(* Improved service specification provided by INT researchers *)
+
+specification Inres_service[ISAPini, ISAPres]:noexit
+
+library INRES_SERVICE endlib
+
+behaviour
+	(ICEPini[ISAPini]
+	|||
+	ICEPres[ISAPres])
+	||
+	EndtoEnd[ISAPini,ISAPres]
+
+where
+process ICEPini[g]:noexit:=
+	(ConnectionphaseIni[g]
+	>>
+	DataphaseIni[g])
+	[>
+	DisconnectionIni[g]
+where
+	process ConnectionphaseIni[g]:exit:=
+		g !ICONreq;
+		g !ICONconf;
+		exit
+	endproc (* ConnectionphaseIni *)
+
+	process DataphaseIni[g]:noexit:=
+		g !IDATreq ?var:ISDU;
+		DataphaseIni[g]
+	endproc (* DataphaseIni *)
+
+	process DisconnectionIni[g]:noexit:=
+		g !IDISind;
+		ICEPini[g]
+	endproc (* DisconnectionIni *)
+
+endproc (* ICEPini *)
+
+process ICEPres[g]:noexit:=
+	ConnectionphaseRes[g]
+	>>
+	(
+         (WaitRes[g]>>DataphaseRes[g])
+	 [>
+	 DisconnectionRes[g]
+	)
+
+where
+
+	process ConnectionphaseRes[g]:exit:=
+		g !ICONind;
+		exit
+	endproc (* ConnectionphaseRes *)
+
+	process WaitRes[g]:exit:=
+		g !ICONresp;
+		exit
+	endproc (* WaitRes *)
+
+	process DataphaseRes[g]:noexit:=
+		g !IDATind ?var:ISDU;
+		DataphaseRes[g]
+	endproc (* DataphaseRes *)
+
+	process Disconnectionres[g]:noexit:=
+		g !IDISreq;
+		ICEPres[g]
+	endproc (* DisconnectionRes *)
+
+endproc (* ICEPres *)
+
+process EndtoEnd[ini,res]:noexit:=
+	(ini !ICONreq;
+		((res !ICONind;EndtoEnd[ini,res])
+		[]
+                 (res !IDISreq;(ini !IDISind;EndtoEnd[ini,res]
+				[]
+				res !ICONind;ini !IDISind;EndtoEnd[ini,res]))))
+        []
+        (ini !IDATreq ?var:ISDU;
+		((res !IDATind !var;EndtoEnd[ini,res])
+		[]
+		 (res !IDISreq;(ini !IDISind;EndtoEnd[ini,res]
+				[]
+				res !IDATind !var;ini !IDISind;EndtoEnd[ini,res]))))
+	[]
+	(res !ICONresp;
+		((ini !ICONconf;EndtoEnd[ini,res])
+		[]
+		 (res !IDISreq;(ini !IDISind;EndtoEnd[ini,res]
+				[]
+				ini !ICONconf;ini !IDISind;EndtoEnd[ini,res]))))
+	[]
+	(res !IDISreq;
+		(ini !IDISind;EndtoEnd[ini,res]))
+
+endproc (* EndtoEnd *)
+
+endspec (* Inres_service *)
+		

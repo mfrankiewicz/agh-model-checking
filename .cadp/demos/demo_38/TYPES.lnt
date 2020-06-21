@@ -1,0 +1,352 @@
+-------------------------------------------------------------------------------
+-- TYPES.lnt -- 1.34 -- 2015/09/15 15:45:55 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module TYPES (BIT) with "get" is
+
+-------------------------------------------------------------------------------
+-- exclusive-or operation on (abstract or concrete) bits
+
+function _xor_ (X, Y : BIT) : BIT is
+   if X == Y then
+      return 0
+   else
+      return 1
+   end if
+end function
+
+-------------------------------------------------------------------------------
+-- data type for counting the iterations of the algorithm
+
+type ITERATION is
+   range 0 .. 16 of NAT
+   with "==", "!=", "first", "last"
+end type
+
+-------------------------------------------------------------------------------
+-- data type for the controlling the behavior of the shift register
+
+type SHIFT is
+   NO,  -- no shift
+   LS1, -- 1 left shift
+   LS2, -- 2 left shifts
+   RS1, -- 1 right shift
+   RS2  -- 2 right shifts
+   with "=="
+end type
+
+-------------------------------------------------------------------------------
+-- data type for the control signals used for the multiplexers
+
+type PHASE is
+   F, -- first iteration
+   N, -- intermediate iteration
+   L  -- last iteration
+   with "=="
+end type
+
+-------------------------------------------------------------------------------
+-- 2-bit vectors
+
+type BIT2 is
+   MK_2 (B1, B2: BIT)
+end type
+
+-------------------------------------------------------------------------------
+-- conversion of a 2-bit vector into a natural number
+-- note: the most significant bit is B1
+
+function BIT2_TO_NAT (X: BIT2) : NAT is
+   var N: NAT in
+      N := 0;
+      if X.B1 == 1 then N := N + 2 end if;
+      if X.B2 == 1 then N := N + 1 end if;
+      return N
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- 4-bit vectors
+
+type BIT4 is !implementedby "ADT_BIT4"
+   MK_4 (B1, B2, B3, B4: BIT) !implementedby "MK_4"
+end type
+
+-------------------------------------------------------------------------------
+-- conversion of a 4-bit vector into a natural number
+-- note: the most significant bit is B1
+
+function BIT4_TO_NAT (X: BIT4) : NAT is
+   var N: NAT in
+      N := 0;
+      if X.B1 == 1 then N := N + 8 end if;
+      if X.B2 == 1 then N := N + 4 end if;
+      if X.B3 == 1 then N := N + 2 end if;
+      if X.B4 == 1 then N := N + 1 end if;
+      return N
+   end var
+end function
+
+-------------------------------------------------------------------------------
+-- conversion of a natural number into a 4-bit vector
+-- note: the most significant bit is B1
+
+function NAT_TO_BIT4 (N: NAT) : BIT4 is
+   require N <= 15;
+   case N in
+       0 -> return MK_4 (0, 0, 0, 0)
+   |   1 -> return MK_4 (0, 0, 0, 1)
+   |   2 -> return MK_4 (0, 0, 1, 0)
+   |   3 -> return MK_4 (0, 0, 1, 1)
+   |   4 -> return MK_4 (0, 1, 0, 0)
+   |   5 -> return MK_4 (0, 1, 0, 1)
+   |   6 -> return MK_4 (0, 1, 1, 0)
+   |   7 -> return MK_4 (0, 1, 1, 1)
+   |   8 -> return MK_4 (1, 0, 0, 0)
+   |   9 -> return MK_4 (1, 0, 0, 1)
+   |  10 -> return MK_4 (1, 0, 1, 0)
+   |  11 -> return MK_4 (1, 0, 1, 1)
+   |  12 -> return MK_4 (1, 1, 0, 0)
+   |  13 -> return MK_4 (1, 1, 0, 1)
+   |  14 -> return MK_4 (1, 1, 1, 0)
+   |  15 -> return MK_4 (1, 1, 1, 1)
+   | any -> raise UNEXPECTED
+   end case
+end function
+
+-------------------------------------------------------------------------------
+-- 6-bit vectors
+
+type BIT6 is
+   MK_6 (B1, B2, B3, B4, B5, B6: BIT)
+end type
+
+-------------------------------------------------------------------------------
+-- projection of 6-bit vectors to 2-bit vectors
+
+function 1AND6 (X: BIT6) : BIT2 is
+   return MK_2 (X.B1, X.B6)
+end function
+
+-------------------------------------------------------------------------------
+-- projection of 6-bit vectors to 4-bit vectors
+
+function 2TO5 (X: BIT6) : BIT4 is
+   return MK_4 (X.B2, X.B3, X.B4, X.B5)
+end function
+
+-------------------------------------------------------------------------------
+-- 32-bit vectors
+
+type BIT32 is
+   MK_32 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+          B9,  B10, B11, B12, B13, B14, B15, B16,
+          B17, B18, B19, B20, B21, B22, B23, B24,
+          B25, B26, B27, B28, B29, B30, B31, B32: BIT)
+end type
+
+-------------------------------------------------------------------------------
+-- bitwise XOR for 32-bit vectors
+
+function XOR (A, B: BIT32) : BIT32 is
+   return
+      MK_32 (A.B1  xor B.B1,  A.B2  xor B.B2,  A.B3  xor B.B3,  A.B4  xor B.B4,
+             A.B5  xor B.B5,  A.B6  xor B.B6,  A.B7  xor B.B7,  A.B8  xor B.B8,
+             A.B9  xor B.B9,  A.B10 xor B.B10, A.B11 xor B.B11, A.B12 xor B.B12,
+             A.B13 xor B.B13, A.B14 xor B.B14, A.B15 xor B.B15, A.B16 xor B.B16,
+             A.B17 xor B.B17, A.B18 xor B.B18, A.B19 xor B.B19, A.B20 xor B.B20, 
+             A.B21 xor B.B21, A.B22 xor B.B22, A.B23 xor B.B23, A.B24 xor B.B24,
+             A.B25 xor B.B25, A.B26 xor B.B26, A.B27 xor B.B27, A.B28 xor B.B28,
+             A.B29 xor B.B29, A.B30 xor B.B30, A.B31 xor B.B31, A.B32 xor B.B32)
+end function
+   
+-------------------------------------------------------------------------------
+-- concatenation of eight 4-bit vectors to form a 32-bit vector
+
+function MK_32 (V1, V2, V3, V4, V5, V6, V7, V8: BIT4) : BIT32 is
+   return MK_32 (V1.B1, V1.B2, V1.B3, V1.B4,  V2.B1, V2.B2, V2.B3, V2.B4,
+                 V3.B1, V3.B2, V3.B3, V3.B4,  V4.B1, V4.B2, V4.B3, V4.B4,
+                 V5.B1, V5.B2, V5.B3, V5.B4,  V6.B1, V6.B2, V6.B3, V6.B4,
+                 V7.B1, V7.B2, V7.B3, V7.B4,  V8.B1, V8.B2, V8.B3, V8.B4)
+end function
+
+-------------------------------------------------------------------------------
+-- 48-bit vectors
+
+type BIT48 is
+   MK_48 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+          B9,  B10, B11, B12, B13, B14, B15, B16,
+          B17, B18, B19, B20, B21, B22, B23, B24,
+          B25, B26, B27, B28, B29, B30, B31, B32,
+          B33, B34, B35, B36, B37, B38, B39, B40,
+          B41, B42, B43, B44, B45, B46, B47, B48: BIT)
+end type
+
+-------------------------------------------------------------------------------
+-- bitwise XOR for 48-bit vectors
+
+function XOR (A, B: BIT48) : BIT48 is
+   return
+      MK_48 (A.B1  xor B.B1,  A.B2  xor B.B2,  A.B3  xor B.B3,  A.B4  xor B.B4, 
+             A.B5  xor B.B5,  A.B6  xor B.B6,  A.B7  xor B.B7,  A.B8  xor B.B8,
+             A.B9  xor B.B9,  A.B10 xor B.B10, A.B11 xor B.B11, A.B12 xor B.B12,
+             A.B13 xor B.B13, A.B14 xor B.B14, A.B15 xor B.B15, A.B16 xor B.B16,
+             A.B17 xor B.B17, A.B18 xor B.B18, A.B19 xor B.B19, A.B20 xor B.B20,
+             A.B21 xor B.B21, A.B22 xor B.B22, A.B23 xor B.B23, A.B24 xor B.B24,
+             A.B25 xor B.B25, A.B26 xor B.B26, A.B27 xor B.B27, A.B28 xor B.B28,
+             A.B29 xor B.B29, A.B30 xor B.B30, A.B31 xor B.B31, A.B32 xor B.B32,
+             A.B33 xor B.B33, A.B34 xor B.B34, A.B35 xor B.B35, A.B36 xor B.B36,
+             A.B37 xor B.B37, A.B38 xor B.B38, A.B39 xor B.B39, A.B40 xor B.B40, 
+             A.B41 xor B.B41, A.B42 xor B.B42, A.B43 xor B.B43, A.B44 xor B.B44,
+             A.B45 xor B.B45, A.B46 xor B.B46, A.B47 xor B.B47, A.B48 xor B.B48)
+end function
+
+-------------------------------------------------------------------------------
+-- projections of 48-bit vectors to 6-bit vectors
+
+function 1TO6 (X: BIT48) : BIT6 is
+   return MK_6 (X.B1, X.B2, X.B3, X.B4, X.B5, X.B6)
+end function
+
+function 7TO12 (X: BIT48) : BIT6 is
+   return MK_6 (X.B7, X.B8, X.B9, X.B10, X.B11, X.B12)
+end function
+
+function 13TO18 (X: BIT48) : BIT6 is
+   return MK_6 (X.B13, X.B14, X.B15, X.B16, X.B17, X.B18)
+end function
+
+function 19TO24 (X: BIT48) : BIT6 is
+   return MK_6 (X.B19, X.B20, X.B21, X.B22, X.B23, X.B24)
+end function
+
+function 25TO30 (X: BIT48) : BIT6 is
+   return MK_6 (X.B25, X.B26, X.B27, X.B28, X.B29, X.B30)
+end function
+
+function 31TO36 (X: BIT48) : BIT6 is
+   return MK_6 (X.B31, X.B32, X.B33, X.B34, X.B35, X.B36)
+end function
+
+function 37TO42 (X: BIT48) : BIT6 is
+   return MK_6 (X.B37, X.B38, X.B39, X.B40, X.B41, X.B42)
+end function
+
+function 43TO48 (X: BIT48) : BIT6 is
+   return MK_6 (X.B43, X.B44, X.B45, X.B46, X.B47, X.B48)
+end function
+
+-------------------------------------------------------------------------------
+-- 56-bit vectors
+
+type BIT56 is
+   MK_56 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+          B9,  B10, B11, B12, B13, B14, B15, B16,
+          B17, B18, B19, B20, B21, B22, B23, B24,
+          B25, B26, B27, B28, B29, B30, B31, B32,
+          B33, B34, B35, B36, B37, B38, B39, B40,
+          B41, B42, B43, B44, B45, B46, B47, B48,
+          B49, B50, B51, B52, B53, B54, B55, B56: BIT)
+end type
+
+-------------------------------------------------------------------------------
+-- left shift of a 56-bit vector
+-- note: more precisely, parallel left shift of two 28-bit vectors
+
+function LSHIFT (X: BIT56) : BIT56 is
+   return MK_56 (X.B2,  X.B3,  X.B4,  X.B5,  X.B6,  X.B7,  X.B8,  X.B9,
+                 X.B10, X.B11, X.B12, X.B13, X.B14, X.B15, X.B16, X.B17,  
+                 X.B18, X.B19, X.B20, X.B21, X.B22, X.B23, X.B24, X.B25, 
+                 X.B26, X.B27, X.B28, X.B1,  X.B30, X.B31, X.B32, X.B33, 
+                 X.B34, X.B35, X.B36, X.B37, X.B38, X.B39, X.B40, X.B41, 
+                 X.B42, X.B43, X.B44, X.B45, X.B46, X.B47, X.B48, X.B49, 
+                 X.B50, X.B51, X.B52, X.B53, X.B54, X.B55, X.B56, X.B29)
+end function
+
+-------------------------------------------------------------------------------
+-- right shift of a 56-bit vector
+-- note: more precisely, parallel right shift of two 28-bit vectors
+
+function RSHIFT (X: BIT56) : BIT56 is
+   return MK_56 (X.B28, X.B1,  X.B2,  X.B3,  X.B4,  X.B5,  X.B6,  X.B7,
+                 X.B8,  X.B9,  X.B10, X.B11, X.B12, X.B13, X.B14, X.B15,
+                 X.B16, X.B17, X.B18, X.B19, X.B20, X.B21, X.B22, X.B23,
+                 X.B24, X.B25, X.B26, X.B27, X.B56, X.B29, X.B30, X.B31,
+                 X.B32, X.B33, X.B34, X.B35, X.B36, X.B37, X.B38, X.B39,
+                 X.B40, X.B41, X.B42, X.B43, X.B44, X.B45, X.B46, X.B47,
+                 X.B48, X.B49, X.B50, X.B51, X.B52, X.B53, X.B54, X.B55)
+end function
+
+-------------------------------------------------------------------------------
+-- 64-bit vectors
+
+type BIT64 is !implementedby "ADT_BIT64" !printedby "ADT_PRINT_BIT64"
+   MK_64 (B1,  B2,  B3,  B4,  B5,  B6,  B7,  B8,
+          B9,  B10, B11, B12, B13, B14, B15, B16,
+          B17, B18, B19, B20, B21, B22, B23, B24,
+          B25, B26, B27, B28, B29, B30, B31, B32,
+          B33, B34, B35, B36, B37, B38, B39, B40,
+          B41, B42, B43, B44, B45, B46, B47, B48,
+          B49, B50, B51, B52, B53, B54, B55, B56,
+          B57, B58, B59, B60, B61, B62, B63, B64: BIT)
+   !implementedby "MK_64"
+   with "==", "!="
+end type
+
+-------------------------------------------------------------------------------
+-- projections of 64-bit vectors to 32-bit vectors
+
+function 1TO32 (X: BIT64) : BIT32 is
+   return MK_32 (X.B1,  X.B2,  X.B3,  X.B4,  X.B5,  X.B6,  X.B7,  X.B8,
+                 X.B9,  X.B10, X.B11, X.B12, X.B13, X.B14, X.B15, X.B16,
+                 X.B17, X.B18, X.B19, X.B20, X.B21, X.B22, X.B23, X.B24,
+                 X.B25, X.B26, X.B27, X.B28, X.B29, X.B30, X.B31, X.B32)
+end function
+
+function 33TO64 (X: BIT64) : BIT32 is
+   return MK_32 (X.B33, X.B34, X.B35, X.B36, X.B37, X.B38, X.B39, X.B40,
+                 X.B41, X.B42, X.B43, X.B44, X.B45, X.B46, X.B47, X.B48,
+                 X.B49, X.B50, X.B51, X.B52, X.B53, X.B54, X.B55, X.B56,
+                 X.B57, X.B58, X.B59, X.B60, X.B61, X.B62, X.B63, X.B64)
+end function
+
+-------------------------------------------------------------------------------
+-- concatenation of sixteen 4-bit vectors to form a 64-bit vector
+
+function MK_64 (V1, V2,  V3,  V4,  V5,  V6,  V7,  V8,
+                V9, V10, V11, V12, V13, V14, V15, V16: BIT4) : BIT64 is
+   !implementedby "CONCAT_BIT4"
+      return MK_64 (V1.B1,  V1.B2,  V1.B3,  V1.B4,
+                    V2.B1,  V2.B2,  V2.B3,  V2.B4,
+                    V3.B1,  V3.B2,  V3.B3,  V3.B4,
+                    V4.B1,  V4.B2,  V4.B3,  V4.B4,
+                    V5.B1,  V5.B2,  V5.B3,  V5.B4,
+                    V6.B1,  V6.B2,  V6.B3,  V6.B4,
+                    V7.B1,  V7.B2,  V7.B3,  V7.B4,
+                    V8.B1,  V8.B2,  V8.B3,  V8.B4,
+                    V9.B1,  V9.B2,  V9.B3,  V9.B4, 
+                    V10.B1, V10.B2, V10.B3, V10.B4,
+                    V11.B1, V11.B2, V11.B3, V11.B4,
+                    V12.B1, V12.B2, V12.B3, V12.B4,
+                    V13.B1, V13.B2, V13.B3, V13.B4,
+                    V14.B1, V14.B2, V14.B3, V14.B4,
+                    V15.B1, V15.B2, V15.B3, V15.B4,
+                    V16.B1, V16.B2, V16.B3, V16.B4)
+end function
+
+-------------------------------------------------------------------------------
+-- concatenation of two 32-bit vectors to form a 64-bit vector
+
+function MK_64 (V1, V2: BIT32) : BIT64 is
+   return MK_64 (V1.B1,  V1.B2,  V1.B3,  V1.B4,  V1.B5,  V1.B6,  V1.B7,  V1.B8,
+                 V1.B9,  V1.B10, V1.B11, V1.B12, V1.B13, V1.B14, V1.B15, V1.B16,
+                 V1.B17, V1.B18, V1.B19, V1.B20, V1.B21, V1.B22, V1.B23, V1.B24,
+                 V1.B25, V1.B26, V1.B27, V1.B28, V1.B29, V1.B30, V1.B31, V1.B32,
+                 V2.B1,  V2.B2,  V2.B3,  V2.B4,  V2.B5,  V2.B6,  V2.B7,  V2.B8,
+                 V2.B9,  V2.B10, V2.B11, V2.B12, V2.B13, V2.B14, V2.B15, V2.B16,
+                 V2.B17, V2.B18, V2.B19, V2.B20, V2.B21, V2.B22, V2.B23, V2.B24,
+                 V2.B25, V2.B26, V2.B27, V2.B28, V2.B29, V2.B30, V2.B31, V2.B32)
+end function
+
+end module
+

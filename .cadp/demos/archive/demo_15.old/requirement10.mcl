@@ -1,0 +1,14 @@
+
+(*****************************************************************************
+ * Requirement 10
+ * For a given subscriber, once an Onhook has been performed, no tone can be
+ * activated until offhook is performed
+ *****************************************************************************)
+
+[ true* .
+    (
+        ("S !1 !ONH" . (not 'S !1 !OFFH ![AB]SUBSC')* . 'S !1 !.*T !ON') |
+        ("S !2 !ONH" . (not 'S !2 !OFFH ![AB]SUBSC')* . 'S !2 !.*T !ON')
+    )
+] false
+

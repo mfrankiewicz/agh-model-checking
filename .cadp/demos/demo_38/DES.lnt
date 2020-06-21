@@ -1,0 +1,32 @@
+-------------------------------------------------------------------------------
+-- DES.lnt -- 1.4 -- 2015/09/11 11:04:16 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module DES (CONTROLLER, DATA_PATH, KEY_PATH) is
+
+process DES [CRYPT: CB, KEY, DATA, OUTPUT: C64] is
+   hide SUBKEY: C48,
+        CTRL_CL, CTRL_CR: CP,
+        CTRL_SHIFT: CS, CTRL_DK, CTRL_CK: CP
+   in
+      par 
+         SUBKEY, CTRL_CL, CTRL_CR ->
+            DATA_PATH [DATA, OUTPUT, SUBKEY, CTRL_CL, CTRL_CR]
+      ||
+         SUBKEY, CTRL_CK, CTRL_SHIFT, CTRL_DK ->
+            KEY_PATH [KEY, SUBKEY, CTRL_SHIFT, CTRL_DK, CTRL_CK]
+      ||
+         CTRL_CL, CTRL_CR, CTRL_CK, CTRL_SHIFT, CTRL_DK ->
+            CONTROLLER [CRYPT, CTRL_CL, CTRL_CR, CTRL_SHIFT, CTRL_DK, CTRL_CK]
+      end par
+   end hide
+end process
+
+-------------------------------------------------------------------------------
+
+process MAIN [CRYPT: CB, KEY, DATA, OUTPUT: C64] is
+   DES [CRYPT, KEY, DATA, OUTPUT]
+end process
+
+end module
+

@@ -1,0 +1,222 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- jedit definitions for the LNT language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.25:LNT+1.5:SECT -->
+
+<MODE>
+  <PROPS>
+    <PROPERTY NAME="commentStart" VALUE="(*"/>
+    <PROPERTY NAME="commentEnd" VALUE="*)"/>
+    <PROPERTY NAME="lineComment" VALUE="--"/>
+  </PROPS>
+
+  <RULES IGNORE_CASE="FALSE" HIGHLIGHT_DIGITS="TRUE">
+    <!-- Comments -->
+    <SPAN TYPE="COMMENT1" DELEGATE="COMMENT">
+      <BEGIN>(*</BEGIN>
+      <END>*)</END>
+    </SPAN>
+    <EOL_SPAN TYPE="COMMENT2">--</EOL_SPAN>
+
+    <!-- Standard Operators -->
+    <SEQ TYPE="OPERATOR">-&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">[]</SEQ>
+    <SEQ TYPE="OPERATOR">||</SEQ>
+    <SEQ TYPE="OPERATOR">=&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">&gt;=</SEQ>
+    <SEQ TYPE="OPERATOR">&lt;=</SEQ>
+    <SEQ TYPE="OPERATOR">/=</SEQ>
+    <SEQ TYPE="OPERATOR">&lt;&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">==</SEQ>
+    <SEQ TYPE="OPERATOR">**</SEQ>
+    <SEQ TYPE="OPERATOR">;</SEQ>
+    <SEQ TYPE="OPERATOR">?</SEQ>
+    <SEQ TYPE="OPERATOR">*</SEQ>
+    <SEQ TYPE="OPERATOR">/</SEQ>
+    <SEQ TYPE="OPERATOR">-</SEQ>
+    <SEQ TYPE="OPERATOR">+</SEQ>
+    <SEQ TYPE="OPERATOR">|</SEQ>
+    <SEQ TYPE="OPERATOR">&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">&lt;</SEQ>
+    <SEQ TYPE="OPERATOR">=</SEQ>
+
+    <KEYWORDS>
+      <!-- Reserved Words -->
+      <KEYWORD1>access</KEYWORD1>
+      <KEYWORD1>any</KEYWORD1>
+      <KEYWORD1>array</KEYWORD1>
+      <KEYWORD1>as</KEYWORD1>
+      <KEYWORD1>assert</KEYWORD1>
+      <KEYWORD1>break</KEYWORD1>
+      <KEYWORD1>by</KEYWORD1>
+      <KEYWORD1>case</KEYWORD1>
+      <KEYWORD1>channel</KEYWORD1>
+      <KEYWORD1>disrupt</KEYWORD1>
+      <KEYWORD1>else</KEYWORD1>
+      <KEYWORD1>elsif</KEYWORD1>
+      <KEYWORD1>end</KEYWORD1>
+      <KEYWORD1>ensure</KEYWORD1>
+      <KEYWORD1>eval</KEYWORD1>
+      <KEYWORD1>for</KEYWORD1>
+      <KEYWORD1>function</KEYWORD1>
+      <KEYWORD1>hide</KEYWORD1>
+      <KEYWORD1>if</KEYWORD1>
+      <KEYWORD1>in</KEYWORD1>
+      <KEYWORD1>is</KEYWORD1>
+      <KEYWORD1>list</KEYWORD1>
+      <KEYWORD1>loop</KEYWORD1>
+      <KEYWORD1>module</KEYWORD1>
+      <KEYWORD1>null</KEYWORD1>
+      <KEYWORD1>of</KEYWORD1>
+      <KEYWORD1>only</KEYWORD1>
+      <KEYWORD1>out</KEYWORD1>
+      <KEYWORD1>par</KEYWORD1>
+      <KEYWORD1>process</KEYWORD1>
+      <KEYWORD1>raise</KEYWORD1>
+      <KEYWORD1>range</KEYWORD1>
+      <KEYWORD1>require</KEYWORD1>
+      <KEYWORD1>result</KEYWORD1>
+      <KEYWORD1>return</KEYWORD1>
+      <KEYWORD1>select</KEYWORD1>
+      <KEYWORD1>set</KEYWORD1>
+      <KEYWORD1>sorted</KEYWORD1>
+      <KEYWORD1>stop</KEYWORD1>
+      <KEYWORD1>then</KEYWORD1>
+      <KEYWORD1>type</KEYWORD1>
+      <KEYWORD1>use</KEYWORD1>
+      <KEYWORD1>var</KEYWORD1>
+      <KEYWORD1>where</KEYWORD1>
+      <KEYWORD1>while</KEYWORD1>
+      <KEYWORD1>with</KEYWORD1>
+
+      <!-- Standard Library Sorts -->
+      <KEYWORD2>bool</KEYWORD2>
+      <KEYWORD2>nat</KEYWORD2>
+      <KEYWORD2>int</KEYWORD2>
+      <KEYWORD2>real</KEYWORD2>
+      <KEYWORD2>char</KEYWORD2>
+      <KEYWORD2>string</KEYWORD2>
+
+      <!-- Constants -->
+      <KEYWORD3>false</KEYWORD3>
+      <KEYWORD3>true</KEYWORD3>
+
+      <!-- Pragmas -->
+      <MARKUP>!bits</MARKUP>
+      <MARKUP>!card</MARKUP>
+      <MARKUP>!nat_bits</MARKUP>
+      <MARKUP>!nat_inf</MARKUP>
+      <MARKUP>!nat_sup</MARKUP>
+      <MARKUP>!nat_check</MARKUP>
+      <MARKUP>!int_bits</MARKUP>
+      <MARKUP>!int_inf</MARKUP>
+      <MARKUP>!int_sup</MARKUP>
+      <MARKUP>!int_check</MARKUP>
+      <MARKUP>!num_bits</MARKUP>
+      <MARKUP>!num_card</MARKUP>
+      <MARKUP>!string_card</MARKUP>
+      <MARKUP>!comparedby</MARKUP>
+      <MARKUP>!external</MARKUP>
+      <MARKUP>!implementedby</MARKUP>
+      <MARKUP>!iteratedby</MARKUP>
+      <MARKUP>!printedby</MARKUP>
+      <MARKUP>!representedby</MARKUP>
+      <MARKUP>!version</MARKUP>
+
+      <!-- Standard Library Functions -->
+      <FUNCTION>abs</FUNCTION>
+      <FUNCTION>and</FUNCTION>
+      <FUNCTION>and_then</FUNCTION>
+      <FUNCTION>append</FUNCTION>
+      <FUNCTION>card</FUNCTION>
+      <FUNCTION>cons</FUNCTION>
+      <FUNCTION>delete</FUNCTION>
+      <FUNCTION>diff</FUNCTION>
+      <FUNCTION>div</FUNCTION>
+      <FUNCTION>element</FUNCTION>
+      <FUNCTION>empty</FUNCTION>
+      <FUNCTION>eq</FUNCTION>
+      <FUNCTION>first</FUNCTION>
+      <FUNCTION>gcd</FUNCTION>
+      <FUNCTION>ge</FUNCTION>
+      <FUNCTION>get</FUNCTION>
+      <FUNCTION>gt</FUNCTION>
+      <FUNCTION>head</FUNCTION>
+      <FUNCTION>iff</FUNCTION>
+      <FUNCTION>implies</FUNCTION>
+      <FUNCTION>index</FUNCTION>
+      <FUNCTION>insert</FUNCTION>
+      <FUNCTION>inter</FUNCTION>
+      <FUNCTION>IntToNat</FUNCTION>
+      <FUNCTION>is_empty</FUNCTION>
+      <FUNCTION>IsLower</FUNCTION>
+      <FUNCTION>IsUpper</FUNCTION>
+      <FUNCTION>IsAlpha</FUNCTION>
+      <FUNCTION>IsAlnum</FUNCTION>
+      <FUNCTION>IsDigit</FUNCTION>
+      <FUNCTION>IsXDigit</FUNCTION>
+      <FUNCTION>last</FUNCTION>
+      <FUNCTION>le</FUNCTION>
+      <FUNCTION>length</FUNCTION>
+      <FUNCTION>lt</FUNCTION>
+      <FUNCTION>max</FUNCTION>
+      <FUNCTION>member</FUNCTION>
+      <FUNCTION>min</FUNCTION>
+      <FUNCTION>mod</FUNCTION>
+      <FUNCTION>NatToInt</FUNCTION>
+      <FUNCTION>ne</FUNCTION>
+      <FUNCTION>neg</FUNCTION>
+      <FUNCTION>nil</FUNCTION>
+      <FUNCTION>not</FUNCTION>
+      <FUNCTION>nth</FUNCTION>
+      <FUNCTION>or</FUNCTION>
+      <FUNCTION>ord</FUNCTION>
+      <FUNCTION>or_else</FUNCTION>
+      <FUNCTION>pos</FUNCTION>
+      <FUNCTION>pred</FUNCTION>
+      <FUNCTION>prefix</FUNCTION>
+      <FUNCTION>rem</FUNCTION>
+      <FUNCTION>remove</FUNCTION>
+      <FUNCTION>reverse</FUNCTION>
+      <FUNCTION>rindex</FUNCTION>
+      <FUNCTION>scm</FUNCTION>
+      <FUNCTION>set</FUNCTION>
+      <FUNCTION>sign</FUNCTION>
+      <FUNCTION>substr</FUNCTION>
+      <FUNCTION>succ</FUNCTION>
+      <FUNCTION>suffix</FUNCTION>
+      <FUNCTION>tail</FUNCTION>
+      <FUNCTION>ToLower</FUNCTION>
+      <FUNCTION>ToUpper</FUNCTION>
+      <FUNCTION>union</FUNCTION>
+      <FUNCTION>update</FUNCTION>
+      <FUNCTION>val</FUNCTION>
+      <FUNCTION>xor</FUNCTION>
+
+    </KEYWORDS>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>'</BEGIN>
+      <END>'</END>
+    </SPAN>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>"</BEGIN>
+      <END>"</END>
+    </SPAN>
+
+  </RULES>
+
+  <RULES SET="INQUOTE" DEFAULT="LITERAL1" ESCAPE="\">
+    <!-- no rules -->
+  </RULES>
+
+  <RULES SET="COMMENT" DEFAULT="COMMENT1" IGNORE_CASE="TRUE">
+    <!-- no rules -->
+  </RULES>
+
+</MODE>
+

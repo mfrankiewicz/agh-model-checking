@@ -1,0 +1,24 @@
+type List is Boolean, Element 
+   sorts
+     List (*! implementedby TYPE_LIST 
+              comparedby CMP_LIST
+              iteratedby ENUM_FIRST_LIST and ENUM_NEXT_LIST
+              printedby PRINT_LIST *)
+   opns  
+     Nil   (*! implementedby NIL constructor *) : -> List
+     Cons  (*! implementedby CONS constructor *) : Elem, List -> List
+     Empty (*! implementedby EMPTY *) : List -> Bool
+     Head  (*! implementedby HEAD *) : List -> Elem
+     Tail  (*! implementedby TAIL *) : List -> List
+   eqns
+     forall E:Elem, Q:List
+        ofsort Bool
+          Empty (Nil) = true;
+          Empty (Cons (E, Q)) = false;
+        ofsort Elem
+          (* First (Nil) is not defined *)
+          Head (Cons (E, Q)) = E;
+        ofsort List
+          (* Tail (Nil) is not defined *)
+          Tail (Cons (E, Q)) = Q;
+endtype

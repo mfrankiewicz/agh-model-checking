@@ -1,0 +1,29 @@
+  
+  type Natural is NaturalNumber
+    opns _ - _ : Nat, Nat -> Nat
+    eqns
+      forall n1,n2:Nat
+        ofsort Nat
+	  0 - n2 = 0;
+	  n1 - 0 = n1;
+	  Succ(n1) - Succ(n2) = n1 - n2;
+  endtype (* Natural *)
+  
+  type Reference is Natural renamedby
+    sortnames Reference for Nat
+  endtype (* Reference *)
+  
+  type Product is Natural renamedby
+    sortnames Product for Nat
+  endtype (* Product *)
+  
+  type Amount is Natural renamedby
+    sortnames Amount for Nat
+  endtype (* Amount *)
+  
+  type Status is
+    sorts Status
+    opns None (*! constructor *), 
+         Pending (*! constructor *), 
+         Invoiced (*! constructor *) : -> Status
+  endtype (* Status *)

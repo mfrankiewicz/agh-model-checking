@@ -1,0 +1,469 @@
+(******************************************************************************
+ *        Dynamic Reconfiguration Protocol for Agent-Based Applications
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module       :       DATA.lnt
+ *   Authors      :       H. Garavel and N. de Palma
+ *   Version      :       1.3
+ *   Date         :       2013/10/16 10:28:51
+ *****************************************************************************)
+
+module DATA is
+
+(*****************************************************************************
+ * 
+ * Agent identifier
+ * 
+ *****************************************************************************)
+
+type AgentId is
+   agent1, agent2, aconf
+   with "eq", "ne", "lt"
+end type
+
+-------------------------------------------------------------------------------
+
+function succ (A : AgentId) : AgentId is
+   case A in
+      agent1 -> return agent2
+    | agent2 -> return aconf
+    | aconf  -> return agent1
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function dummyagent : AgentId is
+   return agent1
+end function
+
+(*****************************************************************************
+ * 
+ * Site identifier
+ * 
+ *****************************************************************************)
+ 
+type SiteId is
+   site1
+   with "eq", "ne", "lt", "<"
+end type
+
+-------------------------------------------------------------------------------
+
+function dummysite : SiteId is
+   return site1
+end function
+
+(*****************************************************************************
+ * 
+ * Agent address
+ * 
+ *****************************************************************************)
+
+type Addr is
+   _@_ (A : AgentId, S : SiteId)
+   -- in A@S, A is the agent identifier and S the current site of the agent
+   with "eq", "ne", "lt", "get"
+end type
+
+-------------------------------------------------------------------------------
+
+function confaddr : Addr is
+   return aconf@dummysite
+end function
+
+-------------------------------------------------------------------------------
+
+function dummy : Addr is
+   return dummyagent@dummysite
+end function
+
+(*****************************************************************************
+ * 
+ * Set of agent addresses
+ * 
+ *****************************************************************************)
+
+type AddrSet is
+   {},
+   _+_ (Head : Addr, Tail : AddrSet)
+   -- assert: elements are unique and sorted in increasing order
+   with "eq", "ne", "lt", "get"
+end type
+
+-------------------------------------------------------------------------------
+
+function insert (A : Addr, R : AddrSet) : AddrSet is
+   case R in
+   var A1 : Addr, R1 : AddrSet in
+      {}      -> return A + {}
+    | A1 + R1 -> if A eq A1 then
+                    return R
+                 elsif A lt A1 then
+                    return A + R
+                 else
+                    return A1 + insert (A, R1)
+                 end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function remove (A : Addr, R : AddrSet) : AddrSet is
+   case R in
+   var A1 : Addr, R1 : AddrSet in
+      {}      -> return {}
+    | A1 + R1 -> if A eq A1 then
+                    return R1
+                 else
+                    return A1 + remove (A, R1)
+                 end if 
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function replace (A1, A2 : Addr, R : AddrSet) : AddrSet is
+   return insert (A2, remove (A1, R))
+end function
+
+-------------------------------------------------------------------------------
+
+function empty (R : AddrSet) : Bool is
+   case R in
+      {}  -> return true
+    | any -> return false
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function _isin_ (A : Addr, R : AddrSet) : Bool is
+   case R in
+   var A1 : Addr, R1 : AddrSet in
+      {}      -> return false
+    | A1 + R1 -> return (A eq A1) or_else isin (A, R1)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function _notin_ (A : Addr, R : AddrSet) : Bool is
+   return not (A isin R)
+end function
+
+-------------------------------------------------------------------------------
+
+function _subset_ (R1, R2 : AddrSet) : Bool is
+   case R1 in
+   var A : Addr, R : AddrSet in
+      {}    -> return true
+    | A + R -> return (A isin R2) and_then (R subset R2)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function card (R : AddrSet) : Nat is
+   case R in
+   var R1 : AddrSet in
+      {}            -> return 0
+    | any Addr + R1 -> return 1 + card (R1)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function pick (R : AddrSet) : Addr is
+   require not (empty (R));
+   return R.Head
+end function
+
+(*****************************************************************************
+ * 
+ * Reconfiguration and application commands
+ * 
+ *****************************************************************************)
+
+type Cmd is
+   ACTIVATE, ACK, ADD, BIND, DELETE, FLUSH, MOVE, PASSIVATE, REBIND, SERVICE
+   with "eq", "ne"
+end type
+
+(*****************************************************************************
+ * 
+ * Abstract states of an agent
+ * 
+ *****************************************************************************)
+
+type State is
+   ACTIVE, DEAD, PASSIVE
+   with "eq", "ne"
+end type
+
+(*****************************************************************************
+ * 
+ * Configuration of an agent (address, set of "output" agents)
+ * 
+ *****************************************************************************)
+
+type AgentConfig is
+   _&_ (A : Addr, R : AddrSet)
+   with "eq", "ne", "lt", "get"
+end type
+
+(*****************************************************************************
+ * 
+ * Configuration of an application (list of agent configurations)
+ * 
+ *****************************************************************************)
+
+type Config is
+   nil,
+   _+_ (C : AgentConfig, C1_Cn : Config)
+   -- assert: elements are unique and sorted in increasing order
+end type
+
+-------------------------------------------------------------------------------
+
+function insert (C : AgentConfig, C1_Cn : Config) : Config is
+   case C1_Cn in
+   var C1 : AgentConfig, C2_Cn : Config in
+      nil        -> return C + nil
+    | C1 + C2_Cn -> if C eq C1 then
+                          return C1_Cn
+                       elsif C lt C1 then
+                          return C + C1_Cn
+                       else
+                          return C1 + insert (C, C2_Cn)
+                       end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function delete (A : Addr, C1_Cn : Config) : Config is
+   case C1_Cn in
+   var A1 : Addr, R1 : AddrSet, C2_Cn : Config in
+      nil               -> return nil
+    | (A1 & R1) + C2_Cn -> if A eq A1 then
+                              return delete (A, C2_Cn)
+                           else
+                              return (A1 & remove (A, R1)) + delete (A, C2_Cn)
+                           end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function remove (A : Addr, C1_Cn : Config) : Config is
+   case C1_Cn in
+   var A1 : Addr, R1 : AddrSet, C2_Cn : Config in
+      nil               -> return nil
+    | (A1 & R1) + C2_Cn -> if A eq A1 then
+                              return C2_Cn
+                           else
+                              return (A1 & R1) + remove (A, C2_Cn)
+                           end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function getchan (A : Addr, C1_Cn : Config) : AddrSet is
+   require A isin C1_Cn;
+   case C1_Cn in
+   var A1 : Addr, R : AddrSet, C2_Cn : Config in
+      nil              -> raise UNEXPECTED
+    | (A1 & R) + C2_Cn -> if A eq A1 then
+                             return R
+     			  else
+                             return getchan (A, C2_Cn)
+			  end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function addchan (A1, A2 : Addr, C1_Cn : Config) : Config is
+   require A1 isin C1_Cn;
+   return insert (A1 & insert (A2, getchan (A1, C1_Cn)), remove (A1, C1_Cn))
+end function
+
+-------------------------------------------------------------------------------
+
+function setchan (A1, A2, A3 : Addr, C1_Cn : Config) : Config is
+   require A1 isin C1_Cn;
+   return insert (A1 & insert (A3, remove (A2, getchan (A1, C1_Cn))),
+                  remove (A1, C1_Cn))
+end function
+
+-------------------------------------------------------------------------------
+
+function setchan (R : AddrSet, A2, A3 : Addr, C1_Cn : Config) : Config is
+   -- assert: each address in the set R isin C1_Cn
+   case R in
+   var A1 : Addr, R1 : AddrSet in
+      {}      -> return C1_Cn
+    | A1 + R1 -> return setchan (A1, A2, A3, setchan (R1, A2, A3, C1_Cn))
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function setaddr (A1, A2 : Addr, C1_Cn : Config) : Config is
+   require A1 isin C1_Cn;
+   return insert (A2 & getchan (A1, C1_Cn), remove (A1, C1_Cn))
+end function
+
+-------------------------------------------------------------------------------
+
+function cps (A : Addr, C1_Cn : Config) : AddrSet is
+   case C1_Cn in
+   var A1 : Addr, R1 : AddrSet, C2_Cn : Config in
+      nil               -> return {}
+    | (A1 & R1) + C2_Cn -> if A isin R1 then
+                              return insert (A1, cps (A, C2_Cn))
+                           else
+                              return cps (A, C2_Cn)
+                           end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function _isin_ (A : Addr, C1_Cn : Config) : Bool is
+   case C1_Cn in
+   var A1 : Addr, C2_Cn : Config in
+      nil                        -> return false
+    | (A1 & any AddrSet) + C2_Cn -> return (A eq A1) or (A isin C2_Cn)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function _notin_ (A : Addr, C1_Cn : Config) : Bool is
+   return not (A isin C1_Cn)
+end function
+
+-------------------------------------------------------------------------------
+
+function newaddr (S : SiteId, C1_Cn : Config) : Addr is
+   -- iterate on all agent identifiers until a new address is found
+   return newaddr2 (agent1, S, C1_Cn)
+end function
+
+-------------------------------------------------------------------------------
+
+function newaddr2 (P : AgentId, S : SiteId, C1_Cn : Config) : Addr is
+   if ((P@S) isin C1_Cn) then
+      return newaddr2 (succ (P), S, C1_Cn)
+   else
+      return P@S
+   end if
+end function
+
+(*****************************************************************************
+ * 
+ * Messages between agents
+ * 
+ *****************************************************************************)
+
+type Msg is
+   message (
+      A1 : Addr, -- address of the receiver agent
+      A2 : Addr, -- address of the sender agent
+      D  : Cmd,  -- reconfiguration command
+      A3 : Addr, -- first agent address sent, or dummy
+      A4 : Addr  -- second agent address sent, or dummy
+   )
+   with "get"
+end type
+
+-------------------------------------------------------------------------------
+
+function getrcv (M : Msg) : Addr is
+   return M.A1
+end function
+
+-------------------------------------------------------------------------------
+
+function getsnd (M : Msg) : Addr is
+   return M.A2
+end function
+
+-------------------------------------------------------------------------------
+
+function getcmd (M : Msg) : Cmd is
+   return M.D
+end function
+
+-------------------------------------------------------------------------------
+
+function getad1 (M : Msg) : Addr is
+   return M.A3
+end function
+
+-------------------------------------------------------------------------------
+
+function getad2 (M : Msg) : Addr is
+   return M.A4
+end function
+
+(*****************************************************************************
+ * 
+ * Buffer (FIFO) of messages
+ * 
+ *****************************************************************************)
+
+type Buffer is
+   {},
+   _+_ (B : Buffer, M : Msg)
+   with "eq"
+end type
+
+-------------------------------------------------------------------------------
+
+function empty (B : Buffer) : Bool is
+   return B eq {}
+end function
+
+-------------------------------------------------------------------------------
+
+function head (B : Buffer) : Msg is
+   require not (empty (B));
+   case B in
+   var M : Msg, B2 : Buffer in
+      {}           -> raise UNEXPECTED
+    | {} + M       -> return M
+    | B2 + any Msg -> return head (B2)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function tail (B : Buffer) : Buffer is
+   require not (empty (B));
+   case B in
+   var M : Msg, B2 : Buffer in
+      {}           -> raise UNEXPECTED
+    | {} + any Msg -> return {}
+    | B2 + M       -> return tail (B2) + M
+   end case   
+end function
+
+-------------------------------------------------------------------------------
+
+function length (B : Buffer) : Nat is
+   case B in
+   var B2 : Buffer in
+      {}           -> return 0
+    | B2 + any Msg -> return 1 + length (B2)
+   end case
+end function
+
+end module

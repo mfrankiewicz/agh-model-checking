@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GtkSourceView version 3 definitions for the MCL language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.8:MCL+1.17:SECT -->
+<language id="mcl" _name="MCL" version="2.0" _section="Sources">
+
+   <metadata>
+      <property name="mimetypes">text/x-mcl</property>
+      <property name="globs">*.mcl</property>
+      <property name="block-comment-start">(*</property>
+      <property name="block-comment-end">*)</property>
+   </metadata>
+
+   <styles>
+      <style id="comment"  _name="Comment"       map-to="def:comment"/>
+      <style id="string"   _name="String"        map-to="def:string"/>
+      <style id="keyword"  _name="Keyword"       map-to="def:keyword"/>
+      <style id="type"     _name="Data Type"     map-to="def:type"/>
+      <style id="constant" _name="Boolean value" map-to="def:boolean"/>
+      <style id="function" _name="Function"      map-to="def:builtin"/>
+      <style id="operator" _name="Operator"      map-to="def:operator"/>
+   </styles>
+
+   <default-regex-options case-sensitive="false"/>
+
+   <definitions>
+      <context id="block-comment" style-ref="comment" class="comment" class-disabled="no-spell-check">
+         <start>\(\*</start>
+         <end>\*\)</end>
+         <include>
+            <context ref="block-comment"/>
+         </include>
+      </context>
+
+      <context id="single-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>'</start>
+         <end>'</end>
+      </context>
+
+      <context id="double-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>"</start>
+         <end>"</end>
+      </context>
+
+      <context id="keyword" style-ref="keyword">
+         <keyword>among</keyword>
+         <keyword>any</keyword>
+         <keyword>case</keyword>
+         <keyword>choice</keyword>
+         <keyword>continue</keyword>
+         <keyword>do</keyword>
+         <keyword>else</keyword>
+         <keyword>elsif</keyword>
+         <keyword>end</keyword>
+         <keyword>end_library</keyword>
+         <keyword>end_macro</keyword>
+         <keyword>exists</keyword>
+         <keyword>exit</keyword>
+         <keyword>export</keyword>
+         <keyword>for</keyword>
+         <keyword>forall</keyword>
+         <keyword>from</keyword>
+         <keyword>if</keyword>
+         <keyword>in</keyword>
+         <keyword>let</keyword>
+         <keyword>library</keyword>
+         <keyword>loop</keyword>
+         <keyword>macro</keyword>
+         <keyword>mu</keyword>
+         <keyword>nil</keyword>
+         <keyword>nu</keyword>
+         <keyword>of</keyword>
+         <keyword>on</keyword>
+         <keyword>repeat</keyword>
+         <keyword>step</keyword>
+         <keyword>tau</keyword>
+         <keyword>then</keyword>
+         <keyword>to</keyword>
+         <keyword>until</keyword>
+         <keyword>where</keyword>
+         <keyword>while</keyword>
+      </context>
+
+      <context id="type" style-ref="type">
+         <keyword>bool</keyword>
+         <keyword>nat</keyword>
+         <keyword>natset</keyword>
+         <keyword>int</keyword>
+         <keyword>real</keyword>
+         <keyword>char</keyword>
+         <keyword>string</keyword>
+      </context>
+
+      <context id="constant" style-ref="constant">
+         <keyword>false</keyword>
+         <keyword>true</keyword>
+      </context>
+
+      <context id="function" style-ref="function">
+         <keyword>abs</keyword>
+         <keyword>and</keyword>
+         <keyword>concat</keyword>
+         <keyword>diff</keyword>
+         <keyword>empty</keyword>
+         <keyword>equ</keyword>
+         <keyword>implies</keyword>
+         <keyword>index</keyword>
+         <keyword>insert</keyword>
+         <keyword>isin</keyword>
+         <keyword>isalnum</keyword>
+         <keyword>isalpha</keyword>
+         <keyword>isdigit</keyword>
+         <keyword>islower</keyword>
+         <keyword>isupper</keyword>
+         <keyword>isxdigit</keyword>
+         <keyword>inter</keyword>
+         <keyword>length</keyword>
+         <keyword>not</keyword>
+         <keyword>nth</keyword>
+         <keyword>or</keyword>
+         <keyword>prefix</keyword>
+         <keyword>remove</keyword>
+         <keyword>rindex</keyword>
+         <keyword>sign</keyword>
+         <keyword>substr</keyword>
+         <keyword>succ</keyword>
+         <keyword>suffix</keyword>
+         <keyword>tolower</keyword>
+         <keyword>toupper</keyword>
+         <keyword>union</keyword>
+         <keyword>xor</keyword>
+      </context>
+
+      <context id="operator" style-ref="operator">
+         <match extended="true">
+            \+ | - | = | ! | / | \^ | % | \| | &lt; | &gt; | \[ | \] | @ | \* | \? | &lt;&gt; | &lt;= | &gt;= | -&gt; | -\|
+         </match>
+      </context>
+
+      <context id="mcl" class="no-spell-check">
+         <include>
+            <context ref="block-comment"/>
+            <context ref="single-quoted-string"/>
+            <context ref="double-quoted-string"/>
+            <context ref="keyword"/>
+            <context ref="type"/>
+            <context ref="constant"/>
+            <context ref="function"/>
+            <context ref="operator"/>
+         </include>
+      </context>
+
+   </definitions>
+</language>

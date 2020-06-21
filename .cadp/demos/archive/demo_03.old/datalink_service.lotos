@@ -1,0 +1,16 @@
+specification Datalink_Service [Get, Give] : noexit
+
+   library Datalink endlib
+
+behaviour
+
+   Service [Get, Give]
+
+where
+
+   process Service [Get, Give] : noexit :=
+      Get ?M:BitString;
+         Give !M;
+            Service [Get, Give]
+   endproc
+endspec

@@ -1,0 +1,22 @@
+
+(*
+ * This SVL script involves three steps:
+ *
+ *      - first, CAESAR.ADT automatically translates the abstract data types
+ *        into C types and functions
+ *
+ *      - then, CAESAR builds, compiles, and executes the simulator program,
+ *        which uses the C implementation of abstract data types. An
+ *        automaton in the BCG format is built.
+ *
+ *      - finally, this automaton is displayed and sed-scripts are used to
+ *        erase everything but the values emitted on the PRINT gate
+ *)
+
+"boolean_array.seq" = generation of "boolean_array.lotos";
+
+% echo
+% echo "Displaying boolean_array.seq"
+% echo "----------------------------"
+% cat "boolean_array.seq"
+

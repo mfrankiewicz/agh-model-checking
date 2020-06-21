@@ -1,0 +1,121 @@
+
+library BOOLEAN, NATURAL endlib
+
+type PORT is NATURAL renamedby
+   sortnames PortNo for Nat
+endtype 
+
+type ROUTE is NATURAL renamedby
+   sortnames RouteNo for Nat
+endtype 
+
+type ENVELOPPE is NATURAL renamedby
+   sortnames Env for Nat
+endtype
+
+type COMMANDS is
+  sorts Command
+  opns
+	Add_Data_Port (*! constructor *),
+	Add_Route (*! constructor *),
+	Send_Faults (*! constructor *),
+	Other_Command (*! constructor *) 
+		: -> Command
+endtype
+
+type ERROR_CODE is
+  sorts ErrorCode 
+  opns
+	Unknown_Route (*! constructor *)
+	(* , Timed_Out constructor *)
+	(* , Wrong_Msg constructor *) 
+		: -> ErrorCode
+endtype
+
+type PORT_SET is BOOLEAN, PORT
+  sorts PortSet (*! list *)
+  opns
+	emptyset (*! constructor *) : -> PortSet
+	add (*! constructor *) : PortNo, PortSet -> PortSet
+
+	_IsIn_ : PortNo, PortSet -> Bool
+	_contains_ : PortSet, PortSet -> Bool
+	_==_ : PortSet, PortSet -> Bool
+
+  eqns 
+  forall ps, ps1, ps2:PortSet, p, p1, p2:PortNo
+    ofsort Bool
+	p IsIn emptyset = false ;
+	p IsIn add (p, ps) = true ;
+	not (p1 eq p2) =>  p1 IsIn add (p2, ps) = p1 IsIn ps ;
+    ofsort Bool
+	ps contains emptyset = true ;
+	not (p IsIn ps1) => ps1 contains add (p, ps2) = false ;
+	p IsIn ps1 => ps1 contains add (p, ps2) = ps1 contains ps2 ;
+    ofsort Bool
+	emptyset == emptyset = true ;
+	emptyset == add (p2, ps2) = false ;
+	add (p1, ps1) == emptyset = false ;
+	add (p1, ps1) == add (p2, ps2) = (p1 eq p2) and (ps1 == ps2) ;   
+endtype
+
+type ROUTE_LIST is BOOLEAN, PORT_SET, ROUTE
+  sorts RouteList
+  opns
+	emptyrl (*! constructor *) : -> RouteList
+	insert (*! constructor *)  : RouteNo, PortSet, RouteList -> RouteList
+
+	_IsIn_ : RouteNo, RouteList -> Bool
+	route  : RouteNo, RouteList -> PortSet
+	update : RouteNo, PortSet, RouteList -> RouteList
+  eqns
+  forall rl:RouteList, r, r1, r2:RouteNo, ps, ps1, ps2:PortSet
+     ofsort Bool
+	r IsIn emptyrl = false ;
+	r IsIn insert (r, ps, rl) = true ;
+	not (r1 eq r2) => r1 IsIn insert (r2, ps, rl) = r1 IsIn rl ;
+     ofsort PortSet
+	route (r, emptyrl) = emptyset ;
+	route (r, insert (r, ps, rl)) = ps ;
+	not (r1 eq r2) => route (r1, insert (r2, ps, rl)) = route (r1, rl) ;
+     ofsort RouteList 
+	update (r, ps, emptyrl) = emptyrl ;
+	update (r, ps1, insert (r, ps2, rl)) = insert (r, ps1, rl) ;
+	not (r1 eq r2) =>  
+		update (r1, ps1, insert (r2, ps2, rl)) = 
+					insert (r2, ps2, update (r1, ps1, rl)) ; 
+endtype
+
+type ENV_LIST is BOOLEAN, ENVELOPPE
+  sorts EnvList (*! list *)
+  opns
+	emptyl (*! constructor *) : -> EnvList
+	insert (*! constructor *) : Env, EnvList -> EnvList
+
+	head : EnvList -> Env
+	tail : EnvList -> EnvList
+	remove : Env, EnvList -> EnvList
+	_IsIn_ : Env, EnvList -> Bool 
+	_==_ : EnvList, EnvList -> Bool
+
+  eqns
+  forall l, l1, l2:EnvList, r, r1, r2:Env
+    ofsort Env
+	head (insert (r,l)) = r ;
+    ofsort EnvList
+	tail (insert (r,l)) = l ;
+	remove (r, emptyl) = emptyl ;
+	remove (r, insert (r, l)) = l ;
+	not (r1 eq r2) => 
+		remove (r1, insert (r2, l)) = insert (r2, remove (r1, l))  ;
+	
+     ofsort Bool
+	r IsIn emptyl = false ;
+	r IsIn insert (r, l) = true ;
+	not (r1 eq r2) => r1 IsIn insert (r2, l) = r1 IsIn l ;
+    ofsort Bool
+	emptyl == emptyl = true ;
+	emptyl == insert (r2, l2) = false ;
+	insert (r1, l1) == emptyl = false ;
+	insert (r1, l1) == insert (r2, l2) = (r1 eq r2) and (l1 == l2) ;   
+endtype

@@ -1,0 +1,15 @@
+#define CAESAR_ADT_EXPERT_F 5.6
+
+#define R0() 		((ADT_REAL) 0)
+#define R15()		((ADT_REAL) 15)
+#define R35()		((ADT_REAL) 35)
+#define R50() 		((ADT_REAL) 50)
+#define R0_5208() 	((ADT_REAL) 0.5208)
+#define R0_5707() 	((ADT_REAL) 0.5707)
+#define R0_6458() 	((ADT_REAL) 0.6458)
+#define R0_6593() 	((ADT_REAL) 0.6593)
+#define R0_7971() 	((ADT_REAL) 0.7971)
+#define R0_9450() 	((ADT_REAL) 0.9450)
+#define RM45()		((ADT_REAL) -45) 
+#define RM70()		((ADT_REAL) -70)
+#define RM90() 		((ADT_REAL) -90)

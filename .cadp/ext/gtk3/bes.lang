@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GtkSourceView version 3 definitions for the BES language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.3:BES+1.17:SECT -->
+<language id="bes" _name="BES" version="2.0" _section="Sources">
+
+   <metadata>
+      <property name="mimetypes">text/x-bes</property>
+      <property name="globs">*.bes</property>
+      <property name="block-comment-start">(*</property>
+      <property name="block-comment-end">*)</property>
+   </metadata>
+
+   <styles>
+      <style id="comment"  _name="Comment"       map-to="def:comment"/>
+      <style id="keyword"  _name="Keyword"       map-to="def:keyword"/>
+      <style id="constant" _name="Boolean value" map-to="def:boolean"/>
+      <style id="function" _name="Function"      map-to="def:builtin"/>
+   </styles>
+
+   <default-regex-options case-sensitive="true"/>
+
+   <definitions>
+      <context id="block-comment" style-ref="comment" class="comment" class-disabled="no-spell-check">
+         <start>\(\*</start>
+         <end>\*\)</end>
+         <include>
+            <context ref="block-comment"/>
+         </include>
+      </context>
+
+      <context id="keyword" style-ref="keyword">
+         <keyword>block</keyword>
+         <keyword>end</keyword>
+         <keyword>is</keyword>
+         <keyword>mode</keyword>
+         <keyword>mu</keyword>
+         <keyword>nu</keyword>
+         <keyword>unique</keyword>
+      </context>
+
+      <context id="constant" style-ref="constant">
+         <keyword>false</keyword>
+         <keyword>true</keyword>
+      </context>
+
+      <context id="function" style-ref="function">
+         <keyword>and</keyword>
+         <keyword>or</keyword>
+      </context>
+
+      <context id="bes" class="no-spell-check">
+         <include>
+            <context ref="block-comment"/>
+            <context ref="keyword"/>
+            <context ref="constant"/>
+            <context ref="function"/>
+         </include>
+      </context>
+
+   </definitions>
+</language>

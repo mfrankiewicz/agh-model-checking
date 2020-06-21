@@ -1,0 +1,149 @@
+-------------------------------------------------------------------------------
+-- DATA_PATH.lnt -- 1.14 -- 2015/09/11 11:04:16 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module DATA_PATH (PERMUTATION_FUNCTIONS, CIPHER) is
+
+-- DATA_PATH performs the 16 iterations ciphering DATA with the subkeys read
+-- on gate SUBKEY
+
+process DATA_PATH [DATA, OUTPUT: C64, SUBKEY: C48, CTRL_CL, CTRL_CR: CP] is
+   hide FIRST_L, FIRST_R, OUTPUT_L, OUTPUT_R: C32 in
+      par
+         FIRST_L, FIRST_R ->
+            IP [DATA, FIRST_L, FIRST_R]
+      ||
+         FIRST_L, FIRST_R, OUTPUT_L, OUTPUT_R ->
+            hide CL_XR, CR_FX, FX_XR, XR_CR, CR_CL: C32 in
+               par
+                  CR_CL, CL_XR ->
+                     CHOOSE_L [CTRL_CL, FIRST_L, CR_CL, CL_XR, OUTPUT_L]
+               ||
+                  XR_CR, CR_CL, CR_FX ->
+                     CHOOSE_R [CTRL_CR, FIRST_R, XR_CR, CR_CL, CR_FX, OUTPUT_R]
+               ||
+                  CR_FX, FX_XR ->
+                     CIPHER [SUBKEY, CR_FX, FX_XR]
+               ||
+                  CL_XR, FX_XR, XR_CR ->
+                     XOR_32 [CL_XR, FX_XR, XR_CR]
+               end par
+            end hide
+      ||
+         OUTPUT_L, OUTPUT_R ->
+            IIP [OUTPUT_L, OUTPUT_R, OUTPUT]
+      end par
+   end hide
+end process
+
+-------------------------------------------------------------------------------
+-- IP applies the initial permutation IP to the initial 64-bit vector received
+-- on gate DATA and breaks the resulting 64-bit vector into two 32-bit vectors
+-- L and R
+
+process IP [DATA: C64, FIRST_L, FIRST_R: C32] is
+   var I64: BIT64 in
+      loop
+	 DATA (?I64);
+	 I64 := IP (I64);
+	 par
+	    FIRST_L (1TO32 (I64))
+	    ||
+	    FIRST_R (33TO64 (I64))
+	 end par
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- CHOOSE_L reads a 32-bit vector from INPUT and outputs to OUTPUT, but for the
+-- first iteration, where it reads from FIRST_IN, and the last iteration where
+-- it outputs to LAST_OUT
+
+process CHOOSE_L [CTRL: CP, FIRST_IN, INPUT, OUTPUT, LAST_OUT: C32] is
+   var CTRL: PHASE, L32: BIT32 in
+      loop
+         CTRL (?CTRL);
+         case CTRL in
+           F ->
+               FIRST_IN (?L32);
+               OUTPUT (L32)
+         | N ->
+               INPUT (?L32);
+               OUTPUT (L32)
+         | L ->
+               INPUT (?L32);
+               LAST_OUT (L32)
+         end case
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- CHOOSE_R reads a 32-bit vector from INPUT and outputs to OUT1 and OUT2, but
+-- for the first iteration, where it reads from FIRST_IN, and the last one,
+-- where it outputs to LAST_OUT
+
+process CHOOSE_R [CTRL: CP, FIRST_IN, INPUT, OUT1, OUT2, LAST_OUT: C32] is
+   var CTRL: PHASE, R32: BIT32 in
+      loop
+         CTRL (?CTRL);
+         case CTRL in
+           F ->
+               FIRST_IN (?R32);
+               par
+                  OUT1 (R32)
+               ||
+                  OUT2 (R32)
+               end par
+         | N ->
+               INPUT (?R32);
+               par
+                  OUT1 (R32)
+               ||
+                  OUT2 (R32)
+               end par
+         | L ->
+               INPUT (?R32);
+               LAST_OUT (R32)
+         end case
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- XOR_32 asynchronously reads two 32-bit vectors and outputs the bitwise sum
+
+process XOR_32 [A, B, R: C32] is
+   var A32, B32: BIT32 in
+      loop
+         par
+            A (?A32)
+         ||
+            B (?B32)
+         end par;
+         R (XOR (A32, B32))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- IIP assembles the two 32-bit vectors computed by the algorithm to a 64-bit
+-- vector and applies the inverse initial permutation IIP to compute the final
+-- result
+
+process IIP [OUTPUT_L, OUTPUT_R: C32, OUTPUT: C64] is
+   var OL, OH: BIT32 in
+      loop
+	 par
+	    OUTPUT_L (?OL)
+	 ||
+	    OUTPUT_R (?OH)
+	 end par;
+	 OUTPUT (IIP (MK_64 (OH, OL)))
+      end loop
+   end var
+end process
+
+end module
+

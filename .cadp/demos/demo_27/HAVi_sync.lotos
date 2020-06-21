@@ -1,0 +1,546 @@
+specification leader_election
+              [gInfo, gUpDown, gBusReset, gDM, gEvent]
+              : noexit
+
+library BOOLEAN endlib
+library MY_NATURAL endlib
+
+
+type Message is BOOLEAN, MY_NATURAL
+   sorts Message1, Message2
+   opns
+     init_leader     (*! constructor *),
+     final_leader    (*! constructor *),
+     bus_reset_start (*! constructor *),
+     bus_reset_end   (*! constructor *),
+     bus_reset_event (*! constructor *),
+     power_change    (*! constructor *),
+     GUID_list       (*! constructor *),
+     empty           (*! constructor *) : -> Message1
+
+     DMInitRequest (*! constructor *) : -> Message2
+     DMInitReply     (*! constructor *) : -> Message2
+
+endtype
+
+type Node is BOOLEAN, MY_NATURAL
+   sorts Node
+   opns
+     consn (*! constructor *) : Bool -> Node
+     up   : Node -> Bool
+     count_up : Node -> Nat
+   
+   eqns forall n:Node, b1,b2:Bool
+        ofsort Bool
+           up(consn(b2)) = b2;
+        ofsort Nat
+           up(n) => count_up(n) = 1;
+           not(up(n)) => count_up(n) = 0;
+
+endtype
+
+
+type NodeTuple is Node
+  sorts Network
+  opns
+    consnet (*! constructor *) : Node, Node -> Network
+    firstn  : Network -> Node
+    secondn : Network -> Node
+
+  eqns forall   l : Network,
+                n1,n2 : Node
+
+       ofsort Node
+          firstn(consnet(n1,n2))  = n1;
+          secondn(consnet(n1,n2))  = n2;
+
+
+endtype
+
+type EnrichedNodeTuple is NodeTuple
+   opns
+     nr_uphosts : Network -> Nat
+     flip : Nat, Network -> Network
+     i_leader: Network -> Nat
+   eqns forall n1,n2: Node
+        ofsort Network
+           flip(1,consnet(n1,n2))
+               = consnet(consn(not(up(n1))),n2);
+           flip(2,consnet(n1,n2))
+               = consnet(n1,consn(not(up(n2))));
+        ofsort Nat
+           nr_uphosts(consnet(n1,n2))
+               = count_up(n1) + count_up(n2);
+           up(n1) => i_leader(consnet(n1,n2)) = 1;
+           not(up(n1)) and up(n2) => i_leader(consnet(n1,n2)) = 2;
+           not(up(n1)) and not(up(n2)) =>
+               i_leader(consnet(n1,n2)) = 0;
+endtype 
+
+type Host is BOOLEAN, MY_NATURAL
+   sorts Host
+   opns
+     consh (*! constructor *) : Nat, Bool, Bool -> Host
+     id      : Host -> Nat
+     UrlCapable   : Host -> Bool
+     rec_req : Host -> Bool
+   
+   eqns forall n:Nat, b1:Bool, b2:Bool
+        ofsort Nat
+           id(consh(n,b1,b2)) = n
+        ofsort Bool
+           UrlCapable(consh(n,b1,b2)) = b1;
+           rec_req(consh(n,b1,b2)) = b2
+endtype
+
+type HostList is Host
+  sorts Hosts
+  opns
+    emptyh  (*! constructor *) : -> Hosts
+    addh    (*! constructor *) : Host, Hosts -> Hosts
+    headh   : Hosts -> Host
+    tailh   : Hosts -> Hosts
+
+  eqns forall   l : Hosts,
+                e : Host
+
+       ofsort Host
+          headh(addh(e,l))  = e
+
+       ofsort Hosts
+          tailh(emptyh)     = emptyh;
+          tailh(addh(e,l))  = l
+
+endtype
+
+type EnrichedHostList is HostList, EnrichedNodeTuple
+   opns
+     _==_: Hosts, Hosts -> Bool
+     _<>_: Hosts, Hosts -> Bool
+     init_hosts: Network -> Hosts
+     chge_rec: Nat, Bool, Hosts -> Hosts
+     rec: Nat, Hosts -> Bool
+     f_leader: Nat, Hosts -> Nat
+   eqns forall host,host1,host2: Host, hosts,hosts1,hosts2: Hosts,
+               n1,n2:Node, n:Nat, b:Bool
+        ofsort Bool
+           emptyh == emptyh = true;
+           addh(host,hosts) == emptyh = false;
+           emptyh == addh(host,hosts) = false;
+           addh(host1,hosts1) == addh(host2,hosts2)
+           = ((id(host1)==id(host2)) and ((UrlCapable(host1) iff UrlCapable(host2))
+             and ((rec_req(host1) iff rec_req(host2)) and (hosts1==hosts2))));
+           hosts1 <> hosts2 = not(hosts1 == hosts2);
+        ofsort Hosts
+           not(up(n1)) and not(up(n2)) =>
+             init_hosts(consnet(n1,n2))
+               = emptyh;
+           not(up(n1)) and up(n2) =>
+             init_hosts(consnet(n1,n2))
+               = addh(consh(2,false,false),emptyh);
+           up(n1) and not(up(n2)) =>
+             init_hosts(consnet(n1,n2))
+               = addh(consh(1,false,false),emptyh);
+           up(n1) and up(n2) =>
+             init_hosts(consnet(n1,n2))
+               = addh(consh(1,false,false),
+                 addh(consh(2,false,false),emptyh));
+           chge_rec(n,b,emptyh) = emptyh;
+           (n <> id(host)) =>
+               chge_rec(n,b,addh(host,hosts)) = addh(host,chge_rec(n,b,hosts));
+           (n == id(host)) =>
+               chge_rec(n,b,addh(host,hosts)) = addh(consh(n,b,true),hosts)
+        ofsort Bool
+               rec(n,emptyh) = true;	
+           (n<>id(host)) =>
+               rec(n,addh(host,hosts)) = rec(n,hosts);
+           (n==id(host)) =>
+               rec(n,addh(host,hosts)) = rec_req(host)
+        ofsort Nat
+           f_leader(n,emptyh) = n;
+           not(UrlCapable(host)) =>
+               f_leader(n,addh(host,hosts)) = f_leader(n,hosts);
+           UrlCapable(host) =>
+               f_leader(n,addh(host,hosts)) = id(host)
+endtype
+
+
+behaviour
+
+LE [ gInfo, gUpDown, gBusReset, gDM, gEvent ]
+   ( consnet( consn(false), consn(false)) ) (* all dcms down *)
+
+where
+
+    process LE [ gInfo, gUpDown, gBusReset, gDM, gEvent ]
+               ( net:Network )
+      : noexit :=
+
+      ( BusReset[gUpDown,gBusReset,gEvent] (net)
+      )
+
+      |[gUpDown, gBusReset]|
+
+      ( ( ( DCM [gInfo,gUpDown,gDM,gEvent] (1)
+            |||
+            OtherCommunications[gDM](1) )
+          |[gDM]|
+          ( DCM [gInfo,gUpDown,gDM,gEvent] (2)
+            |||
+            OtherCommunications[gDM](2) )
+        )
+        |[gInfo,gUpDown]|
+        ( ( CMM[gInfo,gUpDown,gBusReset](1)
+            |[gBusReset]|
+            CMM[gInfo,gUpDown,gBusReset](2)
+          )
+        )
+      )
+    endproc (* LE *)
+
+    process BusReset [ gUpDown, gBusReset , gEvent ]
+            ( net: Network )
+
+      : noexit :=
+      
+      gBusReset ! bus_reset_start 
+      ; BusReset2[gUpDown,gBusReset,gEvent]
+        (net,1)
+
+      where
+
+        process BusReset2 [ gUpDown, gBusReset, gEvent ]
+                (net: Network, j:Nat)
+
+          : noexit :=
+
+        ( [j==0]
+            -> ( gBusReset !  bus_reset_end ! net
+                 ; BusReset[gUpDown,gBusReset,gEvent](net)
+               )
+        )
+        []
+        ( [j<>0]
+            -> ( ( gUpDown ! j ! power_change
+                   ; BusReset2[gUpDown,gBusReset,gEvent]
+                     (flip(j,net),j+1)
+                 )
+                 []
+                 ( i
+                   ; BusReset2[gUpDown,gBusReset,gEvent]
+                     (net,j+1)
+                 )
+               )
+        )
+        endproc (* BusReset2 *)
+
+    endproc (* BusReset *)
+
+    process FlushBusReset[gBusReset]
+      : noexit :=
+
+      ( gBusReset ! bus_reset_start
+        ; FlushBusReset[gBusReset] )
+      []
+      ( choice b1,b2:Bool
+        [] ( gBusReset ! bus_reset_end ! consnet(consn(b1),consn(b2))
+             ; FlushBusReset[gBusReset] ) )
+
+    endproc (* FlushBusReset *)
+
+    process CMM[ gInfo, gUpDown, gBusReset ]
+            ( Id: Nat ) 
+      : noexit :=
+
+      CMMDown[gInfo,gUpDown,gBusReset](Id)
+
+    where
+
+      process CMMDown[ gInfo, gUpDown, gBusReset ]
+              ( Id: Nat ) 
+        : noexit :=
+
+        FlushBusReset[gBusReset]
+        [> ( gUpDown ! Id ! power_change
+             ; ( choice b1,b2:Bool
+                 [] gBusReset ! bus_reset_end ! consnet(consn(b1),consn(b2))
+                 ; CMMUp[gInfo,gUpDown,gBusReset]
+                   (Id,consnet(consn(b1),consn(b2))) ) )
+      endproc (* CMMDown *)
+
+      process CMMUp[ gInfo, gUpDown, gBusReset ]
+              ( Id: Nat , net: Network ) 
+        : noexit :=
+
+        CMMReady[gInfo,gUpDown,gBusReset](Id,net)
+        [> ( gUpDown ! Id ! power_change
+             ; CMMDown[gInfo,gUpDown,gBusReset](Id) )
+
+      where
+        process CMMReady[ gInfo, gUpDown, gBusReset ]
+              ( Id: Nat , net: Network )
+        : noexit :=
+
+        ( gInfo ! Id ! GUID_list ! net
+          ; CMMReady[gInfo,gUpDown,gBusReset](Id,net) )
+        []
+        ( gBusReset ! bus_reset_start
+          ; CMMDeliver[gInfo,gUpDown,gBusReset](Id) )
+
+        endproc (* CMMReady *)
+
+        process CMMDeliver[ gInfo, gUpDown, gBusReset ]
+              ( Id: Nat )
+        : noexit :=
+
+        ( gInfo ! Id ! bus_reset_event
+          ; ( choice b1,b2:Bool
+              [] (gBusReset ! bus_reset_end ! consnet(consn(b1),consn(b2))
+                  ; CMMReady[gInfo,gUpDown,gBusReset]
+                    (Id,consnet(consn(b1),consn(b2))))))
+        []
+        ( choice b1,b2:Bool
+                 [] (gBusReset ! bus_reset_end ! consnet(consn(b1),consn(b2))
+                     ; CMMDeliver2 [gInfo,gUpDown,gBusReset]
+                       (Id,consnet(consn(b1),consn(b2))) 
+                    )
+        )
+        endproc (* CMMDeliver *)
+
+        process CMMDeliver2[ gInfo, gUpDown, gBusReset ]
+              ( Id: Nat , net: Network )
+        : noexit :=
+
+        ( gInfo ! Id ! GUID_list ! net
+          ; CMMDeliver2[gInfo,gUpDown,gBusReset] (Id,net) )
+        []
+        ( gInfo ! Id ! bus_reset_event
+          ; CMMReady[gInfo,gUpDown,gBusReset] (Id,net) )
+        []
+        ( gBusReset ! bus_reset_start
+          ; CMMDeliver[gInfo,gUpDown,gBusReset](Id) )
+        endproc (* CMMDeliver2 *)
+
+      endproc (* CMMUp *)
+
+    endproc (* CMM *)
+
+    process OtherCommunications[ gDM ]
+            ( Id: Nat ) 
+      : noexit :=
+
+        ( gDM ? j:Nat ? k:Nat ! DMInitRequest ? b:Bool
+          [(j<>Id) and (j<>0) and (k<>Id) and (k<>0)] 
+          ; OtherCommunications [gDM](Id))
+        []
+        ( gDM ? j:Nat ? k:Nat ! DMInitReply ? l:Nat
+          [(j<>Id) and (j<>0) and (k<>Id) and (k<>0) and (l<>0)]
+          ; OtherCommunications [gDM](Id))
+
+    endproc (* OtherCommunications *)
+
+    process DCM_Manager[ gInfo, gUpDown, gDM, gEvent ]
+            ( Id: Nat , UrlCapable: Bool ) 
+      : noexit :=
+
+      downDM[gInfo,gUpDown,gDM,gEvent](Id,UrlCapable)
+
+      where
+
+        process downDM[ gInfo, gUpDown, gDM, gEvent ]
+                ( Id: Nat , UrlCapable: Bool )
+          : noexit :=
+
+          stop
+          [> (gUpDown! Id ! power_change		(* Disrupt !! *)
+              ; leDM[gInfo,gUpDown,gDM,gEvent]
+                (Id,UrlCapable) )
+
+        endproc (* downDM *)
+
+        process leDM[ gInfo, gUpDown, gDM, gEvent ]
+                ( Id: Nat , UrlCapable: Bool )
+          : noexit :=
+
+          ( choice b1,b2:Bool
+            [] let net:Network=consnet(consn(b1),consn(b2))
+               in ( gInfo ! Id ! GUID_list ! net
+                    ; ( [i_leader(net)==Id]
+                          -> gEvent ! init_leader ! Id
+                             ; ilDM[gDM,gEvent](Id,UrlCapable,net)
+                       []
+                        [i_leader(net)<>Id]
+                          -> ifDM[gDM,gEvent]
+                             (Id,UrlCapable,net,i_leader(net))
+                      )
+                  )
+          )
+          [> ( ( gInfo ! Id ! bus_reset_event		(* Disrupt !! *)
+                 ; leDM[gInfo,gUpDown,gDM,gEvent](Id,UrlCapable))
+               []
+               ( gUpDown ! Id ! power_change
+                 ; downDM[gInfo,gUpDown,gDM,gEvent](Id,UrlCapable))
+             )
+        endproc (* leDM *)
+
+        process ifDM[ gDM, gEvent ]
+                ( Id: Nat , UrlCapable: Bool , net: Network , leader: Nat )
+          : noexit :=
+
+          DeclareCapability[ gDM, gEvent](Id,UrlCapable,leader)
+
+          [> ( gDM ! Id ! leader ! DMInitReply ? j:Nat[j<>0]
+               ; ( [j==Id]
+                     -> ( gEvent ! final_leader ! Id ! UrlCapable
+                          ; flDM[gDM,gEvent](Id,UrlCapable,net) )
+                   []
+                   [j<>Id]
+                     -> ffDM[gDM,gEvent](Id,UrlCapable,net,j)
+                 )
+             )
+
+          where
+            process DeclareCapability[ gDM, gEvent ]
+                    ( Id:Nat , UrlCapable: Bool , leader: Nat )
+            : noexit :=
+
+              ( gDM ! leader ! Id ! DMInitRequest ! UrlCapable
+                ; DeclareCapability[gDM,gEvent](Id,UrlCapable,leader))
+              []
+              ( gDM ! Id ? k:Nat ! DMInitRequest ? b:Bool
+                [(k<>Id) and (k<>0)]
+                ; DeclareCapability[gDM,gEvent](Id,UrlCapable,leader))
+
+            endproc (* DeclareCapability *)
+        endproc (* ifDM *)
+
+        process ilDM[ gDM, gEvent ]
+                ( Id: Nat , UrlCapable: Bool , net: Network )
+          : noexit :=
+
+          Elect[gDM,gEvent]
+               (Id,UrlCapable,net,init_hosts(net),nr_uphosts(net))
+
+          where
+            process Elect[ gDM, gEvent ]
+                    ( Id: Nat , UrlCapable: Bool , net: Network ,
+                      hosts: Hosts, nr: Nat)
+              : noexit :=
+                ([nr==1]
+                  -> DeclareLeader[gDM,gEvent]
+                     (Id,UrlCapable,net,hosts,f_leader(Id,chge_rec(Id,UrlCapable,hosts))))
+                []
+                ([nr>1]
+                  -> ( gDM ! Id ? j:Nat ! DMInitRequest ? b:Bool
+                       [(j<>Id) and (j<>0)]
+                       ; ( [not(rec(j,hosts))]
+                             -> Elect[gDM,gEvent]
+                                (Id,UrlCapable,net,chge_rec(j,b,hosts),nr-1)
+                         []
+                           [rec(j,hosts)]
+                             -> Elect[gDM,gEvent]
+                                (Id,UrlCapable,net,hosts,nr)
+                         )
+                     )
+                )
+                []
+                ( gDM ! Id ? k:Nat ! DMInitReply ? l:Nat 
+                  [(k<>Id) and (k<>0) and (l<>0)]
+                  ; Elect[gDM,gEvent] (Id,UrlCapable,net,hosts,nr))
+            endproc (* Elect *)
+
+            process DeclareLeader[ gDM, gEvent ]
+                    ( Id: Nat , UrlCapable: Bool , net: Network ,
+                      hosts: hosts , leader: Nat )
+              : noexit :=
+                ([hosts==emptyh]
+                  -> ( [leader==Id]
+                         -> (gEvent ! final_leader ! Id ! UrlCapable
+                             ; fliDM[gDM,gEvent]
+                               (Id,UrlCapable,net))
+                       []
+                       [leader<>Id]
+                         -> (gDM ! leader ! Id ! DMInitReply ! leader
+                             ; ffiDM[gDM,gEvent]
+                               (Id,UrlCapable,net,leader))
+                     ))
+                []
+                ([hosts<>emptyh] -> [(id(headh(hosts))==Id)or(id(headh(hosts))==leader)]
+                  -> DeclareLeader[gDM,gEvent]
+                     (Id,UrlCapable,net,tailh(hosts),leader))
+                []
+                ([hosts<>emptyh] -> [(id(headh(hosts))<>Id)and(id(headh(hosts))<>leader)]
+                  -> (gDM ! id(headh(hosts)) ! Id ! DMInitReply ! leader
+                     ; DeclareLeader[gDM,gEvent]
+                       (Id,UrlCapable,net,tailh(hosts),leader)))
+            endproc (* DeclareLeader *)
+
+        endproc (* ilDM *)
+
+        process ffDM[ gDM, gEvent ]
+                ( Id: Nat , UrlCapable: Bool , net: Network , leader: Nat )
+          : noexit :=
+
+            ( gDM ! Id ? k:Nat ! DMInitRequest ? b:Bool
+              [(k<>Id) and (k<>0)]
+              ; ffDM[gDM,gEvent] (Id,UrlCapable,net,leader))
+            []
+            ( gDM ! Id ? k:Nat ! DMInitReply ? l:Nat 
+              [(k<>Id) and (k<>0) and (l<>0)]
+              ; ffDM[gDM,gEvent] (Id,UrlCapable,net,leader))
+
+        endproc (* flDM *)
+
+        process ffiDM[ gDM, gEvent ]
+                ( Id: Nat , UrlCapable: Bool , net: Network , leader: Nat )
+          : noexit :=
+
+            ( gDM ! Id ? j:Nat ! DMInitRequest ? b:Bool
+              [j<>Id and (j<>0)]
+              ; ( gDM ! j ! Id ! DMInitReply ! leader
+                  ; ffiDM[gDM,gEvent] (Id,UrlCapable,net,leader)))
+            []
+            ( gDM ! Id ? k:Nat ! DMInitReply ? l:Nat 
+              [(k<>Id) and (k<>0) and (l<>0)]
+              ; ffiDM[gDM,gEvent] (Id,UrlCapable,net,leader))
+
+        endproc (* ffiDM *)
+
+        process flDM[ gDM, gEvent ]
+                ( Id: Nat , UrlCapable: Bool , net: Network )
+          : noexit :=
+
+            ( gDM ! Id ? k:Nat ! DMInitRequest ? b:Bool
+              [(k<>Id) and (k<>0)]
+              ; flDM[gDM,gEvent] (Id,UrlCapable,net))
+            []
+            ( gDM ! Id ? k:Nat ! DMInitReply ? l:Nat 
+              [(k<>Id) and (k<>0) and (l<>0)]
+              ; flDM[gDM,gEvent] (Id,UrlCapable,net))
+
+        endproc (* flDM *)
+
+        process fliDM[ gDM, gEvent ]
+                ( Id: Nat , UrlCapable: Bool , net: Network )
+          : noexit :=
+
+            ( gDM ! Id ? j:Nat ! DMInitRequest ? b:Bool
+              [j<>Id and(j<>0)]
+               ; ( gDM ! j !Id ! DMInitReply ! Id
+                   ; fliDM[gDM,gEvent] (Id,UrlCapable,net)))
+            []
+            ( gDM ! Id ? k:Nat ! DMInitReply ? l:Nat 
+              [(k<>Id) and (k<>0) and (l<>0)]
+              ; fliDM[gDM,gEvent] (Id,UrlCapable,net))
+
+        endproc (* fliDM *)
+
+    endproc (* DCM_Manager *)
+
+    process DCM [gInfo, gUpDown, gDM, gEvent] (Id : Nat) : noexit :=
+       DCM_Manager [gInfo, gUpDown, gDM, gEvent] (Id, true)
+       []
+       DCM_Manager [gInfo, gUpDown, gDM, gEvent] (Id, false)
+    endproc (* DCM *)
+
+endspec (* leader_election *)

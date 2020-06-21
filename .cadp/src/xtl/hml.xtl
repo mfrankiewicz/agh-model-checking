@@ -1,0 +1,87 @@
+(******************************************************************************
+ *                                X T L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       hml.xtl
+ *   Author             :       Radu MATEESCU
+ *   Version            :       1.9
+ *   Date               :       2014/12/22 18:29:20
+ *****************************************************************************)
+
+(*
+ * Definition of the HML (Hennessy-Milner) modal logic in XTL.
+ * Reference:
+ * [1] M. Hennessy and R. Milner, "Algebraic Laws for Nondeterminism and
+ *     Concurrency", Journal of the ACM, v. 32, p. 137-161, 1985
+ *
+ * The semantics of modal operators is defined over a Labelled Transition
+ * System (LTS) M = (Q, A, T, q0), where:
+ *  - Q is the set of states
+ *  - A is the set of actions
+ *  - T in Q * A * Q is the transition relation
+ *  - q0 in Q is the initial state.
+ * The semantics of a state (resp. action) formula f (resp. a), noted [[f]]
+ * (resp. [[a]]), is the set of states (resp. labels) satisfying it.
+ *)
+
+(*===========================================================================*)
+(* Libraries used *)
+
+library basic.xtl end_library
+
+(*===========================================================================*)
+(* Modal operators *)
+
+(*
+ * < a > f
+ * [[ < a > f ]] = { p | exists l, q such that
+ *	(p, l, q) in T and l in [[a]] and q in [[f]] }
+ *)
+
+def Dia (A : labelset, F : stateset) : stateset =
+    { S : state where
+	exists T : edge among out (S) in
+	    (label (T) among A) and (target (T) among F)
+	end_exists
+    }
+end_def
+
+(*
+ * < true > f
+ * [[ < true > f ]] = { p | exists l, q such that
+ *	(p, l, q) in T and q in [[f]] }
+ *)
+
+def Dia (F : stateset) : stateset =
+    <| insert on S : state among F, S2 : state among pred (S) |> S2
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [ a ] f = not < a > not f
+ * [[ [ a ] f ]] = { p | forall l, q,
+ *	((p, l, q) in T and l in [[a]]) => q in [[f]] }
+ *)
+
+def Box (A : labelset, F : stateset) : stateset =
+    { S : state where
+	forall T : edge among out (S) in
+	    (label (T) among A) implies (target (T) among F)
+	end_forall
+    }
+end_def
+
+(*
+ * [ true ] f = not < true > not f
+ * [[ [ true ] f ]] = { p | forall l, q,
+ *	(p, l, q) in T => q in [[f]] }
+ *)
+
+def Box (F : stateset) : stateset =
+    <| remove on S : state among not (F), S2 : state among pred (S) |> S2
+end_def
+

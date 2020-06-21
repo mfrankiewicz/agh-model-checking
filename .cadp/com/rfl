@@ -1,0 +1,1016 @@
+#! /bin/sh
+
+# CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+# http://cadp.inria.fr
+
+# rfl version 1.163 -- date 2020/05/12 18:45:11 -- Hubert Garavel
+
+# This is the "Request For Licenses" shell-script of the package.
+# The purpose of this shell-script is explained in file $CADP/INSTALLATION_3.
+
+# ----------------------------------------------------------------------------
+
+# The command-line arguments are:
+#
+# 	rfl [-f old_license_file] [-d directory] [-p protocol] [-i info_file] [host1 host2 ...]
+# 	rfl -l old_license_file
+#	rfl -n old_license_file
+#	rfl -a old_license_file
+#	rfl -e old_license_file
+#	rfl -r old_license_file
+#	rfl -v old_license_file
+#	rfl -t old_license_file
+# where host1, host2, ... are machine names (i.e., strings returned by the
+# hostname(1) UNIX command and the gethostname(2) UNIX system call).
+#
+# If option "-f" is given, the machine names contained in file
+# "old_license_file" (which should be a license file generated using "rfl")
+# are added to the list of hostnames.
+#
+# If option "-d" is given, "rfl" will know that the LICENSE file has to
+# be installed in "directory". This option is used by Installator.
+#
+# If option "-p" is given (where "protocol" can be equal to either "ssh",
+# "rsh", "krsh", or "any"), "rfl" will try to use "protocol" first, if
+# this protocol is different from "any". Otherwise, by default, "rfl"
+# will attempt at using "ssh", "rsh", and "krsh", in this order.
+#
+# If option "-i" is given, "rfl" will use the contents of "info_file"
+# (a file containing information about organization name and address, and
+# person name) to prepare the license file. This option is used by
+# Installator.
+#
+# If option "-l" is given, "rfl" simply echoes the machine names contained
+# in file "old_license_file". This option is used by Installator.
+#
+# If option "-n" is given, "rfl" simply echoes the person names contained
+# in file "old_license_file". This option is used by Installator.
+#
+# If option "-a" is given, "rfl" simply echoes the organization name
+# and address contained in file "old_license_file". This option is used
+# by Installator.
+#
+# If option "-e" is given, "rfl" simply echoes the e-mail address
+# contained in file "old_license_file". This option is used by Installator.
+#
+# If option "-r" is given, "rfl" simply echoes the reminder delay
+# contained in file "old_license_file". This option is used by Installator.
+#
+# If option "-v" is given, "rfl" simply echoes the CADP version number
+# contained in file "old_license_file". This option is used by the license
+# expiration reminder daemon running at INRIA.
+#
+# If option "-t" is given, "rfl" simply echoes the time at which the license
+# contained in file "old_license_file" was requested. This option is used by
+# the license expiration reminder daemon running at INRIA.
+#
+# If no host is given, "rfl" uses the name of the current machine, as
+# returned by the hostname(1) command.
+
+# ----------------------------------------------------------------------------
+
+COMMAND=`basename "$0" | tr '[:lower:]' '[:upper:]'`
+
+# ----------------------------------------------------------------------------
+
+ABORT () {
+	echo "     *** $COMMAND aborted ***" 1>&2
+	exit 1
+}
+
+# ----------------------------------------------------------------------------
+
+# phase 1 : check if the CADP variable is defined in the environment
+
+if test $PRIVILEDGE
+then
+	:
+elif test "$CADP"
+then
+	:
+else
+	echo "$COMMAND: the \$CADP variable is not defined in the environment" 1>&2
+	ABORT
+fi
+
+# ----------------------------------------------------------------------------
+
+ARCH=`"$CADP"/com/arch`
+
+STANDARD_PATH="/bin:/usr/bin:/usr/athena/bin"
+export STANDARD_PATH
+
+# /usr/athena/bin is used by Kerberos
+
+PATH="$PATH:$STANDARD_PATH"
+export PATH
+
+HOSTNAME="$CADP/src/com/cadp_hostname"
+export HOSTNAME
+
+# name of the current host normalized to lower-case letters (on Windows,
+# it is likely to contain upper-case letters) in order to implement
+# case-insensitive comparisons of host names.
+
+LONG_LOCAL_HOST=`"$HOSTNAME" -long`
+export LONG_LOCAL_HOST
+
+SHORT_LOCAL_HOST=`"$HOSTNAME" -short`
+export SHORT_LOCAL_HOST
+
+# to normalize the output of the 'date' command
+LC_TIME=C
+export LC_TIME
+LC_ALL=
+export LC_ALL
+
+# ordered list of the remote access tools
+REMOTE_ACCESS_LIST="USE_SSH USE_RSH USE_KRSH"
+
+# ----------------------------------------------------------------------------
+
+# auxiliary function definitions
+
+CHECK_FILE () {
+	if test ! -r "$1"
+	then
+		echo "$COMMAND: file \`\`$1'' is unreadable" 1>&2
+		ABORT
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+CHECK_DIRECTORY () {
+	if test ! -d "$1"
+	then
+		echo "$COMMAND: directory \`\`$1'' is unreadable" 1>&2
+		ABORT
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+LOCAL_HOST () {
+	HOST=`"$HOSTNAME" -long $1`
+	if test "$HOST" = "$LONG_LOCAL_HOST" -o  "$HOST" = "$SHORT_LOCAL_HOST"
+	then
+		echo "TRUE"
+	else
+		echo "FALSE"
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+GET_REMOTE_SHELL () {
+	case "$1" in
+		USE_SSH ) echo "ssh" ;;
+		USE_RSH ) echo "rsh" ;;
+		USE_KRSH ) echo "krsh" ;;
+		* ) echo "$COMMAND: unknown remote shell tool '$1'" 1>&2
+		    exit 1
+		    ;;
+	esac
+}
+
+# ----------------------------------------------------------------------------
+
+GET_REMOTE_SHELL_OPTIONS () {
+	case "$1" in
+		USE_SSH ) echo "-q"
+			  # cette option supprime les messages d'erreur de
+			  # la commande "ssh" en cas d'echec
+			  ;;
+		* ) echo "" ;;
+	esac
+}
+
+# ----------------------------------------------------------------------------
+
+GET_REMOTE_COPY () {
+	case "$1" in
+		USE_SSH ) echo "scp" ;;
+		USE_RSH ) echo "rcp" ;;
+		USE_KRSH ) echo "kcp" ;;
+		* ) echo "$COMMAND: unknown remote copy tool '$1'" 1>&2
+		    exit 1
+		    ;;
+	esac
+}
+
+# ----------------------------------------------------------------------------
+
+GET_REMOTE_COPY_OPTIONS () {
+	case "$1" in
+		USE_SSH ) echo "-q"
+			  # cette option supprime l'affichage par la commande
+			  # "scp" de la barre de progression pendant la copie,
+			  # mais ne supprime pas les messages d'erreur en cas
+			  # d'echec
+		          ;;
+		* ) echo "" ;;
+	esac
+}
+
+# ----------------------------------------------------------------------------
+
+CHECK_HOST () {
+	HOST=$1
+	if test "`LOCAL_HOST $HOST`" = TRUE
+	then
+		# cas de la machine locale
+		echo "LOCAL"
+		return 0
+	fi
+	# cas d'une machine distante
+	AVAILABLE=""
+	# tests successifs avec les divers moyens de $REMOTE_ACCESS_LIST
+	for REMOTE_ACCESS_PROTOCOL in $REMOTE_ACCESS_LIST
+	do
+		REMOTE_SH=`GET_REMOTE_SHELL $REMOTE_ACCESS_PROTOCOL`
+		REMOTE_SH_OPTIONS=`GET_REMOTE_SHELL_OPTIONS $REMOTE_ACCESS_PROTOCOL`
+		OUTPUT=`type "$REMOTE_SH" > /dev/null 2> /dev/null`
+		if test $? = 0
+		then
+			# la commande $REMOTE_SH existe dans le $PATH
+			if test "$AVAILABLE" = ""
+			then
+				AVAILABLE=" $REMOTE_SH"
+			else
+				AVAILABLE="$AVAILABLE, then $REMOTE_SH"
+			fi
+			OUTPUT=`"$REMOTE_SH" $REMOTE_SH_OPTIONS $HOST true 2> /dev/null`
+			if test $? = 0
+			then
+				# la commande $REMOTE_SH fonctionne
+				# on renvoie la chaine "SSH", "RSH" ou "KRSH"
+				echo "$REMOTE_SH" | tr '[:lower:]' '[:upper:]'
+				return 0
+			fi
+		fi
+	done
+	# toute tentative a echoue
+	if test "$AVAILABLE" = ""
+	then
+		echo "NONE"
+		return 1
+	else
+		echo "$AVAILABLE"
+		return 1
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+REMOTE_SHELL () {
+	HOST=$1
+	shift
+	if test "`LOCAL_HOST $HOST`" = TRUE
+	then
+		# a priori, il est dangereux d'utiliser "$@" dans un "eval"
+		# car si certains arguments contiennent des espaces, "eval"
+		# va les separer en morceaux ; ici, ce ne devrait pas etre
+		# le cas
+		eval "$@"
+	else
+		# tests successifs avec les divers moyens de $REMOTE_ACCESS_LIST
+		for REMOTE_ACCESS_PROTOCOL in $REMOTE_ACCESS_LIST
+		do
+			REMOTE_SH=`GET_REMOTE_SHELL $REMOTE_ACCESS_PROTOCOL`
+			REMOTE_SH_OPTIONS=`GET_REMOTE_SHELL_OPTIONS $REMOTE_ACCESS_PROTOCOL`
+			
+			type "$REMOTE_SH" > /dev/null 2> /dev/null && "$REMOTE_SH" $REMOTE_SH_OPTIONS $HOST "$@"
+			if test $? = 0
+			then
+				return 0
+			fi
+		done
+		# echec complet
+		return 1
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+REMOTE_SHELL_ABORT () {
+	HOST=$1
+	if test "`LOCAL_HOST $HOST`" = TRUE
+	then
+		echo "$COMMAND: local shell command (\`\`sh'') failed" 1>&2
+	else
+		echo "$COMMAND: remote shell command (\`\`ssh'', \`\`rsh'', and/or \`\`krsh'') failed" 1>&2
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+REMOTE_COPY () {
+	HOST=$1
+	SOURCE=$2
+	TARGET=$3
+	if test "`LOCAL_HOST $HOST`" = TRUE
+	then
+		cp "$SOURCE" "$TARGET"
+	else
+		# essai avec chacun des outils donnes dans $REMOTE_ACCESS_LIST
+		# s'ils existent
+		for REMOTE_ACCESS_PROTOCOL in $REMOTE_ACCESS_LIST
+		do
+			REMOTE_CP=`GET_REMOTE_COPY $REMOTE_ACCESS_PROTOCOL`
+			REMOTE_CP_OPTIONS=`GET_REMOTE_COPY_OPTIONS $REMOTE_ACCESS_PROTOCOL`
+			type "$REMOTE_CP" > /dev/null 2> /dev/null && "$REMOTE_CP" $REMOTE_CP_OPTIONS "$SOURCE" $HOST:"$TARGET" > /dev/null 2> /dev/null
+			if test $? = 0
+			then
+				return 0
+			fi
+		done
+		# echec complet
+		return 1
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+REMOTE_COPY_ABORT () {
+	HOST=$1
+	if test "`LOCAL_HOST $HOST`" = TRUE
+	then
+		echo "$COMMAND: local copy command (cp) failed" 1>&2
+	else
+		echo "$COMMAND: remote copy command (scp, rcp, and/or kcp) failed" 1>&2
+	fi
+}
+
+# ----------------------------------------------------------------------------
+
+SORT_LIST() {
+	SORTED_LIST=""
+	for ITEM_1 in "$@"
+	do
+		echo $ITEM_1
+	done |
+	sort -u |
+	while true
+	do
+		read ITEM_2
+		if test "$ITEM_2" = ""
+		then
+			echo $SORTED_LIST
+			break
+		else
+			SORTED_LIST="$SORTED_LIST $ITEM_2"
+		fi
+	done
+}
+
+# ----------------------------------------------------------------------------
+
+# phase 2 : build the list of tools
+
+TOOL_LIST="bcg_io bcg_lib cadp_lib caesar caesar.old caesar.adt exp2c xtl + tgv"
+
+# ----------------------------------------------------------------------------
+
+# phase 3 : parse options, then build and sort the list of hosts
+
+HOST_LIST=""
+FAILURE_LIST=""
+LOCATION="$CADP"
+INFO=""
+
+# on ajoute des @ devant les chaines a comparer afin que test ne confonde pas
+# ces chaines avec ses propres options (ce qui se produit parfois sous Linux)
+
+if test $# -ge 2 -a "@$1" = "@-f"
+then
+	CHECK_FILE "$2"
+	HOST_LIST=`cat "$2" | sed -n -e '1,/^# obsolete licenses entries/p' | grep '^# license entries' | sed -e 's/.*"\(.*\)".*/\1/' | uniq`
+	shift 2
+fi
+
+if test $# -ge 2 -a "@$1" = "@-d"
+then
+	CHECK_DIRECTORY "$2"
+	LOCATION="$2"
+	shift 2
+fi
+
+if test $# -ge 2 -a "@$1" = "@-i"
+then
+	CHECK_FILE "$2"
+	INFO="$2"
+	shift 2
+	# on normalise le fichier $INFO en commencant par supprimer les
+	# caracteres "^M" (\015) qu'il peut eventuellement contenir
+	# (notamment sous Windows). Note : on pourrait utiliser '\r' au
+	# lieu de '\015', mais la notation '\r' n'est pas reconnue par
+	# "/usr/ucb/tr" sous Solaris
+	TMP_INFO=`"$CADP"/src/com/cadp_temporary $COMMAND`
+	tr -d '\015' < $INFO > $TMP_INFO
+	mv $TMP_INFO $INFO
+fi
+
+if test $# -ge 2 -a "@$1" = "@-p"
+then
+	# note: il est extremement important que la chaine "@-p" soit presente
+	# dans le code de "rfl", car la commande "install_rfl" (version 1.8 et
+	# au-dela) recherche la presence de cette chaine pour savoir si "rfl"
+	# reconnait l'option "-p"
+	case "$2" in
+		ssh )	REMOTE_ACCESS_LIST="USE_SSH USE_RSH USE_KRSH" ;;
+		rsh )	REMOTE_ACCESS_LIST="USE_RSH USE_KRSH USE_SSH" ;;
+		krsh )	REMOTE_ACCESS_LIST="USE_KRSH USE_SSH USE_RSH" ;;
+		any )	# cette option est utilisee par Installator
+			# on conserve la valeur initiale de $REMOTE_ACCESS_LIST
+			;;
+		* )
+			echo "$COMMAND: unknown remote connection protocol \"$2\""
+			exit 1
+	esac
+	shift 2
+fi
+
+if test $# -eq 2 -a "@$1" = "@-l"
+then
+	CHECK_FILE "$2"
+	(
+		# utilisation du fichier LICENSE
+		cat "$2"
+		# utilisation du fichier LICENSE.1 s'il existe
+		if test -f "$2.1"
+		then
+			cat "$2.1"
+		fi
+		# utilisation du fichier LICENSE.2 s'il existe
+		if test -f "$2.2"
+		then
+			cat "$2.2"
+		fi
+	) | sed -n -e '1,/^# obsolete licenses entries/p' | grep '^# license entries' | sed -e 's/.*"\(.*\)".*/\1/' | uniq
+	exit 0
+
+elif test $# -eq 2 -a "@$1" = "@-n"
+then
+	CHECK_FILE "$2"
+	# le format du champ Official depend de la version de rfl et de la
+	# version d'Installator utilisees pour generer le prototype de licence
+	# (voir ci-dessous l'interpretation du fichier $INFO) ; dans tous les
+	# cas, le champ Official commence par le nom de l'utilisateur, mais il
+	# peut se terminer ou non par une chaine
+	#   " <adresse_email> entier"
+	# qu'il convient d'eliminer si elle est presente
+	grep "\<Official[s:]" "$2" | sed -e 's/^[ 	]*Official[s]*:[ 	]*//' | sed -e 's/ <[a-zA-Z@._0-9%-]*>.*//'
+	exit 0
+
+elif test $# -eq 2 -a "@$1" = "@-a"
+then
+	CHECK_FILE "$2"
+	cat "$2" |
+	sed -n -e '/^[ 	]*Institution:/,/^[ 	]*Official[s:]/p' |
+	sed -e 's/^[ 	]*//' |
+	sed -e 's/^Institution:[ 	]*//' |
+	sed -e 's/^Address:[ 	]*//' |
+	grep -v '^Official[s:]'
+	exit 0
+
+elif test $# -eq 2 -a "@$1" = "@-e"
+then
+	CHECK_FILE "$2"
+	# la maniere de determiner l'adresse e-mail depend de la version
+	# de rfl et de la version d'Installator utilisees pour generer le
+	# prototype de licence (voir ci-dessous l'interpretation du fichier
+	# $INFO) ; plusieurs cas sont a distinguer ; on commence par regarder
+	# si le champ E-mail existe et est rempli
+	E_MAIL=`grep "\<E-mail:" "$2" | sed -e 's/^[ 	]*E-mail:[ 	]*//'`
+	if test "$E_MAIL" = ""
+	then
+		# cas d'une licence generee par un rfl anterieur a la version
+		# 1.92 ; on regarde alors si le champ Official contient une
+		# adresse e-mail, c'est-a-dire s'il a le format suivant :
+		#   "champ_official <adresse_email> entier"
+		# (cas d'une license generee a partir d'un rfl appele par une
+		# version d'Installator posterieure a 2.15)
+		E_MAIL=`grep "\<Official[s:]" "$2" | sed -n -e 's/^.*<\([a-zA-Z@._0-9%-]*\)>.*/\1/p'`
+	fi
+	if test "$E_MAIL" != ""
+	then
+		echo "$E_MAIL"
+	fi
+	# s'il n'y a pas d'adresse e-mail, on n'affiche rien
+	exit 0
+
+elif test $# -eq 2 -a "@$1" = "@-r"
+then
+	CHECK_FILE "$2"
+	# la maniere de determiner le nombre de jours depend de la version
+	# de rfl et de la version d'Installator utilisees pour generer le
+	# prototype de licence (voir ci-dessous l'interpretation du fichier
+	# $INFO) ; plusieurs cas sont a distinguer ; on commence par regarder
+	# si le champ Reminder existe et est rempli
+	REMINDER=`grep "\<Reminder:" "$2" | sed -e 's/^[ 	]*Reminder:[ 	]*\([0-9a-z]*\).*/\1/'`
+	if test "$REMINDER" = ""
+	then
+		# cas d'une licence generee par un rfl anterieur a la version
+		# 1.92 ; on regarde alors si le champ Official contient un
+		# nombre de jours, c'est-a-dire s'il a le format suivant :
+		#   "champ_official <adresse_email> entier"
+		# (cas d'une license generee a partir d'un rfl appele par une
+		# version d'Installator posterieure a 2.15)
+		REMINDER=`grep "\<Official[s:]" "$2" | sed -n -e 's/^.*<[a-zA-Z@._0-9%-]*> \(.*\)$/\1/p'`
+	fi
+	if test "$REMINDER" = ""
+	then
+		# cas d'une vieille licence sans nombre de jours specifie
+		echo 0
+	else
+		MATCH=`expr "$REMINDER" : '\([0-9][0-9]*\)$'`
+		if test "$MATCH" = "$REMINDER"
+		then
+			# $REMINDER est un nombre
+			echo $REMINDER
+		else
+			# toute autre valeur de $REMINDER (y compris "none")
+			echo 0
+		fi
+	fi
+	exit 0
+
+elif test $# -eq 2 -a "@$1" = "@-v"
+then
+	CHECK_FILE "$2"
+	VERSION=`grep "\<Package:" "$2" | sed -e 's/^[ 	]*Package:[ 	]*.*VERSION \(.*\)/\1/'`
+	if test "$VERSION" = ""
+	then
+		# version non specifiee
+		echo '(unknown)'
+	else
+		echo "$VERSION"
+	fi
+	exit 0
+
+elif test $# -eq 2 -a "@$1" = "@-t"
+then
+	CHECK_FILE "$2"
+	DATE=`grep "\<Date:" "$2" | sed -e 's/^[ 	]*Date:[ 	]*\(.*\)/\1/'`
+	if test "$DATE" = ""
+	then
+		# version non specifiee
+		echo '(unknown)'
+	else
+		echo "$DATE"
+	fi
+	exit 0
+fi
+
+# ----------------------------------------------------------------------------
+
+HOST_LIST="$HOST_LIST $*"
+
+if test "$HOST_LIST" = " "
+then
+	HOST_LIST="$LONG_LOCAL_HOST"
+else
+	HOST_LIST=`SORT_LIST $HOST_LIST`
+fi
+
+# ----------------------------------------------------------------------------
+
+USER_NAME=`"$CADP"/src/com/install_logname`
+case "$USER_NAME" in
+	garavel ) case "$HOST_LIST" in
+		  *adret* | *crevasse* | *ubac* | *combe* | *rimaye* | *rocade* ) PRIVILEDGE=1 ;;
+		  esac
+		  ;;
+esac
+
+# ----------------------------------------------------------------------------
+
+# phase 4 : check if hosts can be properly accessed by remote login
+
+CADP_VERSION=""
+
+for HOST in $HOST_LIST
+do
+	echo "$COMMAND (phase 1): testing $HOST" 1>&2
+	KIND=`CHECK_HOST $HOST`
+	if test $? != 0
+	then
+		echo "" 1>&2
+		case "$KIND" in
+			"NONE" )
+				echo "$COMMAND: communication seems impossible from machine \`\`$SHORT_LOCAL_HOST''" 1>&2
+				echo "     neither \`\`ssh'', nor \`\`rsh'', nor \`\`krsh'' can be found" 1>&2
+				;;
+			* )
+				echo "$COMMAND: remote access is denied by host \`\`$HOST''" 1>&2
+				echo "     unsuccessful attempt at establishing contact using$KIND" 1>&2
+				echo "     check your \`\`.rhosts'' file (or similar) on \`\`$HOST''" 1>&2
+	
+				;;
+		esac
+		echo "" 1>&2
+		FAILURE_LIST="$FAILURE_LIST $HOST"
+		continue
+	fi
+
+	if test "$OUTPUT" != ""
+	then
+		echo "" 1>&2
+		echo "$COMMAND: the startup file (e.g. \`\`.cshrc'', \`\`.profile'', etc.) of your login" 1>&2
+		echo "     shell on machine \`\`$HOST'' shouldn't write anything on its output" 1>&2
+		echo "     (for instance, this startup file should not contain \`\`echo'' commands:" 1>&2
+		echo "     this prevents the \`\`rsh'' command from executing properly)" 1>&2
+		FAILURE_LIST="$FAILURE_LIST $HOST"
+		continue
+	fi
+	TEST_ARCH=`REMOTE_SHELL $HOST "sh '$CADP'/com/arch" 2> /dev/null`
+	if test $? != 0
+	then
+		REMOTE_SHELL_ABORT $HOST
+		exit 1
+	fi
+	if test "$TEST_ARCH" = ""
+	then
+		echo "" 1>&2
+		echo "$COMMAND: directory \`\`$CADP'' does not exist on host \`\`$HOST''," 1>&2
+		echo "     or it exists but does not contain the CADP software;" 1>&2
+		echo "     please mount the file system containing CADP on host \`\`$HOST''" 1>&2
+		echo "" 1>&2
+		FAILURE_LIST="$FAILURE_LIST $HOST"
+		continue
+	elif test ! -d "$CADP/bin.$TEST_ARCH"
+	then
+		echo "" 1>&2
+		echo "$COMMAND: the current release of the CADP toolbox is not available for machines" 1>&2
+		echo "     with the same architecture and/or operating system as host \`\`$HOST''" 1>&2
+		echo "" 1>&2
+		FAILURE_LIST="$FAILURE_LIST $HOST"
+		continue
+	fi
+	if test "$CADP_VERSION" = ""
+	then
+		# la valeur de $CADP_VERSION n'a pas encore ete positionnee :
+		# on la determine en appelant l'executable "cadp_lib" sur la
+		# premiere machine de la liste des machines pour lesquelles on
+		# demande une licence ; il ne faut pas executer "cadp_lib" sur
+		# la machine courante (celle qui appelle "rfl") car celle-ci
+		# ne dispose pas necessairement des executables de CADP
+		# correspondant a son architecture
+		CADP_VERSION=`REMOTE_SHELL $HOST "/bin/sh -c \"CADP='$CADP' ; export CADP ; '$CADP'/bin.$TEST_ARCH/cadp_lib -1 | tr -d '\015'\"" 2> /dev/null`
+		if test $? != 0
+		then
+			REMOTE_SHELL_ABORT $HOST
+			exit 1
+		fi
+	fi
+done
+
+if test "$FAILURE_LIST" != ""
+then
+	echo "$COMMAND: failed for the following hosts:$FAILURE_LIST" 1>&2
+	ABORT
+fi
+
+# ----------------------------------------------------------------------------
+
+# phase 5 : print the preamble
+
+echo '-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)'
+echo '-- http://cadp.inria.fr - Copyright (C) INRIA 2020'
+echo '-- This software is developed, maintained, and provided to you'
+echo '-- by the VASY and CONVECS research teams of INRIA and LIG'
+echo ''
+
+echo '# This is the license file needed for using the CADP software'
+echo '#'
+echo '# CAUTION! Altering the contents of the license file (except as'
+echo '# indicated below) may prevent the tools from working properly.'
+echo '#'
+echo '# Please, apply the following steps to install the license file:'
+echo '#'
+echo '# (1) Copy this file to the following location:'
+echo "#        $LOCATION/LICENSE"
+echo '#     If an older license file already exists there, overwrite it,'
+echo '#     unless in the special case where the present file is meant'
+echo '#     to be a complement of a primary license file located at:'
+echo "#        $LOCATION/LICENSE"
+echo '#     In such case, you should install the present file either at:'
+echo "#        $LOCATION/LICENSE.1"
+echo '#     or, if a secondary license file also exists there, at:'
+echo "#        $LOCATION/LICENSE.2"
+echo '#'
+echo '# (2) Edit this file to remove the extra-lines possibly added'
+echo '#     by the mailer at the beginning and/or the end. The first'
+echo '#     line of the license file should always be:'
+echo '#        -- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)'
+echo '#     and the last one should be:'
+echo '#        # end-of-file'
+echo '#'
+echo '# (3) Check that the lines have not been splitted by the mailer or'
+echo '#     by an unfortunate cut-and-paste operation. There should be one'
+echo '#     line per tool ("bcg_io", "bcg_lib", etc.) and per machine'
+echo '#     of your local network. If the lines are broken, join them again.'
+echo '#'
+echo '# (4) Finally, give an appropriate read permission for license file(s):'
+echo "#        chmod a+r $LOCATION/LICENSE*"
+echo ''
+
+if test $PRIVILEDGE
+then
+	echo '*** This is a privileged license ***'
+else
+	echo 'This license has been granted to:'
+fi
+
+echo ''
+if test "$INFO" = ""
+then
+	echo '        Institution: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+	echo '        Official:    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+	echo '        E-mail:      XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+	echo '        Reminder:    30 days before license expiration'
+else
+	# le format du fichier $INFO depend de la version de rfl/installator :
+	# - jusqu'a rfl version 1.91 / installator version 2.14 (sept 2004)
+	#   on avait dans $INFO :
+	#     - le champ "Official" sur la derniere ligne non vide
+	#     - l'institution sur toutes les lignes precedentes
+	# - a partir de rfl 1.92 / installator version 2.15, on a :
+	#     - "champ_official <adresse_email> entier" sur la derniere ligne
+	#       non vide, ou :
+	#          - champ_official correspond a l'ancien champ "Official"
+	#            (par exemple: Nom Prenom),
+	#          - adresse_email est une adresse mail (par exemple,
+	#            "nom.prenom@domaine.com"),
+	#          - entier est un nombre de jours (entre 0 et 366),
+	#     - comme dans la version anterieure, l'institution occupe toutes
+	#       les lignes precedentes
+	
+	LAST_NON_EMPTY_LINE=`sed -e '/^[ 	]*$/d' < "$INFO" | "$CADP"/src/com/cadp_tail -n 1`
+	case "$LAST_NON_EMPTY_LINE" in
+	    	*\ \<*\>\ *[0-9] )
+			# format posterieur a rfl 1.92
+			OFFICIAL=`echo "$LAST_NON_EMPTY_LINE" | sed -e 's/^\(.*\) <[a-zA-Z@._0-9%-]*>.*/\1/'`
+			E_MAIL=`echo "$LAST_NON_EMPTY_LINE" | sed -e 's/^.*<\([a-zA-Z@._0-9%-]*\)>.*/\1/'`
+			REMINDER=`echo "$LAST_NON_EMPTY_LINE" | sed -e 's/.* \([0-9]*\)/\1/'`
+			;;
+		* )
+			# format anterieur a rfl 1.92
+			OFFICIAL=$LAST_NON_EMPTY_LINE
+			E_MAIL=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+			REMINDER="0"
+			;;
+	esac
+
+	if [ "$REMINDER" = 0 ]
+	then
+		REMINDER_TEXT="none"
+	else
+		REMINDER_TEXT="$REMINDER day(s) before license expiration"
+	fi
+	cat "$INFO" |
+	sed -e 's/^[	 ]*//' |
+	sed -e '/^$/d' |
+	sed -e 's/^/                     /' |
+	sed -e '1s/^                    /        Institution:/' |
+	sed -e '$d'
+	echo "        Official:    $OFFICIAL"
+	echo "        E-mail:      $E_MAIL"
+	echo "        Reminder:    $REMINDER_TEXT"
+fi
+	echo '        Package:     '"$CADP_VERSION"
+	echo '        Date:        '`date`
+	echo ''
+
+# ----------------------------------------------------------------------------
+
+# phase 6 : print a void global checksum
+
+echo '1:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+echo ''
+
+# ----------------------------------------------------------------------------
+
+# phase 7 : build the local script
+
+LOCAL_SCRIPT=`"$CADP"/src/com/cadp_temporary $COMMAND`
+# an absolute pathname is needed
+
+echo '#!/bin/sh' > $LOCAL_SCRIPT
+
+echo '' >> $LOCAL_SCRIPT
+
+echo "PATH=$STANDARD_PATH ; export PATH" >> $LOCAL_SCRIPT
+
+echo "CADP='$CADP' ; export CADP" >> $LOCAL_SCRIPT
+
+echo 'ARCH=`"$CADP"/com/arch`' >> $LOCAL_SCRIPT
+
+echo 'ARCH32=`(CADP_BITS=32 ; export CADP_BITS ; "$CADP"/com/arch)`' >> $LOCAL_SCRIPT
+
+echo 'ARCH64=`(CADP_BITS=64 ; export CADP_BITS ; "$CADP"/com/arch)`' >> $LOCAL_SCRIPT
+
+echo '
+if [ "$ARCH32" = "$ARCH64" ]
+then
+	# this machine works only in 32- or 64-bit mode
+	MODE=""
+	NEXT="stop"
+else
+	# this machine can work both in 32- and 64-bit mode
+	if [ "$ARCH" = "$ARCH32" ]
+	then
+			MODE="(32-bits)"
+			if [ "$NEXT" != "stop" ]
+			then
+				if [ -d "$CADP/bin.$ARCH64" ]
+				then
+					# 64-bit executables seem to be present
+					NEXT=64
+				else
+					NEXT="stop"
+				fi
+			fi
+	elif [ "$ARCH" = "$ARCH64" ]
+	then
+			MODE="(64-bits)"
+			if [ "$NEXT" != "stop" ]
+			then
+				if [ -d "$CADP/bin.$ARCH32" ]
+				then
+					# 32-bit executables seem to be present
+					NEXT=32
+				else
+					NEXT="stop"
+				fi
+			fi
+	fi
+fi
+' >> $LOCAL_SCRIPT
+
+# display a header line
+
+echo 'echo \# license entries for host \"$1\" $MODE' >> $LOCAL_SCRIPT
+echo 'echo ""' >> $LOCAL_SCRIPT
+
+# compute the first date
+
+YEAR=`date +20%y`
+
+# A better solution would certainly be
+# 	YEAR=`date +%Y`
+# but it would fail under SunOS 4.1.* if the Year 2000 patches have not applied
+
+if test $PRIVILEDGE
+then
+	echo 'FIRST_DATE=00-XXX-0000'
+else
+	echo "FIRST_DATE=`date +%d-%b | tr '[:upper:]' '[:lower:]'`-$YEAR"
+	# normally, %h could be used in place of %b since both are equivalent
+	# but MinGW/MSYS 1.0 uses an old version of "date" (GNU coreutils) 5.97
+	# that only supports %b and returns an empty string if %h is used
+fi >> $LOCAL_SCRIPT
+
+# compute the last date
+
+if test $PRIVILEDGE
+then
+	echo 'LAST_DATE=99-XXX-9999'
+else
+	echo "LAST_DATE=`date +%d-%b | tr '[:upper:]' '[:lower:]'`-`expr $YEAR + 1`"
+	# normally, %h could be used in place of %b since both are equivalent
+	# (same remark as above)
+fi >> $LOCAL_SCRIPT
+
+# compute host-related informations
+
+echo 'HOSTINFO=`("$CADP"/bin.$ARCH/cadp_hostinfo 2> /dev/null || echo "UNEXECUTABLE") | tr -d '\'\\015\''`' >> $LOCAL_SCRIPT
+
+# compute a void binary checksum
+
+echo '
+GENERIC_CHECKSUM () {
+case $1 in
+	aldebaran.old-* ) echo 1:$2 ;;
+	*-*-* ) echo 2:$2 ;;
+esac
+}
+' >> $LOCAL_SCRIPT
+
+# compute a void binary checksum
+
+echo 'BINARY_CHECKSUM () {' >> $LOCAL_SCRIPT
+if test $PRIVILEDGE
+then
+	echo 'GENERIC_CHECKSUM $1 no_checksum' >> $LOCAL_SCRIPT
+else
+	echo 'GENERIC_CHECKSUM $1 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' >> $LOCAL_SCRIPT
+fi
+echo '}
+' >> $LOCAL_SCRIPT
+
+# compute a void local checksum
+
+echo 'LOCAL_CHECKSUM () {' >> $LOCAL_SCRIPT
+echo 'GENERIC_CHECKSUM $1 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' >> $LOCAL_SCRIPT
+echo '}
+' >> $LOCAL_SCRIPT
+
+# enumerate the list of tools
+
+for TOOL in $TOOL_LIST
+do
+	if test "$TOOL" = "+"
+	then
+		echo 'echo \# optional plugins for host \"$1\" $MODE' >> $LOCAL_SCRIPT
+		echo 'echo ""' >> $LOCAL_SCRIPT
+		continue
+	fi
+	
+	echo "TOOL=$TOOL" >> $LOCAL_SCRIPT
+	if test $PRIVILEDGE
+	then
+		echo "VERSION=0.0" >> $LOCAL_SCRIPT
+	elif test $TOOL = "tgv"
+	then
+		echo 'if test "$HOSTINFO" = UNEXECUTABLE' >> $LOCAL_SCRIPT
+		echo 'then' >> $LOCAL_SCRIPT
+		echo '   VERSION=UNAVAILABLE' >> $LOCAL_SCRIPT
+		echo 'else' >> $LOCAL_SCRIPT
+		("$CADP"/src/com/xeuca_version "$CADP" tgv cat "$CADP/VERSION" | sed -e 's/ /=/') >> $LOCAL_SCRIPT
+		echo 'fi' >> $LOCAL_SCRIPT
+	else
+		echo 'VERSION=`"$CADP"/bin.$ARCH/$TOOL -version 2> /dev/null || echo UNAVAILABLE`' >> $LOCAL_SCRIPT
+	fi
+
+	echo 'if test $VERSION != UNAVAILABLE' >> $LOCAL_SCRIPT
+	echo 'then' >> $LOCAL_SCRIPT
+# la ligne ci-dessous est necessaire pour win32-cygnus et win64-cygnus : elle
+# sert a enlever un \r eventuel a la fin de la chaine $VERSION
+	echo '  VERSION=`echo $VERSION | sed -e "s/\015//"`' >> $LOCAL_SCRIPT
+	echo '	echo $TOOL $VERSION $FIRST_DATE $LAST_DATE $HOSTINFO `BINARY_CHECKSUM $TOOL-$VERSION-$ARCH` `LOCAL_CHECKSUM $TOOL-$VERSION-$ARCH`' >> $LOCAL_SCRIPT
+	echo 'else' >> $LOCAL_SCRIPT
+	echo '	echo \# warning: $TOOL for architecture $ARCH is unavailable or unexecutable' >> $LOCAL_SCRIPT
+	echo 'fi' >> $LOCAL_SCRIPT
+	echo 'echo ""' >> $LOCAL_SCRIPT
+done
+
+# recursive call if needed
+
+echo '
+if [ "$NEXT" != "stop" ]
+then
+	CADP_BITS=$NEXT ; export CADP_BITS
+	NEXT="stop" ; export NEXT
+	/bin/sh $0 $@
+fi
+' >> $LOCAL_SCRIPT
+
+# ----------------------------------------------------------------------------
+
+# phase 8 : transfer and execute on remote hosts the local script shell
+
+for HOST in $HOST_LIST
+do
+	NORMALIZED_HOST=`echo $HOST | tr '[:upper:]' '[:lower:]'`
+
+	REMOTE_SCRIPT="$LOCAL_SCRIPT"_from_"$SHORT_LOCAL_HOST"
+	echo "$COMMAND (phase 2): asking $HOST" 1>&2
+	REMOTE_COPY $HOST $LOCAL_SCRIPT $REMOTE_SCRIPT
+	if test $? != 0
+	then
+		REMOTE_COPY_ABORT $HOST
+		exit 1
+	fi
+	REMOTE_SHELL $HOST "/bin/sh $REMOTE_SCRIPT $NORMALIZED_HOST"
+	if test $? != 0
+	then
+		REMOTE_SHELL_ABORT $HOST
+		exit 1
+	fi
+	REMOTE_SHELL $HOST /bin/rm -f $REMOTE_SCRIPT
+	if test $? != 0
+	then
+		REMOTE_SHELL_ABORT $HOST
+		exit 1
+	fi
+done
+
+/bin/rm -f $LOCAL_SCRIPT
+
+# ----------------------------------------------------------------------------
+
+# phase 9 : print the postamble
+
+echo '# end-of-file'
+
+# affichage d'un message final, sauf dans le cas ou "rfl" est appele depuis
+# Installator.
+if test "$INFO" = ""
+then
+	echo "*** $COMMAND is done: if you have piped it to \`\`mail cadp@inria.fr''," 1>&2
+	echo "*** your LICENSE file will be soon sent back to you by e-mail" 1>&2
+fi
+
+exit 0

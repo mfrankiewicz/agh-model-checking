@@ -1,0 +1,46 @@
+type My_Natural is Boolean
+   sorts Nat 
+   opns 0 (*! constructor *),
+        1 (*! constructor *), 
+        2 (*! constructor *) : -> Nat
+        _+_ ,
+        _-_ : Nat, Nat -> Nat
+	_==_ ,
+        _<>_ ,
+	_<_ ,
+	_<=_ ,
+	_>_ ,
+	_>=_ : Nat, Nat -> Bool
+   eqns
+      forall m, n : Nat
+      ofsort Nat
+         m + 0 = m;
+         0 + m = m;
+         1 + 1 = 2;
+         1 + 2 = 0;  (* 1 + 2 reaches 0 again *)
+         2 + 1 = 0;  (* 2 + 1 reaches 0 again *)
+      ofsort Nat
+         m - 0 = m;
+         1 - 1 = 0;
+         2 - 1 = 1;
+         2 - 2 = 0;
+         (* otherwise: no equation => run-time exception *)
+      ofsort Bool
+         m == m             = true;
+         (* otherwise *)
+         m == n             = false;
+      ofsort Bool
+         m <> n             = not (m == n);
+      ofsort Bool
+         0 < 1              = true;
+         0 < 2              = true;
+         1 < 2              = true;
+         (* otherwise *)
+         m < n              = false;
+      ofsort Bool
+         m <= n             = (m < n) or (m == n);
+      ofsort Bool
+         m >= n             = not (m < n);
+      ofsort Bool
+         m > n              = not (m <= n);
+endtype

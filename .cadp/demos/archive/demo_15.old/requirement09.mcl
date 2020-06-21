@@ -1,0 +1,37 @@
+
+(*****************************************************************************
+ * Requirement 9
+ * For a given subscriber, in order for a tone to be activated, the previous
+ * tone or signal has to be deactivated
+ *****************************************************************************)
+
+[
+    true* .
+    (
+        (* Subscriber 1 *)
+        (
+            (
+	        ( "S !1 !DIALT !ON"      . (not "S !1 !DIALT !OFF")* )  |
+	        ( "S !1 !RINGT !ON"      . (not "S !1 !RINGT !OFF")* )  |
+	        ( "S !1 !RINGS !ON"      . (not "S !1 !RINGS !OFF")* )  |
+	        ( "S !1 !ERRORT !ON"     . (not "S !1 !ERRORT !OFF")* ) |
+	        ( "S !1 !BUSYT !ON"      . (not "S !1 !BUSYT !OFF")* )  |
+	        ( "S !1 !SPEECHCONN !ON" . (not "S !1 !SPEECHCONN !OFF")* )
+	    ) .
+	    'S !1 .* !ON'
+        ) |
+        (* Subscriber 2 *)
+        (
+            (
+	        ( "S !2 !DIALT !ON"      . (not "S !2 !DIALT !OFF")* )  |
+	        ( "S !2 !RINGT !ON"      . (not "S !2 !RINGT !OFF")* )  |
+	        ( "S !2 !RINGS !ON"      . (not "S !2 !RINGS !OFF")* )  |
+	        ( "S !2 !ERRORT !ON"     . (not "S !2 !ERRORT !OFF")* ) |
+	        ( "S !2 !BUSYT !ON"      . (not "S !2 !BUSYT !OFF")* )  |
+	        ( "S !2 !SPEECHCONN !ON" . (not "S !2 !SPEECHCONN !OFF")* )
+	    ) .
+	    'S !2 .* !ON'
+        )
+    )
+] false
+

@@ -1,0 +1,18 @@
+
+(*****************************************************************************
+ * Requirement 12
+ * If an S-subscriber performs OffHook, there should be no possibility of
+ * activating any tone other than dialtone
+ *****************************************************************************)
+
+[ true* . 'S !1 !OFFH ![AB]SUBSC' ] (
+    [ (not 'S !1 !DIALT .*')* .
+      "S !1 !RINGT !ON" or
+      "S !1 !ERRORT !ON" or
+      "S !1 !BUSYT !ON" or
+      "S !1 !SPEECHCONN !ON"
+    ] false
+    and
+    < true* . "S !1 !DIALT !ON" > true
+)
+

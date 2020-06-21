@@ -1,0 +1,74 @@
+
+process DataInPorts [DI, crep, rq, ra, derri, io] : noexit :=
+
+	InPorts [DI, crep, rq, ra, derri, io] 
+		|[ra]|
+	PortGenerator [ra]
+
+where
+
+(* ====================================================================== *)
+
+process PortGenerator [ra] : noexit :=
+
+  ra !add (0, emptyset) ?r:RouteNo ?e:Env ;
+	PortGenerator [ra]
+[]
+  ra !add (1, emptyset) ?r:RouteNo ?e:Env ;
+	PortGenerator [ra]
+[]
+  ra !add (1, add (0, emptyset)) ?r:RouteNo ?e:Env ;
+	PortGenerator [ra]
+[]
+  ra !add (0, add (1, emptyset)) ?r:RouteNo ?e:Env ;
+	PortGenerator [ra]
+[]
+  ra !Unknown_Route ?r:RouteNo ?e:Env ;
+	PortGenerator [ra]
+endproc
+
+(* ====================================================================== *)
+
+process InPorts [DI, crep, rq, ra, erri, io] : noexit :=
+
+	(crep !0 of PortNo ; Inport [DI, rq, ra, erri, io] (0 of PortNo))
+
+				|||
+
+      (crep !1 of PortNo ; Inport [DI, rq, ra, erri, io] (1 of PortNo))
+
+where 
+
+(* ---------------------------------------------------------------------- *)
+
+process Inport [DI, rq, ra, erri, io] (n:PortNo) : noexit :=
+
+  DI !n ?e:Env ?r:RouteNo ;
+      rq !r !e ;
+        (
+	       	ra ?s:PortSet !r !e ;
+			SendIt [DI, rq, ra, erri, io] (n, s, e)
+           []
+		ra ?er:ErrorCode !r !e ; erri !e ;
+	   		InPort [DI, rq, ra, erri, io] (n)
+	)
+
+where 
+
+   process SendIt [DI, rq, ra, erri, io] (n:PortNo, s:PortSet, e:Env) :noexit :=
+
+     choice outp:PortNo [] [outp IsIn s] -> io !outp !e ; 
+		Inport [DI, rq, ra, erri, io] (n)
+
+   endproc
+
+endproc
+
+(* ---------------------------------------------------------------------- *)
+
+endproc
+
+(* ====================================================================== *)
+
+endproc
+

@@ -1,0 +1,37 @@
+
+(*---------------------------------------------------------------------------*)
+(* F must hold every time the second subscriber has no active signals *)
+
+macro NO_2_TONES_ACTIVE (F) =
+nu Active_0 . (
+    (F) and
+    [ 'S !2 .* !OFF' ] false and
+    [ 'S !2 .* !ON' ] nu Active_1 . (
+	[ 'S !2 .* !OFF' ] Active_0 and
+	[ 'S !2 .* !ON' ] nu Active_2 . (
+	    [ 'S !2 .* !OFF' ] Active_1 and
+	    [ 'S !2 .* !ON' ] nu Active_3 . (
+		[ 'S !2 .* !OFF' ] Active_2 and
+		[ 'S !2 .* !ON' ] nu Active_4 . (
+		    [ 'S !2 .* !OFF' ] Active_3 and
+		    [ 'S !2 .* !ON' ] nu Active_5 . (
+			[ 'S !2 .* !OFF' ] Active_4 and
+			[ 'S !2 .* !ON' ] nu Active_6 . (
+			    [ 'S !2 .* !OFF' ] Active_5 and
+			    [ 'S !2 .* !ON' ] false and
+			    [ not ('S !2 .* !ON' or 'S !2 .* !OFF') ] Active_6
+			) and
+			[ not ('S !2 .* !ON' or 'S !2 .* !OFF') ] Active_5
+		    ) and
+		    [ not ('S !2 .* !ON' or 'S !2 .* !OFF') ] Active_4
+		) and
+		[ not ('S !2 .* !ON' or 'S !2 .* !OFF') ] Active_3
+	    ) and
+	    [ not ('S !2 .* !ON' or 'S !2 .* !OFF') ] Active_2
+	) and
+	[ not ('S !2 .* !ON' or 'S !2 .* !OFF') ] Active_1
+    ) and
+    [ not ('S !2 .* !ON' or 'S !2 .* !OFF') ] Active_0
+)
+end_macro
+

@@ -1,0 +1,22 @@
+type Stack is Boolean, Element 
+   sorts 
+     Stack (*! implementedby STACK comparedby CMP_STACK
+               printedby PRINT_STACK *)
+   opns  
+     Nil   (*! implementedby NIL constructor *) : -> Stack
+     Push  (*! implementedby PUSH constructor *) : Elem, Stack -> Stack
+     Pop   (*! implementedby POP *) : Stack -> Stack
+     Top   (*! implementedby TOP *) : Stack -> Elem
+     Empty (*! implementedby EMPTY *) : Stack -> Bool
+   eqns
+     forall E:Elem, Q:Stack
+        ofsort Stack
+          (* Pop (Nil) is not defined *) 
+          Pop (Push (E, Q)) = Q;
+        ofsort Elem
+          (* Top (Nil) is not defined *)
+          Top (Push (E, Q)) = E;
+        ofsort Bool
+          Empty (Nil) = true;
+          Empty (Push (E, Q)) = false;
+endtype

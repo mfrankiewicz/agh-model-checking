@@ -1,0 +1,18 @@
+(*****************************************************************************
+ * The LOTOS specification "SCSI_$1.lotos" is compiled using the CAESAR.ADT  *
+ * and CAESAR compilers and then reduced modulo strong equivalence using the *
+ * BCG_MIN tool. This generates a graph called "model_1.bcg".
+ *****************************************************************************)
+
+"model_1.bcg" = strong reduction of generation of "SCSI_$1.lotos";
+
+"model_2.bcg" = branching reduction of
+      total rename "ARB !.*" -> ARB  in
+         hide CMD, REC in "model_1.bcg";
+
+"model_3.bcg" = generation of
+      hide all but LAMBDA, MU, NU in
+         ("model_2.bcg"
+          |[ARB]|
+          strong reduction of "erlang.lotos":ERLANG [ARB, NU] (1));
+

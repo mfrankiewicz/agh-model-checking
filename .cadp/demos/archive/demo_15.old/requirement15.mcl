@@ -1,0 +1,27 @@
+
+(*****************************************************************************
+ * Requirement 15
+ * If A subscriber dials B-subscriber when A has dialtone on, A is offhook, B
+ * is onhook, and has no tones active, then it is possible for B to perform
+ * offhook as a  B-subscriber.
+ *****************************************************************************)
+
+library macros.mcl end_library
+
+NO_2_TONES_ACTIVE (
+
+    [
+        (not ('S !2 .*T !ON'))* .
+        "S !1 !DIALT !ON" .
+        (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF"))* .
+        "S !1 !OFFH !ASUBSC" .
+        (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF" or "S !1 !ONH"))* .
+        "S !2 !ONH" .
+        (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF" or "S !1 !ONH" or
+              'S !2 !OFFH .*'))* .
+        "S !1 !DIAL !2"
+    ]
+    < (not 'S !2 !OFFH .*')* . "S !2 !OFFH !BSUBSC" > true
+
+)
+

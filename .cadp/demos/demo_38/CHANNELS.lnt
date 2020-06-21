@@ -1,0 +1,54 @@
+-------------------------------------------------------------------------------
+-- CHANNELS.lnt -- 1.7 -- 2015/09/11 11:04:16 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module CHANNELS (TYPES) is
+
+-------------------------------------------------------------------------------
+-- channel types for bit vectors
+
+channel C4 is
+   (BIT4)
+end channel
+
+channel C6 is
+   (BIT6)
+end channel
+
+channel C32 is
+   (BIT32)
+end channel
+
+channel C48 is
+   (BIT48)
+end channel
+
+channel C56 is
+   (BIT56)
+end channel
+
+channel C64 is
+   (BIT64)
+end channel
+
+-------------------------------------------------------------------------------
+-- channel types for scalar data types
+
+channel CB is
+   (BOOL)
+end channel
+
+channel CIT is
+   (ITERATION)
+end channel
+
+channel CP is
+   (PHASE)
+end channel
+
+channel CS is
+   (SHIFT)
+end channel
+
+end module
+

@@ -1,0 +1,98 @@
+(******************************************************************************
+ *                     P R O D U C T I O N    C E L L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	CHANNELS.lnt
+ *   Auteurs		:	Hubert GARAVEL and Wendelin SERWE
+ *   Version		:	1.11
+ *   Date		: 	2017/02/23 06:55:12
+ *****************************************************************************)
+
+module CHANNELS (TYPES) is
+
+-- definition of the channel types, many of them are overloaded with the
+-- name of the corresponding type
+
+-------------------------------------------------------------------------------
+
+channel STATUS is
+   -- simulation status: values of all sensors
+   (BOOL,        -- S1:  press in bottom position
+    BOOL,        -- S2:  press in middle position
+    BOOL,        -- S3:  press in top position
+    REAL,        -- S4:  extension of the robot's arm 1
+    REAL,        -- S5:  extension of the robot's arm 2
+    REAL,        -- S6:  angle of rotation of the robot
+    BOOL,        -- S7:  elevating rotary table in bottom position
+    BOOL,        -- S8:  elevating rotary table in top position
+    REAL,        -- S9:  angle of rotation of the table
+    BOOL,        -- S10: crane over the deposit belt
+    BOOL,        -- S11: crane over the feed belt
+    REAL,        -- S12: height of the crane's magnet
+    BOOL,        -- S13: blank inside the feed belt photoelectric barrier
+    BOOL,        -- S14: blank inside the deposit belt photoelectric barrier
+    STRING       -- E:   errors that occurred since the last reaction cycle
+    )
+end channel
+
+-------------------------------------------------------------------------------
+
+channel BOOL is
+   (BOOL)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel PRESS_POSITION is
+   (PRESS_POSITION)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel ARM1_EXTENSION is
+   (ARM1_EXTENSION)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel ARM2_EXTENSION is
+   (ARM2_EXTENSION)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel ROBOT_ANGLE is
+   (ROBOT_ANGLE)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel TABLE_ANGLE is
+   (TABLE_ANGLE)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel TABLE_POSITION is
+   (TABLE_POSITION)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel CRANE_POSITION is
+   (CRANE_POSITION)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel CRANE_HEIGHT is
+   (CRANE_HEIGHT)
+end channel
+
+-------------------------------------------------------------------------------
+
+end module

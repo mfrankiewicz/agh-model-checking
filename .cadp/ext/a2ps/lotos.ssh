@@ -1,0 +1,157 @@
+# This file is a customization file for a2ps
+# Style sheet for LOTOS
+# $Id#
+
+style LOTOS is
+
+written by "Syntax Editor Configuration Tool <cadp@inria.fr>"
+version is 1.7
+
+documentation is
+ "This style is designed to fontify the LOTOS language"
+end documentation
+
+alphabets are
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+
+keywords in Keyword_strong are
+   accept,
+   actualizedby,
+   any,
+   behaviour,
+   behavior,
+   choice,
+   endlib,
+   endproc,
+   endspec,
+   endtype,
+   eqns,
+   exit,
+   for,
+   forall,
+   formaleqns,
+   formalopns,
+   formalsorts,
+   hide,
+   "i",
+   "in",
+   "is",
+   let,
+   library,
+   noexit,
+   of,
+   ofsort,
+   opnnames,
+   opns,
+   par,
+   process,
+   renamedby,
+   sortnames,
+   sorts,
+   specification,
+   stop,
+   type,
+   using,
+   where,
+   atomic,
+   comparedby,
+   constructor,
+   enumeratedby,
+   external,
+   implementedby,
+   iteratedby,
+   printedby
+end keywords
+
+keywords in Keyword are
+   BasicNaturalNumber,
+   Bit,
+   BitNatRepr,
+   BitString,
+   Bool,
+   Boolean,
+   DecDigit,
+   DecNatRepr,
+   DecString,
+   HexDigit,
+   HexNatRepr,
+   HexString,
+   NatRepresentations,
+   Nat,
+   NaturalNumber,
+   OctDigit,
+   Octet,
+   OctetString,
+   OctNatRepr,
+   OctString,
+   Set,
+   String,
+   false,
+   true,
+   and,
+   Bit1,
+   Bit2,
+   Bit3,
+   Bit4,
+   Bit5,
+   Bit6,
+   Bit7,
+   Bit8,
+   Card,
+   eq,
+   ge,
+   gt,
+   iff,
+   implies,
+   Includes,
+   Insert,
+   Ints,
+   IsIn,
+   IsSubsetOf,
+   le,
+   Length,
+   lt,
+   Minus,
+   NatNum,
+   ne,
+   not,
+   NotIn,
+   or,
+   Remove,
+   Reverse,
+   Succ,
+   Union,
+   xor
+end keywords
+
+operators in Keyword_strong are
+   <,
+   >,
+   "+",
+   -,
+   "/",
+   *,
+   !,
+   ?,
+   ;,
+   **,
+   == \equiv,
+   <> \neq,
+   <= \leq,
+   >= \geq,
+   => \Rightarrow,
+   >>,
+   [>,
+   ||,
+   |[,
+   ]|,
+   [],
+   |||
+end operators
+
+sequences are
+   "(*" Comment "*)"
+end sequences
+
+end style
+

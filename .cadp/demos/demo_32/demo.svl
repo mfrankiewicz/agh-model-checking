@@ -1,0 +1,262 @@
+-- 1) Abstract System "cache_e1_I":
+--
+-- Here only one pair (a, d) (called E1) is distinguished and only one
+-- process (PI) is not the trivial one; the process PJ represents any
+-- other process, and as PJ has no local variables, it represents even
+-- the parallel composition of any number of these processes.
+--  
+-- Property S1 is satisfied as the above system is observationally
+-- equivalent to "S1.aut":
+--   (0,READ,0) <- init
+--   (0,"W !E1",1)
+--   (1,"CU !E1",1)
+--   (1,"CU !E1",2)
+--   (2,READ,2)
+--   (2,"CU !E1",2)
+
+% echo
+% echo "verification of property S1 expressed in LNT"
+
+% sed -e 's/GENERIC_ELEMENT/ELEM_E1_I/' TYPES_COMMON_GENERIC.lnt > TYPES_COMMON.lnt
+% SVL_RECORD_FOR_CLEAN TYPES_COMMON.lnt
+
+"scenario_S1.bcg" = generation of "cache_e1_I_fonc.lnt";
+
+"diag_S1.seq" =
+   observational comparison
+      strong reduction of
+         total hide all but READ, "W !E1", "CU !E1" in
+            total rename
+               "R !1 .*" -> READ,
+               "W !1 !E1" -> "W !E1",
+               "CU !1 !E1" -> "CU !E1",
+               "W !1 !E2" -> "W !E2",
+               "CU !1 !E2" -> "CU !E2"
+            in "scenario_S1.bcg"
+            end rename
+         end hide
+      ==
+      "S1.aut";
+
+-------------------------------------------------------------------------------
+
+-- 2) Abstract System "cache_e12_I":
+--
+-- Here two pairs (a, d) and (a', d') (called E1 and E2) are
+-- distinguished and only one process (PI) is not the trivial one.
+-- There is also the process PJ as decribed before.
+--  
+-- Property S3 is satisfied as the above system is safety equivalent to
+-- "S3.aut":
+--   (0,"W !1 !E1",2) <- init
+--   (0,"W !1 !E2",7)
+--   (1,"W !1 !E1",5)
+--   (1,"CU !1 !E2",1)
+--   (2,"W !1 !E2",4)
+--   (2,"CU !1 !E1",6)
+--   (3,"CU !1 !E2",5)
+--   (4,"CU !1 !E1",5)
+--   (5,"CU !1 !E2",5)
+--   (5,"CU !1 !E1",5)
+--   (6,"W !1 !E2",5)
+--   (6,"CU !1 !E1",6)
+--   (7,"W !1 !E1",3)
+--   (7,"CU !1 !E2",1)
+
+% echo
+% echo "verification of property S3 expressed in LNT"
+
+% sed -e 's/GENERIC_ELEMENT/ELEM_E12_I/' TYPES_COMMON_GENERIC.lnt > TYPES_COMMON.lnt
+
+"scenario_S3.bcg" = generation of "cache_e12_I_fonc.lnt";
+
+"diag_S3.seq" =
+   safety comparison 
+      strong reduction of 
+         total hide all but 
+            "W !1 !E1", "W !1 !E2", "W !2 !E1",
+            "W !2 !E2", "CU !1 !E1", "CU !1 !E2"
+         in "scenario_S3.bcg"
+         end hide
+      ==
+      "S3.aut";
+
+-------------------------------------------------------------------------------
+
+-- 3) Abstract System "cache_e12_sameAddr_I":
+--
+-- This is the same system as in 2), but with a = a'.
+-- 
+-- Property C2 is satisfied as the above system is observationally
+-- equivalent to "C2.aut":
+--   (0,"CU !E2",3) <- init
+--   (0,"CU !E1",4)
+--   (1,"CU !E1",1)
+--   (2,"CU !E2",2)
+--   (3,"CU !E2",3)
+--   (3,"CU !E1",1)
+--   (4,"CU !E2",2)
+--   (4,"CU !E1",4)
+
+% echo
+% echo "verification of property C2 expressed in LNT"
+
+% sed -e 's/GENERIC_ELEMENT/ELEM_E12_SAMEADDR_I/' TYPES_COMMON_GENERIC.lnt > TYPES_COMMON.lnt
+
+"scenario_C2.bcg" = generation of "cache_e12_sameAddr_I_fonc.lnt";
+
+"diag_C2.seq" =
+   safety comparison 
+      strong reduction of
+         total hide all but "CU !E1", "CU !E2" in
+            total rename "CU !1 !E1" -> "CU !E1", "CU !1 !E2" -> "CU !E2" in
+               "scenario_C2.bcg"
+            end rename
+         end hide
+      ==
+      "C2.aut";
+
+-------------------------------------------------------------------------------
+
+-- 4) Abstract System "cache_e1_J":
+--
+-- Here only one pair (a, d) (called E1) is distinguished.  There is a
+-- single process PI as in the preceeding versions, but the process PJ
+-- (representing the parallel composition of all other processes) has a
+-- buffer OUT which distinguishes the element E1.
+--
+-- Property S2 is satisfied as the above system is safety equivalent to
+-- "S2.aut":
+--   (0,"W !E1",1) <- init
+--   (1,"CU !E1",1)
+
+% echo
+% echo "verification of property S2 expressed in LNT"
+
+% sed -e 's/GENERIC_ELEMENT/ELEM_E1_J/' TYPES_COMMON_GENERIC.lnt > TYPES_COMMON.lnt
+
+"scenario_S2.bcg" = generation of "cache_e1_J_fonc.lnt";
+
+"diag_S2.seq" =
+   observational comparison 
+      strong reduction of 
+         total hide all but "W !E1", "W !E2", "CU !E1", "CU !E2" in
+            total rename
+               "W !1 !E1" -> "W !E1",
+               "W !2 !E1" -> "W !E1",
+               "W !1 !E2" -> "W !E2",
+               "W !2 !E2" -> "W !E2",
+               "CU !1 !E1" -> "CU !E1",
+               "CU !2 !E1" -> "CU !E1",
+               "CU !1 !E2" -> "CU !E2",
+               "CU !2 !E2" -> "CU !E2"
+            in "scenario_S2.bcg"
+            end rename
+         end hide
+      ==
+      "S2.aut";
+
+-------------------------------------------------------------------------------
+
+-- 5) Abstract System "cache_e12_J_4P":
+--
+-- This is the most complicated configuration.  There are two processes
+-- PI with buffers IN and cache memories C distinguishing E1 and E2.
+-- There are also two buffers PJ with buffers OUT distinguishing E1 and
+-- E2 (similaire as in the scenarion above).  E1 can be written by one
+-- of the processes PJ only and E2 by the other process PJ only.
+--
+-- As the automaton expressing this property is not easy to read, we
+-- have prefered to express it by means of a Lotos program consisting
+-- of two processes P(1) and P(2) which first synchronize in order to
+-- fix an order, and then, both execute cache-uptate E1 and E2
+-- independently in the fixed order. It is easy to see that such a
+-- system defines all alowed orders.
+--
+-- This automaton is defined in the files "S4.lotos" and "S4.lnt".
+--
+-- We verify that the state graph obtained from an appropriate
+-- scenario of the cache memory system is equivalent with respect to
+-- the observational preorder relation to stategraph obtained from
+-- "S4.lotos" (respectively, "S4.lnt"). This is sufficient to
+-- guarantee that only allowed orders may occur.
+
+% echo
+% echo "verification of property S4 expressed in LNT"
+
+% sed -e 's/GENERIC_ELEMENT/ELEM_E12_4P/' TYPES_COMMON_GENERIC.lnt > TYPES_COMMON.lnt
+
+"scenario_S4.bcg" = generation of "cache_e12_J_4P_comp.lnt";
+
+"S4.bcg" = generation of "S4.lnt";
+
+"diag_S4.seq" =
+   tau*.a comparison
+      strong reduction of 
+         total hide all but 
+            "CU !1 !E1", 
+            "CU !1 !E2", 
+            "CU !2 !E1",
+            "CU !2 !E2"
+         in "scenario_S4.bcg"
+         end hide
+      <=
+      strong reduction of "S4.bcg";
+
+(*****************************************************************************)
+
+% (cd LOTOS ; echo "" ; svl)
+
+-------------------------------------------------------------------------------
+
+% echo
+% echo "1) comparison of the LOTOS and LNT specifications"
+
+"comp_S1.bcg" =
+   strong comparison "LOTOS/scenario_S1.bcg" == "scenario_S1.bcg";
+
+-------------------------------------------------------------------------------
+
+% echo
+% echo "2) comparison of the LOTOS and LNT specifications"
+
+"comp_S3.bcg" =
+   strong comparison "LOTOS/scenario_S3.bcg" == "scenario_S3.bcg";
+
+-------------------------------------------------------------------------------
+
+% echo
+% echo "3) comparison of the LOTOS and LNT specifications"
+
+"comp_C2.bcg" =
+   strong comparison "LOTOS/scenario_C2.bcg" == "scenario_C2.bcg";
+
+-------------------------------------------------------------------------------
+
+% echo
+% echo "4) comparison of the LOTOS and LNT specifications"
+
+"comp_S2.bcg" =
+   strong comparison "LOTOS/scenario_S2.bcg" == "scenario_S2.bcg";
+
+-------------------------------------------------------------------------------
+
+% echo
+% echo "5a) comparison of the LOTOS and LNT specifications"
+
+"comp_S4.bcg" =
+   strong comparison "LOTOS/scenario_S4.bcg" == "scenario_S4.bcg";
+
+-------------------------------------------------------------------------------
+
+% echo
+% echo "5b) comparison of the LOTOS and LNT specifications"
+
+"comp_S4_properties.bcg" =
+   strong comparison "LOTOS/S4.bcg" == "S4.bcg";
+
+(*****************************************************************************)
+
+-- Cleanup
+% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"
+

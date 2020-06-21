@@ -1,0 +1,70 @@
+library
+   BOOLEAN,
+   NATURAL
+endlib
+
+type DATA is Natural
+   sorts
+      Data
+   opns
+      data (*! constructor *) : Nat -> Data
+endtype
+
+type MESSAGE is Boolean, Natural, DATA
+   sorts
+      Msg (*! list *)
+   opns
+      nil  (*! constructor *) : -> Msg
+      cons (*! constructor *) : Data, Msg -> Msg
+      head : Msg -> Data
+      tail : Msg -> Msg
+      length : Msg -> Nat
+      max : -> Nat
+      cons_msg : Nat -> Msg
+      cons_msg_1 : Nat, Msg -> Msg
+   eqns
+      forall M : Msg, D : Data, N : Nat
+      ofsort Data
+         head (cons (D, M)) = D;
+      ofsort Msg
+         tail (cons (D, M)) = M;
+      ofsort Nat
+         length (nil) = 0;
+         length (cons (D, M)) = length (M) + 1;
+      ofsort Nat
+         max = 3;
+      ofsort Msg
+         cons_msg (N) = cons_msg_1 (N, nil);
+      ofsort Msg
+         cons_msg_1 (0, M) = M;
+         cons_msg_1 (succ (N), M) = cons_msg_1 (N, cons (data (succ (N)), M));
+endtype
+
+type INDICATION is MESSAGE
+   sorts
+      Ind
+   opns
+      I_FST (*! constructor *), I_INC (*! constructor *),
+      I_OK  (*! constructor *), I_NOK (*! constructor *),
+      I_DK  (*! constructor *)  : -> Ind
+      confirm : Msg -> Ind
+      indication : Bool, Bool -> Ind
+   eqns
+      forall M : Msg, B : Bool
+      ofsort Ind
+         length (M) == 1 => confirm (M) = I_DK;
+         confirm (M) = I_NOK;
+      ofsort Ind
+         indication (true, false) = I_FST;
+         indication (false, false) = I_INC;
+         indication (B, true) = I_OK;
+endtype
+
+type SIGNAL is
+   sorts
+      Signal
+   opns
+      START   (*! constructor *), RESET   (*! constructor *),
+      TIMEOUT (*! constructor *), S_READY (*! constructor *),
+      R_READY (*! constructor *)  : -> Signal
+endtype

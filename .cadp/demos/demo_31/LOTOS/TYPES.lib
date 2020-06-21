@@ -1,0 +1,138 @@
+(* -------------------------------------------------------------------------- *)
+
+library BOOLEAN, NATURAL endlib
+
+(* -------------------------------------------------------------------------- *)
+
+type NUM is BOOLEAN
+   sorts NUM
+   opns
+      0 (*! constructor *),
+      1 (*! constructor *),
+      2 (*! constructor *),
+      3 (*! constructor *),
+      4 (*! constructor *),
+      5 (*! constructor *),
+      6 (*! constructor *),
+      7 (*! constructor *) : -> NUM
+      _==_, _<>_ : NUM, NUM -> BOOL
+   eqns
+      forall N1, N2 : NUM
+      ofsort BOOL
+         N1 == N1 = true;
+         N1 == N2 = false; (* assuming priority *)
+      ofsort BOOL
+        N1 <> N2 = not (N1 == N2);
+endtype
+
+(* -------------------------------------------------------------------------- *)
+
+type TABLE is NATURAL, NUM
+   sorts TABLE
+   opns
+      TUPLE (*! constructor *) : NAT, NAT, NAT, NAT, NAT, NAT, NAT, NAT -> TABLE
+      ZERO : -> TABLE
+      ZERO_0127 : -> TABLE
+      VAL : TABLE, NUM -> NAT
+      INCR : TABLE, NUM -> TABLE
+      DECR : TABLE, NUM -> TABLE
+   eqns
+      forall n0, n1, n2, n3, n4, n5, n6, n7:NAT
+      ofsort TABLE
+         ZERO = TUPLE (0, 0, 0, 0, 0, 0, 0, 0);
+      ofsort TABLE
+         ZERO_0127 = TUPLE (0, 0, 0, 8, 8, 8, 8, 0);
+         (* this constant is used to inform the controller that only devices
+          * 0, 1, 2, 7 are present on the SCSI bus; initializing the queue
+          * size of the other devices to their maximal limit, i.e. 8, prevents
+          * the controller from considering these other devices, since the
+          * controller believes that these devices' input queues are full
+          *)
+      ofsort NAT
+         VAL (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 0) = n0;
+         VAL (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 1) = n1;
+         VAL (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 2) = n2;
+         VAL (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 3) = n3;
+         VAL (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 4) = n4;
+         VAL (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 5) = n5;
+         VAL (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 6) = n6;
+         VAL (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 7) = n7;
+      ofsort TABLE
+         INCR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 0) = 
+                                   TUPLE (n0+1, n1, n2, n3, n4, n5, n6, n7);
+         INCR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 1) = 
+                                   TUPLE (n0, n1+1, n2, n3, n4, n5, n6, n7);
+         INCR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 2) = 
+                                   TUPLE (n0, n1, n2+1, n3, n4, n5, n6, n7);
+         INCR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 3) = 
+                                   TUPLE (n0, n1, n2, n3+1, n4, n5, n6, n7);
+         INCR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 4) = 
+                                   TUPLE (n0, n1, n2, n3, n4+1, n5, n6, n7);
+         INCR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 5) = 
+                                   TUPLE (n0, n1, n2, n3, n4, n5+1, n6, n7);
+         INCR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 6) = 
+                                   TUPLE (n0, n1, n2, n3, n4, n5, n6+1, n7);
+         INCR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 7) = 
+                                   TUPLE (n0, n1, n2, n3, n4, n5, n6, n7+1);
+      ofsort TABLE
+         DECR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 0) = 
+                                   TUPLE (n0-1, n1, n2, n3, n4, n5, n6, n7);
+         DECR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 1) = 
+                                   TUPLE (n0, n1-1, n2, n3, n4, n5, n6, n7);
+         DECR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 2) = 
+                                   TUPLE (n0, n1, n2-1, n3, n4, n5, n6, n7);
+         DECR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 3) = 
+                                   TUPLE (n0, n1, n2, n3-1, n4, n5, n6, n7);
+         DECR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 4) = 
+                                   TUPLE (n0, n1, n2, n3, n4-1, n5, n6, n7);
+         DECR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 5) = 
+                                   TUPLE (n0, n1, n2, n3, n4, n5-1, n6, n7);
+         DECR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 6) = 
+                                   TUPLE (n0, n1, n2, n3, n4, n5, n6-1, n7);
+         DECR (TUPLE (n0, n1, n2, n3, n4, n5, n6, n7), 7) = 
+                                   TUPLE (n0, n1, n2, n3, n4, n5, n6, n7-1);
+endtype
+
+(* -------------------------------------------------------------------------- *)
+
+type WIRE is NUM
+   sorts WIRE (*! iteratedby ADT_ENUM_FIRST_WIRE and ADT_ENUM_NEXT_WIRE *)
+   opns
+      WIRE (*! implementedby WIRE constructor *) : BOOL, BOOL, BOOL, BOOL, BOOL, BOOL, BOOL, BOOL -> WIRE
+      C_PASS : WIRE, NUM -> BOOL
+      C_WIN :  WIRE, NUM -> BOOL
+      C_LOSS : WIRE, NUM -> BOOL
+   eqns
+      forall r0, r1, r2, r3, r4, r5, r6, r7: BOOL, N:NUM, W:WIRE
+      ofsort BOOL
+         C_PASS (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 0) = not (r0);
+         C_PASS (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 1) = not (r1);
+         C_PASS (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 2) = not (r2);
+         C_PASS (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 3) = not (r3);
+         C_PASS (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 4) = not (r4);
+         C_PASS (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 5) = not (r5);
+         C_PASS (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 6) = not (r6);
+         C_PASS (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 7) = not (r7);
+      ofsort BOOL
+	 C_WIN (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 0) = 
+                  r0 and not (r1 or r2 or r3 or r4 or r5 or r6 or r7);
+         C_WIN (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 1) = 
+                        r1 and not (r2 or r3 or r4 or r5 or r6 or r7);
+         C_WIN (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 2) =
+                              r2 and not (r3 or r4 or r5 or r6 or r7);
+         C_WIN (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 3) = 
+                                    r3 and not (r4 or r5 or r6 or r7);
+         C_WIN (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 4) =
+                                          r4 and not (r5 or r6 or r7);
+         C_WIN (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 5) =
+                                                r5 and not (r6 or r7);
+         C_WIN (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 6) =
+                                                      r6 and not (r7);
+         C_WIN (WIRE (r0, r1, r2, r3, r4, r5, r6, r7), 7) =
+                                                                   r7;
+      ofsort BOOL
+	 C_LOSS (W, N) = not (C_PASS (W, N)) and not (C_WIN (W, N));
+endtype
+
+(* -------------------------------------------------------------------------- *)
+

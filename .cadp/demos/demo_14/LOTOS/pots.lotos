@@ -1,0 +1,1668 @@
+(****************************************************************
+
+  Plain Old Telephone System
+
+  from Patrick Ernberg, SICS, Sweden.
+
+  modified by Hubert Garavel:
+     - added the missing "Digit" type
+     - expanded APERO extensions in the ADT part
+     - removed all useless operations "pred" and "succ"
+     - removed all useless operations "first" and "last"
+     - removed 8 useless operations  "Subsc", "BSubsc", "Act",
+       "Tone", "set_Subsc", "set_BSubsc", "set_Act", "set_Tone"
+     - fixed a dubious equation in the definition of SetBSubsc
+
+****************************************************************)
+
+specification POTS_System [S] : noexit
+
+library
+    Boolean
+endlib
+
+(*-----------------------------------------------------------
+ * Possible Roles of a Subscriber:
+ *
+ *	- originator (Asubsc)
+ *	- responder (Bsubsc)
+ *)
+
+type subscriber
+    is Boolean
+sorts
+    Subscriber
+opns
+    Asubsc (*! constructor *),
+    Bsubsc (*! constructor *) : -> Subscriber
+    _eq_, _ne_ : Subscriber, Subscriber -> Bool
+eqns
+    forall
+	Xsubsc, Ysubsc:Subscriber
+    ofsort Bool
+	Asubsc eq Asubsc = true;
+	Asubsc eq Bsubsc = false;
+	Bsubsc eq Asubsc = false;
+	Bsubsc eq Bsubsc = true;
+	Xsubsc ne Ysubsc = not (Xsubsc eq Ysubsc);
+endtype
+
+(*-----------------------------------------------------------
+ * Signals exchanged between MUL and the subscriber's phoneset:
+ *
+ *	- for dialing (Dial)
+ *	[- for timeout (TimeOut)]
+ *)
+
+type Signal
+    is Boolean
+sorts
+    Signal
+opns
+    Dial (*! constructor *),
+    TimeOut (*! constructor *) : -> Signal
+    _eq_, _ne_ : Signal, Signal -> Bool
+eqns
+    forall
+	xSignal, ySignal:Signal
+    ofsort Bool
+	Dial eq Dial = true;
+	Dial eq TimeOut = false;
+	TimeOut eq Dial = false;
+	TimeOut eq TimeOut = true;
+	xSignal ne ySignal = not (xSignal eq ySignal);
+endtype
+
+(*-----------------------------------------------------------
+ * Environment Activity of a phoneset:
+ *
+ *	- offhook (Offh)
+ *	- onhook (Onh)
+ *)
+
+type EnvAct_1
+    is Boolean
+sorts
+    EnvAct
+opns
+    Offh (*! constructor *),
+    Onh (*! constructor *) : -> EnvAct
+    _eq_, _ne_ : EnvAct, EnvAct -> Bool
+eqns
+    forall
+	xEnvAct, yEnvAct:EnvAct
+    ofsort Bool
+	Offh eq Offh = true;
+	Offh eq Onh = false;
+	Onh eq Offh = false;
+	Onh eq Onh = true;
+	xEnvAct ne yEnvAct = not (xEnvAct eq yEnvAct);
+endtype
+
+(*-----------------------------------------------------------
+ * Operations of the Environment Activity of a phoneset:
+ *
+ *	- IsOffh to determine whether the phone is offhook or not
+ *	- IsOnh to determine whether the phone is onhook or not
+ *)
+
+
+type EnvAct
+    is EnvAct_1, Boolean
+opns
+    IsOffh, IsOnh : EnvAct -> Bool
+eqns
+    Ofsort Bool
+	IsOffh (Offh) = true;
+	IsOffh (Onh) = false;
+	IsOnh (Onh) = true;
+	IsOnh (Offh) = false;
+endtype
+
+(*-----------------------------------------------------------
+ * Tones carried out or emitted by the telephone:
+ *
+ *	NoTone (silence...)
+ *	DialT (dial tone)
+ *	BusyT (busy tone)
+ *	CongT ()
+ *	ErrorT (error tone)
+ *	RingT (ringing tone, originator's handset)
+ *	RingS (ringing sound, responder's phone bell)
+ *	SpeechConn (speech)
+ *)
+
+type Tone_1
+    is Boolean
+sorts
+    Tone
+opns
+    NoTone (*! constructor *),
+    DialT (*! constructor *),
+    BusyT (*! constructor *),
+    CongT (*! constructor *),
+    ErrorT (*! constructor *),
+    RingS (*! constructor *),
+    SpeechConn (*! constructor *),
+    RingT (*! constructor *) : -> Tone
+    _eq_, _ne_ : Tone, Tone -> Bool
+eqns
+    forall
+	xtone, ytone:Tone
+    ofsort Bool
+	NoTone eq NoTone = true;		NoTone eq DialT = false;
+	NoTone eq BusyT = false;		NoTone eq CongT = false;
+	NoTone eq ErrorT = false;		NoTone eq RingS = false;
+	NoTone eq SpeechConn = false;		NoTone eq RingT = false;
+	DialT eq NoTone = false;		DialT eq DialT = true;
+	DialT eq BusyT = false;			DialT eq CongT = false;
+	DialT eq ErrorT = false;		DialT eq RingS = false;
+	DialT eq SpeechConn = false;		DialT eq RingT = false;
+	BusyT eq NoTone = false;		BusyT eq DialT = false;
+	BusyT eq BusyT = true;			BusyT eq CongT = false;
+	BusyT eq ErrorT = false;		BusyT eq RingS = false;
+	BusyT eq SpeechConn = false;		BusyT eq RingT = false;
+	CongT eq NoTone = false;		CongT eq DialT = false;
+	CongT eq BusyT = false;			CongT eq CongT = true;
+	CongT eq ErrorT = false;		CongT eq RingS = false;
+	CongT eq SpeechConn = false;		CongT eq RingT = false;
+	ErrorT eq NoTone = false;		ErrorT eq DialT = false;
+	ErrorT eq BusyT = false;		ErrorT eq CongT = false;
+	ErrorT eq ErrorT = true;		ErrorT eq RingS = false;
+	ErrorT eq SpeechConn = false;		ErrorT eq RingT = false;
+	RingS eq NoTone = false;		RingS eq DialT = false;
+	RingS eq BusyT = false;			RingS eq CongT = false;
+	RingS eq ErrorT = false;		RingS eq RingS = true;
+	RingS eq SpeechConn = false;		RingS eq RingT = false;
+	SpeechConn eq NoTone = false;		SpeechConn eq DialT = false;
+	SpeechConn eq BusyT = false;		SpeechConn eq CongT = false;
+	SpeechConn eq ErrorT = false;		SpeechConn eq RingS = false;
+	SpeechConn eq SpeechConn = true;	SpeechConn eq RingT = false;
+	RingT eq NoTone = false;		RingT eq DialT = false;
+	RingT eq BusyT = false;			RingT eq CongT = false;
+	RingT eq ErrorT = false;		RingT eq RingS = false;
+	RingT eq SpeechConn = false;		RingT eq RingT = true;
+	xtone ne ytone = not (xtone eq ytone);
+endtype
+
+(*-----------------------------------------------------------
+ * Logical operators on tones:
+ *
+ *	IsNoTone (NoTone) is true when there is no tone
+ *	IsDialT (DialT) is true when a dial tone is on
+ *	IsBusyT (BusyT) is true when a busy tone is on
+ *	IsErrorT (ErrorT) is true when an error tone is on
+ *	IsRingT (RingT) is true when a ring tone is on
+ *	IsRingS (RingS) is true when the phone is ringing
+ *	IsSpeechConn (SpeechConn) is true when conversation is going on
+ *)
+
+type Tone
+    is Tone_1, Boolean
+opns
+    IsNoTone, IsDialT, IsBusyT, IsCongT, IsErrorT, IsRingS, IsSpeechConn,
+	IsRingT : Tone -> Bool
+eqns
+    forall x:Tone
+    ofsort Bool
+	IsNoTone (NoTone) = true;		IsNoTone (x) = false;
+	IsDialT (DialT) = true;			IsDialT (x) = false;
+	IsBusyT (BusyT) = true;			IsBusyT (x) = false;
+	IsCongT (CongT) = true;			IsCongT (x) = false;
+	IsErrorT (ErrorT) = true;		IsErrorT (x) = false;
+	IsRingS (RingS) = true;			IsRingS (x) = false;
+	IsSpeechConn (SpeechConn) = true;	IsSpeechConn (x) = false;
+	IsRingT (RingT) = true;			IsRingT (x) = false;
+endtype
+
+(*-----------------------------------------------------------
+ * Type of states of activity:
+ *
+ *	- active (on)
+ *	- inactive (off)
+ *
+ * This is used to turn tones on and off, e.g.
+ *
+ *	!DialT!on	to turn the dial tone on
+ *	!DialT!off	to turn the dial tone off
+ *)
+
+type toggle
+    is Boolean
+sorts
+    toggle
+opns
+    on (*! constructor *),
+    off (*! constructor *) : -> toggle
+    _eq_, _ne_ : toggle, toggle -> Bool
+eqns
+    forall
+	xtoggle, ytoggle:toggle
+    ofsort Bool
+	on eq on = true;
+	on eq off = false;
+	off eq on = false;
+	off eq off = true;
+	xtoggle ne ytoggle = not (xtoggle eq ytoggle);
+endtype
+
+(*-----------------------------------------------------------
+ * Type of phone buttons (numbers)
+ *)
+
+type DeciDigit_1
+    is Boolean
+sorts
+    DeciDigit
+opns
+    00 (*! constructor *), 1 (*! constructor *),
+    2 (*! constructor *), 3 (*! constructor *),
+    NoDigit (*! constructor *), ErrorDigit (*! constructor *),
+    BusyDigit (*! constructor *) : -> DeciDigit
+    _eq_, _ne_ : DeciDigit, DeciDigit -> Bool
+eqns
+    forall
+	xDeciDigit, yDeciDigit:DeciDigit
+    ofsort Bool
+	00 eq 00 = true;			00 eq 1 = false;
+	00 eq 2 = false;			00 eq 3 = false;
+	00 eq NoDigit = false;			00 eq ErrorDigit = false;
+	00 eq BusyDigit = false;
+	1 eq 00 = false;			1 eq 1 = true;
+	1 eq 2 = false;				1 eq 3 = false;
+	1 eq NoDigit = false;			1 eq ErrorDigit = false;
+	1 eq BusyDigit = false;
+	2 eq 00 = false;			2 eq 1 = false;
+	2 eq 2 = true;				2 eq 3 = false;
+	2 eq NoDigit = false;			2 eq ErrorDigit = false;
+	2 eq BusyDigit = false;
+	3 eq 00 = false;			3 eq 1 = false;
+	3 eq 2 = false;				3 eq 3 = true;
+	3 eq NoDigit = false;			3 eq ErrorDigit = false;
+	3 eq BusyDigit = false;
+	NoDigit eq 00 = false;			NoDigit eq 1 = false;
+	NoDigit eq 2 = false;			NoDigit eq 3 = false;
+	NoDigit eq NoDigit = true;		NoDigit eq ErrorDigit = false;
+	NoDigit eq BusyDigit = false;
+	ErrorDigit eq 00 = false;		ErrorDigit eq 1 = false;
+	ErrorDigit eq 2 = false;		ErrorDigit eq 3 = false;
+	ErrorDigit eq NoDigit = false;
+	ErrorDigit eq ErrorDigit = true;
+	ErrorDigit eq BusyDigit = false;
+	BusyDigit eq 00 = false;		BusyDigit eq 1 = false;
+	BusyDigit eq 2 = false;			BusyDigit eq 3 = false;
+	BusyDigit eq NoDigit = false;
+	BusyDigit eq ErrorDigit = false;
+	BusyDigit eq BusyDigit = true;
+	xDeciDigit ne yDeciDigit = not (xDeciDigit eq yDeciDigit);
+endtype
+
+(*-----------------------------------------------------------
+ * Operation "legal" on subscriber's identification numbers,
+ * to determine whether a subscriber is registered or not.
+ *)
+
+type DeciDigit
+    is DeciDigit_1
+opns
+    legal:DeciDigit -> Bool
+eqns
+    forall d1, d2:DeciDigit
+    ofsort Bool
+	legal (1) = true;
+	legal (2) = true;
+	legal (d1) = false;
+endtype
+
+type Digit_1
+    is Boolean
+sorts
+    Digit
+opns
+    1 (*! constructor *),
+    2 (*! constructor *),
+    NoDigit (*! constructor *) : -> Digit
+    _eq_, _ne_ : Digit, Digit -> Bool
+eqns
+    forall
+	xDigit, yDigit:Digit
+    ofsort Bool
+	1 eq 1 = true;			1 eq 2 = false;
+	1 eq NoDigit = false;
+	2 eq 1 = false;			2 eq 2 = true;
+	2 eq NoDigit = false;
+	NoDigit eq 1 = false;		NoDigit eq 2 = false;
+	NoDigit eq NoDigit = true;
+	xDigit ne yDigit = not (xDigit eq yDigit);
+endtype
+
+type Digit
+    is Digit_1
+opns
+    legal : Digit -> Bool
+eqns
+    forall d1, d2:Digit
+    ofsort Bool
+	legal (1) = true;
+	legal (2) = true;
+	legal (d1) = false;
+endtype
+
+(*-----------------------------------------------------------
+ * Information (tuple) describing the state of a subscriber:
+ *
+ *	- subscriber id
+ *	- connection (called subscriber id)
+ *	- phoneset position (onhook, offhook)
+ *	- tone (NoTone, DialT, BusyT, RingT, SpeechConn, etc.)
+ *)
+
+type TerminalTuple
+    is Digit, DeciDigit, Tone, EnvAct, Boolean
+sorts
+    TerminalTuple
+opns
+    Tuple (*! constructor *) : Digit, DeciDigit, EnvAct, Tone -> TerminalTuple
+    _eq_, _ne_ : TerminalTuple, TerminalTuple -> Bool
+eqns
+    forall
+	xtuple, ytuple:TerminalTuple,
+	xSubsc, ySubsc:Digit,
+	xBSubsc, yBSubsc:DeciDigit,
+	xAct, yAct:EnvAct,
+	xTone, yTone:Tone
+    ofsort Bool
+	not (xSubsc eq ySubsc) =>
+	    Tuple (xSubsc, xBSubsc, xAct, xTone) eq
+		Tuple (ySubsc, yBSubsc, yAct, yTone) = false;
+	not (xBSubsc eq yBSubsc) =>
+	    Tuple (xSubsc, xBSubsc, xAct, xTone) eq
+		Tuple (ySubsc, yBSubsc, yAct, yTone) = false;
+	not (xAct eq yAct) =>
+	    Tuple (xSubsc, xBSubsc, xAct, xTone) eq
+		Tuple (ySubsc, yBSubsc, yAct, yTone) = false;
+	not (xTone eq yTone) =>
+	    Tuple (xSubsc, xBSubsc, xAct, xTone) eq
+		Tuple (ySubsc, yBSubsc, yAct, yTone) = false;
+	xSubsc eq ySubsc,
+	 xBSubsc eq yBSubsc,
+	  xAct eq yAct,
+	   xTone eq yTone =>
+		Tuple (xSubsc, xBSubsc, xAct, xTone) eq
+		    Tuple (ySubsc, yBSubsc, yAct, yTone) = true;
+	xtuple ne ytuple = not (xtuple eq ytuple);
+endtype
+
+(*-----------------------------------------------------------
+ * Set of all subscribers
+ *)
+
+type TerminalSet
+    is Boolean, Digit, DeciDigit, Tone, EnvAct, TerminalTuple
+sorts
+    TerminalSet (*! implementedby ADT_TERMINALSET
+                 comparedby ADT_CMP_TERMINALSET
+                 printedby ADT_PRINT_TERMINALSET *)
+opns
+    empty (*! constructor *) : -> TerminalSet
+    Add (*! constructor *) : TerminalTuple, TerminalSet-> TerminalSet
+    Insert : TerminalTuple, TerminalSet-> TerminalSet
+    SetAct : Digit, EnvAct, TerminalSet -> TerminalSet
+    SetBSubsc : DeciDigit, DeciDigit, TerminalSet -> TerminalSet
+    SetBSubsc : Digit, DeciDigit, TerminalSet -> TerminalSet
+    SetTone : DeciDigit, Tone, TerminalSet -> TerminalSet
+    SetTone : Digit, Tone, TerminalSet -> TerminalSet
+
+    _eq_ : Digit, DeciDigit -> Bool
+    _ne_ : Digit, DeciDigit -> Bool
+    _eq_ : DeciDigit, Digit -> Bool
+    _ne_ : DeciDigit, Digit -> Bool
+
+    IsBNumber : DeciDigit, TerminalSet -> Bool
+    IsCalledBy : DeciDigit, TerminalSet-> Digit
+    BSubsc : Digit, TerminalSet -> DeciDigit
+    ActStat : DeciDigit, TerminalSet -> EnvAct
+    Tone : DeciDigit, TerminalSet -> Tone
+
+    IsBNumber : Digit, TerminalSet -> Bool
+    IsCalledBy : Digit, TerminalSet-> Digit
+    ActStat : Digit, TerminalSet -> EnvAct
+    Tone : Digit, TerminalSet -> Tone
+eqns
+    forall
+	tuple1, tuple2:TerminalTuple,
+	tset:TerminalSet,
+	subsc1, subsc2:Digit,
+	bsub1, bsub2, bsub3:DeciDigit,
+	tone1, tone2:Tone,
+	act1, act2:EnvAct
+     ofsort TerminalSet
+
+	Insert (tuple1, Add (tuple1, tset)) = Add (tuple1, tset);
+	Insert (tuple1, Add (tuple2, tset)) = Add (tuple2, Insert (tuple1, tset));
+	Insert (tuple1, empty) = Add (tuple1, empty);
+
+	SetAct (subsc1, act1, empty) = empty;
+	subsc1 eq subsc2 =>
+	    SetAct (subsc1, act1, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub2, act1, tone2), tset);
+	subsc1 ne subsc2 =>
+	    SetAct (subsc1, act1, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub2, act2, tone2), SetAct (subsc1, act1, tset));
+
+	SetBSubsc (bsub1, bsub3, empty) = empty;
+	bsub1 eq subsc2 =>
+	    SetBSubsc (bsub1, bsub3, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub3, act2, tone2), tset);
+            (* originally: ... = Add (Tuple (subsc2, bsub2, act2, tone2), tset); *)
+	bsub1 ne subsc2 =>
+	    SetBSubsc (bsub1, bsub3, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub2, act2, tone2), SetBSubsc (bsub1, bsub3, tset));
+
+	SetBSubsc (subsc1, bsub1, empty) = empty;
+	subsc1 eq subsc2 =>
+	    SetBSubsc (subsc1, bsub1, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub1, act2, tone2), tset);
+	subsc1 ne subsc2 =>
+	    SetBSubsc (subsc1, bsub1, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub2, act2, tone2), SetBSubsc (subsc1, bsub1, tset));
+
+	SetTone (bsub1, tone1, empty) = empty;
+	bsub1 eq subsc2 =>
+	    SetTone (bsub1, tone1, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub2, act2, tone1), tset);
+	bsub1 ne subsc2 =>
+	    SetTone (bsub1, tone1, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub2, act2, tone2), SetTone (bsub1, tone1, tset));
+
+	SetTone (subsc1, tone1, empty) = empty;
+	subsc1 eq subsc2 =>
+	    SetTone (subsc1, tone1, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub2, act2, tone1), tset);
+	subsc1 ne subsc2 =>
+	    SetTone (subsc1, tone1, Add (Tuple (subsc2, bsub2, act2, tone2), tset))
+	    = Add (Tuple (subsc2, bsub2, act2, tone2), SetTone (subsc1, tone1, tset));
+
+     ofsort Bool
+
+	1 of Digit eq 1 of DeciDigit = true;
+	2 of Digit eq 2 of DeciDigit = true;
+	NoDigit of Digit eq NoDigit of DeciDigit = true;
+	subsc1 eq bsub1 = false;
+
+	subsc1 ne bsub1 = not (subsc1 eq bsub1);
+
+	1 of DeciDigit eq 1 of Digit = true;
+	2 of DeciDigit eq 2 of Digit = true;
+	NoDigit of DeciDigit eq NoDigit of Digit = true;
+	bsub1 eq subsc1 = false;
+
+	bsub1 ne subsc1 = not (bsub1 eq subsc1);
+
+	IsBNumber (bsub1, empty) = false;
+	bsub1 eq bsub2 =>
+	    IsBNumber (bsub1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= true;
+	bsub1 ne bsub2 =>
+	    IsBNumber (bsub1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= IsBNumber (bsub1, tset);
+
+	IsBNumber (subsc1, empty) = false;
+	subsc1 eq bsub2 =>
+	    IsBNumber (subsc1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= true;
+	subsc1 ne bsub2 =>
+	    IsBNumber (subsc1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= IsBNumber (subsc1, tset);
+
+     ofsort Digit
+
+	IsCalledBy (bsub1, empty) = NoDigit;
+	bsub1 eq bsub2 =>
+	    IsCalledBy (bsub1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= subsc2;
+	bsub1 ne bsub2 =>
+	    IsCalledBy (bsub1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= IsCalledBy (bsub1, tset);
+
+	IsCalledBy (subsc1, empty) = NoDigit;
+	subsc1 eq bsub2 =>
+	    IsCalledBy (subsc1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= subsc2;
+	subsc1 ne bsub2 =>
+	    IsCalledBy (subsc1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= IsCalledBy (subsc1, tset);
+
+     ofsort DeciDigit
+
+	BSubsc (subsc1, empty) = NoDigit;
+	subsc1 eq subsc2 =>
+	    BSubsc (subsc1, Add (Tuple (subsc2, bsub1, act1, tone1), tset))
+		= bsub1;
+	subsc1 ne subsc2 =>
+	    BSubsc (subsc1, Add (Tuple (subsc2, bsub1, act1, tone1), tset))
+		= BSubsc (subsc1, tset);
+
+     ofsort EnvAct
+
+	ActStat (subsc1, empty) = Onh;
+	subsc1 eq subsc2 =>
+	    ActStat (subsc1, Add (Tuple (subsc2, bsub1, act1, tone1), tset))
+		= act1;
+	subsc1 ne subsc2 =>
+	    ActStat (subsc1, Add (Tuple (subsc2, bsub1, act1, tone1), tset))
+		= ActStat (subsc1, tset);
+
+	ActStat (bsub1, empty) = Onh;
+	bsub1 eq subsc2 =>
+	    ActStat (bsub1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= act1;
+	bsub1 ne subsc2 =>
+	    ActStat (bsub1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= ActStat (bsub1, tset);
+
+     ofsort Tone
+
+	Tone (subsc1, empty) = NoTone;
+	subsc1 eq subsc2 =>
+	    Tone (subsc1, Add (Tuple (subsc2, bsub1, act1, tone1), tset))
+		= tone1;
+	subsc1 ne subsc2 =>
+	    Tone (subsc1, Add (Tuple (subsc2, bsub1, act1, tone1), tset))
+		= Tone (subsc1, tset);
+
+	Tone (bsub1, empty) = NoTone;
+	bsub1 eq subsc2 =>
+	    Tone (bsub1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= tone1;
+	bsub1 ne subsc2 =>
+	    Tone (bsub1, Add (Tuple (subsc2, bsub2, act1, tone1), tset))
+		= Tone (bsub1, tset);
+endtype
+
+(*-----------------------------------------------------------
+ * Main Behaviour
+ *)
+
+behaviour
+
+(*-----------------------------------------------------------
+ * Conns consists of all connections to participate in the
+ * system. They are being controlled by MUL via the gate S,
+ * starting with 2 registered users.
+ *
+ * Each user status is described by a tuple of 4 elements:
+ *
+ *        1) the user identification (e.g. 1)
+ *        2) the choosen responder (e.g. 2)
+ *        3) the handset position (onhook or offhook)
+ *        4) the tone or sound active (e.g. DialT, RingT, RingS)
+ *)
+
+    Conns [S]
+
+  |[S]|
+
+    MUL [S] (Insert (Tuple (2 of Digit, NoDigit, Onh, NoTone),
+            Insert (Tuple (1 of Digit, NoDigit, Onh, NoTone),
+            empty)))
+
+where
+
+(*-----------------------------------------------------------
+ * All subscribers coexist without direct interactions with
+ * one and others. Each of them may either be an originator
+ * or a responder, and is given a unique identification.
+ *)
+
+process Conns [S]:noexit :=
+
+        (
+          Subscriber [S] (1 of Digit)        (* Subscriber #1 *)
+        |||
+          Subscriber [S] (2 of Digit)        (* Subscriber #2 *)
+(***
+        |||
+          Subscriber [S] (3 of Digit)        *)(* Subscriber #3 *)(*
+        |||
+          Subscriber [S] (4 of Digit)        *)(* Subscriber #4 *)(*
+        |||
+          Subscriber [S] (5 of Digit)        *)(* Subscriber #5 *)(*
+        |||
+          Subscriber [S] (6 of Digit)        *)(* Subscriber #6 *)(*
+***)
+        )
+
+where
+
+  (*-----------------------------------------------------------
+   * Process Subscriber is the starting point of the behaviour
+   * of each individual subscriber. The specification style
+   * used is called state-oriented, the structure of the behaviour
+   * being composed of exclusive choices of events, each event
+   * leading to a subsequent state.
+   *
+   * In this initial state, a subscriber is expected to interact
+   * with the system in 4 possible manners:
+   *
+   *)
+
+  process Subscriber [S] (User:Digit) : noexit :=
+
+        (*
+         * the originator goes OffHook, leading to state CallerOffh
+         *)
+
+          S !User !Offh !Asubsc;
+            CallerOffh [S] (User)
+        []
+
+        (*
+         * the subscriber spins the dial, with no effect
+         *)
+
+          S !User !Dial ?Called:DeciDigit;
+            Subscriber [S] (User)
+        []
+
+        (*
+         * the subscriber's phone starts ringing, leading to the
+         * state CalledRingS
+         *)
+
+          S !User !RingS !on;
+            CalledRingS [S] (User)
+        []
+
+        (*
+         * the responder goes offhook, leading to state CalledOffh
+         *)
+
+          S !User !Offh !Bsubsc;
+            CalledOffh [S] (User)
+
+  where
+
+    (****************************************************)
+    (*                                                  *)
+    (*                  Caller                          *)
+    (*                                                  *)
+    (****************************************************)
+
+    (*-----------------------------------------------------------
+     * Originator has picked up the phone while idling:  the next
+     * events consist in either:
+     *
+     *  - getting a dial tone
+     *  - getting an error tone
+     *  - hanging up
+     *  - spinning the dial
+     *)
+
+    process CallerOffh [S] (Caller:Digit) : noexit :=
+
+          S !Caller !DialT !on;
+            CallerDialTOn [S] (Caller)
+        []
+          S !Caller !ErrorT !on;
+            ErrorTone [S] (Caller)
+        []
+          S !Caller !Onh;
+            Subscriber [S] (Caller)
+        []
+          S !Caller !Dial ?Called:DeciDigit;
+            CallerOffh [S] (Caller)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * After picking up the handset, the originator got a dial
+     * tone indicating that it's time for:
+     *
+     *  - spinning the dial
+     *  - hanging up
+     *  [- being timed out]
+     *)
+
+    process CallerDialTOn [S] (Caller:Digit) : noexit :=
+
+          S !Caller !Dial ?Called:DeciDigit;
+            CallerDial [S] (Caller)
+        []
+          S !Caller !Onh;
+            CallerDialTOnOnh [S] (Caller)
+    (***
+        []
+          S !Caller !TimeOut;
+            TimeOut [S] (Caller)
+    ***)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The originator has waited too long and has been timed out;
+     * the available actions are:
+     *
+     *  - getting disconnected
+     *  - hanging up
+     *  - spinning the dial
+     *)
+
+    (***
+    process TimeOut [S] (User:Digit) : noexit :=
+
+          S !User !DialT !off;
+            SpeechConnUserOff [S] (User)
+        []
+          S !User !Onh;
+            CallerDialTOnOnh [S] (User)
+        []
+          S !User !Dial ?Called:DeciDigit;
+            CallerDial [S] (User)
+
+    endproc
+    ***)
+
+    (*-----------------------------------------------------------
+     * After spinning the dial to enter the called party number,
+     * the originator may:
+     *
+     *  - observe the dial tone going off
+     *  - hang up
+     *  - spin the dial again
+     *)
+
+    process CallerDial [S] (Caller:Digit) : noexit :=
+
+          S !Caller !DialT !off;
+            CallerDialTOff [S] (Caller)
+        []
+          S !Caller !Onh;
+            CallerDialTOnOnh [S] (Caller)
+        []
+          S !Caller !Dial ?Called:DeciDigit;
+            CallerDial [S] (Caller)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The originator hung up after hearing the dial tone. It is
+     * possible to:
+     *
+     *  - go offhook
+     *  - spin the dial
+     *  - observe the dial tone cease
+     *)
+
+    process CallerDialTOnOnh [S] (Caller:Digit) : noexit :=
+
+          (* should probably be a Bsubsc here as well *)
+          S !Caller !Offh !Asubsc;
+            CallerDialTOn [S] (Caller)
+        []
+          S !Caller !Dial ?Called:DeciDigit;
+            CallerDialTOnOnh [S] (Caller)
+        []
+          S !Caller !DialT !off;
+            Subscriber [S] (Caller)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * After dialing, the dial tone ceased. The allowed events
+     * at this moment are:
+     *
+     *  - hanging up
+     *  - spinning the dial
+     *  - getting (caller) ringing tone
+     *  - getting busy tone
+     *  - getting error tone (false number, etc.)
+     *  - getting a connection
+     *)
+
+    process CallerDialTOff [S] (Caller:Digit) : noexit :=
+
+          S !Caller !Onh;
+            Subscriber [S] (Caller)
+        []
+          S !Caller !Dial ?Called:DeciDigit;
+            CallerDialTOff [S] (Caller)
+        []
+          S !Caller !RingT !on;
+            CallerRingTOn [S] (Caller)
+        []
+          S !Caller !BusyT !on;
+            BusyTone [S] (Caller)
+        []
+          S !Caller !ErrorT !on;
+            ErrorTone [S] (Caller)
+        []
+          S !Caller !SpeechConn !on;
+            SpeechConnCaller [S] (Caller)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * While the originator listens to the ringing tone, s/he may:
+     *
+     *  - spin the dial
+     *  - hang up
+     *  - observe the ringing tone ceasing
+     *)
+
+    process CallerRingTOn [S] (Caller:Digit) : noexit :=
+
+          S !Caller !Dial ?Called:DeciDigit;
+            CallerRingTOn [S] (Caller)
+        []
+          S !Caller !Onh;
+            CallerRingTOnOnh [S] (Caller)
+        []
+          S !Caller !RingT !off;
+            CallerRingTOff [S] (Caller)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * When the (caller) ringing tone stops, it is still time to:
+     *
+     *  - hang up
+     *  - spin the dial
+     *  - get a connection
+     *)
+
+    process CallerRingTOff [S] (Caller:Digit) : noexit :=
+
+          S !Caller !Onh;
+            Subscriber [S] (Caller)
+        []
+          S !Caller !Dial ?Called:DeciDigit;
+            CallerRingTOff [S] (Caller)
+        []
+          S !Caller !SpeechConn !on;
+            SpeechConnCaller [S] (Caller)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * After hanging up while getting the (caller) ringing tone
+     * was active, the options are to:
+     *
+     *  - get offhook
+     *  - spin the dial
+     *  - observe that the (caller) ringing tone ceased
+     *)
+
+    process CallerRingTOnOnh [S] (Caller:Digit) : noexit :=
+
+          (* should probably be a Bsubsc here as well *)
+          S !Caller !Offh !Asubsc;
+            CallerRingTOn [S] (Caller)
+        []
+          S !Caller !Dial ?Called:DeciDigit;
+            CallerRingTOnOnh [S] (Caller)
+        []
+          S !Caller !RingT !off;
+            Subscriber [S] (Caller)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * Out of luck, the originator got a busy tone. Let us now
+     * either:
+     *
+     *  - hang up
+     *  - spin the dial
+     *)
+
+    process BusyTone [S] (User:Digit) : noexit :=
+
+          S !User !Onh;
+            BusyToneOnh [S] (User)
+        []
+          S !User !Dial ?Called:DeciDigit;
+            BusyTone [S] (User)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * After hanging up on the sound of the busy tone, the
+     * possible interactions are:
+     *
+     *  - getting offhook
+     *  - busy tone ceases
+     *  - spinning the dial
+     *)
+
+    process BusyToneOnh [S] (User:Digit) : noexit :=
+
+          S !User !Offh !Asubsc;
+            BusyTone [S] (User)
+        []
+          S !User !BusyT !off;
+            Subscriber [S] (User)
+        []
+          S !User !Dial ?Called:DeciDigit;
+            BusyToneOnh [S] (User)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The connection was established and conversion went on. The
+     * next moves would be to:
+     *
+     *  - spin the dial
+     *  - hang up
+     *  - get disconnected
+     *)
+
+    process SpeechConnCaller [S] (Caller:Digit) : noexit :=
+
+          S !Caller !Dial ?Called:DeciDigit;
+            SpeechConnCaller [S] (Caller)
+        []
+          S !Caller !Onh;
+            SpeechConnCallerOnh [S] (Caller)
+        []
+          S !Caller !SpeechConn !off;
+            SpeechConnUserOff [S] (Caller)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The originator hung up after the conversation, thus making
+     * the set of next events the following:
+     *
+     *  - going offhook
+     *  - talking
+     *  - spinning the dial
+     *)
+
+    process SpeechConnCallerOnh [S] (Caller:Digit) : noexit :=
+
+          S !Caller !Offh !Asubsc;
+            SpeechConnCaller [S] (Caller)
+        []
+          S !Caller !SpeechConn !off;
+            Subscriber [S] (Caller)
+        []
+          S !Caller !Dial ?Called:DeciDigit;
+            SpeechConnCallerOnh [S] (Caller)
+
+    endproc
+
+    (****************************************************)
+    (*                                                  *)
+    (*                  Called                          *)
+    (*                                                  *)
+    (****************************************************)
+
+    (*-----------------------------------------------------------
+     * The responder's phone is ringing; it is time to:
+     *
+     *  - go offhook
+     *  - keep listening to the ringing bell
+     *  - spin the dial
+     *)
+
+    process CalledRingS [S] (Called:Digit) : noexit :=
+
+          S !Called !Offh !Bsubsc;
+            CalledOffh [S] (Called)
+        []
+          S !Called !RingS !off;
+            Subscriber [S] (Called)
+        []
+          S !Called !Dial ?Other:DeciDigit;
+            CalledRingS [S] (Called)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The following events are expected after picking up the
+     * phone set while the phone was ringing:
+     *
+     *  - the ringing goes off
+     *  - the responder hangs up
+     *  - the responder gets connected
+     *)
+
+    process CalledOffh [S] (Called:Digit) : noexit :=
+
+          S !Called !RingS !off;
+            CalledOffhRingSOff [S] (Called)
+        []
+          S !Called !Onh;
+            CalledOnh [S] (Called)
+        []
+          S !Called !Dial ?Other:DeciDigit;
+            CalledOffh [S] (Called)
+        []
+          S !Called !SpeechConn !on;
+            SpeechConnCalled [S] (Called)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The responder hung up after having picked up the ringing
+     * phone set, then :
+     *
+     *  - hears that the ringing ceased
+     *  - gets offhook
+     *  - spins the dial
+     *)
+
+    process CalledOnh [S] (Called:Digit) : noexit :=
+
+          S !Called !RingS !off;
+            Subscriber [S] (Called)
+        []
+          S !Called !Offh !Bsubsc;
+            CalledOffh [S] (Called)
+        []
+          S !Called !Dial ?Other:DeciDigit;
+            CalledOnh [S] (Called)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The responder picked up the ringing phone, then either:
+     *
+     *  - hangs up
+     *  - spins the dial
+     *  - gets a connection
+     *)
+
+    process CalledOffhRingSOff [S] (Called:Digit) : noexit :=
+
+          S !Called !Onh;
+            Subscriber [S] (Called)
+        []
+          S !Called !Dial ?Other:DeciDigit;
+            CalledOffhRingSOff [S] (Called)
+        []
+          S !Called !SpeechConn !on;
+            SpeechConnCalled [S] (Called)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * A connection has been established for the responder who
+     * decides to:
+     *
+     *  - spin the dial
+     *  - hang up
+     *  - get disconnected
+     *)
+
+    process SpeechConnCalled [S] (Called:Digit) : noexit :=
+
+          S !Called !Dial ?Other:DeciDigit;
+            SpeechConnCalled [S] (Called)
+        []
+          S !Called !Onh;
+            SpeechConnCalledOnh [S] (Called)
+        []
+          S !Called !SpeechConn !off;
+            SpeechConnUserOff [S] (Called)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The responder terminated the conversation by hanging up the
+     * phone, but now think about:
+     *
+     *  - getting offhook
+     *  - talking
+     *  - spinning the dial
+     *)
+
+    process SpeechConnCalledOnh [S] (Called:Digit) : noexit :=
+
+          S !Called !Offh !Bsubsc;
+            SpeechConnCalled [S] (Called)
+        []
+          S !Called !SpeechConn !off;
+            Subscriber [S] (Called)
+        []
+          S !Called !Dial ?Other:DeciDigit;
+            SpeechConnCalledOnh [S] (Called)
+
+    endproc
+
+    (****************************************************)
+    (*                                                  *)
+    (*          Common Processes                        *)
+    (*                                                  *)
+    (****************************************************)
+
+    (*-----------------------------------------------------------
+     * A disconnection occurred. Either the originator or the
+     * responder may now:
+     *
+     *  - hang up
+     *  - notice the error tone
+     *  - spin the dial
+     *)
+
+    process SpeechConnUserOff [S] (User:Digit) : noexit :=
+
+          S !User !Onh;
+            Subscriber [S] (User)
+        []
+          S !User !ErrorT !on;
+            ErrorTone [S] (User)
+        []
+          S !User !Dial ?Called:DeciDigit;
+            SpeechConnUserOff [S] (User)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * Something went wrong and the error tone in on. Let's:
+     *
+     *  - hang up
+     *  - spin the dial
+     *)
+
+    process ErrorTone [S] (User:Digit) : noexit :=
+
+          S !User !Onh;
+            ErrorToneOnh [S] (User)
+        []
+          S !User !Dial ?Called:DeciDigit;
+            ErrorTone [S] (User)
+
+    endproc
+
+    (*-----------------------------------------------------------
+     * The error tone is disturbing, so the subscriber hung up.
+     * It is possible to:
+     *
+     *  - go offhook
+     *  - notice the error tone ceasing
+     *  - spin the dial
+     *)
+
+    process ErrorToneOnh [S] (User:Digit) : noexit :=
+
+          S !User !Offh !Asubsc;
+            ErrorTone [S] (User)
+        []
+          S !User !ErrorT !off;
+            Subscriber [S] (User)
+        []
+          S !User !Dial ?Called:DeciDigit;
+            ErrorToneOnh [S] (User)
+
+    endproc
+
+  endproc (* Subscriber *)
+
+endproc (* Conns*)
+
+(********************************************************)
+(*                                                      *)
+(*              MUL Process                             *)
+(*                                                      *)
+(********************************************************)
+
+(*
+ * The MUL Process ensures that the actions taken by the subscribers
+ * are correct. It also keeps track of the state of each subscriber
+ * on every action taken.
+ *)
+
+process MUL [S] (TSet:TerminalSet) : noexit :=
+
+(* - A-subscriber Offhook -------------------------------- *)
+
+        (* The A-subscriber is permitted to go offhook as long as:
+         *
+         *      - the user identification number is registered (legal)
+         *
+         *      - the user is not already busy (i.e the user is not
+         *        the end-point of an existing connection)
+         *
+         *      - the user's handset is currently OnHook
+         *)
+
+          S ?User:Digit !Offh !Asubsc
+                  [ legal (User)
+                    and not (IsBNumber (User, TSet))
+                    and (IsOnh (ActStat (User, TSet))) ];
+
+        (* Provided the previous conditions hold, the status of the
+         * A-subscriber's phoneset is updated in the database, as:
+         *
+         *      a) Tuple (2, ErrorDigit, Offh, -) if user is #2
+         *      b) Tuple (2, -, Offh, -) if user is not #2
+         *
+         *
+         * "-" meaning that the current value remains
+         *
+         * [i.e. user #2 is not allowed to originate a call]
+         *)
+
+            (
+              [User eq 2 of Digit] ->
+                MUL [S] (SetAct (User, Offh, (SetBSubsc (User, ErrorDigit, TSet))))
+            []
+              [User ne 2 of Digit] ->
+                MUL [S] (SetAct (User, Offh, TSet))
+            )
+
+        []
+
+(* - B-subscriber Offhook -------------------------------- *)
+
+        (* The B-subscriber is permitted to go offhook as long as:
+         *
+         *      - the user identification number is registered (legal)
+         *
+         *      - the user is not already busy (i.e the user is not
+         *        the end-point of an existing connection)
+         *
+         *      - the user's handset is currently OnHook
+         *)
+
+          S ?User:Digit !Offh !Bsubsc
+                  [ legal (User)
+                    and IsBNumber (User, TSet)
+                    and IsOnh (ActStat (User, TSet)) ];
+
+        (* Provided the previous conditions hold, the status of the
+         * B-subscriber's phoneset is updated in the database, as
+         * Tuple (2, -, Offh, -), "-" meaning that the current value
+         * remains.
+         *)
+
+            MUL [S] (SetAct (User, Offh, TSet))
+
+        []
+
+(* - Onh ------------------------------------------------- *)
+
+        (* A subscriber that hangs up gets affects the status of
+         * terminal set in 2 manners:
+         *
+         *      1) the user is the end-point of a connection, then
+         *         he becomes inactive:
+         *              Tuple (User, NoDigit, Onh, -)
+         *         and the connected party becomes:
+         *              Tuple (B-User, ErrorDigit, -, -)
+         *
+         *      2) only the status of the user is changed to:
+         *              Tuple (User, NoDigit, Onh, -)
+         *         if:
+         *              a) the responder is not a registered one
+         *              b) the responder is registered but hungup
+         *)
+
+          S ?User:Digit !Onh;
+            (
+              [ legal (BSubsc (User, TSet)) and              (* Called is valid *)
+                (IsOffh (ActStat (BSubsc (User, TSet), TSet)))  (* Called active *)
+              ] ->
+
+                MUL [S] (SetBSubsc (BSubsc (User, TSet), ErrorDigit,
+                         SetBSubsc (User, NoDigit, SetAct (User, Onh, TSet))))
+            []
+
+              [ not (legal (BSubsc (User, TSet)))            (* Called not valid *)
+                or
+                (legal (BSubsc (User, TSet)) and                (* Called legal *)
+                (IsOnh (ActStat (BSubsc (User, TSet), TSet)))) (* Called hung up *)
+              ] ->
+
+                MUL [S] (SetBSubsc (User, NoDigit, SetAct (User, Onh, TSet)))
+            )
+
+        []
+
+(* - Dial ----------------------------------------------- *)
+
+        (* Dialing may be performed at just about any point in
+         * time; the effects on the status of the user will thus
+         * vary a lot.
+         *
+         * First, the event will take place only if:
+         *
+         *      1) the called number is valid
+         *      2) the number called is not the same as the caller's
+         *)
+
+          S ?Caller:Digit !Dial ?Called:DeciDigit
+                  [legal (Called) and (Caller ne Called)];
+            (
+            (****************************************************)
+            (* Different dials:                                 *)
+            (* - Dialtone on:                                   *)
+            (*   - dial idle number                             *)
+            (*   - dial same number again                       *)
+            (*   - dial busy number                             *)
+            (*   - dial error number                            *)
+            (* - Dialtone off                                   *)
+            (****************************************************)
+
+        (* Then, the status of the dialer changes according to the
+         * current situation:
+         *)
+
+        (* If the caller Dialtone is On and the responder is in idle
+         * state, a connection is attempted, set the status as:
+         *      Tuple (Caller, Called, -, -)
+         *)
+              [IsDialT (Tone (Caller, TSet))         (* Caller's DialTone is on *)
+                and legal (Called)                  (* Called number is valid *)
+                and IsOnh (ActStat (Called, TSet))   (* Called is onhook *)
+                and IsNoTone (Tone (Called, TSet))   (* Called has no tone *)
+                and (not (IsBNumber (Called, TSet))  (* Called is not connected *)
+                    or
+                     (IsBNumber (Called, TSet)      (* Called is connected ... *)
+                     and (BSubsc (Caller, TSet) eq Called))) (* ... to Caller *)
+               ] ->
+
+                MUL [S] (SetBSubsc (Caller, Called, TSet))
+
+            []
+
+        (* If the Dialtone is On but the responder is busy, the Caller get
+         * the Busy-number status:
+         *      Tuple (Caller, BusyDigit, -, -)
+         *)
+
+              [IsDialT (Tone (Caller, TSet))         (* Caller's DialTone is on *)
+                and legal (Called)                  (* Called number is valid *)
+                and (IsOffh (ActStat (Called, TSet)) (* Called is offhook *)
+                    or
+                     (IsBNumber (Called, TSet) (* Called is connected but NOT *)
+                     and (BSubsc (Caller, TSet) ne Called)) (* to Caller *)
+                    or
+                     not (IsNoTone (Tone (Called, TSet)))) (* Called has a tone *)
+                ] ->
+
+                MUL [S] (SetBSubsc (Caller, BusyDigit, TSet))
+
+            []
+
+        (* If the Dialtone is on but the Called number is not legal, the
+         * Caller status becomes:
+         *      Tuple (Caller, ErrorDigit, -, -)
+         *)
+
+              [ IsDialT (Tone (Caller, TSet))          (* DialTone is on *)
+                and not (legal (Called))               (* Called # is not valid *)
+                ] ->
+
+                MUL [S] (SetBSubsc (Caller, ErrorDigit, TSet))
+
+            []
+
+        (* If the Dialtone of the dialer is not currently on, nothing
+         * is changed in the database:
+         *)
+              [not (IsDialT (Tone (Caller, TSet)))    (* Caller has no dial tone *)
+              ] ->   (* not dialtone *)
+
+                MUL [S] (TSet)
+            )
+
+        []
+
+(* -------------- Tones and Sounds Generation --------------- *)
+
+(* - DialTone ---------------------------------------------- *)
+
+        (* The dial tone may be set ON if:
+         *      1) the originator is offhook
+         *      2) there is currently no tone
+         *      3) the originator is not already connected.
+         *
+         * The Caller status is set to Tuple (Caller, -, -, DialT).
+         *)
+
+          S ?Caller:Digit !DialT !on
+                  [IsOffh (ActStat (Caller, TSet)) and
+                    IsNoTone (Tone (Caller, TSet)) and
+                      (BSubsc (Caller, TSet) eq NoDigit of DeciDigit)];
+
+            MUL [S] (SetTone (Caller, DialT, TSet))
+
+        []
+
+        (* The dial may be set OFF only if it is already ON. The
+         * Caller status is then set to Tuple (Caller, -, -, NoTone).
+         *)
+
+          S ?Caller:Digit !DialT !off
+                  [IsDialT (Tone (Caller, TSet))];        (* dialtone is on *)
+
+            MUL [S] (SetTone (Caller, NoTone, TSet))
+
+        []
+
+(* - RingSound ---------------------------------------------- *)
+
+        (* The bell will start ringing if
+         *      1) the responder is registered, onhook
+         *      2) the responder is onhook
+         *      3) an attempt is being made at establishing a connection
+         *         with the responder
+         *      4) the responder currently has no tone.
+         *
+         * The status of the responder then becomes:
+         *      Tuple (Called, -, -, RingS)
+         *)
+
+          S ?Called:Digit !RingS !on
+                  [IsOnh (ActStat (Called, TSet))        (* Called in onhook *)
+                   and IsBNumber (Called, TSet) (* trying to connect to Called *)
+                   and legal (Called)                   (* Called # is valid *)
+                   and IsNoTone (Tone (Called, TSet)) ]; (* Called has no tone *)
+
+            MUL [S] (SetTone (Called, RingS, TSet))
+        []
+
+        (* The bell will be set OFF iff
+         *      1) it is already ringing
+         *      2a) the responder picked up the phone
+         *   or 2b) the request for a connection ceased
+         *
+         * The status of the responder becomes:
+         *      Tuple (Called, -, -, NoTone)
+         *)
+
+          S ?Called:Digit !RingS !off
+                  [IsRingS (Tone (Called, TSet))     (* Called phone is ringing *)
+                   and legal (Called)                (* Called # is valid *)
+                   and
+                     (IsOffh (ActStat (Called, TSet)) (* Called picked up phone *)
+                     or
+                     not (IsBNumber (Called, TSet))) ]; (* don't connect Called *)
+
+            MUL [S] (SetTone (Called, NoTone, TSet))
+
+        []
+
+(* - RingTone ------------------------------------------------- *)
+
+        (* The originator gets a ringing tone if
+         *      1) no tone is currently on
+         *      2) the number requested is registered
+         *      3) the number requested is idle
+         *
+         * The status of the originator then becomes:
+         *      Tuple (Caller, -, -, RingT)
+         *)
+
+          S ?Caller:Digit !RingT !on
+                  [legal (Caller) (* Caller is registered *)
+                   and IsNoTone (Tone (Caller, TSet)) (* Caller has no tone *)
+                   and legal (BSubsc (Caller, TSet)) (* Caller not connected *)
+                   and IsOnh (ActStat (BSubsc (Caller, TSet), TSet))
+                                        (* Called is onhook *)
+                   ];
+
+            MUL [S] (SetTone (Caller, RingT, TSet))
+
+        []
+
+        (* The ringing tone goes OFF when
+         *      1) the responder picked up the phone
+         *  or  2) the originator hung up
+         *
+         * The status of the originator then becomes:
+         *      Tuple (Caller, -, -, NoTone)
+         *)
+
+          S ?Caller:Digit !RingT !off
+                  [legal (Caller)        (* Caller is valid *)
+                   and ((not (BSubsc (Caller, TSet) eq NoDigit of DeciDigit)
+                                (* Connection established *)
+                        and IsOffh (ActStat (BSubsc (Caller, TSet), TSet)))
+                                (* Called picked up the phone *)
+                       or
+                        (BSubsc (Caller, TSet) eq NoDigit of DeciDigit))];
+                                (* Caller hung up *)
+
+            MUL [S] (SetTone (Caller, NoTone, TSet))
+
+        []
+
+(* - ErrorTone ----------------------------------------------- *)
+
+        (* The error tone occurs after dialing an erroneous number.
+         * The status of the originator then becomes:
+         *        Tuple (Caller, NoDigit, -, ErrorT)
+         *)
+
+          S ?User:Digit !ErrorT !on
+                  [ (BSubsc (User, TSet) eq ErrorDigit)        (* Wrong number *)
+                   and IsNoTone (Tone (User, TSet))];           (* no tone *)
+
+            MUL [S] (SetBSubsc (User, NoDigit, SetTone (User, ErrorT, TSet)))
+
+        []
+
+        (* The error tone is turned OFF when the originator hangs up.
+         * The status of the originator then becomes:
+         *      Tuple (Caller, -, -, NoTone)
+         *)
+
+          S ?User:Digit !ErrorT !off
+                  [ IsErrorT (Tone (User, TSet))             (* ErrorTone is ON *)
+                   and IsOnh (ActStat (User, TSet))]; (* Caller hung up *)
+
+            MUL [S] (SetTone (User, NoTone, TSet))
+
+        []
+
+(* - BusyTone ----------------------------------------------- *)
+
+        (* The busy tone is brought UP in response to dialing the
+         * number of a user whom is already involved in a connection.
+         * The status of the Caller becomes:
+         *      Tuple (Caller, NoDigit, -, BusyT)
+         *)
+
+          S ?Caller:Digit !BusyT !on
+                   [(BSubsc (Caller, TSet) eq BusyDigit) and (* Busy number *)
+                    IsNoTone (Tone (Caller, TSet))]; (* Caller has no tone *)
+
+            MUL [S] (SetBSubsc (Caller, NoDigit, SetTone (Caller, BusyT, TSet)))
+
+        []
+
+        (* The originator has to hang up to have the busy tone stop.
+         * The status of the Caller becomes:
+         *      Tuple (Caller, -, -, NoTone)
+         *)
+
+          S ?Caller:Digit !BusyT !off
+                  [IsBusyT (Tone (Caller, TSet)) (* Caller has busy tone ON *)
+                   and IsOnh (ActStat (Caller, TSet))]; (* Caller hung up *)
+
+            MUL [S] (SetTone (Caller, NoTone, TSet))
+
+        []
+
+(* - Speech ------------------------------------------------ *)
+
+        (* The connection is established when:
+         *      1) the Caller is OffHook
+         *      2) the Caller has no tone
+         *      and
+         *              3a) Called is valid
+         *              3b) Called is OffHook
+         *      or
+         *              3a) Complete connection
+         *              3b) Called is OffHook
+         *
+         * The status of the user becomes Tuple (User, -, -, SpeechConn).
+         *)
+
+          S ?User:Digit !SpeechConn !on
+                  [IsOffh (ActStat (User, TSet)) (* Caller is OffHook *)
+                  and IsNoTone (Tone (User, TSet)) (* Caller has no tone *)
+                  and (
+                        ( (legal (BSubsc (User, TSet))) (* Called is valid *)
+                        and IsOffh (ActStat (BSubsc (User, TSet), TSet)))
+                                        (* Called is OffHook *)
+                      or
+                        ( IsBNumber (User, TSet) (* Complete Connection *)
+                        and IsOffh (ActStat (IsCalledBy (User, TSet), TSet))
+                                        (* Called is OffHook *)
+                        )
+                      )];
+
+            MUL [S] (SetTone (User, SpeechConn, TSet))
+
+        []
+
+        (* The conversation is interrupted if
+         *      1) local user has onhooked
+         *   or 2) remote A-subsc has hung up
+         *   and 3) B still active
+         *
+         * The status of the user becomes Tuple (User, -, -, NoTone).
+         *)
+
+          S ?User:Digit !SpeechConn !off
+                  [IsSpeechConn (Tone (User, TSet)) (* User is connected *)
+                   and (IsOnh (ActStat (User, TSet)) (* User hung up *)
+                     or
+                       (IsOffh (ActStat (User, TSet)) (* User still Offhook *)
+                        and (BSubsc (User, TSet) eq ErrorDigit)))];
+                                (* Called party hung up *)
+
+            MUL [S] (SetTone (User, NoTone, TSet))
+
+        []
+
+        (* The conversation is also interrupted if the remote user
+         * is a B-subsc but has hung up. The status of the user
+         * becomes Tuple (User, ErrorDigit, -, NoTone).
+	 *)
+
+          S ?User:Digit !SpeechConn !off
+                  [IsSpeechConn (Tone (User, TSet)) (* User is connected *)
+                   and IsOffh (ActStat (User, TSet)) (* User is OffHook *)
+                   and legal (BSubsc (User, TSet)) (* Called is valid *)
+                   and IsOnh (ActStat (BSubsc (User, TSet), TSet))];
+                        (* Called hung up *)
+
+            MUL [S] (SetBSubsc (User, ErrorDigit, SetTone (User, NoTone, TSet)))
+
+(***
+        []
+
+*) (* -Timeout  ------------------------------------------------ *) (*
+
+          S ?Caller:Digit !Timeout;
+          MUL [S] (SetBSubsc (Caller, ErrorDigit, TSet))
+***)
+
+endproc
+
+endspec

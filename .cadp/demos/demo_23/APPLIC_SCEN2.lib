@@ -1,0 +1,12 @@
+(* ------------------------------------------------------------------------- *)
+
+process Application [TDreq]
+		    (n: Nat, id: Nat)
+                    : noexit
+:=
+	(* send a request for transaction with a *different* node *)
+   choice dest: Nat, h: HEADER, d: DATA []
+     [(dest le n) and (dest ne id)] -> TDreq !id !dest !h !d; stop
+endproc
+ 
+(* ------------------------------------------------------------------------- *)

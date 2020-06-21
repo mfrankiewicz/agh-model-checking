@@ -1,0 +1,103 @@
+
+(*===========================================================================*)
+(* General action predicates *)
+
+(* Arbitrations *)
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Device i requires access to the bus *)
+
+macro ASK (i) =
+    { ARB ?b0:bool ?b1:bool ?b2:bool ?b3:bool
+          ?b4:bool ?b5:bool ?b6:bool ?b7:bool
+      where
+	((i = 0) and b0) or ((i = 1) and b1) or
+	((i = 2) and b2) or ((i = 3) and b3) or
+	((i = 4) and b4) or ((i = 5) and b5) or
+	((i = 6) and b6) or ((i = 7) and b7)
+    }
+end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device requires access to the bus *)
+
+macro ASK_any () =
+    { ARB ?b0:bool ?b1:bool ?b2:bool ?b3:bool
+          ?b4:bool ?b5:bool ?b6:bool ?b7:bool
+      where b0 or b1 or b2 or b3 or b4 or b5 or b6 or b7
+    }
+end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* No device requires access to the bus *)
+
+macro NO_ASK () =
+    { ARB !false !false !false !false !false !false !false !false }
+end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Device i gets access to the bus *)
+
+macro WIN (i) =
+    { ARB ?b0:bool ?b1:bool ?b2:bool ?b3:bool
+          ?b4:bool ?b5:bool ?b6:bool ?b7:bool
+      where
+	((i = 0) and b0 and not (b1 or b2 or b3 or b4 or b5 or b6 or b7)) or
+	((i = 1) and b1 and not (b2 or b3 or b4 or b5 or b6 or b7)) or
+	((i = 2) and b2 and not (b3 or b4 or b5 or b6 or b7)) or
+	((i = 3) and b3 and not (b4 or b5 or b6 or b7)) or
+	((i = 4) and b4 and not (b5 or b6 or b7)) or
+	((i = 5) and b5 and not (b6 or b7)) or
+	((i = 6) and b6 and not (b7)) or
+	((i = 7) and b7)
+    }
+end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device gets access to the bus *)
+
+macro WIN_any () = ASK_any () end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Commands *)
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Device i receives a command *)
+
+macro CMD_num (i) = { CMD !(i) of nat } end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device receives a command *)
+
+macro CMD_any () = { CMD ?any } end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device between 0 and i receives a command *)
+
+macro CMD_0_i (i) = { CMD ?j:nat where j <= (i) } end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Reconnections *)
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Device i sends a reconnect *)
+
+macro REC_num (i) = { REC !(i) of nat } end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device sends a reconnect *)
+
+macro REC_any () = { REC ?any } end_macro
+
+(*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*)
+(* Some device between 0 and i sends a reconnect *)
+
+macro REC_0_i (i) = { REC ?j:nat where j <= (i) } end_macro
+
+(*===========================================================================*)
+(* Action predicate specific to SCSI configurations *)
+
+macro Present (i) = ((i = 0) or (i = 1) or (i = 2) or (i = 7)) end_macro
+
+(*===========================================================================*)
+

@@ -1,0 +1,37 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_dylib
+#   Auteur              :       Hubert Garavel
+#   Version             :       1.4
+#   Date                :       2019/07/12 16:09:20
+##############################################################################
+
+ARCH="$1"
+EXEC="$2"
+
+# cet outil sert uniquement sous macOS ; il modifie le binaire $EXEC pour
+# mettre le chemin d'acces en dur aux bibliotheques dynamiques Tcl et Tk,
+# car les versions recentes de macOS activent le mode "System Integrity
+# Protection" qui efface les valeurs des variables d'environnement $DYLD_*
+# et empeche ainsi de transmettre ce chemin d'acces par la variable
+# $DYLD_LIBRARY_PATH comme auparavant
+
+# cet outil sert uniquement pour Xsimulator, dont l'executable se lie avec
+# les bibliotheques TCL et TK ; les autres executables ne contiennent pas
+# de references /noprefix/lib/*
+
+install_name_tool -change "/noprefix/lib/libtcl8.4.dylib" "$CADP/tcl-tk/bin.$ARCH/libtcl8.4.dylib" "$EXEC"
+
+install_name_tool -change "/noprefix/lib/libtk8.4.dylib" "$CADP/tcl-tk/bin.$ARCH/libtk8.4.dylib" "$EXEC"
+
+exit 0
+

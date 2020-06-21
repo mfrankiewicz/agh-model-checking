@@ -1,0 +1,17 @@
+
+% for N in 1 2 3
+% do
+
+   "test_purpose_$N.bcg" =
+      rename TP_ACCEPT -> ACCEPT, TP_REFUSE -> REFUSE in
+         reduction of "test_purpose_$N.lnt" ;
+
+%    lnt.open handshake.lnt tgv -io handshake.io -self -output test_case_$N.bcg test_purpose_$N.bcg
+
+%    SVL_RECORD_FOR_CLEAN "test_case_$N.bcg"
+
+% done
+
+% SVL_RECORD_FOR_CLEAN "handshake.o"
+% SVL_RECORD_FOR_CLEAN "tgv"
+

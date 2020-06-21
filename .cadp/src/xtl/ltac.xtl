@@ -1,0 +1,394 @@
+(******************************************************************************
+ *                                X T L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       ltac.xtl
+ *   Author             :       Radu MATEESCU
+ *   Version            :       1.13
+ *   Date               :       2015/02/25 17:27:30
+ *****************************************************************************)
+
+(*
+ * Definition of a subset of the LTAC temporal logic in XTL.
+ * References:
+ * [1] J-P. Queille and J. Sifakis. "Fairness and Related Properties in
+ *     Transition Systems - A Temporal Logic to Deal with Fairness",
+ *     Acta Informatica, v. 19, p. 195-220, 1983
+ * [2] C. Rodriguez. "Specification et validation de systemes en XESAR",
+ *     PhD thesis, INPG, Grenoble, may 1988
+ *
+ * Note 1: Besides the original definitions of LTAC temporal operators, there
+ * are also some action-based variants more adapted (and more _safe_) to the
+ * verification of LOTOS programs.
+ * Note 2: All the operators below can be derived from the operators of the
+ *   ACTL (Action CTL) temporal logic. However, for efficiency reasons, we
+ *   define them independently from ACTL.
+ *
+ * The semantics of temporal operators is defined over a Labelled Transition
+ * System (LTS) M = (Q, A, T, q0), where:
+ *  - Q is the set of states
+ *  - A is the set of actions
+ *  - T in Q * A * Q is the transition relation
+ *  - q0 in Q is the initial state.
+ * For each q in Q, we note Path (q) = { q-a1->q1-a2->q2-a3->... } the set of
+ * execution sequences starting at q, and Fair (q) the set of fair execution
+ * sequences issued from q (according to the definition given in [1]).
+ * The semantics of a state (resp. action) formula f (resp. a), noted [[f]]
+ * (resp. [[a]]), is the set of states (resp. labels) satisfying it.
+ *)
+
+(*===========================================================================*)
+(* Libraries used *)
+
+library hml.xtl, mu_calculus.xtl end_library
+
+(*===========================================================================*)
+(* Basic operators *)
+
+(*
+ * init
+ * [[ init ]] = { q0 }
+ *)
+
+(* INIT () is defined in basic.xtl *)
+
+(*---------------------------------------------------------------------------*)
+(*
+ * sink = [ true ] false
+ * [[ sink ]] = { p | not exists l, q such that (p, l, q) in T }
+ *)
+
+def SINK () : stateset =
+    { S : state where
+	forall S2 : state among succ (S) in false end_forall }
+end_def
+
+(* Synonim *)
+macro DEADLOCK () = SINK () end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * enable a = < a > true
+ * [[ enable a ]] = { p | exists l, q such that (p, l, q) in T and l in [[a]] }
+ *)
+
+def ENABLE (A : labelset) : stateset =
+    { S : state where
+	exists T : edge among out (S) in label (T) among A end_exists }
+end_def
+
+(*
+ * enable = < true > true = not sink
+ * [[ enable ]] = { p | exists l, q such that (p, l, q) in T }
+ *)
+
+def ENABLE () : stateset =
+    { S : state where
+	exists S2 : state among succ (S) in true end_exists }
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * after a
+ * [[ after a ]] = { q |
+ *	(exists l, p such that (p, l, q) in T and l in [[a]]) and
+ *	(forall l, p, (p, l, q) in T => l in [[a]]) }
+ *
+ * CAUTION: the use of "after" may lead to wrong results and therefore should
+ * be avoided. A safe use of this operator would need to perform the "after
+ * transformation" of the LTS (see [2]); this would require a tool dedicated
+ * to LTAC, such as Xesar [2]. Whenever "after a" is needed as argument to a
+ * temporal operator, it should be replaced by an auxiliary action-oriented
+ * temporal operator (see below) taking "a" as argument.
+ *)
+
+def AFTER (A : labelset) : stateset =
+    { S : state where
+        exists T : edge among in (S) in label (T) among A end_exists and
+        forall T : edge among in (S) in label (T) among A end_forall
+    }
+end_def
+
+(*
+ * after = not (init)
+ * [[ after ]] = { q | exists l, p such that (p, l, q) in T }
+ *)
+
+def AFTER () : stateset = { S : state where in (S) <> {} } end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * pot [f] g
+ * [[ pot [f] g ]] = { p | exists s in Path (p), exists k >= 0 such that
+ *	(forall i=0..(k-1), s(i) in [[f]]) and s(k) in [[g]] }
+ *)
+
+def POT (F, G : stateset) : stateset =
+    lfp (X, G or (F and Dia (X)))
+end_def
+
+(*
+ * pot f = pot [true] f
+ * [[ pot f ]] = { p | exists s in Path (p), exists k >= 0 such that
+ *	s(k) in [[f]] }
+ *)
+
+def POT (F : stateset) : stateset =
+    lfp (X, F or Dia (X))
+end_def
+
+(* Auxiliary, action-oriented variants *)
+
+(*
+ * pot (a, f)
+ * [[ pot (a, f) ]] = { p | exists s in Path (p), exists k >= 0 such that
+ *	(forall i=0..(k-1), s(i)-l->s(i+1) => l in [[a]]) and s(k) in [[f]] }
+ * NOTE: to be used instead of pot (after (a), f)
+ *)
+
+def POT (A : labelset, F : stateset) : stateset =
+    lfp (X, F or Dia (A, X))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * inev [f] g
+ * [[ inev [f] g ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	(forall i=0..(k-1), s(i) in [[f]]) and s(k) in [[g]] }
+ *)
+
+def INEV (F, G : stateset) : stateset =
+    lfp (X, G or (F and ENABLE and Box (X)))
+end_def
+
+(*
+ * inev f = inev [true] f
+ * [[ inev f ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	s(k) in [[f]] }
+ *)
+
+def INEV (F : stateset) : stateset =
+    lfp (X, F or (ENABLE and Box (X)))
+end_def
+
+(* Auxiliary, action-oriented variants *)
+
+(* inev (a, b, f)
+ * [[ inev (a, b, f) ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	(forall i=0..(k-2), s(i)-l->s(i+1) => l in [[a]]) and
+ *	(s(k-1)-l->s(k) => l in [[b]]) and s(k) in [[f]] }
+ * NOTE: to be used instead of inev (after (a), after (b) and f)
+ *)
+
+def INEV (A, B : labelset, F : stateset) : stateset =
+    lfp (X, Dia (true) and Box (B, F) and Box (not (A or B), false) and
+	    Box (not (B), X))
+end_def
+
+(*
+ * inev (a, b) = inev (a, b, true)
+ * [[ inev (a, b) ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	(forall i=0..(k-2), s(i)-l->s(i+1) => l in [[a]]) and
+ *	(s(k-1)-l->s(k) => l in [[b]]) }
+ * NOTE: to be used instead of inev (after (a), after (b))
+ *)
+
+def INEV (A, B : labelset) : stateset =
+    lfp (X, Dia (true) and Box (not (A or B), false) and
+	    Box (not (B), X))
+end_def
+
+(*
+ * inev (a) = inev (true, a, true)
+ * [[ inev (a) ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	s(k-1)-l->s(k) => l in [[a]] }
+ * NOTE: to be used instead of inev (after (a))
+ *)
+
+def INEV (A : labelset) : stateset =
+    lfp (X, Dia (true) and Box (not (A), X))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * all [f] g = not pot [f] not g
+ * [[ all [f] g ]] = { p | forall s in Path (p), forall k >= 0,
+ *	(forall i=0..(k-1), s(i) in [[f]]) implies s(k) in [[g]] }
+ *)
+
+def ALL (F, G : stateset) : stateset =
+    gfp (X, G and (F implies Box (X)))
+end_def
+
+(*
+ * all f = all [true] f
+ * [[ all f ]] = { p | forall s in Path (p), forall k >= 0,
+ *	s(k) in [[f]] }
+ *)
+
+def ALL (F : stateset) : stateset =
+    gfp (X, F and Box (X))
+end_def
+
+(* Auxiliary, action-oriented variants *)
+
+(*
+ * all (a, f) = not pot (a, not f)
+ * [[ all (a, f) ]] = { p | forall s in Path (p), forall k >= 0,
+ *	(forall i=0..(k-1), s(i)-l->s(i+1) => l in [[a]]) => s(k) in [[f]] }
+ * NOTE: to be used instead of all (after (a), f)
+ *)
+
+def ALL (A : labelset, F : stateset) : stateset =
+   gfp (X, F and Box (A, X))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * some [f] g = not inev [f] not g
+ * [[ some [f] g ]] = { p | exists s in Path (p) such that forall k >= 0,
+ *	(forall i=0..(k-1), s(i) in [[f]]) implies s(k) in [[g]] }
+ *)
+
+def SOME (F, G : stateset) : stateset =
+    gfp (X, G and ((F and ENABLE) implies Dia (X)))
+end_def
+
+(*
+ * some f = some [true] f
+ * [[ some f ]] = { p | exists s in Path (p) such that forall k >= 0,
+ *	s(k) in [[f]] }
+ *)
+
+def SOME (F : stateset) : stateset =
+    gfp (X, F and (ENABLE implies Dia (X)))
+end_def
+
+(* Auxiliary, action-oriented variants *)
+
+(*
+ * some (a, f)
+ * [[ some (a, b, f) ]] = { p | exists s in Path (p) such that forall k >= 0,
+ *	(forall i=0..(k-2), s(i)-l->s(i+1) => l in [[a]]) => s(k) in [[f]] }
+ * NOTE: to be used instead of some (after (a), f)
+ *)
+
+def SOME (A : labelset, F : stateset) : stateset =
+    gfp (X, F and (ENABLE implies Dia (A, X)))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * fair (f, g) = all [not (g)] pot [f] g
+ * [[ fair (f, g) ]] = { p | forall s in Fair (p), exists k >= 0 such that
+ *	forall i=0..(k-1), s(i) in [[f]] and s(k) in [[g]] }
+ *)
+
+def FAIR (F, G : stateset) : stateset = ALL (not (G), POT (F, G)) end_def
+
+(*
+ * fair (f) = fair (true, f) = all [not (f)] pot f
+ * [[ fair (f) ]] = { p | forall s in Fair (p), exists k >= 0 such that
+ *	s(k) in [[f]] }
+ *)
+
+def FAIR (F : stateset) : stateset = ALL (not (F), POT (F)) end_def
+
+(* Auxiliary, action-oriented variants *)
+
+(*
+ * fair (a, b)
+ * [[ fair (a, b) ]] = { p | forall s in Fair (p), exists k > 0 such that
+ *	(forall i=0..(k-2), s(i)-l->s(i+1) => l in [[a]]) and
+ *	(s(k-1)-l->s(k) => l in [[b]]) }
+ * NOTE: to be used instead of fair (after (a), after (b))
+ *)
+
+def FAIR (A, B : labelset) : stateset =
+    ALL (A and not (B), POT (A, Dia (B, true)))
+end_def
+
+(*
+ * fair (a) = fair (true, a)
+ * [[ fair (a) ]] = { p | forall s in Path (p), exists k > 0 such that
+ *	s(k-1)-l->s(k) => l in [[a]] }
+ * NOTE: to be used instead of fair (after (a))
+ *)
+
+def FAIR (A : labelset) : stateset = ALL (not (A), POT (Dia (A, true))) end_def
+
+(*===========================================================================*)
+(* Auxiliary temporal operators *)
+(*
+ * diverge a
+ * [[ diverge a ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	(exists i <= k such that s(i)=s(k) and
+ *	forall j=0..k-1, s(j)-l->s(j+1) => l in [[a]]) }
+ * NOTE: since the LTS is finite, from any a-divergent state there is a path
+ * reaching an a-livelock state (belonging to an a-circuit)
+ *)
+
+def DIVERGE (A : labelset) : stateset =
+    for
+	in    ACC : stateset
+	while ACC <> Dia (A, ACC)
+	apply and
+	from  true
+	to    Dia (A, ACC)
+    end_for
+end_def
+
+(*
+ * diverge = diverge tau
+ * [[ diverge ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	(exists i <= k such that s(i)=s(k) and
+ *	forall j=0..k-1, s(j)-tau->s(j+1)) }
+ *)
+
+def DIVERGE () : stateset = DIVERGE (TAU) end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * livelock a
+ * [[ livelock a ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	s(k) = p and forall j=0..k-1, s(j)-l->s(j+1) => l in [[a]] }
+ *)
+
+def LIVELOCK (A : labelset) : stateset =
+    { S : state among DIVERGE (A) where
+	S among Dia (A, POT (A, { S }))
+    }
+end_def
+
+(*
+ * livelock = livelock tau
+ * [[ livelock ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	s(k) = p and forall j=0..k-1, s(j)-tau->s(j+1) }
+ *)
+
+def LIVELOCK () : stateset = LIVELOCK (TAU) end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * not f to g unless h = f implies not pot [not h] (not h and g)
+ *		       = f implies all [not h] (h or not g)
+ *)
+
+def NOT_TO_UNLESS (F, G, H : stateset) : stateset =
+    F implies ALL (not (H), (H) or not (G))
+end_def
+
+(*
+ * not a to b unless c = [ a ] not pot (not c, < b > true)
+ *		       = [ a ] all (not (c), [ b ] false)
+ * NOTE: to be used instead of not after (a) to enable (b) unless after (c)
+ *)
+
+def NOT_TO_UNLESS (A, B, C : labelset) : stateset =
+    Box (A, ALL (not (C), Box (B, false)))
+end_def
+

@@ -1,0 +1,70 @@
+(******************************************************************************
+ * negotiation.lotos: 
+ * An online book auction, composed of one requester and six providers, as
+ * described in [Salaun-Ferrara-Chirichiello-04]. More complex scenarios with
+ * up to two requesters and ten providers can be obtained by decommenting some
+ * of the additional requesters and providers.
+ ******************************************************************************)
+
+specification NEGOTIATION [request, reply, order, refusal, sendpriceP, sendpriceR, givingup] : exit
+
+   (* import of datatype definitions *)
+  library
+     BOOLEAN, NATURAL, EXTENDED_NATURAL, 
+     BOOK, INVARIANT, BOOKSTORE, INITIAL_BOOKSTORES, COMPUTE_NEXT
+  endlib
+
+behaviour
+
+  (
+     Requester [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+               (0, 2, pMax3, add1)
+  (**
+     |||
+     Requester [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+               (1, 1, pMax3, add1)
+  **)
+  )
+
+  |[request, reply, order, refusal, sendpriceP, sendpriceR, givingup]|
+
+  (
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs1, times2, minus1)
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs2, times2, minus1)
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs3, times1, minus2)
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs4, times2, minus1)
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs5, times2, minus2)
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs6, times1, minus2)
+  (**
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs7, times1, minus1)
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs8, times1, minus1)
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs9, times2, minus2)
+     |||
+     Provider [request, reply, order, refusal, sendpriceP, sendpriceR, givingup]
+              (bs10, times2, minus1)
+  **)
+  )
+where
+
+  (* import of process definition *)
+  library
+     NEGOTIATION_PROCESSES
+  endlib
+endspec

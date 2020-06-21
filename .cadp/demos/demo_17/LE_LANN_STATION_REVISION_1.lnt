@@ -1,0 +1,44 @@
+module LE_LANN_STATION_REVISION_1 (DATA) is
+
+process STATION [OPEN, CLOSE:ACCESS, PRED, SUCC:PORT] (Ai:ADDR, INIT:BOOL) is
+   use INIT;
+   var S:STATE, N:BOOL in
+      S := ALPHA;
+      N := false;
+      loop
+         select
+            only if (S == ALPHA) and not (N) then
+               -- timeout: start an election
+               SUCC (CLAIM, Ai);
+               S := BETA;
+               N := true
+            end if
+         []
+            PRED (TOKEN);
+            PRIVILEDGE [OPEN, CLOSE, SUCC] (Ai);
+            S := ALPHA
+         []
+            var Aj:ADDR in
+               PRED (CLAIM, ?Aj);
+               if Ai < Aj then
+                  SUCC (CLAIM, Aj)
+               elsif Ai > Aj then
+                  SUCC (CLAIM, Aj);
+                  if S == BETA then
+                     S := GAMMA
+                  end if
+               else -- Ai == Aj
+                  if S == BETA then
+                     PRIVILEDGE [OPEN, CLOSE, SUCC] (Ai)
+                  end if;
+                  S := ALPHA;
+                  N := false
+               end if
+            end var
+         end select
+      end loop
+   end var
+end process
+
+end module
+

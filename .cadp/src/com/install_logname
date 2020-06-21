@@ -1,0 +1,64 @@
+#!/bin/sh
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       install_logname
+#   Auteurs             :       Hubert GARAVEL and Aldo MAZZILLI 
+#   Version             :       1.2
+#   Date                :       2013/04/12 08:18:00
+##############################################################################
+
+CADP_LOGNAME="`whoami 2> /dev/null`"
+
+if test "$CADP_LOGNAME" != ""
+then
+	echo $CADP_LOGNAME
+	exit 0
+fi
+
+CADP_LOGNAME="`logname 2> /dev/null`"
+
+if test "$CADP_LOGNAME" != ""
+then
+	echo $CADP_LOGNAME
+	exit 0
+fi
+
+CADP_LOGNAME="$LOGNAME"
+
+if test "$CADP_LOGNAME" != ""
+then
+	echo $CADP_LOGNAME
+	exit 0
+fi
+
+CADP_LOGNAME="$USERNAME"
+
+if test "$CADP_LOGNAME" != ""
+then
+	echo $CADP_LOGNAME
+	exit 0
+fi
+
+CADP_LOGNAME="$USER"
+
+if test "$CADP_LOGNAME" != ""
+then
+	echo $CADP_LOGNAME
+	exit 0
+fi
+
+# by default
+
+CADP_LOGNAME="unknown"
+
+echo $CADP_LOGNAME
+exit 0
+

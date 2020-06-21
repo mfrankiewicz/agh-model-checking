@@ -1,0 +1,195 @@
+
+"SERVICE_WITHOUT_CRASHES.bcg" =
+    strong reduction of
+        "SERVICE_WITHOUT_CRASHES.lnt" ;
+
+"SERVICE_WITH_CRASHES.bcg" =
+    strong reduction of
+        "SERVICE_WITH_CRASHES.lnt" ;
+
+% DISPLAY_EXPERIMENT_NUMBER() {
+%   echo
+%   echo "*****************"
+%   echo "* EXPERIMENT $1 *"
+%   echo "*****************"
+% }
+
+% TRANSLATION() {
+%   case $1 in
+%      TRUE )  echo "branching equivalent to" ;;
+%      FALSE ) echo "not branching equivalent to" ;;
+%   esac
+% }
+
+(*********************************************************************
+ * Experiments 1 to 8                                                *
+ *********************************************************************)
+
+property EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT, RESULT)
+    "$EXPERIMENT `TRANSLATION $RESULT` SERVICE_WITHOUT_CRASHES.bcg"
+is
+    "$EXPERIMENT.seq" = branching comparison
+             "$EXPERIMENT.lnt"
+         ==
+             "SERVICE_WITHOUT_CRASHES.bcg" ;
+    expected "$RESULT" ;
+end property
+
+% DISPLAY_EXPERIMENT_NUMBER 01
+check EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT_01, TRUE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 02
+check EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT_02, FALSE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 03
+check EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT_03, FALSE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 04
+check EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT_04, FALSE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 05
+check EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT_05, TRUE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 06
+check EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT_06, TRUE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 07
+check EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT_07, TRUE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 08
+check EQUIVALENCE_WITHOUT_CRASHES (EXPERIMENT_08, TRUE) ;
+
+(*********************************************************************
+ * Experiments 9 to 14                                               *
+ *********************************************************************)
+
+property EQUIVALENCE_WITHOUT_CRASHES_COMPOSITIONALLY (EXPERIMENT, RESULT)
+    "$EXPERIMENT `TRANSLATION $RESULT` SERVICE_WITHOUT_CRASHES.bcg"
+is
+    % DEFAULT_PROCESS_FILE="$EXPERIMENT.lnt"
+
+    "$EXPERIMENT.seq" = branching comparison
+        leaf branching reduction of
+            hide PRED1, SUCC1, PRED2, SUCC2, PRED3, SUCC3:PORT in
+                par
+                    PRED1, SUCC1 ->
+                        STATION [OPEN, CLOSE, PRED1, SUCC1] (A1, true)
+                 || PRED2, SUCC2 ->
+                        STATION [OPEN, CLOSE, PRED2, SUCC2] (A2, false)
+                 || PRED3, SUCC3 ->
+                        STATION [OPEN, CLOSE, PRED3, SUCC3] (A3, false)
+                 || SUCC1, PRED2 ->
+                        LINK [SUCC1, PRED2]
+                 || SUCC2, PRED3 ->
+                        LINK [SUCC2, PRED3]
+                 || SUCC3, PRED1 ->
+                        LINK [SUCC3, PRED1]
+                end par
+            end hide
+        ==
+            "SERVICE_WITHOUT_CRASHES.bcg" ;
+    expected "$RESULT" ;
+end property
+
+% DISPLAY_EXPERIMENT_NUMBER 09
+check EQUIVALENCE_WITHOUT_CRASHES_COMPOSITIONALLY (EXPERIMENT_09, FALSE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 10
+check EQUIVALENCE_WITHOUT_CRASHES_COMPOSITIONALLY (EXPERIMENT_10, FALSE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 11
+check EQUIVALENCE_WITHOUT_CRASHES_COMPOSITIONALLY (EXPERIMENT_11, TRUE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 12
+check EQUIVALENCE_WITHOUT_CRASHES_COMPOSITIONALLY (EXPERIMENT_12, TRUE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 13
+check EQUIVALENCE_WITHOUT_CRASHES_COMPOSITIONALLY (EXPERIMENT_13, FALSE) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 14
+check EQUIVALENCE_WITHOUT_CRASHES_COMPOSITIONALLY (EXPERIMENT_14, TRUE) ;
+
+(*********************************************************************
+ * Experiment 15                                                     *
+ *********************************************************************)
+
+property EQUIVALENCE_WITH_CRASHES_COMPOSITIONALLY (EXPERIMENT, RESULT)
+    "$EXPERIMENT `TRANSLATION $RESULT` SERVICE_WITH_CRASHES.bcg"
+is
+    % DEFAULT_PROCESS_FILE="$EXPERIMENT.lnt"
+
+    "$EXPERIMENT.seq" = branching comparison
+        root leaf branching reduction of
+            hide PRED1, SUCC1, PRED2, SUCC2, PRED3, SUCC3:PORT in
+                par
+                    PRED1, SUCC1 ->
+                        STATION [OPEN, CLOSE, CRASH, PRED1, SUCC1] (A1, true)
+                 || PRED2, SUCC2 ->
+                        STATION [OPEN, CLOSE, CRASH, PRED2, SUCC2] (A2, false)
+                 || PRED3, SUCC3 ->
+                        STATION [OPEN, CLOSE, CRASH, PRED3, SUCC3] (A3, false)
+                 || SUCC1, PRED2 ->
+                        LINK [SUCC1, PRED2]
+                 || SUCC2, PRED3 ->
+                        LINK [SUCC2, PRED3]
+                 || SUCC3, PRED1 ->
+                        LINK [SUCC3, PRED1]
+                end par
+            end hide
+        ==
+            "SERVICE_WITH_CRASHES.bcg" ;
+    expected "$RESULT" ;
+end property
+
+% DISPLAY_EXPERIMENT_NUMBER 15
+check EQUIVALENCE_WITH_CRASHES_COMPOSITIONALLY (EXPERIMENT_15, TRUE) ;
+
+(*********************************************************************
+ * Experiments 16 and 17                                             *
+ *********************************************************************)
+
+property VIOLATION_OF_MUTUAL_EXCLUSION (EXPERIMENT)
+    "violation of mutual exclusion"
+is
+    % lnt.open -silent $EXPERIMENT.lnt exhibitor < VIOLATION.seq > $EXPERIMENT.seq
+    % echo ""
+    % echo "found diagnostics trace"
+    % sed -n '/<initial state>/,/<goal state>/p' $EXPERIMENT.seq
+    % rm -f $EXPERIMENT.[cfhot] $EXPERIMENT.lotos $EXPERIMENT.seq
+    % $CADP/src/com/cadp_rm exhibitor
+end property
+
+% DISPLAY_EXPERIMENT_NUMBER 16
+check VIOLATION_OF_MUTUAL_EXCLUSION (EXPERIMENT_16) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 17
+check VIOLATION_OF_MUTUAL_EXCLUSION (EXPERIMENT_17) ;
+
+(*********************************************************************
+ * Experiments 18 and 19                                             *
+ *********************************************************************)
+
+property PRESENCE_OF_DEADLOCKS (EXPERIMENT)
+    "presence of deadlock"
+is
+    "$EXPERIMENT.seq" = deadlock of "$EXPERIMENT.lnt" ;
+    % echo ""
+    % echo "found diagnostics trace"
+    % sed -n '/<initial state>/,/<deadlock>/p' $EXPERIMENT.seq
+end property
+
+% DISPLAY_EXPERIMENT_NUMBER 18
+check PRESENCE_OF_DEADLOCKS (EXPERIMENT_18) ;
+
+% DISPLAY_EXPERIMENT_NUMBER 19
+check PRESENCE_OF_DEADLOCKS (EXPERIMENT_19) ;
+
+-------------------------------------------------------------------------------
+
+% (cd LOTOS ; echo "" ; svl)
+
+(* cleanup *)
+% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"
+
+-------------------------------------------------------------------------------
+

@@ -1,0 +1,475 @@
+(******************************************************************************
+ *        Dynamic Reconfiguration Protocol for Agent-Based Applications
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module       :       DATA.lib
+ *   Authors      :       M. Aguilar Cornejo, H. Garavel and R. Mateescu
+ *   Version      :       1.11
+ *   Date         :       2009/06/16 10:23:07
+ *****************************************************************************)
+
+library
+   BOOLEAN, NATURAL
+endlib
+
+(*****************************************************************************
+ * 
+ * Agent identifier
+ * 
+ *****************************************************************************)
+
+type AgentIdentifier is Boolean
+   sorts 
+      AgentId
+
+   opns
+      agent1 (*! constructor *),
+      agent2 (*! constructor *),
+      aconf  (*! constructor *) :-> AgentId
+      _eq_, _ne_, _lt_ : AgentId, AgentId -> Bool
+      succ : AgentId -> AgentId
+      dummyagent :-> AgentId
+
+   eqns
+      forall P1, P2:AgentId
+
+   ofsort Bool
+      P1 eq P1 = true;
+      P1 eq P2 = false;
+
+   ofsort Bool
+      P1 ne P2 = not (P1 eq P2);
+
+   ofsort Bool
+      agent1 lt agent2 = true;
+      agent1 lt aconf = true;
+
+      agent2 lt aconf = true;
+
+      P1 lt P2 = false;
+
+   ofsort AgentId
+      succ (agent1) = agent2;
+      succ (agent2) = aconf;
+      succ (aconf) = agent1;
+
+   ofsort AgentId
+      dummyagent = agent1;
+endtype
+
+(*****************************************************************************
+ * 
+ * Site identifier
+ * 
+ *****************************************************************************)
+
+type SiteIdentifier is Boolean
+   sorts
+      SiteId
+
+   opns
+      site1 (*! constructor *) :-> SiteId
+      _eq_, _ne_, _lt_ : SiteId, SiteId -> Bool
+      dummysite :-> SiteId
+
+   eqns
+      forall S1, S2:SiteId
+
+   ofsort Bool
+      S1 eq S1 = true;
+      S1 eq S2 = false;
+
+   ofsort Bool
+      S1 ne S2 = not (S1 eq S2);
+
+   ofsort Bool
+      S1 lt S2 = false;
+
+   ofsort SiteId
+      dummysite = site1;
+endtype
+
+(*****************************************************************************
+ * 
+ * Agent address
+ * 
+ *****************************************************************************)
+
+type AgentAddress is AgentIdentifier, SiteIdentifier
+   sorts
+      Addr
+
+   opns
+      _@_ (*! constructor *) :
+         AgentId, (* identifier of the agent *)
+         SiteId   (* identifier of the current site of the agent *)
+      -> Addr
+      getsite : Addr -> SiteId
+      _eq_, _ne_, _lt_ : Addr, Addr -> Bool
+      confaddr :-> Addr
+      dummy :-> Addr
+
+   eqns
+      forall P, P1, P2:AgentId, S, S1, S2:SiteId, A1, A2:Addr
+
+   ofsort SiteId
+      getsite (P@S) = S;
+
+   ofsort Bool
+      (P1@S1) eq (P2@S2) = (P1 eq P2) and (S1 eq S2);
+
+   ofsort Bool
+      A1 ne A2 = not (A1 eq A2);
+
+   ofsort Bool
+      (P1@S1) lt (P2@S2) = (P1 lt P2) or ((P1 eq P2) and (S1 lt S2));
+
+   ofsort Addr
+      confaddr = aconf@dummysite;
+
+   ofsort Addr
+      dummy = dummyagent@dummysite;
+endtype
+
+(*****************************************************************************
+ * 
+ * Set of agent addresses
+ * 
+ *****************************************************************************)
+
+type AgentAddressSet is Natural, AgentAddress
+   sorts
+      AddrSet (*! implementedby ADDR_SET *)
+
+   opns
+      {}  (*! constructor *) :-> AddrSet
+      _+_ (*! constructor *) : Addr, AddrSet -> AddrSet
+      insert : Addr, AddrSet -> AddrSet
+      remove : Addr, AddrSet -> AddrSet
+      replace : Addr, Addr, AddrSet -> AddrSet
+      empty : AddrSet -> Bool
+      _isin_, _notin_ : Addr, AddrSet -> Bool
+      _subset_ : AddrSet, AddrSet -> Bool
+      _eq_, _ne_, _lt_ : AddrSet, AddrSet -> Bool
+      card : AddrSet -> Nat
+      pick : AddrSet -> Addr
+
+   eqns
+      forall A, A1, A2:Addr, R, R1, R2:AddrSet
+
+      ofsort AddrSet
+         (* assert: elements are unique and sorted in increasing order *)
+         insert (A, {}) = A + {};
+         insert (A, A + R) = A + R;
+         A lt A1 => insert (A, A1 + R1) = A + (A1 + R1);
+         insert (A, A1 + R1) = A1 + insert (A, R1);
+
+      ofsort AddrSet
+         remove (A, {}) = {};
+         remove (A, A + R) = R;
+         remove (A, A1 + R1) = A1 + remove (A, R1);
+
+      ofsort AddrSet
+         replace (A1, A2, R) = insert (A2, remove (A1, R));
+
+      ofsort Bool
+         empty ({}) = true;
+         empty (A + R) = false;
+
+      ofsort Bool
+         A isin {} = false;
+         A isin (A1 + R1) = (A eq A1) or (A isin R1);
+
+      ofsort Bool
+         A notin R = not (A isin R);
+
+      ofsort Bool
+         {} subset R = true;
+         (A1 + R1) subset R2 = (A1 isin R2) and (R1 subset R2);
+
+      ofsort Bool
+         R1 eq R2 = (R1 subset R2) and (R2 subset R1);
+
+      ofsort Bool
+         R1 ne R2 = not (R1 eq R2);
+
+      ofsort Bool
+         (* assert: elements are unique and sorted in increasing order *)
+         {} lt (A + R) = true;
+         (A1 + R1) lt (A2 + R2) = (A1 lt A2) or ((A1 eq A2) and (R1 lt R2));
+         R1 lt R2 = false;
+
+      ofsort Nat
+         card ({}) = 0;
+         card (A + R) = 1 + card (R);
+
+      ofsort Addr
+         (* assert: set not empty *)
+         pick (A + R) = A;
+endtype
+
+(*****************************************************************************
+ * 
+ * Reconfiguration and application commands
+ * 
+ *****************************************************************************)
+
+type Command is Boolean
+   sorts
+      Cmd
+
+   opns
+      ACTIVATE  (*! constructor *),
+      ACK       (*! constructor *),
+      ADD       (*! constructor *),
+      BIND      (*! constructor *),
+      DELETE    (*! constructor *),
+      FLUSH     (*! constructor *),
+      MOVE      (*! constructor *),
+      PASSIVATE (*! constructor *),
+      REBIND    (*! constructor *),
+      SERVICE   (*! constructor *) :-> Cmd
+      _eq_, _ne_ : Cmd, Cmd -> Bool
+
+   eqns
+      forall D1, D2:Cmd
+
+   ofsort Bool
+      D1 eq D1 = true;
+      D1 eq D2 = false;
+
+   ofsort Bool
+      D1 ne D2 = not (D1 eq D2);
+endtype
+
+(*****************************************************************************
+ * 
+ * Abstract states of an agent
+ * 
+ *****************************************************************************)
+
+type AbstractAgentState is Boolean
+   sorts
+      State
+
+   opns
+      ACTIVE  (*! constructor *),
+      DEAD    (*! constructor *),
+      PASSIVE (*! constructor *) :-> State
+      _eq_, _ne_ : State, State -> Bool
+
+   eqns
+      forall T1, T2:State
+
+   ofsort Bool
+      T1 eq T1 = true;
+      T1 eq T2 = false;
+
+   ofsort Bool
+      T1 ne T2 = not (T1 eq T2);
+endtype
+
+(*****************************************************************************
+ * 
+ * Configuration of an agent (address, set of "output" agents)
+ * 
+ *****************************************************************************)
+
+type AgentConfiguration is AgentAddressSet
+   sorts
+      AgentConfig
+
+   opns
+      _&_ (*! constructor *) : Addr, AddrSet -> AgentConfig
+      _eq_, _ne_, _lt_ : AgentConfig, AgentConfig -> Bool
+
+   eqns
+      forall C1, C2:AgentConfig, R1, R2:AddrSet, A1, A2:Addr
+
+   ofsort Bool
+      (A1 & R1) eq (A2 & R2) = (A1 eq A2) and (R1 eq R2);
+
+   ofsort Bool
+      C1 ne C2 = not (C1 eq C2);
+
+   ofsort Bool
+      (A1 & R1) lt (A2 & R2) = (A1 lt A2) or ((A1 eq A2) and (R1 lt R2));
+endtype
+
+(*****************************************************************************
+ * 
+ * Configuration of an application (list of agent configurations)
+ * 
+ *****************************************************************************)
+
+type Configuration is AgentConfiguration
+   sorts
+      Config (*! implementedby CONFIG *)
+
+   opns
+      nil (*! constructor *) :-> Config
+      _._ (*! constructor *) : AgentConfig, Config -> Config
+      insert : AgentConfig, Config -> Config
+      delete : Addr, Config -> Config
+      remove : Addr, Config -> Config
+      getchan : Addr, Config -> AddrSet
+      addchan : Addr, Addr, Config -> Config
+      setchan : Addr, Addr, Addr, Config -> Config
+      setchan : AddrSet, Addr, Addr, Config -> Config
+      setaddr : Addr, Addr, Config -> Config
+      cps : Addr, Config -> AddrSet
+      _isin_, _notin_ : Addr, Config -> Bool
+      newaddr : SiteId, Config -> Addr
+      newaddr2 : AgentId, SiteId, Config -> Addr
+
+   eqns
+      forall C, C1:AgentConfig, C1_Cn, C2_Cn:Config, A, A1, A2, A3:Addr,
+             R, R1:AddrSet, P:AgentId, S:SiteId
+
+   ofsort Config
+      (* assert: elements are unique and sorted in increasing order *)
+      insert (C, nil) = C.nil;
+      insert (C, C.C2_Cn) = C.C2_Cn;
+      C lt C1 => insert (C, C1.C2_Cn) = C.(C1.C2_Cn);
+      insert (C, C1.C2_Cn) = C1.insert (C, C2_Cn);
+
+   ofsort Config
+      delete (A, nil) = nil;
+      delete (A, (A & R).C2_Cn) = delete (A, C2_Cn);
+      delete (A, (A1 & R1).C2_Cn) = (A1 & remove (A, R1)).delete (A, C2_Cn);
+
+   ofsort Config
+      remove (A, nil) = nil;
+      remove (A, (A & R).C2_Cn) = C2_Cn;
+      remove (A, C1.C2_Cn) = C1.remove (A, C2_Cn);
+
+   ofsort AddrSet
+      (* assert: A is in the configuration *)
+      getchan (A, (A & R).C2_Cn) = R;
+      getchan (A, C1.C2_Cn) = getchan (A, C2_Cn);
+
+   ofsort Config
+      (* assert: A1 isin C1_Cn *)
+      addchan (A1, A2, C1_Cn) =
+         insert (A1 & insert (A2, getchan (A1, C1_Cn)), remove (A1, C1_Cn));
+
+   ofsort Config
+      (* assert: A1 isin C1_Cn *)
+      setchan (A1, A2, A3, C1_Cn) =
+         insert (A1 & insert (A3, remove (A2, getchan (A1, C1_Cn))),
+                 remove (A1, C1_Cn));
+
+   ofsort Config
+      (* assert: each address in the set R isin C1_Cn *)
+      setchan ({}, A2, A3, C1_Cn) = C1_Cn;
+      setchan (A + R, A2, A3, C1_Cn) =
+         setchan (A, A2, A3, setchan (R, A2, A3, C1_Cn));
+
+   ofsort Config
+      (* assert: A1 isin C1_Cn *)
+      setaddr (A1, A2, C1_Cn) =
+         insert (A2 & getchan (A1, C1_Cn), remove (A1, C1_Cn));
+
+   ofsort AddrSet
+      cps (A, nil) = {};
+      A isin R1 => cps (A, (A1 & R1).C2_Cn) = insert (A1, cps (A, C2_Cn));
+      cps (A, C1.C2_Cn) = cps (A, C2_Cn);
+
+   ofsort Bool
+      A isin nil = false;
+      A isin ((A1 & R1).C2_Cn) = (A eq A1) or (A isin C2_Cn);
+
+   ofsort Bool
+      A notin C1_Cn = not (A isin C1_Cn);
+
+   ofsort Addr
+      (* iterate on all agent identifiers until get a new address *)
+      newaddr (S, C1_Cn) = newaddr2 (agent1, S, C1_Cn);
+
+   ofsort Addr
+      (P@S) isin C1_Cn =>
+      newaddr2 (P, S, C1_Cn) = newaddr2 (succ (P), S, C1_Cn);
+      newaddr2 (P, S, C1_Cn) = P@S;
+endtype
+
+(*****************************************************************************
+ * 
+ * Messages between agents
+ * 
+ *****************************************************************************)
+
+type Message is Command, AgentAddressSet
+   sorts
+      Msg
+
+   opns
+      message (*! constructor *) :
+         Addr, (* address of the receiver agent *)
+         Addr, (* address of the sender agent *)
+         Cmd,  (* reconfiguration command *)
+         Addr, (* first agent address sent *)
+         Addr  (* second agent address sent *)
+      -> Msg
+      getrcv : Msg -> Addr
+      getsnd : Msg -> Addr
+      getcmd : Msg -> Cmd
+      getad1 : Msg -> Addr
+      getad2 : Msg -> Addr
+
+   eqns
+      forall A1, A2, A3, A4:Addr, D:Cmd
+
+   ofsort Addr
+      getrcv (message (A1, A2, D, A3, A4)) = A1;
+      getsnd (message (A1, A2, D, A3, A4)) = A2;
+      getad1 (message (A1, A2, D, A3, A4)) = A3;
+      getad2 (message (A1, A2, D, A3, A4)) = A4;
+
+   ofsort Cmd
+      getcmd (message (A1, A2, D, A3, A4)) = D;
+endtype
+
+(*****************************************************************************
+ * 
+ * Buffer (FIFO) of messages
+ * 
+ *****************************************************************************)
+
+type MessageBuffer is Message
+   sorts
+      Buffer (*! implementedby BUFFER *)
+
+   opns
+      <>  (*! constructor *) :-> Buffer
+      _+_ (*! constructor *) : Buffer, Msg -> Buffer
+      head : Buffer -> Msg
+      tail : Buffer -> Buffer
+      empty : Buffer -> Bool
+      length : Buffer -> Nat
+
+   eqns
+      forall M:Msg, B:Buffer
+
+   ofsort Msg
+      (* assert: queue not empty *)
+      head (<> + M) = M;
+      head (B + M) = head (B);
+
+   ofsort Buffer
+      (* assert: queue not empty *)
+      tail (<> + M) = <>;
+      tail (B + M) = tail (B) + M;
+
+   ofsort Bool
+      empty (<>) = true;
+      empty (B + M) = false;
+
+   ofsort Nat
+      length (<>) = 0;
+      length (B + M) = 1 + length (B);
+endtype
+

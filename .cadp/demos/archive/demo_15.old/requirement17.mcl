@@ -1,0 +1,25 @@
+
+(*****************************************************************************
+ * Requirement 17
+ * If A-subscriber and B-subscriber have speech connection activated and B-
+ * subscriber performs onhook then:
+ *       There should be a possibility of the speech connection being
+ *       deactivated.
+ *       Once speech connection is deactivated, A's error tone is activated.
+ *****************************************************************************)
+
+[
+    true* .
+    "S !1 !SPEECHCONN !ON" .
+    (not 'S ![12] !SPEECHCONN !OFF')* .
+    "S !2 !SPEECHCONN !ON" .
+    (not 'S ![12] !SPEECHCONN !OFF')* .
+    "S !2 !ONH"
+] (
+    < true* . 'S ![12] !SPEECHCONN !OFF' > true
+    and
+    (* fair (but not inevitable) reachability *)
+    [ true* . 'S ![12] !SPEECHCONN !OFF' . (not "S !1 !ERRORT !ON")* ]
+        < (not "S !1 !ERRORT !ON")* . "S !1 !ERRORT !ON" > true
+)
+

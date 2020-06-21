@@ -1,0 +1,69 @@
+module CHANNELS (TYPES) is
+
+-------------------------------------------------------------------------------
+
+channel CInChannel is
+   (Command),                   -- Command is Send_Faults or Other_Command
+   (Command, PortNo),           -- Command is Add_Data_Port
+   (Command, RouteNo, PortSet)  -- Command is Add_Route
+end channel
+
+-------------------------------------------------------------------------------
+
+channel COutChannel is
+   (Bool, EnvList)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel DInChannel is
+   (PortNo, Env, RouteNo)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel DOutChannel is
+   (PortNo, Env)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel NullChannel is
+   ()
+end channel
+
+-------------------------------------------------------------------------------
+
+channel PortChannel is
+   (PortNo)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel EnvChannel is
+   (Env)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel TimeOutChannel is
+   (PortNo, Env)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel RqChannel is
+   (RouteNo, Env)
+end channel
+
+-------------------------------------------------------------------------------
+
+channel RaChannel is
+   (ErrorCode, RouteNo, Env),
+   (PortSet, RouteNo, Env)
+end channel
+
+-------------------------------------------------------------------------------
+
+end module
+

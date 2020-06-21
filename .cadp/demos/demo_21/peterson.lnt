@@ -1,0 +1,82 @@
+module PETERSON is
+
+type COMMAND is
+   READ, WRITE
+end type
+
+-------------------------------------------------------------------------------
+	
+channel F_CHAN is 
+   (COMMAND, BOOL)
+end channel
+
+channel T_CHAN is 
+   (COMMAND, NAT)
+end channel
+
+-------------------------------------------------------------------------------
+
+process MAIN [NCS0, NCS1, CS0, CS1 : NONE, F0, F1 : F_CHAN, T : T_CHAN] is
+   par
+      F0, F1, T ->
+         par
+            P [NCS0, CS0, F0, F1, T] (0)
+            ||
+            P [NCS1, CS1, F1, F0, T] (1)
+         end par
+      ||
+      F0 -> FLAG [F0] (false)
+      ||
+      F1 -> FLAG [F1] (false)
+      ||
+      T -> TURN [T] (0)
+   end par
+end process
+
+-------------------------------------------------------------------------------
+
+process P [NCS, CS : NONE, FJ, FI : F_CHAN, T : T_CHAN] (J : NAT) is
+   loop
+      NCS; -- non critical section
+      FJ (WRITE, true);
+      T (WRITE, J);
+      loop L in
+         var VAL_FI : BOOL, VAL_T : NAT in
+            FI (READ, ?VAL_FI);
+            T (READ, ?VAL_T);
+            if not (VAL_FI and (VAL_T == J)) then 
+               break L
+            end if
+         end var
+      end loop;
+      CS; -- critical section
+      FJ (WRITE, false)
+    end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process FLAG [F : F_CHAN] (in var VAL_FLAG : BOOL) is
+   loop
+      select
+         F (READ, VAL_FLAG)
+      []
+         F (WRITE, ?VAL_FLAG)
+      end select
+   end loop
+end process
+
+-------------------------------------------------------------------------------
+
+process TURN [T : T_CHAN] (in var VAL_TURN : NAT) is
+   loop
+      select		
+         T (READ, VAL_TURN)
+      []
+         T (WRITE, ?VAL_TURN)
+      end select
+   end loop
+end process
+
+end module
+

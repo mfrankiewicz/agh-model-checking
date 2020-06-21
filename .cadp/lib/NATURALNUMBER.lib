@@ -1,0 +1,51 @@
+type BasicNaturalNumber is 
+   sorts Nat (*! implementedby ADT_NAT comparedby ADT_CMP_NAT
+                 iteratedby ADT_ENUM_FIRST_NAT and ADT_ENUM_NEXT_NAT
+                 printedby ADT_PRINT_NAT *)
+   opns 0 (*! implementedby ADT_N0 constructor *) : -> Nat
+        Succ (*! implementedby ADT_SUCC_NAT constructor *) : Nat -> Nat
+        _+_  (*! implementedby ADT_PLUS_NAT *),
+        _*_  (*! implementedby ADT_MULT_NAT *),
+        _**_ (*! implementedby ADT_POWER_NAT *) : Nat, Nat -> Nat
+   eqns
+      forall m, n : Nat
+      ofsort Nat
+         m + 0 = m;
+         m + Succ(n) = Succ(m) + n;
+      ofsort Nat
+         m * 0 = 0;
+         m * Succ(n) = m + (m * n);
+      ofsort Nat
+         m ** 0 = Succ(0);
+         m ** Succ(n) = m * (m ** n)
+endtype
+
+type NaturalNumber is BasicNaturalNumber, Boolean
+   opns 
+        _eq_ (*! implementedby ADT_EQ_NAT *), 
+        _ne_ (*! implementedby ADT_NE_NAT *), 
+        _lt_ (*! implementedby ADT_LT_NAT *),
+        _le_ (*! implementedby ADT_LE_NAT *),
+        _gt_ (*! implementedby ADT_GT_NAT *),
+        _ge_ (*! implementedby ADT_GE_NAT *) : Nat, Nat -> Bool
+   eqns
+      forall m, n : Nat
+      ofsort Bool
+         0 eq 0                   = true;
+         0 eq Succ (n)            = false;
+         Succ (m) eq 0            = false;                   
+         Succ (m) eq Succ (n)     = m eq n;                   
+      ofsort Bool
+         m ne n                   = not (m eq n);
+      ofsort Bool
+         0 lt 0                   = false;
+         0 lt Succ (n)            = true;
+         Succ (n) lt 0            = false;
+         Succ (m) lt Succ (n)     = m lt n;
+      ofsort Bool
+         m le n                   = (m lt n) or (m eq n);
+      ofsort Bool
+         m ge n                   = not (m lt n);
+      ofsort Bool
+         m gt n                   = not (m le n);
+endtype

@@ -1,0 +1,210 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_adjust
+#   Auteurs             :       Nicolas Descoubes et Hubert Garavel
+#   Version             :       1.21
+#   Date                :       2018/01/22 13:05:56
+##############################################################################
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP"/com/arch`
+DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+STATUS=0	# code de retour
+
+# -----------------------------------------------------------------------------
+
+# actuellement, ce script n'est utile que sous Windows
+if [ "$ARCH" != "win32" ]
+then
+	exit 0
+fi
+
+# -----------------------------------------------------------------------------
+
+if [ "$1" = "-verbose" ]
+then
+	VERBOSE=1
+	shift
+fi
+
+# =============================================================================
+
+# remplacement des liens symboliques par leur cible : en effet, sous Windows,
+# les programmes binaires de CADP sont compiles avec Mingwin (et non pas
+# Cygwin) et ne comprennent donc pas les liens symboliques propres a Cygwin
+
+REPLACE_SYMLINK () {
+	ERROR=0
+	if test -d "$1"
+	then
+		# lien vers un repertoire
+		if test $VERBOSE
+		then
+			echo "replacing link \`\`$1'' by its target directory"
+		fi
+		(cp -prL "$1" "$1.hard" && rm -f "$1" && mv "$1.hard" "$1") || ERROR=1
+		if [ $ERROR = 1 ]
+		then
+			echo "*** cannot replace symbolic link (directory \`\`$1'')"
+			STATUS=1
+		fi
+	else
+		# lien vers un fichier
+		if test $VERBOSE
+		then
+			echo "replacing link \`\`$1'' by its target file"
+		fi
+		(cp -p "$1" "$1.hard" && rm -f "$1" && mv "$1.hard" "$1") || ERROR=1
+		if [ $ERROR = 1 ]
+		then
+			echo "*** cannot replace symbolic link (file \`\`$1'')"
+			STATUS=1
+		fi
+	fi
+}
+
+# -----------------------------------------------------------------------------
+# elimination des liens symboliques Cygwin preserves par le tar de Cygwin
+
+cd "$CADP"
+for FILE in `find . -type l`
+do
+	REPLACE_SYMLINK "$FILE"
+done
+
+# =============================================================================
+
+# migration des fichiers texte d'Unix vers Windows :
+#   - remplacement des tabulations par des suites de 8 espaces
+#   - remplacement des fins de ligne <LF> (\n) par <CR><LF> (\r\n)
+
+MOVE () {
+	# cette commande effectue "mv $1 $2" ; sous Cygwin, on doit modifier
+	# les ACLs de $1 (ce fichier peut avoir ete cree avec des ACLs
+	# incorrectes ou trop restrictives, qui font qu'il n'est pas
+	# accessible en lecture) ; les ACLs de $2 sont supposees correctes
+
+	case "$DETAILED_ARCH" in
+		"win32-cygnus" | "win64-cygnus" )
+			# on donne a $1 les memes ACLs que $2
+			getfacl "$2" | setfacl -f - "$1"
+			;;
+		* )
+			# rien a faire
+			;;
+	esac
+	mv "$1" "$2"
+}
+
+# -----------------------------------------------------------------------------
+
+CONVERT_TEXT_FILE () {
+	ERROR=0
+	if test ! -f "$1"
+	then
+		# "$1" n'est pas un fichier : on le laisse intact
+		return
+	fi
+	if test $VERBOSE
+	then
+		echo "converting text file \`\`$1''"
+	fi
+
+	# on teste d'abord si la derniere ligne du fichier "$1" se termine ou
+	# non par le caractere "\n"
+	LAST_CHAR=`$CADP/src/com/cadp_tail -c 1 "$1" | tr -d '\012' | wc -c`
+	case "$LAST_CHAR" in
+		0 )
+			# le fichier "$1" ne se termine pas par un "\n" ;
+			# dans ce cas, on ajoute "\n" en fin de fichier pour
+			# que les substitutions avec "sed" ci-dessous soient
+			# correctes ; ce cas devrait etre assez rare avec les
+			# fichiers .txt de la distribution CADP
+			echo >> "$1"
+			;;
+		1 )
+			# le fichier "$1" se termine par un "\n"
+	esac
+
+	# pour traiter le cas ou ce shell-script serait appele 
+	# plusieurs fois sur le meme fichier, on elimine d'abord 
+	# les sequences \r\n eventuelles (qui correspondent au cas
+	# d'un fichier deja en format DOS) en les remplacant par \n
+	# avant de remplacer chaque \n par \r\n
+
+	(expand "$1" | sed -e 's/\r$//' | sed -e 's/$/\r/' > "$1".dos && MOVE "$1".dos "$1") || ERROR=1
+
+	if [ $ERROR -eq 1 ]
+	then
+		echo "*** cannot convert text file \`\`$1''"
+		STATUS=1
+	fi
+}
+
+# -----------------------------------------------------------------------------
+
+cd "$CADP"
+# on applique le traitement aux fichiers .txt et .svl
+for PATTERN in ADDRESSES 'COPYRIGHT*' HISTORY 'INSTALLATION*' PREHISTORY READ_ME USERS VERSION '*.c' '*.f' '*.h' '*.lib' '*.lnt' '*.lotos' '*.mcl' '*.seq' '*.svl' '*.t' '*.txt' '*.xtl' 
+do
+	for FILE in `find . -name "$PATTERN"`
+	do
+		CONVERT_TEXT_FILE "$FILE"
+	done
+done
+
+# =============================================================================
+
+if [ "$CADP_INSTALLATOR" != "" ]
+then
+        # in such case, this shell-script is certainly invoked by installator,
+	# which has set the environment variable $CADP to the temporary
+	# directory in which the downloaded CADP files have been extracted
+	case "$CADP" in
+		*/new.* )
+			# here, $CADP is equal, e.g., to "/cadp/new.2018-a" :
+			# we correct its value to obtain the actual location
+			# where CADP will be finally installed
+			CADP=`dirname "$CADP"`
+			;;
+	esac
+fi
+
+# -----------------------------------------------------------------------------
+
+# creation eventuelle d'un lien symbolique vers CADP dans le repertoire Cygwin
+
+RELATIVE=`"$CADP"/src/com/cadp_path -relative "$CADP"`
+if [ $RELATIVE = 1 ]
+then
+	echo "*** variable \$CADP is not an absolute pathname (directory \`\`$1'')"
+	exit 1
+fi
+
+TARGET=`"$CADP"/src/com/cadp_path -cygwin_link`
+if [ "$TARGET" = "" ]
+then
+	# aucun lien symbolique ne doit etre cree
+	true
+else
+	# un lien symbolique doit etre cree
+	# assert `"$CADP"/com/arch -detailed` = "win32-cygnus" or
+	#        `"$CADP"/com/arch -detailed` = "win64-cygnus"
+	# assert `"$CADP"/src/com/cadp_path -rooted_cygwin` = 0
+	"$CADP"/src/com/cadp_path -make_cygwin_link
+	STATUS=$?
+fi
+
+# =============================================================================
+
+exit $STATUS

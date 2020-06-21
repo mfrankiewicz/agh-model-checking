@@ -1,0 +1,13 @@
+type Action is Boolean
+   sorts
+      Action (*! implementedby ADT_ACTION comparedby ADT_CMP_ACTION 
+                 printedby ADT_PRINT_ACTION external *)
+   opns
+      nop (*! implementedby ADT_NOP external *) : -> Action
+      _fby_ (*! implementedby ADT_FBY external *) : Action, Action -> Action
+      if_then (*! implementedby ADT_IF_THEN external *) : 
+          Bool, Action -> Action
+      if_then_else (*! implementedby ADT_IF_THEN_ELSE external *) : 
+          Bool, Action, Action -> Action
+endtype
+

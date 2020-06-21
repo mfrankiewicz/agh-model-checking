@@ -1,0 +1,69 @@
++-----------+
+| FILE menu |
++-----------+
+
+"Load PS ..."  
+-------------
+Opens a file browser for selecting which file to read. This file should
+be readable, have a ".ps" extension, and be encoded using the BCG
+PostScript Format. 
+
+If another graph was already under edition and not saved yet, BCG_EDIT 
+will warn that modifications are lost if a new file is loaded.
+
+CAUTION! A PostScript file under edition with BCG_EDIT must never be 
+removed or otherwise altered before it is saved (because BCG_EDIT
+needs to read again the file before saving it). Otherwise, BCG_EDIT
+will be unable to save the modifications.
+
+"Load BCG ..."  
+--------------
+Opens a file browser for selecting which file to read. This file should
+be readable, have a ".bcg" extension, and be encoded using the BCG 
+Format. 
+
+BCG_EDIT will silently invoke BCG_DRAW in order to produce a PostScript
+file from the BCG file. This PostScript file will have the same file name
+as the BCG file, with a different extension (".ps" instead of ".bcg").
+If a PostScript file with this name already exists, BCG_EDIT will ask
+if it can be overwritten.
+
+If another graph was already under edition and not saved yet, BCG_EDIT 
+will warn that modifications are lost if a new file is loaded.
+
+CAUTION! A PostScript file under edition with BCG_EDIT must never be 
+removed or otherwise altered before it is saved (because BCG_EDIT
+needs to read again the file before saving it). Otherwise, BCG_EDIT
+will be unable to save the modifications.
+
+"Save PS"
+---------
+Saves the graph currently edited in the last ".ps" file loaded. This 
+file should be writable. It will be encoded using the BCG PostScript 
+Format. 
+
+"Save PS as ..."
+----------------
+Opens a file browser for selecting which file to write. This file should
+be writable and have a ".ps" extension. It will be encoded using the BCG
+Postcript Format.
+
+"Preview ..."                        
+-------------
+Displays the graph using a PostScript previewer. A dialog box is opened
+to select which previewer to use. The default previewer name is stored in 
+the environment variable $CADP_PS_VIEWER.
+
+"Print ..."
+-----------
+Prints the graph on a PostScript printer. A dialog box is opened to
+select which printer to use. The default printer name is stored in the 
+environment variable $PRINTER.
+
+"Quit ..."                                                    
+----------
+Exits BCG_EDIT. If a graph was under edition and not saved yet, BCG_EDIT 
+will warn that modifications are lost upon quit.
+
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

@@ -1,0 +1,86 @@
+specification REL_rel_FIFO_Version_B [GET, CRASH] : noexit 
+
+(* Improved algorithm - 2 stations - with crashes - version B *)
+
+   library DATA endlib
+
+behaviour
+
+   hide R_T1, R_T2 in
+      (
+      Crash_Transmitter [R_T1, R_T2]
+      |[R_T1, R_T2]|
+         (
+         hide R1, R2 in
+             (
+                (
+                hide DEPOSE1 in
+                   (
+                   Receiver_Thread [R_T1, R1, R2, DEPOSE1, GET, CRASH] (1)
+                   |[R_T1, R1, R2, GET, CRASH, DEPOSE1]|
+                   Fail_Receiver [R_T1, R1, R2, GET, DEPOSE1, CRASH] (1)
+                   ) 
+                )
+             |[R1, R2]|
+                (
+                hide DEPOSE2 in
+                   (
+                   Receiver_Thread [R_T2, R2, R1, DEPOSE2, GET, CRASH] (2)
+                   |[R_T2, R1, R2, GET, CRASH, DEPOSE2]|
+                   Fail_Receiver [R_T2, R2, R1, GET, DEPOSE2, CRASH] (2)
+                   ) 
+                )
+             )
+         )
+      )
+
+where
+
+   library PROC endlib
+ 
+(* ------------------------------------------------------------------------- *)
+
+process Crash_Transmitter [R_T1, R_T2] : noexit :=
+   hide CRASH_T in
+      (
+      Transmitter [R_T1, R_T2]  (1 of MSG)
+      |[R_T1, R_T2]|
+      Fail_Transmitter [R_T1, R_T2, CRASH_T]
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Fail_Transmitter [R_T1, R_T2, CRASH_T] : noexit :=
+   R_T1 ?M:MSG ?T:TYPEMSG;
+      Fail_Transmitter [R_T1, R_T2, CRASH_T]
+   []
+   R_T2 ?M:MSG ?T:TYPEMSG;
+      Fail_Transmitter [R_T1, R_T2, CRASH_T]
+   []
+   R_T1 ?M:MSG ?T:TYPEMSG;
+      CRASH_T !M !T; 
+         stop
+   []
+   R_T2 ?M:MSG ?T:TYPEMSG;
+      CRASH_T !M !T;
+         stop
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Receiver_Thread [R_T, Ri, Rj, DEPOSE, GET, CRASH] (A:ADR) : noexit :=
+   (
+   Receiver [R_T, Rj, DEPOSE, GET] (A, 1 of MSG, FALSE)
+   |[DEPOSE]|
+   Thread [DEPOSE, Ri]
+   )
+   [>
+   CRASH !A ?M:MSG;
+      Ear [R_T, Rj]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+endspec
+

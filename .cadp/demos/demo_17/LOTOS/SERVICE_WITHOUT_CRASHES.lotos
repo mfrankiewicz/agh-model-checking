@@ -1,0 +1,24 @@
+specification SERVICE [OPEN, CLOSE] : noexit behaviour
+
+   SERVICE [OPEN, CLOSE]
+
+where
+
+(*---------------------------------------------------------------------------*)
+
+library DATA endlib
+
+(*---------------------------------------------------------------------------*)
+
+process SERVICE [OPEN, CLOSE] : noexit :=
+   choice Ai:ADDR []
+      (
+      OPEN !Ai;       (* station Ai accesses the shared resource *)
+         CLOSE !Ai;   (* station Ai releases the shared resource *)
+            SERVICE [OPEN, CLOSE]
+      )
+endproc
+
+(*---------------------------------------------------------------------------*)
+
+endspec

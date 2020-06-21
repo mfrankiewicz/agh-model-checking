@@ -1,0 +1,58 @@
+(* Master controller - parallel version *)
+
+process MC [REQ, INF, CMD, LAMBDA, NU] (p0, p1, p2, p3, tr:Bool) : noexit :=
+   (
+      (
+         [not (p0)] ->
+         (
+            NU; (* Markov delay inserted here *)
+            REQ !Add;
+               INF !Present;
+                  exit (true, p1, p2, any Bool, any Bool)
+         )
+         []
+         [p0] ->
+            exit (p0, p1, p2, any Bool, any Bool)
+      )
+      |||
+      (
+         [p1] ->
+            CMD !Lock;
+               INF !Locked;
+                  CMD !Drill;
+                     INF !Drilled;
+                        CMD !Unlock;
+                           INF !Unlocked;
+                              exit (any Bool, p1, p2, any Bool, any Bool)
+         []
+         [not (p1)] ->
+            exit (any Bool, p1, p2, any Bool, any Bool)
+      )
+      |||
+      (
+         [p2] ->
+            CMD !Test;
+               INF !Tested ?r:Bool;
+                  exit (any Bool, p1, p2, any Bool, r)
+         []
+         [not (p2)] ->
+            exit (any Bool, p1, p2, any Bool, tr)
+      )
+      |||
+      (
+         [p3] ->
+            REQ !Remove !tr;
+               LAMBDA; (* Markov delay inserted here *)
+               INF !Absent;
+                  exit (any Bool, p1, p2, false, any Bool)
+         []
+         [not (p3)] ->
+            exit (any Bool, p1, p2, p3, any Bool)
+      )
+   )
+   >>
+   accept new_p0, new_p1, new_p2, new_p3, new_tr:Bool in
+      CMD !Turn;
+         INF !Turned;
+            MC [REQ, INF, CMD, LAMBDA, NU] (new_p3, new_p0, new_p1, new_p2, new_tr)
+endproc

@@ -1,0 +1,79 @@
+(****************************************************************
+ * @(#)walk_print_nice.xtl - 1997/11/27 - Charles Pecheur, INRIA
+ * Rhone-Alpes.
+ * Patched by Radu Mateescu on 2009/07/17.
+ * Patched by Frederic Lang on 2015/01/20.
+ *
+ * Definition of printing macros for walk.xtl to produce a
+ * nicer and more informative output.
+ ****************************************************************)
+
+(* print_n(N,X) = print X, N times. *)
+
+def print_n(N:number, X:string) : action =
+  <| fby on I:number among {#1 ... N} |> printf(X)
+end_def
+
+(* compute number of digits in X *)
+
+def digits(X:number) : integer =
+  if (X <= 9) then 1 else 1+digits(X div 10) end_if
+end_def
+  
+(* print_fill(N,X) = print positive integer X, adjusted to N columns *)
+
+def print_fill(COLS:integer, X:number) : action =
+  print(X) fby
+  print_n(number (COLS - digits(X)), " ")
+end_def
+
+macro WALK__PRINT_EDGE(E) =
+  (
+    printf("  ") fby
+    print_fill(4, WALK__DEPTH of number) fby
+    printf(":  ") fby
+    print_n(WALK__LEVEL,"   ") fby
+    print((E) of edge) fby 
+    newline()
+  )
+end_macro
+
+macro WALK__PRINT_STATE(S) =
+  (
+    printf("Found trace at depth ") fby 
+    print(WALK__DEPTH of number) fby 
+    printf(", level ") fby 
+    print(WALK__LEVEL of number) fby 
+    newline()
+  )
+end_macro
+
+macro WALK__PRINT_LOOP(N) =
+  (
+    printf("Ends with loop of length ") fby 
+    print(N) fby 
+    newline()
+  )
+end_macro
+
+macro WALK__PRINT_FOUND() =
+  (printf("SUCCESS") fby newline() fby newline())
+end_macro
+
+macro WALK__PRINT_NOTFOUND() =
+  (printf("FAILURE") fby newline() fby newline())
+end_macro
+
+macro WALK__PRINT_DEADLOCK(S) =
+  (printf("Deadlock state") fby newline())
+end_macro
+
+macro WALK__PRINT_NONDTM(E1,E2) =
+  (
+    printf("Non-deterministic on edges ") fby 
+    print(E1) fby 
+    printf(" and ") fby
+    print(E2) fby 
+    newline()
+  )
+end_macro

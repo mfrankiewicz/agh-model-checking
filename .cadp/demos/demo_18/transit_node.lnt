@@ -1,0 +1,36 @@
+module TRANSIT_NODE (TYPES, CHANNELS, CONTROL, DATAINPORTS, 
+                     DATAOUTPORTS, DATAGENERATOR, ERRHANDLER) is
+
+-------------------------------------------------------------------------------
+
+process MAIN [CI:CInChannel, CO:COutChannel,
+              DI:DInChannel, DO:DOutChannel,
+              cerri:NullChannel, crep:PortChannel, 
+              derri:EnvChannel, timeout:TimeOutChannel] is
+
+   hide erro:NullChannel, rq:RqChannel, ra:RaChannel, io:DOutChannel in
+      par DI, DO, CO in
+         par
+            cerri, crep, erro, ra, rq ->
+               Control [CI, cerri, erro, crep, rq, ra]
+         ||
+            cerri, derri, erro, timeout ->
+               ErrHandler [cerri, derri, timeout, erro, CO]
+         ||
+            crep, derri, io, ra, rq ->
+               DataInPorts [DI, crep, rq, ra, derri, io]
+         ||
+            crep, io, timeout ->
+               DataOutPorts [DO, crep, io, timeout]
+         end par
+      ||
+         DataGenerator [DI, DO, CO]
+      end par
+   end hide
+
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

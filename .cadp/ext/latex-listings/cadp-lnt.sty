@@ -1,0 +1,42 @@
+%% Listings definitions for the LNT language
+%% produced by Syntax Editor Configuration Tool <cadp@inria.fr>
+%% version 1.25:LNT+1.8:SECT
+
+\lstdefinelanguage{LNT}
+{
+   morekeywords=[1]{access,any,array,as,assert,break,
+                    by,case,channel,disrupt,else,elsif,
+                    end,ensure,eval,for,function,hide,
+                    if,in,is,list,loop,module,
+                    null,of,only,out,par,process,
+                    raise,range,require,result,return,select,
+                    set,sorted,stop,then,type,use,
+                    var,where,while,with},
+   morekeywords=[2]{!bits,!card,!nat_bits,!nat_inf,!nat_sup,!nat_check,
+                    !int_bits,!int_inf,!int_sup,!int_check,!num_bits,!num_card,
+                    !string_card,!comparedby,!external,!implementedby,!iteratedby,!printedby,
+                    !representedby,!version},
+   morekeywords=[3]{bool,nat,int,real,char,string},
+   morekeywords=[4]{false,true},
+   morekeywords=[5]{abs,and,and_then,append,card,cons,
+                    delete,diff,div,element,empty,eq,
+                    first,gcd,ge,get,gt,head,
+                    iff,implies,index,insert,inter,IntToNat,
+                    is_empty,IsLower,IsUpper,IsAlpha,IsAlnum,IsDigit,
+                    IsXDigit,last,le,length,lt,max,
+                    member,min,mod,NatToInt,ne,neg,
+                    nil,not,nth,or,ord,or_else,
+                    pos,pred,prefix,rem,remove,reverse,
+                    rindex,scm,set,sign,substr,succ,
+                    suffix,tail,ToLower,ToUpper,union,update,
+                    val,xor},
+   otherkeywords={=,<,>,|,+,/,
+                    ?,;,**,==,<>,/=,
+                    <=,>=,=>,||,[],->},
+   alsoletter={!},
+   sensitive=true,
+   morecomment=[l]{--},
+   morecomment=[s]{(*}{*)},
+   morestring=[b]{'},
+   morestring=[b]{"}
+}[keywords,comments,strings]

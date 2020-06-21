@@ -1,0 +1,96 @@
+(* ========================================================================= *)
+(* Maximum number of DCM Managers *)
+def N () : natural = 2 end_def
+
+(* ========================================================================= *)
+(* Basic predicates over actions for the asynchronous version *)
+
+macro InitRepljAsyn (j) =
+    if j = 1 then
+        EVAL_A (GDMOUT _ ?m:raw where m = `CONSM (DMINITREPLY, 1, FALSE)`)
+        or
+        EVAL_A (GDMIN _ ?m:raw where m = `CONSM (DMINITREPLY, 1, FALSE)`)
+    else (* j = 2 *)
+        EVAL_A (GDMOUT _ ?m:raw where m = `CONSM (DMINITREPLY, 2, FALSE)`)
+        or
+        EVAL_A (GDMIN _ ?m:raw where m = `CONSM (DMINITREPLY, 2, FALSE)`)
+    end_if
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro InitReplnotjAsyn (j) =
+    if j = 1 then
+        EVAL_A (GDMOUT _ ?m:raw where m = `CONSM (DMINITREPLY, 2, FALSE)`)
+        or
+        EVAL_A (GDMIN _ ?m:raw where m = `CONSM (DMINITREPLY, 2, FALSE)`)
+    else (* j = 2 *)
+        EVAL_A (GDMOUT _ ?m:raw where m = `CONSM (DMINITREPLY, 1, FALSE)`)
+        or
+        EVAL_A (GDMIN _ ?m:raw where m = `CONSM (DMINITREPLY, 1, FALSE)`)
+    end_if
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro FinalLeaderjAsyn (j) =
+    EVAL_A (GEVENT !"FINAL_LEADER" ?n:natural _ where n = j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro FinalLeadernotjAsyn (j) =
+    EVAL_A (GEVENT !"FINAL_LEADER" ?n:natural _ where n <> j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro IRorFLjAsyn (j) =
+    InitRepljAsyn (j) or FinalLeaderjAsyn (j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro IRorFLnotjAsyn (j) =
+    InitReplnotjAsyn (j) or FinalLeadernotjAsyn (j)
+end_macro
+
+(* ========================================================================= *)
+(* Basic predicates over actions for the synchronous version *)
+
+macro InitRepljSync (j) =
+    EVAL_A (GDM _ _ !"DMINITREPLY" ?n:natural where n = j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro InitReplnotjSync (j) =
+    EVAL_A (GDM _ _ !"DMINITREPLY" ?n:natural where n <> j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro FinalLeaderjSync (j) =
+    EVAL_A (GEVENT !"FINAL_LEADER" ?n:natural _ where n = j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro FinalLeadernotjSync (j) =
+    EVAL_A (GEVENT !"FINAL_LEADER" ?n:natural _ where n <> j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro IRorFLjSync (j) =
+    InitRepljSync (j) or FinalLeaderjSync (j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+
+macro IRorFLnotjSync (j) =
+    InitReplnotjSync (j) or FinalLeadernotjSync (j)
+end_macro
+
+(* ------------------------------------------------------------------------- *)
+

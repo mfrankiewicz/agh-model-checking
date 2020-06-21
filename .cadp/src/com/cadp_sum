@@ -1,0 +1,129 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_sum
+#   Auteurs             :       Remi HERILIER et Hubert GARAVEL
+#   Version             :       1.15
+#   Date                :       2018/12/04 10:58:31
+##############################################################################
+
+ARCH=`"$CADP"/com/arch`
+
+COMMAND=`basename "$0"`
+
+# ce script shell est appele par Contributor pour calculer la somme MD5
+# d'une liste de fichiers qui peuvent etre passes, soit en option sur la
+# ligne de commande, soit sur l'entree standard (stdin) lorsque la ligne
+# de commande ne comporte aucune option ; en sortie, ce script affiche
+# une liste de lignes ayant chacune la forme
+#    somme_MD5 nom_de_fichier
+# (ce formatage correspond a celui du fichier "already_sent" de Contributor;
+# le nom_de_fichier se termine a la fin de ligne ; il n'est donc pas mis entre
+#  guillemets, meme s'il comporte des espaces)
+
+# on fait l'hypothese importante que tous les fichiers passes a ce script
+# shell existent et sont lisibles (mais on ne verifie pas ce point pour ne
+# pas ralentir le script) ; sous cette hypothese, la sortie aura donc autant
+# de lignes qu'il y a de fichiers a traiter ; attention : si un fichier
+# n'existait pas ou etait illisible, on aurait un message sur stderr et la
+# ligne correspondante manquerait sur stdout
+
+TMP_FILE=`"$CADP"/src/com/cadp_temporary $COMMAND`
+
+# on ecrit dans $TMP_FILE la liste des noms des fichiers a traiter ; ces noms
+# de fichiers doivent etre mis entre guillemets pour pouvoir ensuite etre
+# utilises par la commande "xargs"
+
+if [ $# -eq 0 ]
+then
+	# cas ou la liste de fichiers est passee sur stdin
+	while [ true ]
+	do
+		read LINE
+		if [ "$LINE" = "" ]
+		then
+			break
+		fi
+		echo "\"$LINE\""
+		# note : ici, c'est la commande built-in ``echo'' du shell qui
+		# appelee et, cela tombe bien, car (contrairement a /bin/echo,
+		# /usr/bin/echo, etc.) elle n'interprete pas les caracteres
+		# precedes d'un backslash, mais les imprime tels quels, ce qui
+		# est souhaitable s'agissant de noms de fichiers
+	done > "$TMP_FILE"
+else
+	# cas ou la liste de fichiers est passee sur la ligne de commande
+	# (attention, il y a des limites sur le nombre maximal d'options
+	# que peut comporter une ligne de commande)
+	while [ "$1" != "" ]
+	do
+		echo "\"$1\""
+		# note : meme remarque que ci-dessus
+		shift
+	done > "$TMP_FILE"
+fi
+
+# selon l'architecture $ARCH, il n'y a pas d'outil standard pour calculer la
+# somme MD5 d'un fichier ; de plus, les differents outils n'ont pas les memes
+# options ni le meme format de sortie 
+
+# pour avoir de bonnes performances, il est preferable d'appeler une seule
+# fois l'outil calculant la somme MD5 en lui passant la liste de fichiers a
+# traiter (c'est-a-dire le contenu de $TMP_FILE) , plutot que de l'appeler
+# autant de fois qu'il y a de fichiers a traiter ; cependant, il faut aussi
+# eviter de construire une ligne de commande trop longue (ou comportant trop
+# d'arguments) qui serait rejetee par le systeme ou par le shell ; pour cela
+# on utilise la commande ``xargs'' qui permet de faire un traitement par lots
+# en decoupant la liste des fichiers a traiter en lignes de commande de taille
+# maximale acceptables par le systeme
+
+case "$ARCH" in
+	sun5 | sun64 | sol86 | sol64 )
+		CONTRIBUTOR_CHECKSUM="/bin/digest -a md5 -v"
+		# l'option -v permet d'avoir le meme format d'affichage selon
+		# que la commande ``digest'' a un ou plusieurs fichiers passes
+		# en parametres ; les lignes produites par cette commande ont
+		# la forme
+		#	md5 (nom_de_fichier) = somme_MD5
+		#
+		# la commande ``sed'' permet d'extraire le nom du fichier ainsi
+		# que sa somme MD5 et de les presenter correctement
+		cat "$TMP_FILE" | xargs $CONTRIBUTOR_CHECKSUM | sed -e 's/md5 (\(.*\)) = \([0-9a-f]*\)$/\2 \1/'
+		;;
+	iX86 | x64 | ia64 | win32 )
+		CONTRIBUTOR_CHECKSUM="/usr/bin/md5sum"
+		# les lignes produites par la commande ``md5sum'' ont la forme
+		# 	somme_MD5 caractere nom_de_fichier
+		# ou le caractere (qui est present a la colonne 34) indique
+		# le mode de lecture demande a l'appel de fopen () :
+		#  - ' ' si la lecture a ete faite en mode texte
+		#  - '*' si la lecture a ete faite en mode binaire
+		# ce caractere doit etre efface pour avoir une sortie correcte
+		cat "$TMP_FILE" | xargs $CONTRIBUTOR_CHECKSUM | cut -b1-33,35-
+		;;
+	macOS | mac86 | mac64 )
+		CONTRIBUTOR_CHECKSUM="/sbin/md5 -r"
+		# /bin/md5 avec l'option -r produit le resultat escompte 
+		cat "$TMP_FILE" | xargs $CONTRIBUTOR_CHECKSUM
+		;;
+	* )
+		echo "$COMMAND: unknown architecture $ARCH"
+		rm -f $TMP_FILE
+		exit 1
+esac
+
+# suppression du fichier temporaire
+rm -f $TMP_FILE
+
+# indispensable sous Windows
+
+exit 0
+

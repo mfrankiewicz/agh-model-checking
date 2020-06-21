@@ -1,0 +1,308 @@
+specification ODP [Export, Import] : noexit 
+
+(* ------------------------------------------------------------------------- *)
+
+library BOOLEAN, NATURAL endlib
+
+(* ------------------------------------------------------------------------- *)
+
+type Object_Type is Boolean, Natural
+
+sorts Object
+
+opns
+   O1 (*! constructor *),
+   O2 (*! constructor *),
+   O3 (*! constructor *),
+   O4 (*! constructor *) : -> Object
+   Ord : Object -> Nat
+   _<_, _==_ : Object, Object -> BOOL
+
+eqns
+   forall x, y : Object
+
+   ofsort Nat (* object identities are ordered *)
+      Ord (O1) = 1;
+      Ord (O2) = 2;
+      Ord (O3) = 3;
+      Ord (O4) = 4;
+     
+   ofsort Bool
+      (x < y) = (Ord (x) < Ord (y));
+
+   ofsort Bool
+      (x == y) = (Ord (x) == Ord (y));
+
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type Service_Type is Boolean, Natural
+
+sorts Service
+
+opns
+   S1 (*! constructor *),
+   S2 (*! constructor *),
+   S3 (*! constructor *),
+   S4 (*! constructor *),
+   S5 (*! constructor *) : -> Service
+   Ord : Service -> Nat
+   _<_, _==_ : Service, Service -> Bool
+
+eqns
+   forall z, t : Service
+
+   ofsort Nat (* services are ordered *)
+      Ord (S1) = 1;
+      Ord (S2) = 2;
+      Ord (S3) = 3;
+      Ord (S4) = 4;
+      Ord (S5) = 5;
+ 
+   ofsort Bool
+      (z < t) = (Ord (z) < Ord (t));
+
+   ofsort Bool
+      (z == t) = (Ord (z) == Ord (t));
+
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+type DataBase_Type is Boolean, Object_Type, Service_Type
+
+sorts DataBase
+
+opns
+   Nil (*! constructor *) : -> DataBase
+   Cons (*! constructor *) : Service, Object, DataBase -> DataBase
+   Add :  DataBase, Service, Object -> DataBase
+   Is_in : DataBase, Service, Object -> Bool
+
+eqns
+   forall d : DataBase, x, y : Object, z, t : Service
+
+
+   ofsort DataBase
+      Add (Nil, z, x) = Cons (z, x, Nil);
+      (z < t) or ((z == t) and (x < y)) =>
+         Add (Cons (t, y, d), z, x) = Cons (z, x, Cons (t, y, d));
+      (z == t) and (x == y) =>
+         Add (Cons (t, y, d), z, x) = Cons (t, y, d);
+      Add (Cons (t, y, d), z, x) = Cons (t, y, Add (d, z, x)); (* assuming priority *)
+
+   ofsort Bool
+      Is_in (Nil, z, x) = FALSE;
+      (z == t) and (x == y) => Is_in (Cons (t, y, d), z, x) = TRUE;
+      Is_in (Cons (t, y, d), z, x) = Is_in (d, z, x); (* assuming priority *)
+
+endtype
+
+(* ------------------------------------------------------------------------- *)
+
+behaviour
+
+   (*
+    * the actual behaviour is the following:
+    *
+    * hide all but WORK in
+    *    par EXPORT, IMPORT in
+    *       Trader
+    *    ||
+    *       par WORK #2 in 
+    *          Object_1
+    *       || Object_2
+    *       || Object_3
+    *       || Object_4
+    *       end par
+    *    end par
+    * end hide
+    *
+    * it is described compositionally in file odp.exp because ``m among n''
+    * synchronization is not available in LOTOS
+    *)
+   stop 
+
+where
+
+   (*
+    * the specification has three gates, named Export, Import, and Work:
+    *
+    *    - communication on Export (between the trader and an object) is used
+    *      to signal that the object is server for a given service; Export
+    *      has two offers (in this order): the identity of the server object
+    *      and the exported service
+    *
+    *    - communication on Import (between the trader and an object) is used
+    *      to signal that the object (client) can use some server to get a
+    *      given service; Import has three offers (in this order): the
+    *      identity of the client object, the name of the service, and the
+    *      identity of the server object
+    *
+    *    - communication on Work (between two objects) models the execution of
+    *      some service between a client object and a server object; Work has
+    *      three offers (in this order): the identity of the server, the
+    *      identity of the client, and the name of the service
+    *)
+
+(* ------------------------------------------------------------------------- *)
+
+process Trader [Export, Import] : noexit :=
+   Trader_Aux [Export, Import] (Nil)
+endproc
+
+process Trader_Aux [Export, Import] (d:DataBase) : noexit :=
+   (* some server exports the service s *)
+   Export ?server:Object ?s:Service;
+      Trader_Aux [Export, Import] (Add (d, s, server))
+   []
+   (* some client imports service s, which is provided by server *)
+   Import ?client:Object ?s:Service ?server:Object [Is_in (d, s, server)];
+      Trader_Aux [Export, Import] (d)
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Trader_Alphabet [Export, Import] : noexit :=
+   Export ?server:Object ?s:Service;
+      Trader_Alphabet [Export, Import]
+   []
+   Import ?client:Object ?s:Service ?server:Object;
+      Trader_Alphabet [Export, Import]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+(* generic client of identity o requiring service s *)
+
+process Client [Import, Work] (o:Object, s:Service) : exit :=
+   Import !o !s ?server:Object;
+      Work !server !o !s;
+         exit
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+(* generic server of identity o providing service s *)
+
+process Server [Export, Work] (o:Object, s:Service) : noexit :=
+   Export !o !s;
+      Server_Aux [Work] (o, s)
+endproc
+
+process Server_Aux [Work] (o:Object, s:Service) : noexit :=
+   Work !o ?client:Object !s;
+      Server_Aux [Work] (o, s)
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Object_1 [Export, Import, Work] : noexit :=
+   (* Object_1 is server for S2, S3, and S5 and executes service S1 forever *)
+   Server [Export, Work] (O1, S2) 
+   |||
+   Server [Export, Work] (O1, S3) 
+   |||
+   Server [Export, Work] (O1, S5) 
+   |||
+   Object_1_Client [Import, Work]
+endproc
+
+process Object_1_Client [Import, Work] : noexit :=
+   Client [Import, Work] (O1, S1) 
+      >> Object_1_Client [Import, Work]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Object_2 [Export, Import, Work] : noexit :=
+   (* Object_2 is server for both S1 and S2 and executes service S3 forever *)
+   Server [Export, Work] (O2, S1) 
+   |||
+   Server [Export, Work] (O2, S2)
+   |||
+   Object_2_Client [Import, Work]
+endproc
+
+process Object_2_Client [Import, Work] : noexit :=
+   Client [Import, Work] (O2, S3) 
+      >> Object_2_Client [Import, Work]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Object_3 [Export, Import, Work] : noexit :=
+   (*
+    * Object_3 is server for S3 and S4 and runs services S1 and S2 in
+    * alternance
+    *)
+   Server [Export, Work] (O3, S3)
+   |||
+   Server [Export, Work] (O3, S4)
+   |||
+   Object_3_Client [Import, Work]
+endproc
+
+process Object_3_Client [Import, Work] : noexit :=
+   Client [Import, Work] (O3, S1) 
+      >> Client [Import, Work] (O3, S2) 
+         >> Object_3_Client [Import, Work]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Object_4 [Export, Import, Work] : noexit :=
+   (* Object_4 is server for S1 and runs services S2 to S5 in alternance *)
+   Server [Export, Work] (O4, S1) 
+   |||
+   Object_4_Client [Import, Work]
+endproc
+
+process Object_4_Client [Import, Work] : noexit :=
+   Client [Import, Work] (O4, S2)
+      >> Client [Import, Work] (O4, S3)
+         >> Client [Import, Work] (O4, S4)
+            >> Client [Import, Work] (O4, S5)
+               >> Object_4_Client [Import, Work]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+(* the following processes represent the services that should be executed    *)
+(* by the different objects; these processes are used in demo.svl to verify  *)
+(* the good behaviour of the trader                                          *)
+(* ------------------------------------------------------------------------- *)
+
+process Object_1_Service [Work] : noexit :=
+   Work !S1; 
+      Object_1_Service [Work]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Object_2_Service [Work] : noexit :=
+   Work !S3; 
+      Object_2_Service [Work]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Object_3_Service [Work] : noexit :=
+   Work !S1; 
+      Work !S2;
+         Object_3_Service [Work]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process Object_4_Service [Work] : noexit :=
+   Work !S2; 
+      Work !S3;
+         Work !S4; 
+            Work !S5; 
+               Object_4_Service [Work]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+endspec

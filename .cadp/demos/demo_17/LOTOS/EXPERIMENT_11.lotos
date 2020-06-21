@@ -1,0 +1,14 @@
+
+specification EXPERIMENT_11 [OPEN, CLOSE] : noexit 
+
+behaviour
+
+   hide PRED1, SUCC1, PRED2, SUCC2, PRED3, SUCC3 in
+
+   library NETWORK_WITHOUT_CRASHES endlib
+
+where
+
+   library DATA, LINK_6, LE_LANN_STATION_REVISION_2 endlib
+
+endspec

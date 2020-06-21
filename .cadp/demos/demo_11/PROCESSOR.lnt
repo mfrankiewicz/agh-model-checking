@@ -1,0 +1,106 @@
+module PROCESSOR (SIZE) is
+
+-------------------------------------------------------------------------------
+
+process SLAVE [MSG: any] (ext: Extension, pc: PC, ID: Pid, index: Int) is
+   case ext in
+      DONT_CARE -> MSG (ID, "don't care",  pc, "slave with index", index)
+    | BITSTREAM -> MSG (ID, "bitstream", pc, "slave with index", index)
+    | VECTOR    -> MSG (ID, "vector", pc, "slave with index", index)
+   end case
+end process
+
+-------------------------------------------------------------------------------
+
+process LEAF [MSG: any] (ext: Extension, pc: PC, ID: Pid) is
+   case ext in
+      DONT_CARE -> MSG (ID, "don't care", pc)
+    | BITSTREAM -> MSG (ID, "bitstream", pc)
+    | VECTOR    -> MSG (ID, "vector", pc)
+   end case
+end process
+
+-------------------------------------------------------------------------------
+
+process MASTER [ST, MSG: any]
+               (ext: Extension, pc: PC, slave_pc: PC, slave_ext: Extension,
+                number_slaves: Int, continuation: PC, ID: Pid,
+                in out s: Job_Desc_Stack) is
+   case ext in
+      DONT_CARE ->
+         case slave_ext in
+            DONT_CARE ->
+                 MSG (ID, "don't care master", pc, "before don't care dup")
+          | BITSTREAM ->
+                 MSG (ID, "don't care master", pc, "before bitstream dup")
+          | VECTOR ->
+                 MSG (ID, "don't care master", pc, "before vector dup")
+         end case
+    | BITSTREAM ->
+         case slave_ext in
+            DONT_CARE ->
+                 MSG (ID, "bitstream master", pc, "before don't care dup")
+          | BITSTREAM ->
+                 MSG (ID, "bitstream master", pc, "before bitstream dup")
+          | VECTOR ->
+                 MSG (ID, "bitstream master", pc, "before vector dup")
+          end case
+    | VECTOR ->
+         case slave_ext in
+            DONT_CARE ->
+                 MSG (ID, "vector master", pc, "before don't care dup")
+          | BITSTREAM ->
+                 MSG (ID, "vector master", pc, "before bitstream dup")
+          | VECTOR ->
+                 MSG (ID, "vector master", pc, "before vector dup")
+         end case
+   end case;
+   DUP [ST]
+       (ID, slave_pc, slave_ext, number_slaves, EXEC (continuation, -1), !?s)
+end process
+
+-------------------------------------------------------------------------------
+
+process DUP [ST: any]
+            (id: Pid, pc: PC, ext:Extension, count: Int, cont: Job_Desc,
+             in out s: Job_Desc_Stack) is
+   s := push (cont, s);
+   ST (id, DUP (pc, ext, count))
+end process
+
+-------------------------------------------------------------------------------
+
+process PROCESSOR [ST, LD_RQ, LD_RSP, WAKEUP, BOOT, MSG: any]
+                  (id:Pid, ext:Extension) is
+   var j: Job_Desc, s: Job_Desc_Stack in
+      s := empty_stack;
+      BOOT (id, ext);
+      loop
+         WAKEUP (id);
+         loop main_loop in
+            LD_RQ (id);
+            LD_RSP (id, ?j);
+            case j in
+              EXEC (any PC, any Int) ->
+                  EXECUTE [ST, MSG] (id, j, !?s)
+            | WAIT_SLAVE -> null
+            | DONE ->
+                  -- all slaves terminated, pop the continuation
+                  if (is_empty (s)) then
+                     break main_loop
+                  else
+                     j := head (s);
+                     s := pop (s);
+                     EXECUTE [ST, MSG] (id, j, !?s)
+                  end if
+            | NONE -> break main_loop
+            end case
+         end loop
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

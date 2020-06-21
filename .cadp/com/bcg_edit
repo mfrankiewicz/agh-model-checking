@@ -1,0 +1,155 @@
+#! /bin/sh
+
+##############################################################################
+#                                B C G
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module             :       bcg_edit
+#   Auteurs             :      Louis-Pascal Tock, Hubert Garavel
+#   Version            :       1.36
+#   Date               :       2018/10/09 16:41:47
+#-----------------------------------------------------------------------------
+#   Tcl version	       :       8.2
+#   Tk version         :       8.2
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+ARCH=`"$CADP"/com/arch`
+BCG="${BCG:-$CADP}"
+
+# Configuring environment variables
+
+if [ "$CADP_DEBUG" = "garavel" ]
+then
+	BCG_EDIT_SRC=$HOME/Parallelisme/BCG/EDIT
+	sh "$BCG_EDIT_SRC"/Make-tcl
+else
+	BCG_EDIT_SRC="$CADP"/src/bcg_edit
+fi
+export BCG_EDIT_SRC
+
+BCG_EDIT_TMP_FILE=${CADP_TMP:-/tmp}/bcg_$$_edit_file.ps
+export BCG_EDIT_TMP_FILE
+
+BCG_EDIT_TMP_VIEW=${CADP_TMP:-/tmp}/bcg_$$_edit_view.ps
+export BCG_EDIT_TMP_VIEW
+
+BCG_EDIT_TMP_PRINT=${CADP_TMP:-/tmp}/bcg_$$_edit_print.ps
+export BCG_EDIT_TMP_PRINT
+
+if test "$PRINTER"
+then
+	:
+else
+	PRINTER='lp'
+fi
+export PRINTER
+
+if test "$CADP_PS_VIEWER"
+then
+	:
+else
+	CADP_PS_VIEWER=`"$CADP"/src/com/cadp_postscript -default`
+fi
+export CADP_PS_VIEWER
+
+if test $BCG_EDIT_SPLINE_STEPS
+then
+	# rounding to an even number
+	BCG_EDIT_SPLINE_STEPS=`expr $BCG_EDIT_SPLINE_STEPS / 2 \* 2`
+else
+	BCG_EDIT_SPLINE_STEPS=50
+fi
+export BCG_EDIT_SPLINE_STEPS
+
+# parsing the options
+
+BACKGROUND=1
+
+while true
+do
+	case "$1" in
+		-version )
+			grep BCG_VERSION_BCG_EDIT "$BCG"/incl/bcg_version.h | sed -e 's/^[#_	 A-Za-z]*//'
+			exit 0
+			;;
+		-bg )
+			BACKGROUND=1
+			shift
+			;;
+		-fg )
+			BACKGROUND=0
+			shift
+			;;
+		* )
+			break
+			;;
+	esac
+done
+
+# Catching interrupts 
+
+trap '' 1 2 3 4 5 6 7 8 10 12 13 14 15
+
+# Calling wish
+WISH="$CADP"/tcl-tk/com/wish
+
+if test "$#" = 0
+then
+	BCG_EDIT_INPUT_FILE=""	
+	export BCG_EDIT_INPUT_FILE
+	if test $BACKGROUND = 1
+	then
+		"$WISH" -f "$BCG_EDIT_SRC"/bcg_edit.tcl &
+	else
+		"$WISH" -f "$BCG_EDIT_SRC"/bcg_edit.tcl
+	fi
+else
+	for FILE in "$@"
+	do
+		# the value of $FILE may contain spaces
+		case "$FILE" in
+			/* ) BCG_EDIT_INPUT_FILE="$FILE" ;;
+			* )  BCG_EDIT_INPUT_FILE="`pwd`/$FILE" ;;
+		esac
+
+		# the value of $BCG_EDIT_INPUT_FILE may contain spaces
+		case "$BCG_EDIT_INPUT_FILE" in
+			*.bcg | *.ps ) 
+				if test ! -f "$BCG_EDIT_INPUT_FILE"
+				then
+					echo "$COMMAND: file \`\`$FILE'' does not exist"
+					exit 1
+				fi
+				;;
+			* )
+				if test -f "$BCG_EDIT_INPUT_FILE"
+				then
+					echo "$COMMAND: file \`\`$FILE'' is neither a \`\`.bcg'' nor a \`\`.ps'' file"
+					exit 1
+				elif test -f "$BCG_EDIT_INPUT_FILE.bcg"
+				then
+					BCG_EDIT_INPUT_FILE="$BCG_EDIT_INPUT_FILE".bcg
+				elif test -f "$BCG_EDIT_INPUT_FILE".ps
+				then
+					BCG_EDIT_INPUT_FILE="$BCG_EDIT_INPUT_FILE".ps
+				else
+					echo "$COMMAND: file \`\`$FILE.bcg'' or \`\`$FILE.ps'' does not exist"
+					exit 1
+				fi
+		esac
+		export BCG_EDIT_INPUT_FILE
+		if test $BACKGROUND = 1
+		then
+			"$WISH" -f "$BCG_EDIT_SRC"/bcg_edit.tcl &
+		else
+			"$WISH" -f "$BCG_EDIT_SRC"/bcg_edit.tcl
+		fi
+	done
+fi
+

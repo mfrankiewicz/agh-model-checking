@@ -1,0 +1,133 @@
+#! /bin/sh
+
+###############################################################################
+#                           C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module             :       wish
+#   Auteur             :       Hubert GARAVEL
+#   Version            :       1.41
+#   Date               :       2018/05/23 17:27:35
+###############################################################################
+
+COMMAND=`basename "$0"`
+
+# $cadp is a local variable used only within this shell
+
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	cadp=$CADP_INSTALLATOR
+	# do not assign $CADP here, this would confuse installator
+elif test "$CADP" != ""
+then
+	cadp="$CADP"
+else
+	echo "$COMMAND: neither \$CADP nor \$CADP_INSTALLATOR is defined in the environment"
+	exit 1
+fi
+
+CADP_ARCH=`"$cadp"/com/arch`
+
+# sous Windows, wish.exe est une application Win32 pure, a qui l'on doit
+# passer des chemins d'acces complets (par exemple, "C:/xxx" et non pas
+# "/xxx")
+
+CADP_WINPATH=`"$cadp"/src/com/cadp_path -winpath "$cadp"` 
+export CADP_WINPATH
+
+TCL_LIBRARY="$CADP_WINPATH"/tcl-tk/lib-tcl
+export TCL_LIBRARY
+
+TK_LIBRARY="$CADP_WINPATH"/tcl-tk/lib-tk
+export TK_LIBRARY
+
+# setting the following variable $TIX_LIBRARY is only needed for Tix
+
+TIX_LIBRARY="$CADP_WINPATH"/tcl-tk/lib-tix
+export TIX_LIBRARY
+
+# setting the following variable $TCLLIBPATH is only needed for Tix
+# ATTENTION: le "/" final apres $CADP_ARCH est indispensable !
+# si on l'enleve, Tcl/Tk ne trouvera plus le package Tix
+
+TCLLIBPATH="$CADP_WINPATH"/tcl-tk/bin.$CADP_ARCH/
+export TCLLIBPATH
+
+# default location of wish
+
+WISH="$cadp"/tcl-tk/bin.$CADP_ARCH/wish
+
+# set access path for searching dynamic libraries
+
+case $CADP_ARCH in
+
+	sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | x64 | ia64 )
+	 	LD_LIBRARY_PATH="$cadp"/tcl-tk/bin.$CADP_ARCH:"$LD_LIBRARY_PATH"
+		export LD_LIBRARY_PATH
+		;;
+
+	win32 )
+		PATH="$cadp"/tcl-tk/bin.$CADP_ARCH:"$PATH"
+		export PATH
+
+		# si $CYGWIN contient le mot-cle "tty", il faut l'enlever
+		# car la presence de ce mot-cle fait planter certains scripts
+		# Tcl/Tk (notamment Eucalyptus et Installator)
+		if [ "$CYGWIN" != "" ]
+		then
+			CYGWIN=`echo "$CYGWIN" | sed -e 's/\<tty\>//'`
+			# note: sous win32, la commande sed accepte \< et \>
+			export CYGWIN
+		fi
+		;;
+
+	macOS | mac86 | mac64 )
+		DYLD_LIBRARY_PATH="$cadp"/tcl-tk/bin.$CADP_ARCH:"$DYLD_LIBRARY_PATH"
+		export DYLD_LIBRARY_PATH
+
+		# starting X11 if needed
+		"$cadp"/src/com/cadp_x11 || exit 1
+
+		# setting $DISPLAY if needed
+		if test "$DISPLAY" = ""
+		then
+			DISPLAY=:0
+			export DISPLAY
+		fi
+
+		# extending $PATH to access X11 applications
+		PATH="$PATH:/usr/X11R6/bin:/usr/bin/X11:/usr/local/bin/X11"
+		export PATH
+		;;
+
+	* )
+		echo "$COMMAND: unknown architecture $CADP_ARCH"
+		exit 1
+		;;
+esac
+
+if [ $# = 1 ]
+then
+	# cas particulier (frequent) d'un appel de la forme "wish SCRIPT" :
+	# sous win32, lorsque Cygwin n'est pas installe dans C:/, il faut
+	# convertir SCRIPT pour le mettre sous forme de chemin Windows ; en
+	# effet, les chemins Cygwin de la forme /cygdrive/c/... ne sont pas
+	# reconnus par le binaire win32 "wish" de CADP
+	TCL_SCRIPT=`$cadp/src/com/cadp_path -winpath "$1"`
+	exec "$WISH" "$TCL_SCRIPT"
+elif [ $# = 2 -a "@$1" = "@-f" ]
+then
+	# cas particulier (frequent) d'un appel de la forme "wish -f SCRIPT" :
+	# sous win32, on doit convertir SCRIPT vers un chemin Windows
+	TCL_SCRIPT=`$cadp/src/com/cadp_path -winpath "$2"`
+	exec "$WISH" -f "$TCL_SCRIPT"
+else
+	# cas general (fonctionnement sous Windows non garanti)
+	exec "$WISH" "$@"
+fi
+

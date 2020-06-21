@@ -1,0 +1,180 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#------------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#------------------------------------------------------------------------------
+#   Module              :       cadp_temporary
+#   Auteurs             :       Hubert GARAVEL et Wendelin SERWE
+#   Version             :       1.19
+#   Date                :       2018/12/07 14:05:28
+###############################################################################
+
+# ce script cree un fichier (ou un repertoire) temporaire et affiche son nom
+# sur la sortie standard ; cette commande ne doit pas echouer, car l'appelant
+# ne va pas, en principe, tester son code de retour
+
+# -----------------------------------------------------------------------------
+
+if [ -x "$CADP"/com/arch ]
+then
+	ARCH=`"$CADP"/com/arch`
+else
+	ARCH=unknown
+fi
+
+# -----------------------------------------------------------------------------
+
+if [ "$1" = "-d" ]
+then
+	# on veut creer un repertoire temporaire
+	MODE="-d"
+	shift
+else
+	# on veut creer un fichier temporaire
+	MODE=""
+fi
+
+# -----------------------------------------------------------------------------
+
+# par defaut, on cree le temporaire dans $CADP_TMP ou /tmp
+DIRECTORY=${CADP_TMP:-/tmp}
+
+if [ "$1" = "-t" ]
+then
+	if [ $# -ge 2 ]
+	then
+		if [ -d "$2" -a -w "$2" ]
+		then
+			# on doit creer le temporaire dans le repertoire "$2"
+			DIRECTORY="$2"
+		fi
+		shift
+	fi
+	shift
+fi
+
+# -----------------------------------------------------------------------------
+
+USER_NAME=${LOGNAME:-$USER}
+
+# $USER_NAME pourrait aussi etre positionne via $CADP/src/com/install_logname
+
+# -----------------------------------------------------------------------------
+
+if [ $# = 0 ]
+then
+	TOOL_NAME="cadp"
+	SUFFIX=""
+elif [ $# = 1 ]
+then
+	# assert: $1 est un nom de commande CADP
+	TOOL_NAME="$1"
+	SUFFIX=""
+else
+	# assert: $1 est un nom de commande CADP
+	# assert: $2 est un suffixe qui commence par "." 
+	TOOL_NAME="$1"
+	SUFFIX="$2"
+fi
+
+FILE="${USER_NAME}_${TOOL_NAME}_XXXXXX"
+
+# -----------------------------------------------------------------------------
+
+# on desactive $TMPDIR qui a precedence sur l'option "-p" de mktemp
+unset TMPDIR
+
+# -----------------------------------------------------------------------------
+
+case $ARCH in
+	sol86 | sol64 )
+		case `uname -r` in
+		    5.[012345789] | 5.10 )
+			# version ancienne de SunOS jusqu'a Solaris 10 inclus
+			# la commande mktemp n'accepte pas les suffixes
+			TMP=`mktemp $MODE -p "$DIRECTORY" -t "$FILE"`
+			if [ "$SUFFIX" = "" ]
+			then
+				echo "$TMP"
+			else
+				mv "$TMP" "$TMP$SUFFIX"
+				echo "$TMP$SUFFIX"
+			fi
+			;;
+		    * )
+			# a partir de SunOS 5.11
+			case `uname -v` in
+				illumos-* )
+					# on est sous OpenIndiana 
+					# 1) pour contourner le bug #10047,
+					#    il faut appeler mktemp avec son
+					#    pathname absolu (/bin)
+					# 2) la commande mktemp n'accepte pas
+					#    les suffixes
+					TMP=`/bin/mktemp $MODE -p "$DIRECTORY" -t "$FILE"`
+					if [ "$SUFFIX" = "" ]
+					then
+						echo "$TMP"
+					else
+						mv "$TMP" "$TMP$SUFFIX"
+						echo "$TMP$SUFFIX"
+					fi
+					;;
+				* )
+					# on est sous Oracle Solaris 11
+
+					mktemp $MODE -p "$DIRECTORY" -t "$FILE$SUFFIX"
+					;;
+			esac
+			;;
+		esac
+		;;
+
+	iX86 | x64 | win32 )
+		mktemp $MODE -p "$DIRECTORY" -t "$FILE$SUFFIX"
+		;;
+
+	mac86 | mac64 )
+		# la commande mktemp n'accepte pas les suffixes
+		TMP=`mktemp $MODE "$DIRECTORY/$FILE"`
+		if [ "$SUFFIX" = "" ]
+		then
+			echo "$TMP"
+		else
+			mv "$TMP" "$TMP$SUFFIX"
+			echo "$TMP$SUFFIX"
+		fi
+		;;
+
+	* )
+		N=$$
+		while true
+		do
+			RESULT="$DIRECTORY/${USER_NAME}_${TOOL_NAME}_$N$SUFFIX"
+			if [ "$MODE" = "" ]
+			then
+				# on cree le fichier s'il n'existe pas
+				test ! -f "$RESULT" && touch "$RESULT" 2> /dev/null
+			else
+				# on cree le repertoire s'il n'existe pas
+				test ! -d "$RESULT" && mkdir -p "$RESULT" 2> /dev/null
+			fi
+			if [ $? = 0 ]
+			then
+				# touch ou mkdir a reussi
+				break		
+			else
+				# on reessaie avec un autre numero
+				N=`expr $N + 1`
+			fi
+		done
+		echo $RESULT
+		;;
+esac
+

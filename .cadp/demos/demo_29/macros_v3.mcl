@@ -1,0 +1,166 @@
+(*===========================================================================*)
+(* Events concerning some agent *)
+
+macro ANY_EVENT (I, J) =
+    ('.*BUS !@ (AGENT' # I # ', SITE' # J # ').*' or '.*BUS ![^!]* !@ (AGENT' # I # ', SITE' # J # ').*')
+end_macro
+
+(*===========================================================================*)
+(* Macros for command ADD *)
+
+macro CMD_ADD () = 'INBUS.*!ADD.*' end_macro
+ 
+(*---------------------------------------------------------------------------*)
+
+macro CMD_ADD (I, J) = 'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!ADD.*' end_macro
+
+macro REC_ADD (I, J) = 'OUTBUS !@ (AGENT' # I # ', SITE' # J # ').*!ADD.*' end_macro
+
+(*===========================================================================*)
+(* Macros for command DELETE *)
+
+macro CMD_DELETE (I, J) = 'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!DELETE.*' end_macro
+
+(*===========================================================================*)
+(* Macros for command BIND *)
+
+macro CMD_BIND () = 'INBUS.*!BIND.*' end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_BIND (I, J, K, L) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!BIND !@ (AGENT' # K # ', SITE' # L # ').*'
+end_macro
+
+macro REC_BIND (I, J, K, L) =
+    'OUTBUS !@ (AGENT' # I # ', SITE' # J # ').*!BIND !@ (AGENT' # K # ', SITE' # L # ').*'
+end_macro
+
+(*===========================================================================*)
+(* Macros for command REBIND *)
+
+macro CMD_REBIND (I, J, K, L) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!REBIND !@ (AGENT' # K # ', SITE' # 'L' # ').*'
+end_macro
+
+macro REC_REBIND (I, J, K, L) =
+    'OUTBUS !@ (AGENT' # I # ', SITE' # J # ').*!REBIND !@ (AGENT' # K # ', SITE' # L # ').*'
+end_macro
+
+(*===========================================================================*)
+(* Macros for command MOVE *)
+
+macro CMD_RECONF (I, J) =
+    CMD_MOVE (I, J)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_MOVE () = 'INBUS.*!MOVE.*' end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_MOVE (I, J) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!MOVE.*'
+end_macro
+
+macro REC_MOVE (I, J) =
+    'OUTBUS !@ (AGENT' # I # ', SITE' # J # ').*!MOVE.*'
+end_macro
+
+macro CMD_MOVE_TO (I, J) =
+    'INBUS.*!MOVE !@ (AGENT' # I # ', SITE' # J # ').*'
+end_macro
+
+macro REC_MOVE_TO (I, J) =
+    'OUTBUS.*!MOVE !@ (AGENT' # I # ', SITE' # J # ').*'
+end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_MOVE (I, J, K, L) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!MOVE !@ (AGENT' # K # ', SITE' # L # ').*'
+end_macro
+
+macro REC_MOVE (I, J, K, L) =
+    'OUTBUS !@ (AGENT' # I # ', SITE' # J # ').*!MOVE !@ (AGENT' # K # ', SITE' # L # ').*'
+end_macro
+
+(*===========================================================================*)
+(* Macros for command PASSIVATE *)
+
+macro CMD_PASSIVATE () = 'INBUS.*!PASSIVATE.*' end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_PASSIVATE (I, J) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!PASSIVATE.*'
+end_macro
+
+macro REC_PASSIVATE (I, J) =
+    'OUTBUS !@ (AGENT' # I # ', SITE' # J # ').*!PASSIVATE.*'
+end_macro
+
+(*===========================================================================*)
+(* Macros for command ACTIVATE *)
+
+macro CMD_ACTIVATE () = 'INBUS.*!ACTIVATE.*' end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_ACTIVATE (I, J) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!ACTIVATE.*'
+end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_ACTIVATE (I, J, K, L, M, N) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!ACTIVATE !@ (AGENT' # K # ', SITE' # L # ') !@ (AGENT' # M # ', SITE' # N # ')'
+end_macro
+
+macro REC_ACTIVATE (I, J, K, L, M, N) =
+    'OUTBUS !@ (AGENT' # I # ', SITE' # J # ').*!ACTIVATE !@ (AGENT' # K # ', SITE' # L # ') !@ (AGENT' # M # ', SITE' # N # ')'
+end_macro
+
+(*===========================================================================*)
+(* Macros for acknowledgement *)
+
+macro CMD_ACK () = 'INBUS.*!ACK.*' end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_ACK (I, J) =
+    'INBUS.*!@ (AGENT' # I # ', SITE' # J # ') !ACK.*'
+end_macro
+
+macro REC_ACK (I, J) =
+    'OUTBUS.*!@ (AGENT' # I # ', SITE' # J # ') !ACK.*'
+end_macro
+
+(*===========================================================================*)
+(* Macros for SERVICE event *)
+
+macro CMD_SERVICE () = 'INBUS.*!SERVICE.*' end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_SERVICE (I, J) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ').*!SERVICE.*'
+end_macro
+
+macro REC_SERVICE (I, J) =
+    'OUTBUS !@ (AGENT' # I # ', SITE' # J # ').*!SERVICE.*'
+end_macro
+
+(*---------------------------------------------------------------------------*)
+
+macro CMD_SERVICE  (I, J, K, L) =
+    'INBUS !@ (AGENT' # I # ', SITE' # J # ') !@ (AGENT' # K # ', SITE' # L # ') !SERVICE.*'
+end_macro
+
+macro REC_SERVICE (I, J, K, L) =
+    'OUTBUS !@ (AGENT' # I # ', SITE' # J # ') !@ (AGENT' # K # ', SITE' # L # ') !SERVICE.*'
+end_macro
+
+(*===========================================================================*)
+

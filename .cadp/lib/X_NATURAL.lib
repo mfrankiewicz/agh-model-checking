@@ -1,0 +1,124 @@
+
+type BasicNaturalNumber is 
+   sorts Nat (*! implementedby ADT_NAT comparedby ADT_CMP_NAT
+                 iteratedby ADT_ENUM_FIRST_NAT and ADT_ENUM_NEXT_NAT
+                 printedby ADT_PRINT_NAT external *)
+   opns 0 (*! implementedby ADT_N0 constructor external *) : -> Nat
+        Succ (*! implementedby ADT_SUCC_NAT constructor external *) : Nat -> Nat
+        _+_  (*! implementedby ADT_PLUS_NAT external *),
+        _*_  (*! implementedby ADT_MULT_NAT external *),
+        _**_ (*! implementedby ADT_POWER_NAT external *) : Nat, Nat -> Nat
+(*
+   eqns
+      forall m, n : Nat
+      ofsort Nat
+         m + 0 = m;
+         m + Succ(n) = Succ(m) + n;
+      ofsort Nat
+         m * 0 = 0;
+         m * Succ(n) = m + (m * n);
+      ofsort Nat
+         m ** 0 = Succ(0);
+         m ** Succ(n) = m * (m ** n)
+*)
+endtype
+
+type NaturalNumber is BasicNaturalNumber, Boolean
+   opns 
+        _eq_ (*! implementedby ADT_EQ_NAT external *), 
+        _ne_ (*! implementedby ADT_NE_NAT external *), 
+        _lt_ (*! implementedby ADT_LT_NAT external *),
+        _le_ (*! implementedby ADT_LE_NAT external *),
+        _gt_ (*! implementedby ADT_GT_NAT external *),
+        _ge_ (*! implementedby ADT_GE_NAT external *) : Nat, Nat -> Bool
+(*
+   eqns
+      forall m, n : Nat
+      ofsort Bool
+         0 eq 0                   = true;
+         0 eq Succ (n)            = false;
+         Succ (m) eq 0            = false;                   
+         Succ (m) eq Succ (n)     = m eq n;                   
+      ofsort Bool
+         m ne n                   = not (m eq n);
+      ofsort Bool
+         0 lt 0                   = false;
+         0 lt Succ (n)            = true;
+         Succ (n) lt 0            = false;
+         Succ (m) lt Succ (n)     = m lt n;
+      ofsort Bool
+         m le n                   = (m lt n) or (m eq n);
+      ofsort Bool
+         m ge n                   = not (m lt n);
+      ofsort Bool
+         m gt n                   = not (m le n);
+*)
+endtype
+
+type Natural is NaturalNumber
+   opns 1 (*! implementedby ADT_N1 external *), 
+        2 (*! implementedby ADT_N2 external *), 
+        3 (*! implementedby ADT_N3 external *), 
+        4 (*! implementedby ADT_N4 external *), 
+        5 (*! implementedby ADT_N5 external *), 
+        6 (*! implementedby ADT_N6 external *), 
+        7 (*! implementedby ADT_N7 external *),
+        8 (*! implementedby ADT_N8 external *),
+        9 (*! implementedby ADT_N9 external *) : -> Nat
+        _-_  (*! implementedby ADT_MINUS_NAT external *),
+        _div_ (*! implementedby ADT_DIV_NAT external *),
+	_mod_ (*! implementedby ADT_MOD_NAT external *) : Nat, Nat -> Nat
+	_==_ (*! implementedby ADT_EQ_BIS_NAT external *),
+        _<>_ (*! implementedby ADT_NE_BIS_NAT external *),
+	_<_ (*! implementedby ADT_LT_BIS_NAT external *),
+	_<=_ (*! implementedby ADT_LE_BIS_NAT external *),
+	_>_ (*! implementedby ADT_GT_BIS_NAT external *),
+	_>=_ (*! implementedby ADT_GE_BIS_NAT external *) : Nat, Nat -> Bool
+        min (*! implementedby ADT_MIN_NAT external *),
+        max (*! implementedby ADT_MAX_NAT external *),
+        gcd (*! implementedby ADT_GCD_NAT external *),
+        scm (*! implementedby ADT_SCM_NAT external *) : Nat, Nat -> Nat
+(*
+   eqns
+      forall m, n : Nat
+      ofsort Nat
+         1 = Succ (0);
+         2 = Succ (1);
+         3 = Succ (2);
+         4 = Succ (3);
+         5 = Succ (4);
+         6 = Succ (5);
+         7 = Succ (6);
+         8 = Succ (7);
+         9 = Succ (8);
+      ofsort Nat
+         m - 0 = m;
+         Succ (m) - Succ (n) = m - n;
+      ofsort Nat
+         n ne 0, m lt n => m div n = 0;
+         n ne 0, m ge n => m div n = 1 + ((m - n) div n);
+      ofsort Nat
+         n ne 0, m lt n => m mod n = m;
+         n ne 0, m ge n => m mod n = ((m - n) mod n);
+      ofsort Bool
+         m == n                    = m eq n;
+         m <> n                    = m ne n;
+         m <= n                    = m le n;
+         m < n                     = m lt n;
+         m > n                     = m gt n;
+         m >= n                    = m ge n;
+      ofsort Nat
+         m le n => min (m, n) = m;
+         m gt n => min (m, n) = n;
+      ofsort Nat
+         m ge n => max (m, n) = m;
+         m lt n => max (m, n) = n;
+      ofsort Nat
+         m eq n, m ne 0 => gcd (m, n) = m;
+         m lt n, m ne 0 => gcd (m, n) = gcd (m, n - m);
+         m gt n, n ne 0 => gcd (m, n) = gcd (m - n, n);
+      ofsort Nat
+         scm (m, n) = (m * n) div gcd (m, n);
+*)
+endtype
+

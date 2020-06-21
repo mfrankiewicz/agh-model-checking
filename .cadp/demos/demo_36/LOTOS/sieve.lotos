@@ -1,0 +1,40 @@
+specification SIEVE [OUTPUT, FINISH, ERROR] : noexit
+
+library BOOLEAN, NATURAL endlib
+
+(* definition des constantes *)
+type NATURAL_CONSTANTS is BOOLEAN, NATURAL
+opns
+   30 : -> NAT
+eqns
+   ofsort NAT
+      30 = 3 * SUCC(9);
+endtype 
+
+behaviour
+
+   stop (* the actual behaviour is defined in "demo.svl" *)
+
+where
+
+   process GENERATOR [RIGHT] (CUR:NAT) : noexit :=
+      RIGHT !CUR; ([CUR <= 30] -> GENERATOR [RIGHT] (SUCC (CUR)))
+   endproc
+   
+   process UNIT [LEFT, RIGHT, OUTPUT] : noexit := 
+      LEFT ?P:NAT [not (P eq 0)]; OUTPUT !P; FILTER [LEFT, RIGHT] (P)
+   endproc
+   
+   process FILTER [LEFT, RIGHT] (P:NAT) : noexit :=
+      LEFT ?N:NAT;
+         (
+            let REM:NAT = N mod P in
+               (
+                  [REM eq 0] -> FILTER [LEFT, RIGHT] (P)
+                  []
+                  [not (REM eq 0)] -> RIGHT !N; FILTER [LEFT, RIGHT] (P)
+               )
+         )
+   endproc
+
+endspec

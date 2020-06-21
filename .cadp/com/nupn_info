@@ -1,0 +1,157 @@
+#! /bin/sh
+
+###############################################################################
+#                                C A D P
+#------------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#------------------------------------------------------------------------------
+#   Module             :       nupn_info
+#   Auteur             :       Hubert GARAVEL
+#   Version            :       1.32
+#   Date               :       2019/11/06 12:20:31
+###############################################################################
+
+COMMAND=`basename "$0"`
+
+DIR=`dirname "$0"`
+
+if [ $# -eq 0 ]
+then
+	echo "$COMMAND: at least one argument expected"
+	exit 1
+fi
+
+USE_LIBRARY=""
+
+POST_PROCESSOR_1="cat"
+
+case "$1" in
+	-canonical-nupn )
+		AWK_SCRIPT="canonical_nupn.awk"
+		;;
+
+	-place-fusion )
+		AWK_SCRIPT="place_fusion.awk"
+		;;
+
+	-redundant-removal )
+		AWK_SCRIPT="redundant_removal.awk"
+		POST_PROCESSOR_1="sh $DIR/nupn_info -canonical-nupn -"
+		;;
+
+	-trivial-units )
+		AWK_SCRIPT="trivial_units.awk"
+		;;
+
+	-void-removal )
+		AWK_SCRIPT="void_removal.awk"
+		POST_PROCESSOR_1="sh $DIR/nupn_info -canonical-nupn -"
+		;;
+
+	-* )
+		echo "$COMMAND: unknown option \`\`$1''"
+		exit 1
+		;;
+
+	* )
+		echo "$COMMAND: unknown argument \`\`$1''"
+		exit 1
+esac
+
+# ----------------------------------------------------------------------------
+
+AWK="$CADP/src/com/cadp_awk"
+
+USE_LIBRARY="-f library.awk"
+
+# ----------------------------------------------------------------------------
+
+if [ -f "$DIR/$AWK_SCRIPT" -a "$CADP_DEBUG" = "garavel" ]
+then
+	AWK_SCRIPT="$DIR/$AWK_SCRIPT"
+	AWKPATH="$DIR:$AWKPATH"
+elif [ -f "$CADP/src/nupn/$AWK_SCRIPT" ]
+then
+	AWK_SCRIPT="$CADP/src/nupn/$AWK_SCRIPT"
+	AWKPATH="$CADP/src/nupn:$AWKPATH"
+else
+	echo "$COMMAND: cannot locate \`\`$AWK_SCRIPT''"
+	exit 1
+fi
+
+export AWKPATH
+
+# ----------------------------------------------------------------------------
+
+CLEANUP_LIST=""
+
+if [ "$2" = "" -o "$2" = "-" ]
+then
+	INPUT=`$CADP/src/com/cadp_temporary $COMMAND`
+	cat > "$INPUT"
+	CLEANUP_LIST="$INPUT"
+elif [ -f "$2" ]
+then
+	INPUT="$2"
+elif [ -f "$2.nupn" ]
+then
+	INPUT="$2.nupn"
+else
+	echo "$COMMAND: cannot open \`\`$2''"
+	exit 1
+fi
+
+# ----------------------------------------------------------------------------
+
+OUTPUT=`$CADP/src/com/cadp_temporary $COMMAND`
+
+ERROR=`$CADP/src/com/cadp_temporary $COMMAND`
+
+CLEANUP_LIST="$CLEANUP_LIST $OUTPUT $ERROR"
+
+# ----------------------------------------------------------------------------
+
+case "$1" in
+	-canonical-nupn )
+		LABEL_LENGTH=`$AWK -f "label_length.awk" "$INPUT"`
+		;;
+	* )
+		LABEL_LENGTH="?"	# dummy value
+		;;
+esac
+
+# ----------------------------------------------------------------------------
+
+$AWK -v COMMAND="$COMMAND" -v INPUT="$INPUT" -v LABEL_LENGTH="$LABEL_LENGTH" $USE_LIBRARY -f "$AWK_SCRIPT" "$INPUT" > "$OUTPUT" 2> "$ERROR"
+
+STATUS=$?
+
+case $STATUS in
+	0 )	# execution of the Awk script completed normally and produced a
+		# valid output in file $OUTPUT
+		cat "$OUTPUT" |
+		$POST_PROCESSOR_1
+		;;
+
+	1 )	# execution of the Awk script failed, leaving a potentially
+		# invalid or incomplete result in file $OUTPUT that must not
+		# be shown to users, and an error message in file $ERROR
+		cat "$ERROR"
+		;;
+
+	2 )	# execution of the Awk script halted, since the expected
+		# output to be produced is in fact identical to file $INPUT
+		STATUS=0
+		cat "$INPUT" |
+		$POST_PROCESSOR_1
+		;;
+
+esac
+
+rm -f $CLEANUP_LIST
+
+exit $STATUS
+

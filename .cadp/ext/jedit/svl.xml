@@ -1,0 +1,156 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- jedit definitions for the SVL language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.8:SVL+1.5:SECT -->
+
+<MODE>
+  <PROPS>
+    <PROPERTY NAME="commentStart" VALUE="(*"/>
+    <PROPERTY NAME="commentEnd" VALUE="*)"/>
+    <PROPERTY NAME="lineComment" VALUE="--"/>
+  </PROPS>
+
+  <RULES IGNORE_CASE="FALSE" HIGHLIGHT_DIGITS="TRUE">
+    <!-- Comments -->
+    <SPAN TYPE="COMMENT1" DELEGATE="COMMENT">
+      <BEGIN>(*</BEGIN>
+      <END>*)</END>
+    </SPAN>
+    <EOL_SPAN TYPE="COMMENT2">--</EOL_SPAN>
+
+    <!-- Pragmas -->
+    <EOL_SPAN TYPE="MARKUP" AT_WHITESPACE_END="TRUE">%</EOL_SPAN>
+
+    <!-- Standard Operators -->
+    <SEQ TYPE="OPERATOR">-|||</SEQ>
+    <SEQ TYPE="OPERATOR">|||</SEQ>
+    <SEQ TYPE="OPERATOR">-|[</SEQ>
+    <SEQ TYPE="OPERATOR">-||</SEQ>
+    <SEQ TYPE="OPERATOR">]|</SEQ>
+    <SEQ TYPE="OPERATOR">|[</SEQ>
+    <SEQ TYPE="OPERATOR">||</SEQ>
+    <SEQ TYPE="OPERATOR">-&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">|=</SEQ>
+    <SEQ TYPE="OPERATOR">&lt;=</SEQ>
+    <SEQ TYPE="OPERATOR">&gt;=</SEQ>
+    <SEQ TYPE="OPERATOR">==</SEQ>
+    <SEQ TYPE="OPERATOR">?</SEQ>
+    <SEQ TYPE="OPERATOR">#</SEQ>
+    <SEQ TYPE="OPERATOR">:</SEQ>
+    <SEQ TYPE="OPERATOR">=</SEQ>
+    <SEQ TYPE="OPERATOR">&gt;</SEQ>
+    <SEQ TYPE="OPERATOR">}</SEQ>
+    <SEQ TYPE="OPERATOR">{</SEQ>
+    <SEQ TYPE="OPERATOR">]</SEQ>
+    <SEQ TYPE="OPERATOR">[</SEQ>
+
+    <KEYWORDS>
+      <!-- Reserved Words -->
+      <KEYWORD1>abstraction</KEYWORD1>
+      <KEYWORD1>all</KEYWORD1>
+      <KEYWORD1>bag</KEYWORD1>
+      <KEYWORD1>branching</KEYWORD1>
+      <KEYWORD1>but</KEYWORD1>
+      <KEYWORD1>chaos</KEYWORD1>
+      <KEYWORD1>check</KEYWORD1>
+      <KEYWORD1>comparison</KEYWORD1>
+      <KEYWORD1>cut</KEYWORD1>
+      <KEYWORD1>deadlock</KEYWORD1>
+      <KEYWORD1>divbranching</KEYWORD1>
+      <KEYWORD1>end</KEYWORD1>
+      <KEYWORD1>expected</KEYWORD1>
+      <KEYWORD1>fifo</KEYWORD1>
+      <KEYWORD1>gate</KEYWORD1>
+      <KEYWORD1>generation</KEYWORD1>
+      <KEYWORD1>hide</KEYWORD1>
+      <KEYWORD1>in</KEYWORD1>
+      <KEYWORD1>is</KEYWORD1>
+      <KEYWORD1>label</KEYWORD1>
+      <KEYWORD1>labels</KEYWORD1>
+      <KEYWORD1>leaf</KEYWORD1>
+      <KEYWORD1>livelock</KEYWORD1>
+      <KEYWORD1>multiple</KEYWORD1>
+      <KEYWORD1>node</KEYWORD1>
+      <KEYWORD1>observational</KEYWORD1>
+      <KEYWORD1>of</KEYWORD1>
+      <KEYWORD1>par</KEYWORD1>
+      <KEYWORD1>partial</KEYWORD1>
+      <KEYWORD1>prio</KEYWORD1>
+      <KEYWORD1>probabilistic</KEYWORD1>
+      <KEYWORD1>property</KEYWORD1>
+      <KEYWORD1>reduction</KEYWORD1>
+      <KEYWORD1>refined</KEYWORD1>
+      <KEYWORD1>rename</KEYWORD1>
+      <KEYWORD1>result</KEYWORD1>
+      <KEYWORD1>root</KEYWORD1>
+      <KEYWORD1>safety</KEYWORD1>
+      <KEYWORD1>single</KEYWORD1>
+      <KEYWORD1>smart</KEYWORD1>
+      <KEYWORD1>stochastic</KEYWORD1>
+      <KEYWORD1>stop</KEYWORD1>
+      <KEYWORD1>strong</KEYWORD1>
+      <KEYWORD1>sync</KEYWORD1>
+      <KEYWORD1>tau-compression</KEYWORD1>
+      <KEYWORD1>tau-confluence</KEYWORD1>
+      <KEYWORD1>tau-divergence</KEYWORD1>
+      <KEYWORD1>tau*.a</KEYWORD1>
+      <KEYWORD1>total</KEYWORD1>
+      <KEYWORD1>trace</KEYWORD1>
+      <KEYWORD1>user</KEYWORD1>
+      <KEYWORD1>using</KEYWORD1>
+      <KEYWORD1>verify</KEYWORD1>
+      <KEYWORD1>weak</KEYWORD1>
+      <KEYWORD1>with</KEYWORD1>
+
+      <!-- Standard Library Sorts -->
+      <KEYWORD2>acyclic</KEYWORD2>
+      <KEYWORD2>bdd</KEYWORD2>
+      <KEYWORD2>bfs</KEYWORD2>
+      <KEYWORD2>dfs</KEYWORD2>
+      <KEYWORD2>fly</KEYWORD2>
+      <KEYWORD2>std</KEYWORD2>
+
+      <!-- Constants -->
+      <KEYWORD3>FALSE</KEYWORD3>
+      <KEYWORD3>TRUE</KEYWORD3>
+
+      <!-- Standard Library Functions -->
+      <FUNCTION>aldebaran</FUNCTION>
+      <FUNCTION>bcg_min</FUNCTION>
+      <FUNCTION>bcg_cmp</FUNCTION>
+      <FUNCTION>bisimulator</FUNCTION>
+      <FUNCTION>evaluator</FUNCTION>
+      <FUNCTION>evaluator3</FUNCTION>
+      <FUNCTION>evaluator4</FUNCTION>
+      <FUNCTION>exhibitor</FUNCTION>
+      <FUNCTION>fc2tools</FUNCTION>
+      <FUNCTION>reductor</FUNCTION>
+      <FUNCTION>xtl</FUNCTION>
+
+    </KEYWORDS>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>'</BEGIN>
+      <END>'</END>
+    </SPAN>
+
+    <SPAN TYPE="LITERAL1" DELEGATE="INQUOTE">
+      <BEGIN>"</BEGIN>
+      <END>"</END>
+    </SPAN>
+
+  </RULES>
+
+  <RULES SET="INQUOTE" DEFAULT="LITERAL1" ESCAPE="\">
+    <!-- no rules -->
+  </RULES>
+
+  <RULES SET="COMMENT" DEFAULT="COMMENT1" IGNORE_CASE="TRUE">
+    <!-- no rules -->
+  </RULES>
+
+</MODE>
+

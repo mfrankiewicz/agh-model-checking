@@ -1,0 +1,1177 @@
+(*****************************************************************************
+ * Step 1: GRAPH GENERATION.                                                 *
+ * The LNT specification "pots.lnt" is translated into a graph called        *
+ * "pots.bcg", which is then reduced by BCG_MIN modulo strong equivalence.   *
+ * Such strong minimization preserves the truth values of the requirements   *
+ * to be checked later.                                                      *
+ *****************************************************************************)
+
+"pots.bcg" = strong reduction of generation of "pots.lnt";
+
+-------------------------------------------------------------------------------
+
+(*****************************************************************************
+ * Step 2: VERIFICATION OF THE REQUIREMENTS                                  *
+ * The 17 requirements characterizing the proper functioning of the POTS     *
+ * are checked in turn. For each of these requirements, we give an informal  *
+ * specification as expressed by P. Ernberg. Two techniques are used to      *
+ * verify the requirements:                                                  *
+ * - Equivalence checking consists in comparing "pots.bcg" to a reference    *
+ *   specification using an equivalence relation. For each requirement       *
+ *   we explain the approach and we give the SVL statement permitting to     *
+ *   verify it using CADP.                                                   *
+ * - Model checking consists in evaluating a temporal formula specified in   *
+ *   the MCL language. For each requirement we give one or several (dataless *
+ *   and/or value-passing) formulas, which are inlined in the SVL statements *
+ *   used to verify them.                                                    *
+ * The first 10 requirements are verified using both equivalence checking    *
+ * and model checking, and the last 7 ones are verified using model checking *
+ * only.                                                                     *
+ *****************************************************************************)
+
+% DEFAULT_MCL_LIBRARIES="standard.mcl"
+% DEFAULT_EVALUATOR3_LIBRARIES="macros_v3.mcl"
+% DEFAULT_EVALUATOR4_LIBRARIES="macros_v4.mcl"
+
+(******************************* REQUIREMENT 1 *******************************)
+
+property Requirement_1
+    "There should be no deadlock in the specification."
+is
+    -- built-in deadlock detection
+    "diag_1.seq" = deadlock of "pots.bcg";
+    expected FALSE;
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [ true* ] < true > true;
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 2 *******************************)
+
+property Requirement_2_1 (Action, N, RESULT)
+    "There should be no sink in the specification, i.e., for all states in"
+    "the specification, it should be possible to eventually perform any action:"
+    "checking action \"$Action\"."
+is
+    (*
+     * We show that, for any state of the POTS specification graph, it is
+     * possible to reach a state from which action "$Action" CAN BE performed.
+     * Practicaly, we check that when only this action is considered as
+     * visible, this graph is branching bisimilar to the following one:
+     *
+     *       des (0, 1, 1)
+     *       (0, "$Action", 0)
+     *)
+    "diag_2_${N}.seq" = branching comparison
+        (total hide all but "$Action" in "pots.bcg") == "r2_$N.aut";
+    expected "$RESULT"
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirement_2_2 (Action, N, RESULT)
+    "However, action \"$Action\" does not eventually happen because of"
+    "potential livelocks."
+is
+    -- built-in livelock detection
+    "diag_2_${N}.bcg" = livelock of
+        total hide all but "$Action" in "pots.bcg";
+    expected "$RESULT";
+
+    -- model checking: dataless formula
+    total hide all but "$Action" in "pots.bcg" |= with evaluator3
+        < true* > < "i" > @;
+    expected "$RESULT";
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirement_2
+    "There should be no sink in the specification, i.e., for all states in the"
+    "specification, it should be possible to eventually perform any action."
+    "Take tones here, environment is handled later."
+is
+    -- equivalence checking
+    check Requirement_2_1 ("S !1 !DIALT !ON", 1, TRUE);
+    check Requirement_2_1 ("S !1 !DIALT !OFF", 2, TRUE);
+    check Requirement_2_1 ("S !1 !RINGT !ON", 3, TRUE);
+    check Requirement_2_1 ("S !1 !RINGT !OFF", 4, TRUE);
+    check Requirement_2_1 ("S !1 !RINGS !ON", 5, FALSE);
+    check Requirement_2_1 ("S !1 !RINGS !OFF", 6, FALSE);
+    check Requirement_2_1 ("S !1 !BUSYT !ON", 7, TRUE);
+    check Requirement_2_1 ("S !1 !BUSYT !OFF", 8, TRUE);
+    check Requirement_2_1 ("S !1 !ERRORT !ON", 9, TRUE);
+    check Requirement_2_1 ("S !1 !ERRORT !OFF", 10, TRUE);
+    check Requirement_2_2 ("S !1 !DIALT !ON", 11, TRUE);
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [ true* ] (
+            (* potential (and fair) reachability of actions *)
+            SOME (true* . "S !1 !DIALT !ON")		and
+            SOME (true* . "S !1 !DIALT !OFF")		and
+            SOME (true* . "S !1 !ERRORT !ON")		and
+            SOME (true* . "S !1 !ERRORT !OFF")		and
+            SOME (true* . "S !1 !RINGT !ON")		and
+            SOME (true* . "S !1 !RINGT !OFF")		and
+            SOME (true* . "S !1 !BUSYT !ON")		and
+            SOME (true* . "S !1 !BUSYT !OFF")		and
+            SOME (true* . "S !1 !SPEECHCONN !ON")	and
+            SOME (true* . "S !1 !SPEECHCONN !OFF")	and
+
+            SOME (true* . "S !2 !ERRORT !ON")		and
+            SOME (true* . "S !2 !ERRORT !OFF")		and
+            SOME (true* . "S !2 !RINGS !ON")		and
+            SOME (true* . "S !2 !RINGS !OFF")		and
+            SOME (true* . "S !2 !SPEECHCONN !ON")	and
+            SOME (true* . "S !2 !SPEECHCONN !OFF")	and
+
+            (* subscriber 1 cannot be called *)
+            NEVER ('S !1 !RINGS !O.*')			and
+
+            (* subscriber 2 cannot call *)
+            NEVER ('S !2 !DIALT !O.*')			and
+            NEVER ('S !2 !RINGT !O.*')			and
+            NEVER ('S !2 !BUSYT !O.*')			and
+
+            (* loops forbidding inevitable reachability of actions *)
+            < not (
+                'S !1 !DIALT !O.*'	or
+                'S !1 !ERRORT !O.*'	or
+                'S !1 !RINGT !O.*'	or
+                'S !1 !BUSYT !O.*'	or
+                'S !1 !SPEECHCONN !O.*'
+	      ) > @					and
+
+            < not (
+                'S !2 !ERRORT !O.*'	or
+                'S !2 !RINGS !O.*'	or
+                'S !2 !SPEECHCONN !O.*'
+	      ) > @
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[ true* ] (
+	    (* potential (and fair) reachability of actions *)
+	    SOME (true* . SignalOn  (1, "DIALT"))	and
+	    SOME (true* . SignalOff (1, "DIALT"))	and
+	    SOME (true* . SignalOn  (1, "ERRORT"))	and
+	    SOME (true* . SignalOff (1, "ERRORT"))	and
+	    SOME (true* . SignalOn  (1, "RINGT"))	and
+	    SOME (true* . SignalOff (1, "RINGT"))	and
+	    SOME (true* . SignalOn  (1, "BUSYT"))	and
+	    SOME (true* . SignalOff (1, "BUSYT"))	and
+	    SOME (true* . SignalOn  (1, "SPEECHCONN"))	and
+	    SOME (true* . SignalOff (1, "SPEECHCONN"))	and
+
+	    SOME (true* . SignalOn  (2, "ERRORT"))	and
+	    SOME (true* . SignalOff (2, "ERRORT"))	and
+	    SOME (true* . SignalOn  (2, "RINGS"))	and
+	    SOME (true* . SignalOff (2, "RINGS"))	and
+	    SOME (true* . SignalOn  (2, "SPEECHCONN"))	and
+	    SOME (true* . SignalOff (2, "SPEECHCONN"))	and
+
+	    (* subscriber 1 cannot be called *)
+	    NEVER (SignalAny (1, "RINGS"))		and
+
+	    (* subscriber 2 cannot call *)
+	    NEVER (SignalAny (2, "DIALT"))		and
+	    NEVER (SignalAny (2, "RINGT"))		and
+	    NEVER (SignalAny (2, "BUSYT"))		and
+
+	    (* cycles forbidding inevitable reachability of actions *)
+	    < not (
+	        SignalAny (1, "DIALT")      or
+	        SignalAny (1, "ERRORT")     or
+	        SignalAny (1, "RINGT")      or
+	        SignalAny (1, "BUSYT")      or
+	        SignalAny (1, "SPEECHCONN")
+	      ) > @					and
+
+	    < not (
+	        SignalAny (2, "ERRORT")     or
+	        SignalAny (2, "RINGS")      or
+	        SignalAny (2, "SPEECHCONN")
+	      ) > @
+	);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 3 *******************************)
+
+property Requirement_3_Equivalence_Checking (Action, N)
+    "It should always be possible for subscriber $N to dial a number:"
+    "action \"$Action\" can always be performed."
+is
+    (*
+     * We show that, from each state of the POTS specification graph, action
+     * "$Action" can be performed. Practicaly, we rename all other actions
+     * in OTHERS, and we check that this graph is strongly equivalent to the
+     * following one:
+     *
+     *       des (0, 2, 1)
+     *       (0, OTHERS, 0)
+     *       (0, "$Action", 0)
+     *)
+    "diag_3_$N.seq" = strong comparison
+        (
+            total rename
+                "$Action" -> "$Action",
+                ".*" -> "OTHERS"
+            in "pots.bcg"
+        ) 
+        == "r3_$N.aut";
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirement_3
+    "It should always be possible for every subscriber to dial a number."
+is
+    -- equivalence checking
+    check Requirement_3_Equivalence_Checking ("S !1 !DIAL !2", 1);
+    check Requirement_3_Equivalence_Checking ("S !2 !DIAL !1", 2);
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [ true* ] (SOME ("S !1 !DIAL !2") and SOME ("S !2 !DIAL !1"));
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[ true* ] (SOME (Dial (1, 2)) and SOME (Dial (2, 1)));
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 4 *******************************)
+
+property Requirement_4_Equivalence_Checking (N, RESULT)
+    "It should always be possible for subscriber $N to perform an offhook or"
+    "an onhook: actions \"S !$N !OFFH !ASUBSC\", \"S !$N !OFFH !BSUBSC\""
+    "and \"S !$N !ONH\" can always be performed." 
+is
+    (*
+     * We show that, for each state of the POTS specification graph, at least
+     * one of the following actions can always be executed:
+     *     "S !$N !OFFH !ASUBSC",  "S !$N !OFFH !BSUBSC" or "S !$N !ONH".
+     *
+     * All these actions are renamed in ONHOOK_OFFHOOK, all other ones in
+     * OTHERS, and we check that the resulting graph is strongly equivalent to
+     * the following one:
+     *
+     *       des (0, 2, 1)
+     *       (0, ONHOOK_OFFHOOK, 0)
+     *       (0, OTHERS, 0)
+     *
+     * Performing a similar check for the 2nd subscriber shows that the
+     * requirement happens to be false in this case. The diagnostic sequence
+     * corresponds to an execution path leading to a state of the POTS
+     * specification graph from which the ONHOOK_OFFHOOK action cannot be
+     * executed.
+     *)
+    "diag_4_$N.seq" = strong comparison
+        (
+            total rename
+                "S !$N !OFFH !ASUBSC" -> "ONHOOK_OFFHOOK", 
+                "S !$N !OFFH !BSUBSC" -> "ONHOOK_OFFHOOK",
+                "S !$N !ONH" -> "ONHOOK_OFFHOOK",
+                ".*" -> "OTHERS"
+            in "pots.bcg"
+        )
+        == "r4.aut";
+    expected "$RESULT"
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirement_4
+    "It should always be possible for every subscriber to perform an offhook"
+    "or an onhook. This property is false, because there exists a state of"
+    "the POTS specification graph from which subscriber 2 cannot execute the"
+    "ONHOOK_OFFHOOK action."
+is
+    -- equivalence checking
+    check Requirement_4_Equivalence_Checking (1, TRUE);
+    check Requirement_4_Equivalence_Checking (2, FALSE);
+
+    -- model checking: dataless formula
+    -- uncomment the following line to generate a diagnostic:
+    -- "diag_4_dataless.bcg" =
+    "pots.bcg" |= with evaluator3
+        [ true* ] (
+            (* holds *)
+            SOME ('S !1 !OFFH ![AB]SUBSC' or "S !1 !ONH") and
+            (* fails *)
+            SOME ('S !2 !OFFH ![AB]SUBSC' or "S !2 !ONH")
+        );
+    expected FALSE;
+
+    -- model checking: value-passing formula
+    -- uncomment the following line to obtain a diagnostic
+    -- "diag_4_value_passing.bcg" =
+    "pots.bcg" |= with evaluator4
+	[ true* ] (
+	    (* holds *)
+	    SOME (OffHook (1) or OnHook (1)) and
+	    (* fails *)
+	    SOME (OffHook (2) or OnHook (2))
+	);
+    expected FALSE
+end property
+
+(************************** REQUIREMENT 5, 6 and 7 ***************************)
+
+property Requirements_5_6_7_incorrect_Sub (N, R)
+    "Subscriber 1: incorrect specification." 
+is
+    (*
+     * These three requirements denote safety properties and they can be
+     * verified in the same round. According to these requirements, the
+     * expected behaviour of subscriber $N (N = 1, 2) with respect to
+     * "S !$N !OFFH !ASUBSC", "S !$N !OFFH !BSUBSC" and "S !$N !ONH"
+     * actions is expressed by the following graphs:
+     *
+     *       des (0, 3, 2)
+     *       (0, "S !$N !OFFH !ASUBSC", 1)
+     *       (0, "S !$N !OFFH !BSUBSC", 1)
+     *       (1, "S !$N !ONH", 0)
+     *
+     * Requirements 5, 6 and 7 can then be simply verified by comparing these
+     * graphs to the POTS specification one modulo safety equivalence.
+     *
+     * This requirement happens to be false for the 1st subscriber ($N = 1),
+     * since "S !1 !OFFH !BSUBSC" action does not appear in the POTS
+     * specification.
+     *)
+    "diag_5_${N}_KO.seq" = safety comparison
+        (
+            total hide all but
+                "S !$N !OFFH !ASUBSC", 
+                "S !$N !OFFH !BSUBSC",
+                "S !$N !ONH"
+            in "pots.bcg"
+        )
+        == "r5_${N}_KO.aut";
+    result "$R" expected FALSE
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirements_5_6_7_correct_Sub (N, R)
+    "Subscriber $N: correct specification."
+is
+    (*
+     * For the 1st subscriber ($N = 1), a correct specification of the       
+     * expected behaviour is the following one:
+     *
+     *       des (0, 2, 2)
+     *       (0, "S !$N !OFFH !ASUBSC", 1)
+     *       (1, "S !$N !ONH", 0)
+     *)
+    "diag_5_${N}_OK.seq" = safety comparison
+        (
+            total hide all but
+                "S !$N !OFFH !ASUBSC", 
+                "S !$N !OFFH !BSUBSC", 
+                "S !$N !ONH"
+            in "pots.bcg"
+        )
+        == "r5_${N}_OK.aut";
+    result "$R" expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirement_5
+    "Onhook and offhook for a subscriber are mutually exclusive, i.e., it is"
+    "never possible for a subscriber to be able to perform both an offhook"
+    "and an onhook at the same time."
+is
+    -- equivalence checking
+
+    check Requirements_5_6_7_incorrect_Sub (1, RESULT_1_KO);
+    -- result is stored in the shell variable $RESULT_1_KO
+    -- for reuse in requirements 6 and 7
+
+    check Requirements_5_6_7_correct_Sub (1, RESULT_1_OK);
+    -- result is stored in the shell variable $RESULT_1_OK
+    -- for reuse in requirements 6 and 7
+
+    check Requirements_5_6_7_correct_Sub (2, RESULT_2_OK);
+    -- result is stored in the shell variable $RESULT_2_OK
+    -- for reuse in requirements 6 and 7
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [ true* ] (
+            not (
+                SOME ('S !1 !OFFH ![AB]SUBSC') and
+                SOME ("S !1 !ONH !TRUE")
+            )
+            and
+            not (
+                SOME ('S !2 !OFFH ![AB]SUBSC') and
+                SOME ("S !2 !ONH !TRUE")
+            )
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[ true* ]
+	    forall Subscriber:nat among { 1 ... 2 } .
+		not (
+		    SOME (OffHook (Subscriber)) and
+		    SOME (OnHook (Subscriber))
+		);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirement_6
+    "A subscriber can only onhook after he has performed an offhook."
+is
+    -- equivalence checking
+    -- Requirement_6 is covered by verifications already done for Requirement_5
+    % echo "$RESULT_1_KO"
+	expected FALSE;
+    % echo "$RESULT_1_OK"
+	expected TRUE;
+    % echo "$RESULT_2_OK"
+	expected TRUE;
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        NEVER (
+            ((nil | true*) . "S !1 !ONH" .
+             (not 'S !1 !OFFH ![AB]SUBSC')* .
+             "S !1 !ONH")
+            |
+            ((nil | true*) . "S !2 !ONH" .
+             (not 'S !2 !OFFH ![AB]SUBSC')* .
+             "S !2 !ONH")
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	forall Subscriber:nat among { 1 ... 2 } .
+	    NEVER (
+		(nil | (true* . OnHook (Subscriber))) .
+		(not OffHook (Subscriber))* .
+		OnHook (Subscriber)
+	    );
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirement_7
+    "Onhook and offhook alternate."
+is
+    -- equivalence checking
+    -- Requirement_7 is covered by verifications already done for Requirement_5
+    % echo "$RESULT_1_KO"
+	expected FALSE;
+    % echo "$RESULT_1_OK"
+	expected TRUE;
+    % echo "$RESULT_2_OK"
+	expected TRUE;
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        nu ExpectOffHook . (
+            NEVER ("S !1 !ONH")
+            and
+            [ 'S !1 !OFFH ![AB]SUBSC' ]
+                nu Expect_OnHook . (
+                    [ "S !1 !ONH" ] ExpectOffHook
+                    and
+                    NEVER ('S !1 !OFFH ![AB]SUBSC')
+                    and
+                    [ not ("S !1 !ONH" or 'S !1 !OFFH ![AB]SUBSC') ]
+                        Expect_OnHook
+                )
+            and
+            [ not ("S !1 !ONH" or 'S !1 !OFFH ![AB]SUBSC') ] ExpectOffHook
+        )
+
+        and
+
+        nu ExpectOffHook . (
+            NEVER ("S !2 !ONH")
+            and
+            [ 'S !2 !OFFH ![AB]SUBSC' ]
+                nu Expect_OnHook . (
+                    [ "S !2 !ONH" ] ExpectOffHook
+                    and
+                    NEVER ('S !2 !OFFH ![AB]SUBSC')
+                    and
+                    [ not ("S !2 !ONH" or 'S !2 !OFFH ![AB]SUBSC') ]
+                        Expect_OnHook
+                )
+            and
+            [ not ("S !2 !ONH" or 'S !2 !OFFH ![AB]SUBSC') ] ExpectOffHook
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	forall Subscriber:nat among { 1 ... 2 } .
+	    nu Expect (off_or_on:bool := true) . (
+	        [ OffHook (Subscriber) ]
+	            (off_or_on and Expect (not off_or_on))
+	        and
+	        [ OnHook (Subscriber) ]
+	            (not off_or_on and Expect (not off_or_on))
+	        and
+	        [ not (OnHook (Subscriber) or OffHook (Subscriber)) ]
+		    Expect (off_or_on)
+	    );
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 8 *******************************)
+
+property Requirement_8_Equivalence_Checking (X, Y1, Y2, Y3, Y4, Y5)
+    "For a given subscriber, in order for a tone to be activated, the previous"
+    "tone or signal has to be desactivated: $X signal."
+is
+    (*
+     * The set of tone and signals is the following:
+     *       Tone = DIALT, RINGT, RINGS, ERRORT, BUSYT, SPEECHCONN
+     *
+     * We show that for each ($X, $Y) in this set (with $X <> $Y),
+     * "S !1 !$X !ON" action cannot be followed by a "S !1 !$Y !ON"
+     * action, unless "S !1 !$X !OFF" occurred.
+     *
+     * Practicaly, if $X = DIALT :
+     *
+     *       "S !1 !DIALT !ON" is renamed in X_ON
+     *       "S !1 !DIALT !OFF" is renamed in X_OFF
+     *       "S !1 !$Y !ON" is renamed in Y, for all $Y in Tone different
+     *       from $X (i.e., $Y1 to $Y5)
+     *
+     * Then, it remains to check that when only these actions are considered as
+     * visible, the POTS specification graph is included (modulo the safety
+     * preorder) into the following one:
+     *
+     *       des (0, 3, 2)
+     *       (0, X_ON, 1)
+     *       (1, X_OFF, 0)
+     *       (0, Y, 0)
+     *)
+    "diag_8_$X.seq" = tau*.a comparison
+        (
+            total rename
+                "S !1 !$X !ON" -> "X_ON",
+                "S !1 !$Y1 !ON" -> "Y",
+                "S !1 !$Y2 !ON" -> "Y",
+                "S !1 !$Y3 !ON" -> "Y",
+                "S !1 !$Y4 !ON" -> "Y",
+                "S !1 !$Y5 !ON" -> "Y",
+                "S !1 !$X !OFF" -> "X_OFF",
+                "X_ON" -> "X_ON",
+                "X_OFF" -> "X_OFF",
+                "Y" -> "Y",
+                ".*" -> "i" 
+            in "pots.bcg"
+        )
+        <= "r8.aut";
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property Requirement_8
+    "For a given subscriber, only one tone or signal may be activated at a"
+    "given time."
+is
+    -- equivalence checking
+    check Requirement_8_Equivalence_Checking
+              (DIALT, RINGT, RINGS, ERRORT, BUSYT, SPEECHCONN);
+    check Requirement_8_Equivalence_Checking
+              (RINGT, DIALT, RINGS, ERRORT, BUSYT, SPEECHCONN);
+    check Requirement_8_Equivalence_Checking
+              (RINGS, DIALT, RINGT, ERRORT, BUSYT, SPEECHCONN);
+    check Requirement_8_Equivalence_Checking
+              (ERRORT, DIALT, RINGT, RINGS, BUSYT, SPEECHCONN);
+    check Requirement_8_Equivalence_Checking
+              (BUSYT, DIALT, RINGT, RINGS, ERRORT, SPEECHCONN);
+    check Requirement_8_Equivalence_Checking
+              (SPEECHCONN, DIALT, RINGT, RINGS, ERRORT, BUSYT);
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [ true* ] (
+            (* Subscriber 1 *)
+            (
+                SOME ("S !1 !DIALT !ON") implies
+                NEVER ('S !1 .* !ON' and not "S !1 !DIALT !ON")
+            ) and
+            (
+                SOME ("S !1 !RINGT !ON") implies
+                NEVER ('S !1 .* !ON' and not "S !1 !RINGT !ON")
+            ) and
+            (
+                SOME ("S !1 !RINGS !ON") implies
+                NEVER ('S !1 .* !ON' and not "S !1 !RINGS !ON")
+            ) and
+            (
+                SOME ("S !1 !ERRORT !ON") implies
+                NEVER ('S !1 .* !ON' and not "S !1 !ERRORT !ON")
+            ) and
+            (
+                SOME ("S !1 !BUSYT !ON") implies
+                NEVER ('S !1 .* !ON' and not "S !1 !BUSYT !ON")
+            ) and
+            (
+                SOME ("S !1 !SPEECHCONN !ON") implies
+                NEVER ('S !1 .* !ON' and not "S !1 !SPEECHCONN !ON")
+            ) and
+            (* Subscriber 2 *)
+            (
+                SOME ("S !2 !DIALT !ON") implies
+                NEVER ('S !2 .* !ON' and not "S !2 !DIALT !ON")
+            ) and
+            (
+                SOME ("S !2 !RINGT !ON") implies
+                NEVER ('S !2 .* !ON' and not "S !2 !RINGT !ON")
+            ) and
+            (
+                SOME ("S !2 !RINGS !ON") implies
+                NEVER ('S !2 .* !ON' and not "S !2 !RINGS !ON")
+            ) and
+            (
+                SOME ("S !2 !ERRORT !ON") implies
+                NEVER ('S !2 .* !ON' and not "S !2 !ERRORT !ON")
+            ) and
+            (
+                SOME ("S !2 !BUSYT !ON") implies
+                NEVER ('S !2 .* !ON' and not "S !2 !BUSYT !ON")
+            ) and
+            (
+                SOME ("S !2 !SPEECHCONN !ON") implies
+                NEVER ('S !2 .* !ON' and not "S !2 !SPEECHCONN !ON")
+            )
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	macro Single_Tone (Subscriber, Tone) =
+	    (
+		SOME (SignalOn (Subscriber, Tone)) implies
+		[ { S !(Subscriber) ?Signal:string !"ON" } ] (Signal = (Tone))
+	    )
+	end_macro
+	[ true* ]
+	    forall Subscriber:nat among { 1 ... 2 } . (
+		Single_Tone (Subscriber, "DIALT")      and
+		Single_Tone (Subscriber, "RINGT")      and
+		Single_Tone (Subscriber, "RINGS")      and
+		Single_Tone (Subscriber, "ERRORT")     and
+		Single_Tone (Subscriber, "BUSYT")      and
+		Single_Tone (Subscriber, "SPEECHCONN")
+	    );
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 9 *******************************)
+
+property Requirement_9
+    "For a given subscriber, once an onhook has been performed, no tone can"
+    "be activated until offhook is performed."
+is
+    -- equivalence checking
+    (*
+     * We show that, after an occurrence of an "S !1 !ONH" action (i.e,
+     * onhook), no "S !1 !$X !ON" action can be performed, for any $X
+     * belonging to the set Tone, unless "S !1 !OFFH !ASUBSC" action occurs.
+     *
+     * Practicaly, "S !1 !X !ON" actions are renamed in TONE, and we check
+     * that when only these actions are considered as visible the resulting
+     * graph is included (modulo safety preorder) into the following one:
+     *
+     *       des (0, 4, 2)
+     *       (0, "S !1 !ONH", 1)
+     *       (1, "S !1 !OFFH !ASUBSC", 0)
+     *       (0, "S !1 !OFFH !ASUBSC", 0)
+     *       (0, TONE, 0)
+     *)
+    "diag_9.seq" = tau*.a comparison
+        (
+            total rename
+                "S !1 !ONH" -> "S !1 !ONH",
+                "S !1 !OFFH !ASUBSC" -> "S !1 !OFFH !ASUBSC",
+                "S !1 !OFFH !BSUBSC" -> "S !1 !OFFH !BSUBSC",
+                "S !1 !RINGT !ON" -> "TONE",
+                "S !1 !ERRORT !ON" -> "TONE",
+                "S !1 !BUSYT !ON" -> "TONE",
+                "S !1 !SPEECHCONN !ON" -> "TONE",
+                "S !1 !DIALT !ON" -> "TONE",
+                ".*" -> "i"
+            in "pots.bcg" 
+        )
+        <= "r9.aut";
+    expected TRUE;
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (
+                (* Subscriber 1 *)
+                (
+                    (
+                    ( "S !1 !DIALT !ON"      . (not "S !1 !DIALT !OFF")* )  |
+                    ( "S !1 !RINGT !ON"      . (not "S !1 !RINGT !OFF")* )  |
+                    ( "S !1 !RINGS !ON"      . (not "S !1 !RINGS !OFF")* )  |
+                    ( "S !1 !ERRORT !ON"     . (not "S !1 !ERRORT !OFF")* ) |
+                    ( "S !1 !BUSYT !ON"      . (not "S !1 !BUSYT !OFF")* )  |
+                    ( "S !1 !SPEECHCONN !ON" . (not "S !1 !SPEECHCONN !OFF")* )
+                    ) .
+                    'S !1 .* !ON'
+                ) |
+                (* Subscriber 2 *)
+                (
+                    (
+                    ( "S !2 !DIALT !ON"      . (not "S !2 !DIALT !OFF")* )  |
+                    ( "S !2 !RINGT !ON"      . (not "S !2 !RINGT !OFF")* )  |
+                    ( "S !2 !RINGS !ON"      . (not "S !2 !RINGS !OFF")* )  |
+                    ( "S !2 !ERRORT !ON"     . (not "S !2 !ERRORT !OFF")* ) |
+                    ( "S !2 !BUSYT !ON"      . (not "S !2 !BUSYT !OFF")* )  |
+                    ( "S !2 !SPEECHCONN !ON" . (not "S !2 !SPEECHCONN !OFF")* )
+                    ) .
+                    'S !2 .* !ON'
+                )
+            )
+        );
+    expected TRUE;
+    
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[ true* ]
+	    forall Subscriber:nat among { 1 ... 2 } .
+		NEVER (
+		    { S !Subscriber ?Signal:string !"ON" } .
+		    (not SignalOff (Subscriber, Signal))* .
+		    SignalOn (Subscriber)
+		);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 10 ******************************)
+
+property Requirement_10
+    "For a given subscriber, once an offhook has been performed, no signal"
+    "can be activated until offhook is performed."
+is
+    -- equivalence checking
+    (*
+     * We rather examine this requirement for the 2nd subscriber, since
+     * "S !1 !RINGS !ON" action does not appear in the POTS specification.
+     *
+     * We show that, after any occurrence of "S !2 !OFFH !ASUBSC" or
+     * "S !2 !OFFH !BSUBSC" action, "S !2 !RINGS !ON" action cannot be
+     * performed unless "S !2 !ONH" action occurs. Practicaly, we check that
+     * when only these actions are visible the resulting graph is included
+     * (modulo safety preorder) into the following one:
+     *
+     *       des (0, 5, 2)
+     *       (0, "S !2 !ONH", 0)
+     *       (0, "S !2 !OFFH !ASUBSC", 1)
+     *       (0, "S !2 !OFFH !BSUBSC", 1)
+     *       (1, "S !2 !ONH", 0)
+     *       (0, "S !2 !RINGS !ON", 0)
+     *)
+    "diag_10.seq" = tau*.a comparison
+        (
+            total hide all but
+                "S !2 !ONH",
+                "S !2 !OFFH !ASUBSC",
+                "S !2 !RINGS !ON"
+            in "pots.bcg"
+        )
+        <= "r10.aut";
+    expected TRUE;
+
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (
+            ("S !1 !ONH" . (not 'S !1 !OFFH ![AB]SUBSC')* . 'S !1 !.*T !ON')
+            |
+            ("S !2 !ONH" . (not 'S !2 !OFFH ![AB]SUBSC')* . 'S !2 !.*T !ON')
+            )
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[ true* ]
+	    forall Subscriber:nat among { 1 ... 2 } .
+		NEVER (
+		    OnHook (Subscriber) .
+		    (not OffHook (Subscriber))* .
+		    ToneOn (Subscriber)
+		);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 11 ******************************)
+
+property Requirement_11
+    "For a given subscriber, once an offhook has been performed, no signal"
+    "can be activated until onhook is performed."
+is
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        NEVER (
+            true* .
+            (
+            ('S !1 !OFFH ![AB]SUBSC' . (not "S !1 !ONH")* . "S !1 !RINGS !ON")
+            |
+            ('S !2 !OFFH ![AB]SUBSC' . (not "S !2 !ONH")* . "S !2 !RINGS !ON")
+            )
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[ true* ]
+	    forall Subscriber:nat among { 1 ... 2 } .
+		NEVER (
+		    OffHook (Subscriber) .
+		    (not OnHook (Subscriber))* .
+		    SignalOn (Subscriber, "RINGS")
+		);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 12 ******************************)
+
+property Requirement_12
+    "If an S-subscriber performs offhook, there should be no possibility of"
+    "activating any tone other than dialtone."
+is
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [ true* . 'S !1 !OFFH ![AB]SUBSC' ] (
+            NEVER (
+                (not 'S !1 !DIALT .*')* .
+                "S !1 !RINGT !ON" or
+                "S !1 !ERRORT !ON" or
+                "S !1 !BUSYT !ON" or
+                "S !1 !SPEECHCONN !ON"
+            )
+            and
+            SOME (true* . "S !1 !DIALT !ON")
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[ true* . OffHook (1) ] (
+	    NEVER (
+              (not SignalAny (1, "DIALT"))* .
+	      SignalOn (1, "RINGT") or
+	      SignalOn (1, "ERRORT") or
+	      SignalOn (1, "BUSYT") or
+	      SignalOn (1, "SPEECHCONN")
+	    )
+	    and
+	    SOME (true* . SignalOn (1, "DIALT"))
+	);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 13 ******************************)
+
+property Requirement_13
+    "If A-subscriber dials B-subscriber while A's dialtone is active, then"
+    "there should be a possibility of A's dialtone being deactivated."
+    "If in addition B is onhooked, and B has no tones active, then:"
+    " - There should be a possibility of B's ring tone being activated."
+    " - There should be a possibility of deactivating A's dialtone and"
+    "   activating A's ringtone (no other tones should be activated)."
+is
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [ true* . "S !1 !DIALT !ON" .
+          (not "S !1 !DIALT !OFF")* . "S !1 !DIAL !2" ] 
+            SOME ((not "S !1 !DIALT !OFF")* . "S !1 !DIALT !OFF")
+
+        and
+        NO_2_TONES_ACTIVE (
+            [
+                (not ('S !2 .*T !ON'))* .
+                (
+                    ("S !1 !DIALT !ON" .
+                     (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF"))* .
+                     "S !2 !ONH") |
+                    ("S !2 !ONH" .
+                     (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF"))* .
+                     "S !1 !DIALT !ON")
+                ) .
+                (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF"))* .
+                "S !1 !DIAL !2"
+            ] (
+                SOME ((not 'S !2 .*T !ON' )* . "S !2 !RINGS !ON")
+                and
+                SOME ((not 'S !1 .*T !ON')* . "S !1 !DIALT !OFF" .
+                  (not 'S !1 .*T !ON')* . "S !1 !RINGT !ON")
+            )
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[ true* . SignalOn (1, "DIALT") .
+	  (not SignalOff (1, "DIALT"))* . Dial (1, 2) ] 
+	    SOME ((not SignalOff (1, "DIALT"))* . SignalOff (1, "DIALT"))
+	and
+	NO_2_TONES_ACTIVE (
+	    [
+	        (not ToneOn (2))* .
+	        (
+	            (SignalOn (1, "DIALT") .
+	             (not (ToneOn (2) or SignalOff (1, "DIALT")))* .
+	             OnHook (2)) |
+	            (OnHook (2) .
+	             (not (ToneOn (2) or SignalOff (1, "DIALT")))* .
+	             SignalOn (1, "DIALT"))
+	        ) .
+	        (not (ToneOn (2) or SignalOff (1, "DIALT")))* .
+	        Dial (1, 2)
+	    ] (
+	        SOME ((not ToneOn (2))* . SignalOn (2, "RINGS"))
+	        and
+	        SOME ((not ToneOn (1))* . SignalOff (1, "DIALT") .
+	          (not ToneOn (1))* . SignalOn (1, "RINGT"))
+	    )
+	);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 14 ******************************)
+
+property Requirement_14
+    "If A-Subscriber dials B-subscriber and B-subscriber is offhooked,"
+    "then there should be a possibility of activating A's busytone after"
+    "deactivating dialtone (no other tones should be activated)."
+is
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [
+            true* .
+            (
+                ("S !2 !OFFH !BSUBSC" . (not "S !2 !ONH")* . "S !1 !DIAL !2") |
+                ("S !1 !DIAL !2" . (not "S !2 !ONH")* . "S !2 !OFFH !BSUBSC")
+            )
+        ]
+        SOME (
+            ('S !1 .* !ON' implies 'S !1 !DIALT !ON')* .
+            "S !1 !DIALT !OFF" .
+            (not 'S !1 .*T !ON')* .
+            "S !1 !BUSYT !ON"
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[
+	    true* .
+	    (
+	        (OffHook (2, "BSUBSC") . (not OnHook (2))* . Dial (1, 2)) |
+	        (Dial (1, 2) . (not OnHook (2))* . OffHook (2, "BSUBSC"))
+	    )
+	]
+	SOME (
+	    (SignalOn (1) implies SignalOn (1, "DIALT"))* .
+	    SignalOff (1, "DIALT") .
+	    (not ToneOn (1))* .
+	    SignalOn (1, "BUSYT")
+	);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 15 ******************************)
+
+property Requirement_15
+    "If A subscriber dials B-subscriber when A has dialtone on, A is offhook,"
+    "B is onhook, and has no tones active, then it is possible for B to"
+    "perform offhook as a B-subscriber."
+is
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        NO_2_TONES_ACTIVE (
+            [
+                (not ('S !2 .*T !ON'))* .
+                "S !1 !DIALT !ON" .
+                (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF"))* .
+                "S !1 !OFFH !ASUBSC" .
+                (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF" or "S !1 !ONH"))* .
+                "S !2 !ONH" .
+                (not ('S !2 .*T !ON' or "S !1 !DIALT !OFF" or "S !1 !ONH" or
+                      'S !2 !OFFH .*'))* .
+                "S !1 !DIAL !2"
+            ]
+            SOME ((not 'S !2 !OFFH .*')* . "S !2 !OFFH !BSUBSC")
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	NO_2_TONES_ACTIVE (
+	    [
+	        (not (ToneOn (2)))* .
+	        SignalOn (1, "DIALT") .
+	        (not (ToneOn (2) or SignalOff (1, "DIALT")))* .
+	        OffHook (1, "ASUBSC") .
+	        (not (ToneOn (2) or SignalOff (1, "DIALT") or OnHook (1)))* .
+	        OnHook (2) .
+	        (not (ToneOn (2) or SignalOff (1, "DIALT") or OnHook (1) or
+	              OffHook (2)))* .
+	        Dial (1, 2)
+	    ]
+	    SOME ((not OffHook (2))* . OffHook (2, "BSUBSC"))
+	);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 16 ******************************)
+
+property Requirement_16
+    "If B-subscriber has ringsignal activated and B performs offhook while A"
+    "remains onhooked then:"
+    " - There should be a possibility of A's ring tone being deactivated."
+    " - There should be a possibility of B's ring signal being deactivated."
+    " - If A's ring tone is deactivated, there should be a possibility of"
+    "   A's speech connection being activated."
+    " - If B's ring signal is deactivated, there should be a possibility of"
+    "   B's speech connection being activated."
+is
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [
+            true* .
+            "S !1 !ONH" .
+            (not "S !1 !OFFH !ASUBSC")* .
+            "S !2 !RINGS !ON" .
+            (not "S !1 !OFFH !ASUBSC")* .
+            "S !2 !OFFH !BSUBSC"
+        ] (
+            SOME(true* . "S !1 !RINGT !OFF")
+            and
+            SOME (true* . "S !2 !RINGS !OFF")
+            and
+            [ (not "S !1 !OFFH !ASUBSC")* . "S !1 !RINGT !OFF" ]
+                SOME(true* . "S !1 !SPEECHCONN !ON")
+            and
+            [ (not "S !1 !OFFH !ASUBSC")* . "S !2 !RINGS !OFF" ]
+                SOME (true* . "S !2 !SPEECHCONN !ON")
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[
+	    true* .
+	    OnHook (1) .
+	    (not OffHook (1, "ASUBSC"))* .
+	    SignalOn (2, "RINGS") .
+	    (not OffHook (1, "ASUBSC"))* .
+	    OffHook (2, "BSUBSC")
+	] (
+	    SOME (true* . SignalOff (1, "RINGT"))
+	    and
+	    SOME (true* . SignalOff (2, "RINGS"))
+	    and
+	    [ (not OffHook (1, "ASUBSC"))* . SignalOff (1, "RINGT") ]
+	        SOME (true* . SignalOn (1, "SPEECHCONN"))
+	    and
+	    [ (not OffHook (1, "ASUBSC"))* . SignalOff (2, "RINGS") ]
+	        SOME (true* . SignalOn (2, "SPEECHCONN"))
+	);
+    expected TRUE
+end property
+
+(******************************* REQUIREMENT 17 ******************************)
+
+property Requirement_17
+    "If A-subscriber and B-subscriber have speech connection activated and"
+    "B-subscriber performs onhook then:"
+    " - There should be a possibility of the speech connection being"
+    "   deactivated."
+    " - Once speech connection is deactivated, A's error tone is activated."
+is
+    -- model checking: dataless formula
+    "pots.bcg" |= with evaluator3
+        [
+            true* .
+            "S !1 !SPEECHCONN !ON" .
+            (not 'S ![12] !SPEECHCONN !OFF')* .
+            "S !2 !SPEECHCONN !ON" .
+            (not 'S ![12] !SPEECHCONN !OFF')* .
+            "S !2 !ONH"
+        ] (
+            SOME (true* . 'S ![12] !SPEECHCONN !OFF')
+            and
+            (* fair (but not inevitable) reachability *)
+            [ true* . 'S ![12] !SPEECHCONN !OFF' . (not "S !1 !ERRORT !ON")* ]
+                SOME((not "S !1 !ERRORT !ON")* . "S !1 !ERRORT !ON")
+        );
+    expected TRUE;
+
+    -- model checking: value-passing formula
+    "pots.bcg" |= with evaluator4
+	[
+	    true* .
+	    SignalOn (1, "SPEECHCONN") .
+	    (not (SignalOff (1, "SPEECHCONN") or
+		  SignalOff (2, "SPEECHCONN")))* .
+	    SignalOn (2, "SPEECHCONN") .
+	    (not (SignalOff (1, "SPEECHCONN") or
+		  SignalOff (2, "SPEECHCONN")))* .
+	    OnHook (2)
+	] (
+	    SOME (true* . SignalOff (1, "SPEECHCONN") or
+		      SignalOff (2, "SPEECHCONN"))
+	    and
+	    (* fair (but not inevitable) reachability *)
+	    [ true* . SignalOff (1, "SPEECHCONN") or
+		      SignalOff (2, "SPEECHCONN") .
+	      (not SignalOn (1, "ERRORT"))* ]
+	        SOME ((not SignalOn (1, "ERRORT"))* . SignalOn (1, "ERRORT"))
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+(*****************************************************************************
+ * Step 3: LNT vs LOTOS COMPARISON.                                          *
+ * The original LOTOS specification is translated into a graph, which is     *
+ * compared against the graph generated from the LNT specification. Both     *
+ * graphs are expected to be strongly equivalent.                            *
+ *****************************************************************************)
+
+(* generation of the original LOTOS specification *)
+
+% (cd LOTOS ; echo "" ; svl)
+
+(* comparison of the graphs generated from LOTOS and LNT *)
+
+"diag.bcg" = strong comparison "pots.bcg" == "LOTOS/pots.bcg";
+
+(* cleanup *)
+
+% SVL_COMMAND_FOR_CLEAN "(cd LOTOS ; svl -clean)"

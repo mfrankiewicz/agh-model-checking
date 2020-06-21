@@ -1,0 +1,120 @@
+#! /bin/sh
+
+##############################################################################
+#                                B C G
+#-----------------------------------------------------------------------------
+#   INRIA - Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module             :       bcg_info
+#   Auteurs            :       Hubert GARAVEL, Bruno ONDET, Damien BERGAMINI
+#   Version            :       1.22
+#   Date               :       2018/10/16 16:16:56
+##############################################################################
+
+set -e 
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP"/com/arch`
+BCG=${BCG:-$CADP}
+TEMPORARY=${CADP_TMP:-/tmp}
+CC=$CADP/src/com/cadp_cc
+
+LDFLAGS="-L'$BCG'/bin.$ARCH -lbcg_info -lBCG -lm"
+
+# parsing the options
+
+GENFLAGS=""
+INFOFLAGS=""
+REMOVE=""
+while true
+do
+	case "$1" in
+		-version )
+			grep BCG_VERSION_BCG_INFO "$BCG"/incl/bcg_version.h | sed -e 's/^[#_ 	A-Za-z]*//'
+			exit 0
+			;;
+		-create | -update )
+			GENFLAGS="$GENFLAGS $1"
+			shift
+			;;
+		-remove )
+			REMOVE=1
+			shift
+			;;
+		-cc )
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			GENFLAGS="$GENFLAGS $1 '$2'"
+			shift 2
+			;;
+		-tmp )
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			TEMPORARY=$2
+			GENFLAGS="$GENFLAGS $1 '$2'"
+			shift 2
+			;;
+		-format | -size | -labels | -profiles | -unreachable | -branching | -deadlock | -hidden | -order | -compact | -verbose | -line )
+			INFOFLAGS="$INFOFLAGS $1"
+			shift
+			;;
+		-path | -nondeterministic )
+			if test $# -lt 2
+			then
+				echo "$COMMAND: missing value for option $1"
+				exit 1
+			fi
+			INFOFLAGS="$INFOFLAGS $1 '$2'"
+			shift 2
+			;;
+		* )
+			break
+			;;
+	esac
+done
+
+if test $# != 1
+then
+	echo "$COMMAND: wrong number of parameters"
+	exit 1
+fi
+
+# parsing the BCG filename (the value of $FILE may contain spaces)
+
+FILE=`dirname "$1"`/`"$CADP"/src/com/cadp_basename "$1" .bcg`
+if test ! -f "$FILE.bcg"
+then
+	echo "$COMMAND: file \`\`$FILE.bcg'' does not exist"
+	exit 1
+fi
+
+# preparing various filenames ($BCGFILE and $LIBFILE may contain spaces)
+
+BCGFILE=$FILE.bcg
+LIBFILE=${FILE}@1.o
+BINFILE=`"$CADP"/src/com/cadp_temporary -t "$TEMPORARY" $COMMAND .x`
+
+# compiling and linking
+eval "'$BCG'/bin.$ARCH/bcg_lib $GENFLAGS '$BCGFILE'"
+
+eval "'$CC' '$LIBFILE' $LDFLAGS -o '$BINFILE'"
+
+# the call to 'eval' below is mandatory
+eval "'$BINFILE' $INFOFLAGS '$BCGFILE'"
+
+if test $REMOVE
+then
+	rm -f "$LIBFILE"
+fi
+
+eval ${BCG_DEBUG:-"rm '$BINFILE'"}
+

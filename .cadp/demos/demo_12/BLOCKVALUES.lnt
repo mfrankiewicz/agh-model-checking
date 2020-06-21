@@ -1,0 +1,832 @@
+module BLOCKVALUES (OCTETVALUES, BLOCK) is
+
+function x00000000 : Block is
+  return Block (x00, x00, x00, x00)
+end function
+
+function x00000001 : Block is
+  return Block (x00, x00, x00, x01)
+end function
+
+function x00000002 : Block is
+   return Block (x00, x00, x00, x02)
+end function
+
+function x00000003 : Block is
+   return Block (x00, x00, x00, x03)
+end function
+
+function x00000004 : Block is
+   return Block (x00, x00, x00, x04)
+end function
+
+function x00000005 : Block is
+   return Block (x00, x00, x00, x05)
+end function
+
+function x00000006 : Block is
+   return Block (x00, x00, x00, x06)
+end function
+
+function x00000007 : Block is
+   return Block (x00, x00, x00, x07)
+end function
+
+function x00000008 : Block is
+   return Block (x00, x00, x00, x08)
+end function
+
+function x00000009 : Block is
+   return Block (x00, x00, x00, x09)
+end function
+
+function x0000000A : Block is
+   return Block (x00, x00, x00, x0A)
+end function
+
+function x0000000B : Block is
+   return Block (x00, x00, x00, x0B)
+end function
+
+function x0000000C : Block is
+   return Block (x00, x00, x00, x0C)
+end function
+
+function x0000000D : Block is
+   return Block (x00, x00, x00, x0D)
+end function
+
+function x0000000E : Block is
+   return Block (x00, x00, x00, x0E)
+end function
+
+function x0000000F : Block is
+   return Block (x00, x00, x00, x0F)
+end function
+
+function x00000010 : Block is
+   return Block (x00, x00, x00, x10)
+end function
+
+function x00000012 : Block is
+   return Block (x00, x00, x00, x12)
+end function
+
+function x00000014 : Block is
+   return Block (x00, x00, x00, x14)
+end function
+
+function x00000016 : Block is
+   return Block (x00, x00, x00, x16)
+end function
+
+function x00000018 : Block is
+   return Block (x00, x00, x00, x18)
+end function
+
+function x0000001B : Block is
+   return Block (x00, x00, x00, x1B)
+end function
+
+function x0000001D : Block is
+   return Block (x00, x00, x00, x1D)
+end function
+
+function x0000001E : Block is
+   return Block (x00, x00, x00, x1E)
+end function
+
+function x0000001F : Block is
+   return Block (x00, x00, x00, x1F)
+end function
+
+function x00000031 : Block is
+   return Block (x00, x00, x00, x31)
+end function
+
+function x00000036 : Block is
+   return Block (x00, x00, x00, x36)
+end function
+
+function x00000060 : Block is
+   return Block (x00, x00, x00, x60)
+end function
+
+function x00000080 : Block is
+   return Block (x00, x00, x00, x80)
+end function
+
+function x000000A5 : Block is
+   return Block (x00, x00, x00, xA5)
+end function
+
+function x000000B6 : Block is
+   return Block (x00, x00, x00, xB6)
+end function
+
+function x000000C4 : Block is
+   return Block (x00, x00, x00, xC4)
+end function
+
+function x000000D2 : Block is
+   return Block (x00, x00, x00, xD2)
+end function
+
+function x00000100 : Block is
+   return Block (x00, x00, x01, x00)
+end function
+
+function x00000129 : Block is
+   return Block (x00, x00, x01, x29)
+end function
+
+function x0000018C : Block is
+   return Block (x00, x00, x01, x8C)
+end function
+
+function x00004000 : Block is
+   return Block (x00, x00, x40, x00)
+end function
+
+function x00010000 : Block is
+   return Block (x00, x01, x00, x00)
+end function
+
+function x00020000 : Block is
+   return Block (x00, x02, x00, x00)
+end function
+
+function x00030000 : Block is
+   return Block (x00, x03, x00, x00)
+end function
+
+function x00040000 : Block is
+   return Block (x00, x04, x00, x00)
+end function
+
+function x00060000 : Block is
+   return Block (x00, x06, x00, x00)
+end function
+
+function x00804021 : Block is
+  return Block (x00, x80, x40, x21) -- MAA special constant "B"
+end function
+
+function x00FF00FF : Block is
+   return Block (x00, xFF, x00, xFF)
+end function
+
+function x0103050B : Block is
+   return Block (x01, x03, x05, x0B)
+end function
+
+function x01030703 : Block is
+   return Block (x01, x03, x07, x03)
+end function
+
+function x01030705 : Block is
+   return Block (x01, x03, x07, x05)
+end function
+
+function x0103070F : Block is
+   return Block (x01, x03, x07, x0F)
+end function
+
+function x02040801 : Block is
+  return Block (x02, x04, x08, x01) -- MAA special constant "A"
+end function
+
+function x0297AF6F : Block is
+   return Block (x02, x97, xAF, x6F)
+end function
+
+function x07050301 : Block is
+   return Block (x07, x05, x03, x01)
+end function
+
+function x07C72EAA : Block is
+   return Block (x07, xC7, x2E, xAA)
+end function
+
+function x0A202020 : Block is
+   return Block (x0A, x20, x20, x20)
+end function
+
+function x0AD67E20 : Block is
+   return Block (x0A, xD6, x7E, x20)
+end function
+
+function x10000000 : Block is
+   return Block (x10, x00, x00, x00)
+end function
+
+function x11A9D254 : Block is
+   return Block (x11, xA9, xD2, x54)
+end function
+
+function x11AC46B8 : Block is
+   return Block (x11, xAC, x46, xB8)
+end function
+
+function x1277A6D4 : Block is
+   return Block (x12, x77, xA6, xD4)
+end function
+
+function x13647149 : Block is
+   return Block (x13, x64, x71, x49)
+end function
+
+function x160EE9B5 : Block is
+   return Block (x16, x0E, xE9, xB5)
+end function
+
+function x17065DBB : Block is
+   return Block (x17, x06, x5D, xBB)
+end function
+
+function x1D10D8D3 : Block is
+   return Block (x1D, x10, xD8, xD3)
+end function
+
+function x1D3B7760 : Block is
+   return Block (x1D, x3B, x77, x60)
+end function
+
+function x1D9C9655 : Block is
+   return Block (x1D, x9C, x96, x55)
+end function
+
+function x1F3F7FFF : Block is
+   return Block (x1F, x3F, x7F, xFF)
+end function
+
+function x21D869BA : Block is
+   return Block (x21, xD8, x69, xBA)
+end function
+
+function x24B66FB5 : Block is
+   return Block (x24, xB6, x6F, xB5)
+end function
+
+function x270EEDAF : Block is
+   return Block (x27, x0E, xED, xAF)
+end function
+
+function x277B4B25 : Block is
+   return Block (x27, x7B, x4B, x25)
+end function
+
+function x2829040B : Block is
+   return Block (x28, x29, x04, x0B)
+end function
+
+function x288FC786 : Block is
+   return Block (x28, x8F, xC7, x86)
+end function
+
+function x28EAD8B3 : Block is
+   return Block (x28, xEA, xD8, xB3)
+end function
+
+function x29907CD8 : Block is
+   return Block (x29, x90, x7C, xD8)
+end function
+
+function x29C1485F : Block is
+   return Block (x29, xC1, x48, x5F)
+end function
+
+function x29EEE96B : Block is
+   return Block (x29, xEE, xE9, x6B)
+end function
+
+function x2A6091AE : Block is
+   return Block (x2A, x60, x91, xAE)
+end function
+
+function x2BF8499A : Block is
+   return Block (x2B, xF8, x49, x9A)
+end function
+
+function x2E80AC30 : Block is
+   return Block (x2E, x80, xAC, x30)
+end function
+
+function x2FD76FFB : Block is
+   return Block (x2F, xD7, x6F, xFB)
+end function
+
+function x30261492 : Block is
+   return Block (x30, x26, x14, x92)
+end function
+
+function x303FF4AA : Block is
+    return Block (x30, x3F, xF4, xAA)
+end function
+
+function x33D5A466 : Block is
+    return Block (x33, xD5, xA4, x66)
+end function
+
+function x344925FC : Block is
+   return Block (x34, x49, x25, xFC)
+end function
+
+function x34ACF886 : Block is
+   return Block (x34, xAC, xF8, x86)
+end function
+
+function x3CD54DEB : Block is
+   return Block (x3C, xD5, x4D, xEB)
+end function
+
+function x3CF3A7D2 : Block is
+   return Block (x3C, xF3, xA7, xD2)
+end function
+
+function x3DD81AC6 : Block is
+   return Block (x3D, xD8, x1A, xC6)
+end function
+
+function x3F6F7248 : Block is
+   return Block (x3F, x6F, x72, x48)
+end function
+
+function x48B204D6 : Block is
+   return Block (x48, xB2, x04, xD6)
+end function
+
+function x4A645A01 : Block is
+   return Block (x4A, x64, x5A, x01)
+end function
+
+function x4C49AAE0 : Block is
+   return Block (x4C, x49, xAA, xE0)
+end function
+
+function x4CE933E1 : Block is
+   return Block (x4C, xE9, x33, xE1)
+end function
+
+function x4D53901A : Block is
+   return Block (x4D, x53, x90, x1A)
+end function
+
+function x4DA124A1 : Block is
+   return Block (x4D, xA1, x24, xA1)
+end function
+
+function x4F998E01 : Block is
+   return Block (x4F, x99, x8E, x01)
+end function
+
+function x50DEC930 : Block is
+   return Block (x50, xDE, xC9, x30)
+end function
+
+function x51AF3C1D : Block is
+   return Block (x51, xAF, x3C, x1D)
+end function
+
+function x51EDE9C7 : Block is
+   return Block (x51, xED, xE9, xC7)
+end function
+
+function x550D91CE : Block is
+   return Block (x55, x0D, x91, xCE)
+end function
+
+function x55555555 : Block is
+   return Block (x55, x55, x55, x55)
+end function
+
+function x55DD063F : Block is
+   return Block (x55, xDD, x06, x3F)
+end function
+
+function x5834A585 : Block is
+   return Block (x58, x34, xA5, x85)
+end function
+
+function x5A35D667 : Block is
+   return Block (x5A, x35, xD6, x67)
+end function
+
+function x5BC02502 : Block is
+   return Block (x5B, xC0, x25, x02)
+end function
+
+function x5CCA3239 : Block is
+   return Block (x5C, xCA, x32, x39)
+end function
+
+function x5EBA06C2 : Block is
+   return Block (x5E, xBA, x06, xC2)
+end function
+
+function x5F38EEF1 : Block is
+   return Block (x5F, x38, xEE, xF1)
+end function
+
+function x613F8E2A : Block is
+   return Block (x61, x3F, x8E, x2A)
+end function
+
+function x63C70DBA : Block is
+   return Block (x63, xC7, x0D, xBA)
+end function
+
+function x6AD6E8A4 : Block is
+   return Block (x6A, xD6, xE8, xA4)
+end function
+
+function x6AEBACF8 : Block is
+   return Block (x6A, xEB, xAC, xF8)
+end function
+
+function x6D67E884 : Block is
+   return Block (x6D, x67, xE8, x84)
+end function
+
+function x7050EC5E : Block is
+   return Block (x70, x50, xEC, x5E)
+end function
+
+function x717153D5 : Block is
+   return Block (x71, x71, x53, xD5)
+end function
+
+function x7201F4DC : Block is
+   return Block (x72, x01, xF4, xDC)
+end function
+
+function x7397C9AE : Block is
+   return Block (x73, x97, xC9, xAE)
+end function
+
+function x74B39176 : Block is
+   return Block (x74, xB3, x91, x76)
+end function
+
+function x7783C51D : Block is
+   return Block (x77, x83, xC5, x1D)
+end function
+
+function x7792F9D4 : Block is
+   return Block (x77, x92, xF9, xD4)
+end function
+
+function x7BC180AB : Block is
+   return Block (x7B, xC1, x80, xAB)
+end function
+
+function x7DB2D9F4 : Block is
+   return Block (x7D, xB2, xD9, xF4)
+end function
+
+function x7DFEFBFF : Block is
+  return Block (x7D, xFE, xFB, xFF) -- MAA special constant "D"
+end function
+
+function x7F76A3B0 : Block is
+   return Block (x7F, x76, xA3, xB0)
+end function
+
+function x7F839576 : Block is
+   return Block (x7F, x83, x95, x76)
+end function
+
+function x7FFFFFF0 : Block is
+   return Block (x7F, xFF, xFF, xF0)
+end function
+
+function x7FFFFFF1 : Block is
+   return Block (x7F, xFF, xFF, xF1)
+end function
+
+function x7FFFFFFC : Block is
+   return Block (x7F, xFF, xFF, xFC)
+end function
+
+function x7FFFFFFD : Block is
+   return Block (x7F, xFF, xFF, xFD)
+end function
+
+function x80000000 : Block is
+   return Block (x80, x00, x00, x00)
+end function
+
+function x80000002 : Block is
+   return Block (x80, x00, x00, x02)
+end function
+
+function x800000C2 : Block is
+   return Block (x80, x00, x00, xC2)
+end function
+
+function x80018000 : Block is
+   return Block (x80, x01, x80, x00)
+end function
+
+function x80018001 : Block is
+   return Block (x80, x01, x80, x01)
+end function
+
+function x80397302 : Block is
+   return Block (x80, x39, x73, x02)
+end function
+
+function x81D10CA3 : Block is
+   return Block (x81, xD1, x0C, xA3)
+end function
+
+function x89D635D7 : Block is
+   return Block (x89, xD6, x35, xD7)
+end function
+
+function x8CE37709 : Block is
+   return Block (x8C, xE3, x77, x09)
+end function
+
+function x8DC8BBDE : Block is
+   return Block (x8D, xC8, xBB, xDE)
+end function
+
+function x9115A558 : Block is
+   return Block (x91, x15, xA5, x58)
+end function
+
+function x91896CFA : Block is
+   return Block (x91, x89, x6C, xFA)
+end function
+
+function x9372CDC6 : Block is
+   return Block (x93, x72, xCD, xC6)
+end function
+
+function x98D1CC75 : Block is
+   return Block (x98, xD1, xCC, x75)
+end function
+
+function x9D15C437 : Block is
+   return Block (x9D, x15, xC4, x37)
+end function
+
+function x9DB15CF6 : Block is
+   return Block (x9D, xB1, x5C, xF6)
+end function
+
+function x9E2E7B36 : Block is
+   return Block (x9E, x2E, x7B, x36)
+end function
+
+function xA018C83B : Block is
+   return Block (xA0, x18, xC8, x3B)
+end function
+
+function xA0B87B77 : Block is
+   return Block (xA0, xB8, x7B, x77)
+end function
+
+function xA44AAAC0 : Block is
+   return Block (xA4, x4A, xAA, xC0)
+end function
+
+function xA511987A : Block is
+   return Block (xA5, x11, x98, x7A)
+end function
+
+function xA70FC148 : Block is
+   return Block (xA7, x0F, xC1, x48)
+end function
+
+function xA93BD410 : Block is
+   return Block (xA9, x3B, xD4, x10)
+end function
+
+function xAAAAAAAA : Block is
+   return Block (xAA, xAA, xAA, xAA)
+end function
+
+function xAB00FFCD : Block is
+   return Block (xAB, x00, xFF, xCD)
+end function
+
+function xAB01FCCD : Block is
+   return Block (xAB, x01, xFC, xCD)
+end function
+
+function xAB6EED4A : Block is
+   return Block (xAB, x6E, xED, x4A)
+end function
+
+function xABEEED6B : Block is
+   return Block (xAB, xEE, xED, x6B)
+end function
+
+function xACBC13DD : Block is
+   return Block (xAC, xBC, x13, xDD)
+end function
+
+function xB1CC1CC5 : Block is
+   return Block (xB1, xCC, x1C, xC5)
+end function
+
+function xB8142629 : Block is
+   return Block (xB8, x14, x26, x29)
+end function
+
+function xB99A62DE : Block is
+   return Block (xB9, x9A, x62, xDE)
+end function
+
+function xBA92DB12 : Block is
+   return Block (xBA, x92, xDB, x12)
+end function
+
+function xBBA57835 : Block is
+   return Block (xBB, xA5, x78, x35)
+end function
+
+function xBE9F0917 : Block is
+   return Block (xBE, x9F, x09, x17)
+end function
+
+function xBF2D7D85 : Block is
+   return Block (xBF, x2D, x7D, x85)
+end function
+
+function xBFEF7FDF : Block is
+  return Block (xBF, xEF, x7F, xDF) -- MAA special constant "C"
+end function
+
+function xC1ED90DD : Block is
+  return Block (xC1, xED, x90, xDD)
+end function
+
+function xC21A1846 : Block is
+  return Block (xC2, x1A, x18, x46)
+end function
+
+function xC4EB1AEB : Block is
+   return Block (xC4, xEB, x1A, xEB)
+end function
+
+function xC6B1317E : Block is
+  return Block (xC6, xB1, x31, x7E)
+end function
+
+function xCBC865BA : Block is
+   return Block (xCB, xC8, x65, xBA)
+end function
+
+function xCD959B46 : Block is
+   return Block (xCD, x95, x9B, x46)
+end function
+
+function xD0482465 : Block is
+   return Block (xD0, x48, x24, x65)
+end function
+
+function xD636250D : Block is
+   return Block (xD6, x36, x25, x0D)
+end function
+
+function xD7843FDC : Block is
+   return Block (xD7, x84, x3F, xDC)
+end function
+
+function xD78634BC : Block is
+   return Block (xD7, x86, x34, xBC)
+end function
+
+function xD8804CA5 : Block is
+   return Block (xD8, x80, x4C, xA5)
+end function
+
+function xDB79FBDC : Block is
+   return Block (xDB, x79, xFB, xDC)
+end function
+
+function xDB9102B0 : Block is
+   return Block (xDB, x91, x02, xB0)
+end function
+
+function xE0C08000 : Block is
+   return Block (xE0, xC0, x80, x00)
+end function
+
+function xE6A12F07 : Block is
+   return Block (xE6, xA1, x2F, x07)
+end function
+
+function xEB35B97F : Block is
+   return Block (xEB, x35, xB9, x7F)
+end function
+
+function xF0239DD5 : Block is
+   return Block (xF0, x23, x9D, xD5)
+end function
+
+function xF14D6E28 : Block is
+   return Block (xF1, x4D, x6E, x28)
+end function
+
+function xF2EF3501 : Block is
+   return Block (xF2, xEF, x35, x01)
+end function
+
+function xF6A09667 : Block is
+   return Block (xF6, xA0, x96, x67)
+end function
+
+function xFD297DA4 : Block is
+   return Block (xFD, x29, x7D, xA4)
+end function
+
+function xFDC1A8BA : Block is
+   return Block (xFD, xC1, xA8, xBA)
+end function
+
+function xFE4E5BDD : Block is
+   return Block (xFE, x4E, x5B, xDD)
+end function
+
+function xFECCAA6E : Block is
+   return Block (xFE, xCC, xAA, x6E)
+end function
+
+function xFEFC07F0 : Block is
+   return Block (xFE, xFC, x07, xF0)
+end function
+
+function xFF2D7DA5 : Block is
+   return Block (xFF, x2D, x7D, xA5)
+end function
+
+function xFFEF0001 : Block is
+   return Block (xFF, xEF, x00, x01)
+end function
+
+function xFFFF00FF : Block is
+   return Block (xFF, xFF, x00, xFF)
+end function
+
+function xFFFFFF2D : Block is
+   return Block (xFF, xFF, xFF, x2D)
+end function
+
+function xFFFFFF3A : Block is
+   return Block (xFF, xFF, xFF, x3A)
+end function
+
+function xFFFFFFF0 : Block is
+   return Block (xFF, xFF, xFF, xF0)
+end function
+
+function xFFFFFFF1 : Block is
+   return Block (xFF, xFF, xFF, xF1)
+end function
+
+function xFFFFFFF4 : Block is
+   return Block (xFF, xFF, xFF, xF4)
+end function
+
+function xFFFFFFF5 : Block is
+   return Block (xFF, xFF, xFF, xF5)
+end function
+
+function xFFFFFFF7 : Block is
+   return Block (xFF, xFF, xFF, xF7)
+end function
+
+function xFFFFFFF9 : Block is
+   return Block (xFF, xFF, xFF, xF9)
+end function
+
+function xFFFFFFFA : Block is
+   return Block (xFF, xFF, xFF, xFA)
+end function
+
+function xFFFFFFFB : Block is
+   return Block (xFF, xFF, xFF, xFB)
+end function
+
+function xFFFFFFFC : Block is
+   return Block (xFF, xFF, xFF, xFC)
+end function
+
+function xFFFFFFFD : Block is
+   return Block (xFF, xFF, xFF, xFD)
+end function
+
+function xFFFFFFFE : Block is
+   return Block (xFF, xFF, xFF, xFE)
+end function
+
+function xFFFFFFFF : Block is
+   return Block (xFF, xFF, xFF, xFF)
+end function
+
+end module
+

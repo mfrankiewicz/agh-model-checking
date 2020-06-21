@@ -1,0 +1,307 @@
+#!/bin/sh 
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       installator
+#   Auteurs             :       Patrick WENDEL, Hubert GARAVEL, Mark JORGENSEN,
+#				Aldo MAZZILLI, Nicolas DESCOUBES
+#   Version             :       1.67
+#   Date                :       2018/02/23 14:06:20
+##############################################################################
+
+# path utilise pour trouver les commandes dirname et basename
+PATH="/bin:$PATH" ; export PATH
+
+COMMAND=`basename "$0"`
+
+CADP_INSTALLATOR=`dirname "$0"`/..
+CADP_INSTALLATOR=`(cd "$CADP_INSTALLATOR" ; pwd)`
+export CADP_INSTALLATOR
+
+CADP_ARCH=`"$CADP_INSTALLATOR"/com/arch`
+export CADP_ARCH
+
+CADP_DETAILED_ARCH=`"$CADP_INSTALLATOR"/com/arch -detailed`
+# (no need to) export CADP_DETAILED_ARCH
+
+CADP_ARCH32=`(CADP_BITS=32 ; export CADP_BITS ; "$CADP_INSTALLATOR"/com/arch)`
+export CADP_ARCH32
+
+CADP_ARCH64=`(CADP_BITS=64 ; export CADP_BITS ; "$CADP_INSTALLATOR"/com/arch)`
+export CADP_ARCH64
+
+case $CADP_ARCH in
+	sun3 | sun4 )
+		PATH="/bin:/etc:/usr/ucb:/usr/bin:/usr/openwin/bin:$PATH"
+		LOCAL_HOST=`hostname`
+		;;
+	sun5 | sun64 | sol86 | sol64 )
+		PATH="/usr/bin:/usr/ucb:/usr/openwin/bin:$PATH"
+		LOCAL_HOST=`hostname`
+		;;
+	iX86 | x64 | ia64 | macOS | mac86 | mac64 )
+		PATH="/bin:/usr/bin:$PATH"
+		LOCAL_HOST=`hostname | sed -e 's/[.].*//'`
+		;;
+	win32 )
+		PATH="/bin:$SYSTEMROOT/system32:$PATH"
+		LOCAL_HOST=`hostname | sed -e 's/[.].*//'`
+		;;
+	* )
+		echo "Unknown architecture"
+		exit 1
+		;;
+esac
+
+export LOCAL_HOST
+
+# -----------------------------------------------------------------------------
+
+# Remise des variables LANG et LC_ALL a des valeurs standards (avec certains
+# Linux, des valeurs "exotiques" telles que LANG=en_US.UTF-8 causent des 
+# problemes lies au fait que "grep" ne distingue plus les lettres majuscules 
+# des lettres minuscules)
+
+unset LANG
+LC_ALL="C"
+export LC_ALL
+
+# -----------------------------------------------------------------------------
+
+# Sous MacOS X, verification que la machine a bien un hostname statique
+
+STATIC=`"$CADP_INSTALLATOR"/src/com/cadp_hostname -static`
+if [ "$STATIC" != 0 ]
+then
+	echo "*** the hostname of this machine is defined dynamically and might"
+	echo "    vary in function of the current IP address (reason $STATIC)"
+	echo "==> please assign a static hostname to this machine according to"
+	echo "    the explanations given at http://cadp.inria.fr/macOS.html"
+	exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+if [ $CADP_ARCH = win32 ]
+then
+	# Sous Windows, verification que ce script est bien execute avec des
+	# privileges administrateurs suffisants pour ne pas etre bloque par
+	# l'UAC
+
+	if [ "$CADP_DETAILED_ARCH" = "win32-cygnus" -o \
+	     "$CADP_DETAILED_ARCH" = "win64-cygnus" ]
+	then
+		# verification (pour Cygwin uniquement) en examinant les groupes
+		# see https://superuser.com/questions/660191/how-to-check-if-cygwin-mintty-bash-is-run-as-administrator
+		# note: this code fragment also exists in "cadp_cygwin.com"
+		id -G | grep -qE '\<(114|544)\>'
+		if [ $? != 0 ]
+		then
+			echo "*** Installator was not launched with administrator privileges"
+			echo "==> Open a new terminal window by right-clicking on the Cygwin"
+			echo "    Terminal icon to select \`\`Run as Administrator'' and"
+			echo "    relaunch this script from this new window"
+			exit 1
+		fi
+	fi
+fi
+
+# -----------------------------------------------------------------------------
+
+# Positionnement de la variable CADP_HOME_DIR contenant le home directory
+
+if [ "$HOME" = "" ]
+then
+	echo "*** Variable \`\`\$HOME'' must be set"
+	echo "==> Set this variable to the pathname of your home directory"
+	exit 1
+else
+	if [ `"$CADP_INSTALLATOR"/src/com/cadp_path -relative "$HOME"` = 1 ]
+	then
+		# $HOME est un chemin relatif (interdit)
+		echo "*** Variable \`\`\$HOME'' must be set to an absolute pathname"
+		echo "    (i.e., starting with \`\`/''), and not to a relative pathname"
+		echo "==> Set this variable to the absolute pathname of your home directory"
+		exit 1
+	fi
+	if [ ! -d "$HOME" -o ! -w "$HOME" ]
+	then
+		echo "*** Variable \`\`\$HOME'' does not point to a writable directory"
+		echo "==> Set this variable to the pathname of your home directory and make sure"
+		echo "that this directory has the write permission for yourself"
+		exit 1
+	fi
+	CADP_HOME_DIR="$HOME"
+fi
+export CADP_HOME_DIR
+
+# -----------------------------------------------------------------------------
+
+# Positionnement de la variable CADP_DEFAULT_DIR contenant eventuellement
+# le repertoire absolu dans lequel on suggere d'installer CADP
+
+CADP_DEFAULT_DIR=`$CADP_INSTALLATOR/src/com/cadp_path -cadp_default_directory`
+export CADP_DEFAULT_DIR
+
+# -----------------------------------------------------------------------------
+
+# Traitement de la variable $CADP_TMP
+
+if [ "$CADP_TMP" = "" ]
+then
+	CADP_TMP="/tmp"
+fi
+export CADP_TMP
+
+# on verifie la valeur de $CADP_TMP
+$CADP_INSTALLATOR/src/com/cadp_path -check_tmp || exit 1
+
+# -----------------------------------------------------------------------------
+
+# Traitement special dans le cas de l'architecture win32 : lorsqu'on lance
+# Installator en executant $CADP/com/installator, Windows cree des verrous
+# ("locks") sur les fichiers en train de s'executer et les repertoires qui
+# les contiennent, ce qui empeche de remplacer la version actuelle de CADP
+# par une nouvelle version. On resout ce probleme par une technique de
+# "clonage", qui consiste a dupliquer Installator et les composants de 
+# CADP dont il a besoin puis d'executer cette version dupliquee.
+
+# Ainsi, sous Windows, trois cas differents peuvent se presenter pour
+# l'execution du present shell-script "installator" : 
+#
+# - cas 1 : le script a ete lance depuis le fichier installator.com (ou .shar)
+#   ce qui se detecte en testant la valeur de la variable d'environnement
+#   $CADP_INSTALLATOR_LAUNCHED_USING_SHAR_FILE (positionnee depuis le
+#   fichier installator.com
+#
+# - cas 2 : le script a ete lance a partir de $CADP/com/installator ; c'est
+#   precisement la situation problematique que l'on va chercher a eviter par
+#   l'operation de clonage qui consiste a lancer une version ;
+#
+# - cas 3 : le script s'execute apres une operation de clonage, c'est-a-dire
+#   necessairement apres la detection d'un "cas 2" ; il n'y a normalement
+#   plus de probleme ; on detecte le cas 3 en testant la valeur de la variable
+#   d'environnement $CADP_INSTALLATOR_CLONE a laquelle l'operation de clonage
+#   a affecte le repertoire dans lequel se trouve la copie dupliquee 
+#   d'Installator et des composants de CADP
+
+if [ "$CADP_ARCH" = win32 -a \
+     "$CADP_INSTALLATOR_LAUNCHED_USING_SHAR_FILE" =  "" -a \
+     "$CADP_INSTALLATOR_CLONE" = "" ]
+then 
+	# ici, on se trouve forcement dans le cas 2
+
+	# positionnement et verification de $CADP_INSTALLATOR_CLONE ; on fait
+	# expres de donner a $CADP_INSTALLATOR_CLONE la valeur /tmp/Installator
+	# qui est la meme que celle utilisee par "installator.com", afin de
+	# provoquer un conflit au cas ou une autre version d'Installator
+	# (lancee dans le cas 1) s'executerait
+
+	CADP_INSTALLATOR_CLONE="/tmp/Installator"
+	export CADP_INSTALLATOR_CLONE
+	if [ -d "$CADP_INSTALLATOR_CLONE" -o -f "$CADP_INSTALLATOR_CLONE" ]
+	then    
+		echo "WARNING: directory \`\`$CADP_INSTALLATOR_CLONE'' already exists"
+		echo "Maybe another Installator is already running?"
+		echo "(you cannot launch two Installators at the same time)"
+		echo "If not, please remove \`\`$CADP_INSTALLATOR_CLONE'' and try again."
+		exit 1  
+	fi
+
+	# on effectue le clonage du repertoire $CADP_INSTALLATOR dans le
+	# nouveau repertoire $CADP_INSTALLATOR_CLONE
+	"$CADP_INSTALLATOR"/src/com/install_clone "$CADP_INSTALLATOR" "$CADP_INSTALLATOR_CLONE" "$CADP_ARCH"
+
+	# on se place dans "/" pour etre certain que le repertoire courant
+	# n'est pas un sous-repertoire de $CADP_INSTALLATOR
+	cd /
+
+	# on lance la copie du present shell-script dupliquee dans le 
+	# repertoire $CADP_INSTALLATOR_CLONE ; il est indispensable d'utiliser
+	# "exec" pour liberer le verrou que l'execution du present shell-script
+	# a cree sur le repertoire $CADP_INSTALLATOR/com
+	exec /bin/sh "$CADP_INSTALLATOR_CLONE/com/installator" "$@"
+fi
+
+# -----------------------------------------------------------------------------
+
+# Valeurs par defaut :
+
+CADP_DISTRIBUTION_KIND="stable"
+export CADP_DISTRIBUTION_KIND
+
+INSTALLATOR_DEBUG_MODE=0
+export INSTALLATOR_DEBUG_MODE
+
+# Traitement des options de la ligne de commande 
+
+while true
+do
+	case "$1" in
+		-beta ) 
+			CADP_DISTRIBUTION_KIND="beta"
+			shift
+			;;
+		-debug )
+    			INSTALLATOR_DEBUG_MODE=1
+			shift
+			;;
+		* )
+			break
+			;;
+	esac
+done
+
+# -----------------------------------------------------------------------------
+
+CADP_PREFIXE="installator$$_"
+export CADP_PREFIXE
+
+# -----------------------------------------------------------------------------
+
+CADP_DETAILED_ARCH=`"$CADP_INSTALLATOR"/com/arch -detailed`
+case "$CADP_DETAILED_ARCH" in
+	win32-cygnus | win64-cygnus )
+		# ici, la variable $CADP_INSTALLATOR est probablement egale
+		# a "/tmp/Installator" ; on la transforme en chemin Windows
+		# de /tmp, par exemple "C:/Cygwin/tmp/Installator" ; ceci
+		# servira au script "wish" a positionner les variables
+		# d'environnement $TCL_LIBRARY, $TK_LIBRARY, $TIX_LIBRARY
+		# et $TCLLIBPATH avant d'appeler le binaire "wish.exe" qui
+		# ne comprend que les chemins Windows
+		CADP_INSTALLATOR=`"$CADP_INSTALLATOR"/src/com/cadp_path -winpath "$CADP_INSTALLATOR"`
+		;;
+esac
+
+# -----------------------------------------------------------------------------
+
+trap "" 1 2 3 13 14 15
+
+"$CADP_INSTALLATOR/tcl-tk/com/wish" -f "$CADP_INSTALLATOR/src/installator/installator.tcl"
+
+# -----------------------------------------------------------------------------
+
+rm -f "$CADP_TMP"/$CADP_PREFIXE*
+
+if [ "$CADP_ARCH" = win32 -a -d "$CADP_INSTALLATOR_CLONE" ]
+then
+	# ici, on est dans le cas 3
+	# il reste a effacer le repertoire temporaire $CADP_INSTALLATOR_CLONE ;
+	# comme precedemment, on effectue un "cd /" et un "exec" pour liberer
+	# les verrous actuels sur "$CADP_INSTALLATOR_CLONE"
+	cd /
+	exec rm -rf "$CADP_INSTALLATOR_CLONE" 
+fi
+
+# attention : ne mettre aucune action ici, car elle ne serait jamais executee
+# dans le cas 3 a cause du "exec" situe immediatement ci-dessus
+
+exit 0
+

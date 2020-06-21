@@ -1,0 +1,68 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains binary programs for servers (Intel EM64T or AMD64
+processors) running 64-bit Linux; we call these machines "x64":
+	- bcg_cmp
+	- bcg_expand
+	- bcg_graph
+	- bcg_io
+	- bcg_labels
+	- bcg_lib
+	- bcg_merge (alias pbg_merge)
+	- bcg_min
+	- bcg_steady
+	- bcg_transient
+	- bes_solve
+	- cadp_hostinfo
+	- cadp_lib
+	- cadp_memory
+	- caesar
+	- caesar.adt
+	- caesar.bdd
+	- caesar.indent
+	- exp2c
+	- fsp2lotos
+	- lnt2lotos
+	- lnt_depend
+	- lpp
+	- mcl_expand
+	- pbg_cp
+	- pbg_info
+	- pbg_mv
+	- pbg_rm
+	- svl_kernel
+	- xtl
+	- xtl_expand
+
+It also contains the OPEN/CAESAR library, the EXP_OPEN library, and various
+OPEN/CAESAR application programs (in archive format):
+	- libcaesar.a
+	- libcaesar_base.a
+	- libcaesar_plug.a
+	- libevaluator.a
+	- libexp_open.a
+	- libseq_open.a
+	- bisimulator.a
+	- cunctator.a
+	- determinator.a
+	- distributor.a
+	- evaluator.a
+	- evaluator3.a
+	- evaluator4.a
+	- evaluator5.a
+	- exhibitor.a
+	- ocis.a
+	- projector.a
+	- reductor.a
+	- tgv.a
+	- xsimulator.a
+
+It also contains the BCG and XTL libraries (in archive format):
+	- libBCG.a
+	- libBCG_IO.a
+	- libXTL.a
+	- libbcg_draw.a 
+	- libbcg_info.a 
+	- libbcg_iodyn.a 
+	- libbcg_open.a 

@@ -1,0 +1,215 @@
+-------------------------------------------------------------------------------
+-- CIPHER.lnt -- 1.19 -- 2015/09/11 11:17:26 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module CIPHER (CHANNELS, S_BOX_FUNCTIONS) is
+
+-- processes implementing the cipher function according to figure 2 of [DES]
+
+-------------------------------------------------------------------------------
+-- CIPHER computes "F (R, K) = P (Si (E (R) + K))"
+
+process CIPHER [K: C48, R, PX: C32] is
+   hide ER: C48,
+        IS1, IS2, IS3, IS4, IS5, IS6, IS7, IS8: C6,
+        SO1, SO2, SO3, SO4, SO5, SO6, SO7, SO8: C4
+   in
+      par
+         ER ->
+            E [R, ER]
+      ||
+         ER, IS1, IS2, IS3, IS4, IS5, IS6, IS7, IS8 ->
+            XOR_48 [ER, K, IS1, IS2, IS3, IS4, IS5, IS6, IS7, IS8]
+      ||
+         IS1, IS2, IS3, IS4, IS5, IS6, IS7, IS8,
+         SO1, SO2, SO3, SO4, SO5, SO6, SO7, SO8 ->
+            par
+               S1 [IS1, SO1]
+            ||
+               S2 [IS2, SO2]
+            ||
+               S3 [IS3, SO3]
+            ||
+               S4 [IS4, SO4]
+            ||
+               S5 [IS5, SO5]
+            ||
+               S6 [IS6, SO6]
+            ||
+               S7 [IS7, SO7]
+            ||
+               S8 [IS8, SO8]
+            end par
+      ||
+         SO1, SO2, SO3, SO4, SO5, SO6, SO7, SO8 ->
+            P [SO1, SO2, SO3, SO4, SO5, SO6, SO7, SO8, PX]
+      end par
+   end hide
+end process
+
+-------------------------------------------------------------------------------
+-- E expands a 32-bit word to a 48-bit word using function E
+
+process E [INPUT: C32, OUTPUT: C48] is
+   var I32: BIT32 in
+      loop
+         INPUT (?I32);
+         OUTPUT (E(I32))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- XOR_48 asynchronously reads two 48-bit vectors and output the bitwise sum,
+-- splitted into eight 6-bit vectors
+
+process XOR_48 [A, B: C48, R1, R2, R3, R4, R5, R6, R7, R8: C6] is
+   var A48, B48, I48: BIT48 in
+      loop
+         par
+            A (?A48)
+         ||
+            B (?B48)
+         end par;
+         I48 := XOR (A48, B48);
+         par
+            R1 (1TO6   (I48))
+           ||
+            R2 (7TO12  (I48))
+           ||
+            R3 (13TO18 (I48))
+           ||
+            R4 (19TO24 (I48))
+           ||
+            R5 (25TO30 (I48))
+           ||
+            R6 (31TO36 (I48))
+           ||
+            R7 (37TO42 (I48))
+           ||
+            R8 (43TO48 (I48))
+         end par
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+process S1 [INPUT: C6, OUTPUT: C4] is
+   var I6: BIT6 in
+      loop
+         INPUT (?I6);
+         OUTPUT (NAT_TO_BIT4 (S1[GET_ROW (I6)][GET_COLUMN (I6)]))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+process S2 [INPUT: C6, OUTPUT: C4] is
+   var I6: BIT6 in
+      loop
+         INPUT (?I6);
+         OUTPUT (NAT_TO_BIT4 (S2[GET_ROW (I6)][GET_COLUMN (I6)]))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+process S3 [INPUT: C6, OUTPUT: C4] is
+   var I6: BIT6 in
+      loop
+         INPUT (?I6);
+         OUTPUT (NAT_TO_BIT4 (S3[GET_ROW (I6)][GET_COLUMN (I6)]))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+process S4 [INPUT: C6, OUTPUT: C4] is
+   var I6: BIT6 in
+      loop
+         INPUT (?I6);
+         OUTPUT (NAT_TO_BIT4 (S4[GET_ROW (I6)][GET_COLUMN (I6)]))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+process S5 [INPUT: C6, OUTPUT: C4] is
+   var I6: BIT6 in
+      loop
+         INPUT (?I6);
+         OUTPUT (NAT_TO_BIT4 (S5[GET_ROW (I6)][GET_COLUMN (I6)]))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+process S6 [INPUT: C6, OUTPUT: C4] is
+   var I6: BIT6 in
+      loop
+         INPUT (?I6);
+         OUTPUT (NAT_TO_BIT4 (S6[GET_ROW (I6)][GET_COLUMN (I6)]))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+process S7 [INPUT: C6, OUTPUT: C4] is
+   var I6: BIT6 in
+      loop
+         INPUT (?I6);
+         OUTPUT (NAT_TO_BIT4 (S7[GET_ROW (I6)][GET_COLUMN (I6)]))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+
+process S8 [INPUT: C6, OUTPUT: C4] is
+   var I6: BIT6 in
+      loop
+         INPUT (?I6);
+         OUTPUT (NAT_TO_BIT4 (S8[GET_ROW (I6)][GET_COLUMN (I6)]))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- P collects the results of the eight processes S_BOX_i (on INi) and outputs
+-- them in a single transition exit; the permutation P is applied in a second
+-- step when outputting the result on OUTPUT.
+
+process P [IN1, IN2, IN3, IN4, IN5, IN6, IN7, IN8: C4, OUTPUT: C32] is
+   var I1, I2, I3, I4, I5, I6, I7, I8: BIT4 in
+      loop
+         par
+            IN1 (?I1)
+         ||
+            IN2 (?I2)
+         ||
+            IN3 (?I3)
+         ||
+            IN4 (?I4)
+         ||
+            IN5 (?I5)
+         ||
+            IN6 (?I6)
+         ||
+            IN7 (?I7)
+         ||
+            IN8 (?I8)
+         end par;
+         OUTPUT (P (MK_32 (I1, I2, I3, I4, I5, I6, I7, I8)))
+      end loop
+   end var
+end process
+
+end module
+

@@ -1,0 +1,45 @@
+(* Susanne Graf : cache_e12_sameAddr_I_fonc.lotos *)
+
+(* Scenario for the verification of property C2 :
+   two processes, two elements e1,e2 with same address part
+   PI is complete and may write both elements
+   PJ has no local var and may write neither e1 nor e2
+*)
+
+(* In principle this scenario is not sufficient in order to show C2; if one
+   wants to be complete one must also evaluate it on a scenario in which only
+   PJ may write e1 and e2 (and has Out and AD) and a scenario in which e1 may
+   be written by PI and e2 by PJ.
+*)
+
+(* Composition expression of the global cache memory system
+   two processes, two elements e1, e2 with same address part
+   (which may be written in any order by PI)
+   functional non deterministic version
+   process PJ is complete 
+   using adt definitions of ELEM_E12_SAMEADDR_I and
+   process definitions MEMORY_FONC_T, PI_FONC_T_NDET, and PJ_SSVAR_EPS
+*)
+
+specification cache [diag, w, r, mw, cu, mr, cl] : noexit
+
+   library
+      BOOLEAN, NATURAL, TYPES_COMMON, ELEM_E12_SAMEADDR_I
+   endlib
+
+behaviour
+
+   hide sync in
+      MEMORY [sync, mw, mr] (empt_m)
+      |[sync, mw, mr]|
+      (
+         PI [diag, sync, w, r, mw, cu, mr, cl] (1 of index, empt_s, empt_m, empt_b, empt_b)
+         |[sync, mw, w, r, cu, mr, cl]|
+         PJ [sync, w, r, mw, cu, mr, cl] (2 of index)
+      )
+where
+   library
+      MEMORY_FONC_T, PI_FONC_T_NDET, PJ_SSVAR_EPS
+   endlib
+endspec
+

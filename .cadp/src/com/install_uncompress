@@ -1,0 +1,221 @@
+#!/bin/sh
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       install_uncompress
+#   Auteurs             :       Mark JORGENSEN, Aldo MAZZILLI, Hubert GARAVEL
+#                               et Nicolas DESCOUBES
+#   Version             :       1.29
+#   Date                :       2019/05/15 16:53:18
+##############################################################################
+
+# ce shell-script utilise les variables d'environnement suivantes
+#	$CADP
+#	$CADP_INSTALLATOR
+#	$CADP_UNCOMPRESS (si cette variable est positionnee)
+#	$CADP_ARCHIVE
+#	$CADP_ARCHIVE_NAME
+#	$CADP_ERROR_UNCOMPRESS
+#	$CADP_ERROR_TAR
+
+COMMAND=`basename "$0"`
+ARCH=`"$CADP_INSTALLATOR"/com/arch`
+
+cd "$CADP"
+
+if test "$CADP_UNCOMPRESS" = ""
+then
+	# normalement, ce cas ne devrait pas se produire
+	case $ARCH in
+		sun3 | sun4 | sun5 | sun64 | sol86 | sol64 )
+			CADP_UNCOMPRESS="uncompress"
+			;;
+		iX86 | x64 | ia64 | win32 | macOS | mac86 | mac64 )
+			CADP_UNCOMPRESS="gzip -d"
+			;;
+		* )
+			echo "$COMMAND: unknown architecture $ARCH"
+			;;
+	esac
+fi
+
+# sous MacOS X, /usr/bin/tar est souvent une version BSD de tar (placee dans
+# /usr/bin/bsdtar) qui se comporte differemment des autres systemes. C'est
+# pourquoi CADP prefere utiliser la version GNU de tar (appelee "gnutar"
+# sous MacOS X). Les differences observees sont les suivantes :
+#
+# - Sous MacOS X 10.2, l'option -p du tar BSD emet des messages de la forme
+#   tar: Unable to set file uid/gid of ... <Operation not permitted>
+#
+# - Quand on appelle tar avec les options -xpvf et que l'extraction se passe
+#   bien, gnutar n'ecrit rien sur stderr et ecrit sur stdout la liste des 
+#   fichiers extraits :
+#      com/
+#      com/arch
+#      ...
+#   tandis que bsdtar n'ecrit rien sur stdout et ecrit sur stderr la liste
+#   des fichiers extraits avec des "x" en premiere colonne :
+#      x com/
+#      x com/arch
+#      ...
+#
+# Pour compliquer les choses, Apple modifie constamment ses conventions :
+# - Sous MacOS X 10.2, /usr/bin/tar est la version BSD de tar
+# - Sous MacOS X 10.3, /usr/bin/tar et /usr/bin/gnutar sont identiques
+# - Sous MacOS X 10.6, /usr/bin/tar -> bsdtar et /usr/bin/gnutar existe
+# - Sous MacOS X 10.8, /usr/bin/tar -> bsdtar et /usr/bin/gnutar existe
+# - Sous MacOS X 10.9, /usr/bin/tar -> bsdtar et /usr/bin/gnutar disparait
+# - Sous MacOS X 10.14, /usr/bin/tar -> bsdtar et /usr/bin/gnutar disparait
+
+BSD_TAR=0
+TAR_RETRY=0
+
+case $ARCH in 
+	macOS )
+		# Mac OS X version <= 10.6 "Snow Leopard" with Rosetta
+		if [ -x /usr/bin/gnutar ]
+		then
+			TAR=/usr/bin/gnutar
+		else
+			TAR=tar
+		fi
+		;;
+	mac86 | mac64 )
+		if [ -x /usr/bin/gnutar ]
+		then
+			TAR=/usr/bin/gnutar
+			# Mac OS X version <= 10.8 "Mountain Lion"
+		elif [ -x /opt/local/bin/gnutar ]
+		then
+			# Mac OS X version >= 10.9 "Maverick" with MacPorts' gnutar
+			TAR=/opt/local/bin/gnutar
+		elif [ -x /usr/local/bin/gtar ]
+		then
+			# Mac OS X version >= 10.9 "Maverick" with Homebrew's gtar
+			TAR=/usr/local/bin/gtar
+		else
+			# cas inattendu, probablement bsdtar, qu'on tentera de traiter
+			TAR=tar
+			BSD_TAR=1
+		fi
+		;;
+	win32 )
+		# Les systemes de fichiers Windows ne permettent pas les liens
+		# symboliques de type Unix qui sont present dans les tarfiles
+		# des packages "win32" et "base" :
+		# - La commande tar de Cygwin (GNU version 1.26 ou 1.27) sait
+		#   les extraire proprement.
+		# - La commande tar (GNU version 1.23) de MinGW/MSYS
+		#   (habituellement dans c:/MinGW/msys/1.0/bin/tar.exe)
+		#   retourne des erreurs lors de l'extraction car si le	
+		#   tarfile contient un lien symbolique xxx -> yyy, elle
+		#   peut vouloir extraire xxx avant yyy et se plaindre que
+		#   xxx n'existe pas ; ce probleme est resolu dans les
+		#   versions suivantes (1.24 probablement, 1.26 certainement).
+		#   On peut contourner le probleme de la version 1.23 en
+		#   lancant la commande tar deux fois de suite et en ignorant
+		#   les messages d'erreur.
+		# - La commande tar (GNU version 1.13) de GnuWin32
+		#   (habituellement dans c:gnuwin32/bin/tar.exe) n'a pas ce
+		#   probleme, mais l'extraction des liens symboliques contenus
+		#   dans le tarfile renomme ces fichiers en leur donnant
+		#   l'extension .lnk, qui devront ensuite etre elimines par
+		#   cadp_adjust.
+		LOCATION=`"$CADP_INSTALLATOR"/src/com/cadp_path -cygwin`
+		if [ "$LOCATION" != "" -a -x "$LOCATION/bin/tar.exe" ]
+		then
+			# si le tar de Cygwin est disponible, on l'utilise
+			TAR="$LOCATION/bin/tar.exe"
+		else
+			LOCATION=`"$CADP_INSTALLATOR"/src/com/cadp_path -mingw`
+			if [ "$LOCATION" != "" -a -x "$LOCATION/bin/tar.exe" ]
+			then
+				# si le tar de Mingw est disponible, on l'utilise
+				TAR="$LOCATION/bin/tar.exe"
+			else
+				# cas douteux : on pourrait emettre un message
+				# d'erreur mais il est preferable de continuer
+				# en esperant que ca marchera quand meme
+				TAR=tar
+			fi
+		 	TAR_VERSION=`( LANG=C ; $TAR --version | head -1 )`
+			case "$TAR_VERSION" in
+				*1.23 ) TAR_RETRY=1
+				;;
+			esac
+		fi
+		;;
+	* )
+		TAR=tar
+		;;
+esac
+
+# sur la ligne suivante, ne pas mettre de guillemets autour de $CADP_UNCOMPRESS
+# (car il peut valoir "gzip -d")
+
+if [ $BSD_TAR = 0 ]
+then
+	# cas normal (Solaris ou GNU tar)
+	$CADP_UNCOMPRESS 2> "$CADP_ERROR_UNCOMPRESS" < "$CADP_ARCHIVE/$CADP_ARCHIVE_NAME.tar.Z" | $TAR -xpvf - 2> "$CADP_ERROR_TAR"
+	if [ $? != 0 -a $TAR_RETRY = 1 ]
+	then
+		# bricolage specifique a la version 1.23 de tar sous Mingw :
+		# la premiere execution a eu des problemes (car $? != 0) ;
+		# seconde execution en esperant que les cibles des liens
+		# symboliques auront ete crees lors de la premiere execution
+		$CADP_UNCOMPRESS 2> "$CADP_ERROR_UNCOMPRESS" < "$CADP_ARCHIVE/$CADP_ARCHIVE_NAME.tar.Z" | $TAR -xpvf - 2> "$CADP_ERROR_TAR"
+		cat "$CADP_ERROR_TAR" |
+		grep -v ":\ Cannot open:\ File exists$" |
+		grep -v ":\ Exiting with failure status due to previous errors$" > "$CADP_ERROR_TAR".tmp
+		mv "$CADP_ERROR_TAR".tmp "$CADP_ERROR_TAR"
+	fi
+else
+	# cas imprevu (BSD tar) : on essaie de se recuperer au mieux en
+	# permutant stdout et stderr
+	$CADP_UNCOMPRESS 2> "$CADP_ERROR_UNCOMPRESS" < "$CADP_ARCHIVE/$CADP_ARCHIVE_NAME.tar.Z" | ($TAR -xpvf - > "$CADP_ERROR_TAR") 2>&1 | sed -e 's/^x[ ]//'
+fi
+
+# nettoyage du fichier "$CADP_ERROR_TAR" afin d'enlever certains messages
+# d'avertissement sans gravite emis par "tar" qui font echouer Installator
+
+# on supprime notamment les messages de la forme :
+# "tar: ./bin.win32: time stamp 2004-06-17 15:26:04 is 680692 s in the future"
+# qui peuvent se produire lorsque l'horloge de la machine est dereglee
+
+# on supprime egalement les messages de la forme :
+# "tar: Read 1536 bytes from -" apparus dans GNU-tar 1.14 (septembre 2004)
+
+cat "$CADP_ERROR_TAR" |
+grep -v "\ time\ stamp\ .*\ in\ the\ future$" |
+grep -v "tar: Read .* bytes from " > "$CADP_ERROR_TAR".tmp
+mv "$CADP_ERROR_TAR".tmp "$CADP_ERROR_TAR"
+
+# affichage des eventuels messages d'erreurs obtenus sur stderr pendant
+# la decompression et/ou l'extraction par "tar"
+
+if test -s "$CADP_ERROR_UNCOMPRESS"
+then
+	echo "-------------------------------------------------------------"
+	echo "*** Unexpected messages displayed by \`\`$CADP_UNCOMPRESS'':"
+	cat "$CADP_ERROR_UNCOMPRESS"
+	echo
+fi
+
+if test -s "$CADP_ERROR_TAR"
+then
+	echo "-------------------------------------------------------------"
+	echo "*** Unexpected messages displayed by \`\`$TAR'':"
+	cat "$CADP_ERROR_TAR"
+	echo
+fi
+
+echo END_SHELL_0
+exit 0
+

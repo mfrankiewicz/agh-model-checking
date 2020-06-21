@@ -1,0 +1,185 @@
+% DEFAULT_XTL_LIBRARIES="actl.xtl, ltac.xtl, macros.xtl"
+
+-------------------------------------------------------------------------------
+-- Definition of five correctness properties
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_1 (SPEC, RESULT)
+    "Checking for deadlocks (result should be $RESULT)"
+is
+    "$SPEC.bcg" |= with xtl
+	let
+	    arbresgap : labelset      = EVAL_A (ARBRESGAP),
+	    LDcon_any : labelset      = EVAL_A (LDCON ...)
+	in
+	    PRINT_FORMULA (
+	        INIT implies not (
+	    	    EF (Dia (not (arbresgap or LDcon_any),
+		        EF_A (LDcon_any, Box (true, false))
+		    ))
+	        )
+	    )
+        end_let;
+    expected "$RESULT"
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_2 (SPEC)
+    "Between two subsequent 'subaction gap' signals (action pattern"
+    "PDind_any_sgap) at most two asynchronous packets have traveled over the"
+    "BUS"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            LDcon_any : labelset      = EVAL_A (LDCON ...),
+            PDind_any_sgap : labelset = EVAL_A (PDIND _ !"SUBACTGAP")
+        in
+	    PRINT_FORMULA (
+	        Box (PDind_any_sgap,
+	    	    AG_A (not (PDind_any_sgap or LDcon_any), Box (LDcon_any,
+		        AG_A (not (PDind_any_sgap or LDcon_any), Box (LDcon_any,
+			    AG_A (not (PDind_any_sgap), Box (LDcon_any, false))
+		        ))
+		    ))
+	        )
+	    )
+        end_let;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_3 (SPEC)
+    "If a node 0 <= id <= n-1 emitted a request on the LDreq gate (action"
+    "pattern LDreq_all (id)) and node 'id' communicates a fair request on"
+    "the PAreq gate (action pattern PAreq_fair (id)) each time it receives a"
+    "'subaction gap' signal on the PDind gate (action pattern PDind_sgap (id))"
+    "- and before an 'arbitration reset gap' signal (action pattern arbresgap)"
+    "occurs - it also eventually receives a confirmation on the LDcon gate"
+    "(action pattern LDcon_all (id))"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            arbresgap : labelset      = EVAL_A (ARBRESGAP)
+        in
+	    (* Note: we used FAIR () instead of INEV () because of livelocks *)
+	    PRINT_FORMULA (
+	        forall id : natural among { 0 ... N - 1 } in
+	            Box (LDreq_all (id),
+		        AG_A (not (PDind_sgap (id) or arbresgap or
+                                  LDcon_all (id)),
+		              Box (PDind_sgap (id),
+			          AG_A (not (PAreq_fair (id) or arbresgap),
+			              Box (PAreq_fair (id),
+                                          FAIR (LDcon_all (id)))
+			          )
+		              )
+		        )
+	            )
+	        end_forall
+	    )
+        end_let;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_4 (SPEC)
+    "Every request emitted by node 0 <= id <= n-1 on gate PAreq with parameter"
+    "immediate (action pattern PAreq_immediate (id)) is followed by a matching"
+    "confirmation on gate PAcon with parameter won (action pattern"
+    "PAcon_won (id))"
+is
+    "$SPEC.bcg" |= with xtl
+        (* Note: we used FAIR () instead of INEV () because of livelocks *)
+	PRINT_FORMULA (
+	    forall id : natural among { 0 ... N - 1 } in
+	        Box (PAreq_immediate (id),
+	            FAIR (not (PAreq_immediate (id)), PAcon_won (id))
+	        )
+	    end_forall
+	);
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+
+property XTL_PROPERTY_5 (SPEC)
+    "Between two subsequent 'arbitration reset gap' signals (action pattern"
+    "arbresgap) no node 0 <= id <= n-1 receives a confirmation on gate PAcon"
+    "with parameter won (action pattern PAcon_won (id)) upon a request on gate"
+    "PAreq with parameter fair (action pattern PAreq_fair (id)) more than once"
+is
+    "$SPEC.bcg" |= with xtl
+        let
+            arbresgap : labelset      = EVAL_A (ARBRESGAP)
+        in
+	    PRINT_FORMULA (
+	        forall id : natural among { 0 ... N - 1 } in
+		    Box (arbresgap,
+		        AG_A (not (arbresgap), Box (PAreq_fair (id),
+		            Box (PAcon_won (id),
+		                AG_A (not (arbresgap),
+			            Box (PAreq_fair (id),
+                                        Box (PAcon_won (id), false))
+			        )
+		            )
+		        ))
+		    )
+	        end_forall
+	    )
+        end_let;
+    expected TRUE
+end property
+
+-------------------------------------------------------------------------------
+-- Verification of the correctness properties on different scenarios
+-------------------------------------------------------------------------------
+
+% for VTYPE in orig correct
+% do
+
+    % for MAX_CX in 1 2 3
+    % do
+       "scen1_${VTYPE}_${MAX_CX}.bmin.bcg" =
+          strong reduction of generation of "scen1_${VTYPE}_${MAX_CX}.lotos";
+       check XTL_PROPERTY_1 ("scen1_${VTYPE}_${MAX_CX}.bmin", TRUE);
+       check XTL_PROPERTY_2 ("scen1_${VTYPE}_${MAX_CX}.bmin");
+       check XTL_PROPERTY_3 ("scen1_${VTYPE}_${MAX_CX}.bmin");
+       check XTL_PROPERTY_4 ("scen1_${VTYPE}_${MAX_CX}.bmin");
+       check XTL_PROPERTY_5 ("scen1_${VTYPE}_${MAX_CX}.bmin");
+    % done
+
+    % for MAX_CX in 1 2
+    % do
+       "scen2_${VTYPE}_${MAX_CX}.bmin.bcg" =
+          strong reduction of generation of "scen2_${VTYPE}_${MAX_CX}.lotos";
+       check XTL_PROPERTY_1 ("scen2_${VTYPE}_${MAX_CX}.bmin", TRUE);
+       check XTL_PROPERTY_2 ("scen2_${VTYPE}_${MAX_CX}.bmin");
+       check XTL_PROPERTY_3 ("scen2_${VTYPE}_${MAX_CX}.bmin");
+       check XTL_PROPERTY_4 ("scen2_${VTYPE}_${MAX_CX}.bmin");
+       check XTL_PROPERTY_5 ("scen2_${VTYPE}_${MAX_CX}.bmin");
+    % done
+
+    % for MAX_RQ in 2 3 4 
+    % do
+       "scen3_${VTYPE}_2.${MAX_RQ}.bmin.bcg" =
+          strong reduction of generation of "scen3_${VTYPE}_2.${MAX_RQ}.lotos";
+       % if [ $VTYPE = orig ]
+       % then
+       %    RES_P1=FALSE
+       % else
+       %    RES_P1=TRUE
+       % fi
+       check XTL_PROPERTY_1 ("scen3_${VTYPE}_2.${MAX_RQ}.bmin", "$RES_P1");
+       check XTL_PROPERTY_2 ("scen3_${VTYPE}_2.${MAX_RQ}.bmin");
+       check XTL_PROPERTY_3 ("scen3_${VTYPE}_2.${MAX_RQ}.bmin");
+       check XTL_PROPERTY_4 ("scen3_${VTYPE}_2.${MAX_RQ}.bmin");
+       check XTL_PROPERTY_5 ("scen3_${VTYPE}_2.${MAX_RQ}.bmin");
+    % done
+
+% done
+
+-------------------------------------------------------------------------------
+

@@ -1,0 +1,77 @@
+module TYPES is
+
+type Nat_8 is
+    range 0 .. 7 of Nat
+end type
+
+-----------------------------------------------------------------------------
+
+function _+_ (n1: Nat_8, n2: Nat_8): Nat_8 is
+     return Nat_8 ((Nat (n1) + Nat (n2)) mod 8)
+end function
+
+-----------------------------------------------------------------------------
+
+type Identity is
+     n:Nat where true 
+     with "==", "<", "<=", ">", ">="
+end type
+
+-----------------------------------------------------------------------------
+
+function Succ (n:Identity) : Identity is
+     return Identity (Nat (n) + 1)
+end function
+
+-----------------------------------------------------------------------------
+
+type Identity_List is
+     sorted list of Identity with "length", "member"
+end type
+
+-----------------------------------------------------------------------------
+
+function Number_Neighbours (n1: Identity): Nat is
+     var n2: Identity, result: Nat in
+          result := 0;
+          for n2 := (0 of Identity) while n2 < (6 of Identity) by n2 := Succ (n2) loop
+               if Neighbour (n1, n2) then
+                    result := result + 1
+               end if
+          end loop;
+          return result
+     end var
+end function
+
+-----------------------------------------------------------------------------
+
+function Neighbour (n1: Identity, n2: Identity): Bool is
+     if n1 == n2 then
+          return false
+     else
+          return Connect (n1, n2) or_else Connect (n2, n1)
+     end if
+end function
+
+-----------------------------------------------------------------------------
+-- Instance parameters
+-----------------------------------------------------------------------------
+
+function Weight (n1: Identity): Nat_8 is
+     use n1;
+     return 1 of Nat_8 -- all objects have weight 1
+end function
+
+-----------------------------------------------------------------------------
+
+function Connect (n1: Identity, n2: Identity): Bool is
+     if (n1 == 0 of Identity) and (n2 >= 1 of Identity) and (n2 <= 5 of Identity) then
+          return true
+     elsif (n1 > 0 of Identity) and (n1 <= 5 of Identity) and (n2 == Identity ((Nat (n1) mod 5) + 1)) then
+          return true
+     else
+          return false
+     end if
+end function
+
+end module

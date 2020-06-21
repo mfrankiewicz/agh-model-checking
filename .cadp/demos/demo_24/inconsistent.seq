@@ -1,0 +1,6 @@
+################################################################
+# @(#)inconsistent.seq	1.1 - 97/04/30 - Charles Pecheur, INRIA Rhone-Alpes
+# Finds any trace to inconsistent change in knowledge base
+################################################################
+
+<until> [SIGNAL.*SIGSTORED.*FALSE]

@@ -1,0 +1,137 @@
+-------------------------------------------------------------------------------
+-- KEY_PATH.lnt -- 1.10 -- 2015/09/11 11:04:16 -- (C) Wendelin Serwe
+-------------------------------------------------------------------------------
+
+module KEY_PATH (CHANNELS) is
+
+-------------------------------------------------------------------------------
+-- KEY_PATH generates the 16 subkeys of the key schedule
+
+process KEY_PATH [KEY: C64, SUBKEY: C48, CTRL_SHIFT: CS, CTRL_DK, CTRL_CK: CP] is
+   hide FIRST_K, INTERMEDIATE_K: C56 in
+      par
+         FIRST_K ->
+            PC1 [KEY, FIRST_K]
+      ||
+         FIRST_K, INTERMEDIATE_K ->
+            hide K, KKK, SK: C56 in
+               par
+                  K, SK ->
+                     SHIFT_REGISTER [CTRL_SHIFT, K, SK]
+               ||
+                  SK, KKK ->
+                     DUPLICATE_K [CTRL_DK, SK, INTERMEDIATE_K, KKK]
+               ||
+                  KKK, K ->
+                     CHOOSE_K [CTRL_CK, FIRST_K, KKK, K]
+               end par
+            end hide   
+      ||
+         INTERMEDIATE_K ->
+            PC2 [INTERMEDIATE_K, SUBKEY]
+      end par
+   end hide
+end process
+
+-------------------------------------------------------------------------------
+-- PC1 applies PC1 to select a 56-bit vector from the initial 64-bit key
+
+process PC1 [KEY: C64, FIRST_K: C56] is
+   var K64: BIT64 in
+      loop
+	 KEY (?K64);
+	 FIRST_K (PC1 (K64))
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- SHIFT_REGISTER performs, depending on the iteration, one or two shifts to
+-- the left or right shift(s) of a 56-bit word
+
+process SHIFT_REGISTER [CTRL: CS, INPUT, OUTPUT: C56] is
+   var CTRL: SHIFT, I56: BIT56 in
+      loop
+         par
+            CTRL (?CTRL)
+         ||
+            INPUT (?I56)
+         end par;
+         case CTRL in
+           NO ->
+               OUTPUT (I56)
+         | LS1 ->
+               OUTPUT (LSHIFT (I56))
+         | LS2 ->
+               OUTPUT (LSHIFT (LSHIFT (I56)))
+         | RS1 ->
+               OUTPUT (RSHIFT (I56))
+         | RS2 ->
+               OUTPUT (RSHIFT (RSHIFT (I56)))
+         end case
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- DUPLICATE_K reads a 56-bit vector from INPUT and outputs it to OUTPUT1 and
+-- OUTPUT2, but for the last iteration, where it outputs only to OUTPUT1.
+-- because DUPLICATE_K always reads from INPUT, the order of the rendezvous on
+-- CTRL and INPUT is arbitrary
+
+process DUPLICATE_K [CTRL: CP, INPUT, OUTPUT1, OUTPUT2: C56] is
+   var CTRL: PHASE, I56:BIT56 in
+      loop
+         par
+            CTRL (?CTRL)
+         ||
+            INPUT (?I56)
+         end par;
+         if CTRL == L then
+            OUTPUT1 (I56)
+         else
+            assert (CTRL == N);
+            par
+               OUTPUT1 (I56)
+            ||
+               OUTPUT2 (I56)
+            end par
+         end if
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- CHOOSE_K closes the loop in the key path, by redirecting the input on INPUT
+-- to OUTPUT, but for the first iteration where the original key is read on
+-- FIRST_IN
+
+process CHOOSE_K [CTRL: CP, FIRST_IN, INPUT, OUTPUT: C56] is
+   var CTRL: PHASE, I56:BIT56 in
+      loop
+         CTRL (?CTRL);
+         if CTRL == F then
+            FIRST_IN (?I56)
+         else
+            assert (CTRL == N);
+            INPUT (?I56)
+         end if;
+         OUTPUT (I56)
+      end loop
+   end var
+end process
+
+-------------------------------------------------------------------------------
+-- PC2 applies PC2 to generate the current subkey
+
+process PC2 [KK: C56, SUBKEY: C48] is
+   var I56: BIT56 in
+      loop
+	 KK (?I56);
+	 SUBKEY (PC2 (I56))
+      end loop
+   end var
+end process
+
+end module
+

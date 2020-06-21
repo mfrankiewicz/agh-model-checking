@@ -1,0 +1,19 @@
+process MEMORY [sync, mw, mr] (M:mem_of_elem) : noexit :=
+   sync;
+      MEMORY1 [sync, mw, mr] (M)
+where
+   process MEMORY1 [sync, mw, mr] (M:mem_of_elem) : noexit :=
+      mw ?ind:index ?el:elem [true];
+         MEMORY [sync, mw, mr] (Insert (M, el))
+      []
+      (
+         choice el2:elem []
+            mr ?ind:index !el2 [ok (M, el2)];
+               MEMORY [sync, mw, mr] (M)
+      )
+      []
+      sync;
+         MEMORY1 [sync, mw, mr] (M)
+   endproc (* MEMORY1 *)
+endproc (* MEMORY *)
+

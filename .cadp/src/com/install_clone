@@ -1,0 +1,107 @@
+#! /bin/sh
+
+###############################################################################
+#                       I N S T A L L A T O R
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       install_clone
+#   Auteurs             :       Hubert GARAVEL et Nicolas DESCOUBES
+#   Version             :       1.8
+#   Date                :       2017/11/08 15:41:00
+##############################################################################
+
+# ce shell est appele soit par Make-installator, soit par la version Windows
+# d'Installator
+
+# ------------------------------------------------------------------------------
+
+COMMAND=`basename "$0"`
+
+# verification des arguments
+
+if [ $# != 3 ]
+then
+	echo "$COMMAND: 3 arguments expected"
+	exit 1
+fi
+
+# le premier argument est un repertoire contenant une distribution CADP
+SOURCE=$1
+
+# le second est un repertoire dans lequel on va copier une partie de CADP
+DEST=$2
+
+# le troisieme est une liste d'architectures, qui peut etre, soit un singleton
+# ("win32", dans le cas d'Installator sous Windows), soit une liste a plusieurs
+# elements (par exemple, "sun5 sun64 sol86 sol64 iX86 x64 ia64 win32 mac86",
+# dans le cas de Make-installator)
+LIST=$3
+
+# ------------------------------------------------------------------------------
+
+rm -rf "$DEST"
+mkdir   "$DEST" \
+	"$DEST"/com \
+	"$DEST"/src \
+	"$DEST"/src/com \
+	"$DEST"/src/installator \
+	"$DEST"/tcl-tk \
+	"$DEST"/tcl-tk/com 
+
+if [ $? != 0 ]
+then
+	echo "$COMMAND: unable to create directories"
+	exit 1
+fi
+
+cd "$DEST"
+cp -p "$SOURCE"/INSTALLATION_* 			.
+
+cp -p "$SOURCE"/com/arch 			./com
+cp -p "$SOURCE"/com/installator 		./com
+cp -p "$SOURCE"/com/rfl 			./com
+
+cp -p "$SOURCE"/src/com/cadp_*			./src/com
+cp -p "$SOURCE"/src/com/install_*		./src/com
+
+cp -pr "$SOURCE"/src/installator/*		./src/installator
+# l'instruction ci-dessus va copier le repertoire src/installator/bin.win32
+# qui contient des binaires Windows (tels que blat.exe, check_lock.exe, ...)
+# qui seraient inutiles pour d'autres architectures que Windows ; neanmoins,
+# on suppose ici que $LIST contient toujours la valeur win32
+
+if test -f "$SOURCE"/tcl-tk/COPYRIGHT_TCL_TK
+then
+	# le fichier COPYRIGHT_TCL_TK a existe jusqu'en mai 2007
+	cp -p  "$SOURCE"/tcl-tk/COPYRIGHT_TCL_TK	./tcl-tk
+fi
+
+cp -pr "$SOURCE"/tcl-tk/lib-tcl 		./tcl-tk
+cp -pr "$SOURCE"/tcl-tk/lib-tk 			./tcl-tk
+
+cp -p  "$SOURCE"/tcl-tk/com/wish		./tcl-tk/com
+
+for ARCH in $LIST
+do
+	cp -pr "$SOURCE"/tcl-tk/bin.$ARCH	./tcl-tk/bin.$ARCH
+
+	# suppression du programme duplex (qui n'existe pas sous Windows,
+	# donc pas de "duplex.exe" a considerer)
+	rm -f ./tcl-tk/bin.$ARCH/duplex
+
+	# suppression des choses liees a tixwish (selon les architectures:
+	# libTix*.so, libTix*.dylib, tix*.dll)
+	rm -f ./tcl-tk/bin.$ARCH/libTix*
+	rm -f ./tcl-tk/bin.$ARCH/tix*.dll
+done
+
+chmod -R a+rX .
+chmod -R u+w .
+
+# ----------------------------------------------------------------------------
+

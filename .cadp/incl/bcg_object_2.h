@@ -1,0 +1,169 @@
+/******************************************************************************
+ *                                B C G
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       bcg_object_2.h
+ *   Auteurs            :       Renaud RUFFIOT, Radu MATEESCU et Hubert GARAVEL
+ *   Version            :       1.10
+ *   Date               :       2014/08/30 23:18:12
+ *****************************************************************************/
+
+#ifndef BCG_OBJECT_2_INTERFACE
+
+#define BCG_OBJECT_2_INTERFACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef BCG_UNDEFINED
+}
+#endif
+
+#include "bcg_standard.h"
+#include "bcg_types.h"
+#include "bcg_access_2.h"
+#include "bcg_structure_2.h"
+
+#define BCG_ADD_TO_TABLE(bcg_table,bcg_element,bcg_new_item) \
+	BCG_TABLE_ADD (bcg_table, (BCG_TYPE_ADDRESS) bcg_element, bcg_new_item);
+
+#define BCG_ADD_TO_LIST(bcg_list,bcg_element) \
+	BCG_LIST_ADD (bcg_list, (BCG_TYPE_ADDRESS) bcg_element);
+
+#define BCG_INIT_REFERENCE(bcg_reference) \
+        ((bcg_reference) = NULL)
+
+extern BCG_TYPE_COMPARISON_RESULT BCG_COMPARE_TYPE_1
+     BCG_ARG_2 (BCG_TYPE_TYPE_1, BCG_TYPE_TYPE_1);
+
+extern BCG_TYPE_NATURAL BCG_HASH_CODE_TYPE_1
+     BCG_ARG_2 (BCG_TYPE_TYPE_1, BCG_TYPE_NATURAL);
+
+extern BCG_TYPE_COMPARISON_RESULT BCG_COMPARE_PROFILE_1
+     BCG_ARG_2 (BCG_TYPE_PROFILE_1, BCG_TYPE_PROFILE_1);
+
+extern BCG_TYPE_NATURAL BCG_HASH_CODE_PROFILE_1
+     BCG_ARG_2 (BCG_TYPE_PROFILE_1, BCG_TYPE_NATURAL);
+
+extern BCG_TYPE_COMPARISON_RESULT BCG_COMPARE_FUNCTION_1
+     BCG_ARG_2 (BCG_TYPE_FUNCTION_1, BCG_TYPE_FUNCTION_1);
+
+extern BCG_TYPE_NATURAL BCG_HASH_CODE_FUNCTION_1
+     BCG_ARG_2 (BCG_TYPE_FUNCTION_1, BCG_TYPE_NATURAL);
+
+extern BCG_TYPE_COMPARISON_RESULT BCG_COMPARE_FILE_1
+     BCG_ARG_2 (BCG_TYPE_FILE_1, BCG_TYPE_FILE_1);
+
+extern BCG_TYPE_NATURAL BCG_HASH_CODE_FILE_1
+     BCG_ARG_2 (BCG_TYPE_FILE_1, BCG_TYPE_NATURAL);
+
+extern BCG_TYPE_COMPARISON_RESULT BCG_COMPARE_NAME_1
+     BCG_ARG_2 (BCG_TYPE_NAME_1, BCG_TYPE_NAME_1);
+
+extern BCG_TYPE_NATURAL BCG_HASH_CODE_NAME_1
+     BCG_ARG_2 (BCG_TYPE_NAME_1, BCG_TYPE_NATURAL);
+
+extern BCG_TYPE_COMPARISON_RESULT BCG_COMPARE_LABEL_1
+     BCG_ARG_2 (BCG_TYPE_LABEL_1, BCG_TYPE_LABEL_1);
+
+extern BCG_TYPE_NATURAL BCG_HASH_CODE_LABEL_1
+     BCG_ARG_2 (BCG_TYPE_LABEL_1, BCG_TYPE_NATURAL);
+
+extern void BCG_CREATE_INCLUDE_AREA_1 BCG_ARG_1 (BCG_TYPE_INCLUDE_AREA_1 *);
+
+extern void BCG_DELETE_INCLUDE_AREA_1 BCG_ARG_1 (BCG_TYPE_INCLUDE_AREA_1 *);
+
+extern void BCG_CREATE_TYPE_1 BCG_ARG_1 (BCG_TYPE_TYPE_1 *);
+
+extern void BCG_DELETE_TYPE_1 BCG_ARG_1 (BCG_TYPE_TYPE_1 *);
+
+extern void BCG_CREATE_TYPE_AREA_1 BCG_ARG_2 (BCG_TYPE_TYPE_AREA_1 *, BCG_PROMOTE_TO_INT (BCG_TYPE_BOOLEAN));
+
+extern void BCG_DELETE_TYPE_AREA_1 BCG_ARG_1 (BCG_TYPE_TYPE_AREA_1 *);
+
+extern void BCG_CREATE_FUNCTION_ARGUMENT_1 BCG_ARG_1 (BCG_TYPE_FUNCTION_ARGUMENT_1 *);
+
+extern void BCG_DELETE_FUNCTION_ARGUMENT_1 BCG_ARG_1 (BCG_TYPE_FUNCTION_ARGUMENT_1 *);
+
+extern void BCG_CREATE_FUNCTION_1 BCG_ARG_1 (BCG_TYPE_FUNCTION_1 *);
+
+extern void BCG_DELETE_FUNCTION_1 BCG_ARG_1 (BCG_TYPE_FUNCTION_1 *);
+
+extern void BCG_CREATE_FUNCTION_AREA_1 BCG_ARG_2 (BCG_TYPE_FUNCTION_AREA_1 *, BCG_PROMOTE_TO_INT (BCG_TYPE_BOOLEAN));
+
+extern void BCG_DELETE_FUNCTION_AREA_1 BCG_ARG_1 (BCG_TYPE_FUNCTION_AREA_1 *);
+
+extern void BCG_CREATE_PROFILE_ELEMENT_1 BCG_ARG_1 (BCG_TYPE_PROFILE_ELEMENT_1 *);
+
+extern void BCG_DELETE_PROFILE_ELEMENT_1 BCG_ARG_1 (BCG_TYPE_PROFILE_ELEMENT_1 *);
+
+extern void BCG_CREATE_PROFILE_1 BCG_ARG_1 (BCG_TYPE_PROFILE_1 *);
+
+extern void BCG_DELETE_PROFILE_1 BCG_ARG_1 (BCG_TYPE_PROFILE_1 *);
+
+extern void BCG_CREATE_PROFILE_AREA_1 BCG_ARG_2 (BCG_TYPE_PROFILE_AREA_1 *, BCG_PROMOTE_TO_INT (BCG_TYPE_BOOLEAN));
+
+extern void BCG_DELETE_PROFILE_AREA_1 BCG_ARG_1 (BCG_TYPE_PROFILE_AREA_1 *);
+
+extern void BCG_CREATE_FILE_1 BCG_ARG_1 (BCG_TYPE_FILE_1 *);
+
+extern void BCG_DELETE_FILE_1 BCG_ARG_1 (BCG_TYPE_FILE_1 *);
+
+extern void BCG_CREATE_FILE_AREA_1 BCG_ARG_2 (BCG_TYPE_FILE_AREA_1 *, BCG_PROMOTE_TO_INT (BCG_TYPE_BOOLEAN));
+
+extern void BCG_DELETE_FILE_AREA_1 BCG_ARG_1 (BCG_TYPE_FILE_AREA_1 *);
+
+extern void BCG_CREATE_NAME_INDEX_1 BCG_ARG_1 (BCG_TYPE_NAME_INDEX_1 *);
+
+extern void BCG_DELETE_NAME_INDEX_1 BCG_ARG_1 (BCG_TYPE_NAME_INDEX_1 *);
+
+extern void BCG_CREATE_NAME_1 BCG_ARG_1 (BCG_TYPE_NAME_1 *);
+
+extern void BCG_DELETE_NAME_1 BCG_ARG_1 (BCG_TYPE_NAME_1 *);
+
+extern void BCG_CREATE_NAME_AREA_1 BCG_ARG_2 (BCG_TYPE_NAME_AREA_1 *, BCG_PROMOTE_TO_INT (BCG_TYPE_BOOLEAN));
+
+extern void BCG_DELETE_NAME_AREA_1 BCG_ARG_1 (BCG_TYPE_NAME_AREA_1 *);
+
+extern void BCG_CREATE_EDGE_AREA_1 BCG_ARG_1 (BCG_TYPE_EDGE_AREA_1 *);
+
+extern void BCG_DELETE_EDGE_AREA_1 BCG_ARG_1 (BCG_TYPE_EDGE_AREA_1 *);
+
+extern void BCG_CREATE_EDGE_AREA_2 BCG_ARG_1 (BCG_TYPE_EDGE_AREA_2 *);
+
+extern void BCG_DELETE_EDGE_AREA_2 BCG_ARG_1 (BCG_TYPE_EDGE_AREA_2 *);
+
+extern void BCG_CREATE_LABEL_1 BCG_ARG_1 (BCG_TYPE_LABEL_1 *);
+
+extern void BCG_DELETE_LABEL_1 BCG_ARG_1 (BCG_TYPE_LABEL_1 *);
+
+extern void BCG_CREATE_LABEL_AREA_1 BCG_ARG_3 (BCG_TYPE_LABEL_AREA_1 *, BCG_TYPE_BOOLEAN,...);
+
+extern void BCG_DELETE_LABEL_AREA_1 BCG_ARG_1 (BCG_TYPE_LABEL_AREA_1 *);
+
+extern void BCG_CREATE_STATE_AREA_1 BCG_ARG_1 (BCG_TYPE_STATE_AREA_1 *);
+
+extern void BCG_DELETE_STATE_AREA_1 BCG_ARG_1 (BCG_TYPE_STATE_AREA_1 *);
+
+extern void BCG_CREATE_CLASS_AREA_1 BCG_ARG_1 (BCG_TYPE_CLASS_AREA_1 *);
+
+extern void BCG_DELETE_CLASS_AREA_1 BCG_ARG_1 (BCG_TYPE_CLASS_AREA_1 *);
+
+extern void BCG_CREATE_BCG_OBJECT BCG_ARG_1 (BCG_TYPE_BCG_OBJECT *);
+
+extern void BCG_DELETE_BCG_OBJECT BCG_ARG_1 (BCG_TYPE_BCG_OBJECT *);
+
+#ifdef BCG_UNDEFINED
+{
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

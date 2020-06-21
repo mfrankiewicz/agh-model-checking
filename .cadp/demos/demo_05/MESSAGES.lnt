@@ -1,0 +1,249 @@
+module MESSAGES (REPOSITORY, FILES) is
+
+-------------------------------------------------------------------------------
+
+(*
+ * The events are used to be displayed in the generated LTS. For further
+ * information, refer to the explanation in the MESSAGES module for the
+ * simplified TFTP specification.
+ *)
+
+type EVENTS is
+   INTERNAL_ERROR,
+   TIMEOUT,
+   TRY,
+   TIMER_ON_AFTER_REINIT,
+   INVALID_PACKET,
+   REINIT,
+   DUPLICATE,
+   NORMAL,
+   LOSS,
+   REQUEST_REJECTED,
+   TOO_MANY_RETRIES,
+   FILE_MISMATCH,
+   S_TIMER, (* STOP_TIMER *)
+   A_TIMER (* ARM_TIMER *)
+end type
+
+-------------------------------------------------------------------------------
+
+(*
+ * The user messages are used for the communications between the TFTP
+ * protocol entities and their respective user.
+ *)
+
+type USER_MESSAGE is
+   WRITE,
+   READ,
+   ERROR,
+   SUCCESS
+end type
+
+-------------------------------------------------------------------------------
+
+(* The accurate message type *) 
+
+type MESSAGE is
+   RRQ (FILENAME : NAT),
+   WRQ (FILENAME : NAT),
+   ERROR,
+   NONE,
+   ACK (FRAGMENT : NAT),
+   DATA (FRAGMENT : NAT, C : CHAR, LAST : BOOL)
+end type
+
+-------------------------------------------------------------------------------
+
+function IS_RRQ (M : MESSAGE) : BOOL is
+   case M in
+
+      RRQ (any Nat) ->
+         return true
+
+   |  any ->
+         return false
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function IS_WRQ (M : MESSAGE) : BOOL is
+   case M in
+
+      WRQ (any Nat) ->
+         return true
+
+   |  any ->
+         return false
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function IS_DATA (M : MESSAGE) : BOOL is
+   case M in
+
+      DATA (any NAT, any CHAR, any BOOL) ->
+         return true
+
+   |  any ->
+         return false
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function IS_ACK (M : MESSAGE) : BOOL is
+   case M in
+
+      ACK (any NAT) ->
+         return true
+
+   |  any ->
+         return false
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function IS_ERROR (M : MESSAGE) : BOOL is
+   case M in
+
+      ERROR ->
+         return true
+
+   |  any ->
+         return false
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function IS_LAST_FRAGMENT [BAD_MESSAGE : none] (M : MESSAGE) : BOOL is
+   case M in
+   var
+      B : BOOL
+   in
+
+      DATA (any Nat, any CHAR, B) ->
+         return B
+
+   |  any ->
+         raise BAD_MESSAGE
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function GET_FILE_NAME [BAD_MESSAGE : none] (M : MESSAGE) : NAT is
+   case M in
+   var
+      FILENAME : NAT
+   in
+
+      RRQ (FILENAME) ->
+         return FILENAME
+
+   |  WRQ (FILENAME) ->
+         return FILENAME
+
+   |  any ->
+         raise BAD_MESSAGE
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function GET_CHAR [BAD_MESSAGE : none] (M : MESSAGE) : CHAR is
+   case M in
+   var
+      C : CHAR
+   in
+
+      DATA (any NAT, C, any BOOL) ->
+         return C
+
+   |  any ->
+         raise BAD_MESSAGE
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function GET_FRAGMENT [BAD_MESSAGE : none] (M : MESSAGE) : NAT is
+   case M in
+   var
+      FRAGMENT : NAT
+   in
+
+      DATA (FRAGMENT, any CHAR, any BOOL) ->
+         return FRAGMENT
+
+   |  ACK (FRAGMENT) ->
+         return FRAGMENT
+
+   |  any ->
+         raise BAD_MESSAGE
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Determines whether a message is valid *)
+
+function IS_VALID [BAD_INDEX : none] (M : MESSAGE) : BOOL is
+   case M in
+   var
+      FILENAME, FRAGMENT : NAT,
+      C : CHAR
+   in
+
+   (*
+    * A RRQ is valid if the filename it carries exists in the
+    * common repository.
+    *)
+      RRQ (FILENAME) ->
+         return (FILENAME >= 1) and (FILENAME <= MAX_FILE_INDEX())
+
+   (*
+    * A WRQ is valid if its filename it carries exists in the
+    * common repository.
+    *)
+   |  WRQ (FILENAME) ->
+         return (FILENAME >= 1) and (FILENAME <= MAX_FILE_INDEX())
+
+   |  ERROR ->
+         return true
+
+   (*
+    * A data fragment is valid if the character it carries appears
+    * in a file of the repository at position "FRAGMENT".
+    *)
+   |  DATA (FRAGMENT, C, any BOOL) ->
+         if not ((C eq 'A') or (C eq 'B') or (C eq 'C') or (C eq 'D') or
+                 (C eq 'E') or (C eq 'F') or (C eq 'G') or (C eq 'H')) then
+            return false
+         elsif FRAGMENT < 1 then
+            return false
+         elsif FRAGMENT > MAX_FILE_SIZE() then
+            return false
+         else
+            return IS_VALID [BAD_INDEX] (FRAGMENT, C)
+         end if
+
+   (*
+    * An ACK is valid if the fragment number it carries is not
+    * higher than the size of the longest file of the repository.
+    *)
+   |  ACK (FRAGMENT) ->
+         return (FRAGMENT <= MAX_FILE_SIZE)
+
+   |  any ->
+         return false
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+end module
+

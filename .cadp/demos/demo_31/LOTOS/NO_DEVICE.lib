@@ -1,0 +1,9 @@
+
+(* This process describes an empty device, that participates
+   to every bus arbitration, but never requests bus access *) 
+
+process NO_DEVICE [ARB] (N:NUM) : noexit :=
+   ARB ?W:WIRE [C_PASS (W, N)];
+      NO_DEVICE [ARB] (N)
+endproc
+

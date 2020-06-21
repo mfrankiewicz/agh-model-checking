@@ -1,0 +1,68 @@
+specification REL_rel_FIFO_Version_A [GET, CRASH] : noexit 
+
+(* Improved algorithm - 2 stations - with crashes - version A *)
+
+   library DATA endlib
+
+behaviour
+
+   hide R_T1, R_T2 in
+      (
+         (
+         Transmitter [R_T1, R_T2]  (1 of MSG)
+         [>
+         Crash 
+         )
+         |[R_T1, R_T2]|
+         Receiver_grp [R_T1, R_T2, GET, CRASH] 
+      )
+
+where
+
+   library PROC endlib
+ 
+(* ------------------------------------------------------------------------- *)
+
+process Crash : noexit :=
+   i; 
+      stop
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+process  Receiver_grp [R_T1, R_T2, GET, CRASH] : noexit := 
+
+   hide R_1, R_2 in
+      (
+      Receiver_Node [R_T1, R_1, R_2, GET, CRASH] (1 of ADR, 1 of MSG, FALSE)
+      |[R_1, R_2]| 
+      Receiver_Node [R_T2, R_2, R_1, GET, CRASH] (2 of ADR, 1 of MSG, FALSE)
+      )
+
+where
+
+   process Receiver_Node [RT, RE, RR, GET, CRASH] (A:ADR, C:MSG, B:BOOL) : noexit :=
+
+      hide DEPOSE in
+         (
+            (
+               (
+               Receiver [RT, RR, DEPOSE, GET] (A, C, B)
+               |[DEPOSE]|
+               Thread [DEPOSE, RE]
+               )
+            [> 
+            CRASH !A ?M:MSG;
+               Ear [RT, RR]
+            )
+         |[RT, RE, RR, GET, DEPOSE, CRASH]|
+         Fail_Receiver [RT, RE, RR, GET, DEPOSE, CRASH] (A)
+         )
+   endproc
+
+endproc
+
+(* ------------------------------------------------------------------------- *)
+
+endspec
+

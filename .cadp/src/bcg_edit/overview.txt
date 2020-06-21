@@ -1,0 +1,11 @@
+
+BCG_EDIT is an user-friendly, TCL-TK based, graphical editor, which 
+allows to modify interactively the representation of the Labelled 
+Transition Systems contained in BCG files.
+
+BCG_EDIT works on files encoded using the BCG PostScript Format. 
+This format specifies at once the logical structure and the graphical 
+representation of BCG graphs using the PostScript language.
+
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

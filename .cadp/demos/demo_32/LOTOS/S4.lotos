@@ -1,0 +1,68 @@
+(* Suzanne Graf : S4.lotos *)
+
+(* LOTOS program describing property S4, which says that the first 
+   cache-update of E1 and E2 takes place in the same order in processes
+   1 and 2.
+
+   The property is described by two processes that first synchronize 
+   to fix the order in which they both exeCUte the cache-updates, and
+   then they asynchronously cache update the two elements in this order,
+   where each cache update may be repeated indefinitely.
+*)
+
+specification S4 [CU] : noexit
+
+library BOOLEAN, NATURAL, ELEM_E12_4P endlib
+
+behaviour
+
+   hide sync in
+      P [sync, CU] (1 of index)
+      |[sync]|
+      P [sync, CU] (2 of index)
+where
+   process P [sync, CU] (ind:INDEX) : noexit :=
+      sync !1 of NAT;
+         P11 [CU] (ind)
+         (* CU !ind !E1, then CU !ind !E2 *)
+      []
+      sync !2 of NAT;
+         P21 [CU] (ind)
+         (* CU !ind !E2, then CU !ind !E1 *)
+   endproc
+
+   process P11 [CU] (ind:INDEX) : noexit :=
+      CU !ind !E1;
+         P12 [CU] (ind)
+   endproc
+
+   process P21 [CU] (ind:INDEX) : noexit :=
+      CU !ind !E2;
+         P22 [CU] (ind)
+   endproc
+
+   process P12 [CU] (ind:INDEX) : noexit :=
+      CU !ind !E1;
+         P12 [CU] (ind)
+      []
+      CU !ind !E2;
+         P3 [CU] (ind)
+   endproc
+
+   process P22 [CU] (ind:INDEX) : noexit :=
+      CU !ind !E2;
+         P22 [CU] (ind)
+      []
+      CU !ind !E1;
+         P3 [CU] (ind)
+   endproc
+
+   process P3 [CU] (ind:INDEX) : noexit :=
+      CU !ind !E1;
+         P3 [CU] (ind)
+      []
+      CU !ind !E2;
+         P3 [CU] (ind)
+   endproc
+endspec
+

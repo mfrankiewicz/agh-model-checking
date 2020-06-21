@@ -1,0 +1,41 @@
+# This file is a customization file for a2ps
+# Style sheet for BES
+# $Id#
+
+style BES is
+
+written by "Syntax Editor Configuration Tool <cadp@inria.fr>"
+version is 1.3
+
+documentation is
+ "This style is designed to fontify the BES language"
+end documentation
+
+alphabets are
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+
+case sensitive
+
+keywords in Keyword_strong are
+   block,
+   "end",
+   "is",
+   mode,
+   mu,
+   nu,
+   unique
+end keywords
+
+keywords in Keyword are
+   false,
+   true,
+   and,
+   or
+end keywords
+
+sequences are
+   "(*" Comment "*)"
+end sequences
+
+end style
+

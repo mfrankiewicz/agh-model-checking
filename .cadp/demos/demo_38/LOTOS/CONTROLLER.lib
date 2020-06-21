@@ -1,0 +1,109 @@
+(******************************************************************************
+ *             D A T A    E N C R Y P T I O N    S T A N D A R D
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module		:	CONTROLLER.lib
+ *   Auteur		:	Wendelin SERWE
+ *   Version		:	1.4
+ *   Date		: 	2015/08/18 11:13:15
+ *****************************************************************************)
+
+(* processes controlling the iterative computation by generating appropriate 
+ * commands for the multiplexers and the shift register
+ *)
+
+(* ------------------------------------------------------------------------- *)
+(* CONTROLLER executes five concurrent processes controlling the multiplexers
+ * and the shift register, which are synchronized via a sixth process counting
+ * the iterations *)
+ 
+process CONTROLLER [CRYPT, 
+                    CTRL_CL, CTRL_CR, CTRL_CK, CTRL_SHIFT, CTRL_DK] : noexit :=
+   hide CS in
+      CTRL_MUX_LR [CS, CTRL_CL]
+      |[CS]|
+      CTRL_MUX_LR [CS, CTRL_CR]
+      |[CS]|
+      CTRL_MUX_K [CS, CTRL_CK]
+      |[CS]|
+      CTRL_SHIFT [CRYPT, CS, CTRL_SHIFT]
+      |[CS]|
+      CTRL_DMUX_K [CS, CTRL_DK]
+      |[CS]|
+      COUNTER [CS] (0 of ITERATION)
+endproc
+
+(* ------------------------------------------------------------------------- *)
+(* COUNTER counts the iterations *)
+
+process COUNTER [CS] (IT:ITERATION) : noexit :=
+   CS !IT;
+      COUNTER [CS] (NEXT (IT))
+endproc
+
+(* ------------------------------------------------------------------------- *)
+(* CTRL_MUX_LR generates 1 F, then 14 Ns, and finally 1 L to control the 
+ * multiplexers in the data path *)
+
+process CTRL_MUX_LR [CS, CTRL] : noexit :=
+   CS ?IT:ITERATION;
+      CTRL !MUX_DATA(IT);
+         CTRL_MUX_LR [CS, CTRL]
+endproc
+
+(* ------------------------------------------------------------------------- *)
+(* CTRL_MUX_K generates 1 F and 15 Ns to control the key path multiplexer *)
+
+process CTRL_MUX_K [CS, CTRL] : noexit :=
+   CS ?IT:ITERATION;
+      (
+         [not (LAST (IT))] ->
+            CTRL !MUX_K(IT);
+               CTRL_MUX_K [CS, CTRL]
+         []
+         [LAST (IT)] ->
+            CTRL_MUX_K [CS, CTRL]
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+(* CTRL_SHIFT controls the shift register *)
+
+process CTRL_SHIFT [CRYPT, CS, CTRL] : noexit :=
+   CRYPT ?CRYPT:BOOL;
+      CTRL_SHIFT_LOOP [CRYPT, CS, CTRL] (CRYPT)
+where
+   process CTRL_SHIFT_LOOP [CRYPT, CS, CTRL] (CRYPT:BOOL) : noexit :=
+      CS ?IT:ITERATION;
+         (
+            [not (LAST (IT))] ->
+               CTRL !SHIFT_CODE (IT, CRYPT);
+                  CTRL_SHIFT_LOOP [CRYPT, CS, CTRL] (CRYPT)
+            []
+            [LAST (IT)] ->
+               CTRL_SHIFT [CRYPT, CS, CTRL]
+         )
+   endproc
+endproc
+
+(* ------------------------------------------------------------------------- *)
+(* CTRL_DMUX_K generates 15 Ns and 1 L to control the doubling multiplexer *)
+
+process CTRL_DMUX_K [CS, CTRL] : noexit :=
+   CS ?IT:ITERATION;
+      (
+         [not (LAST (IT))] ->
+            CTRL !DMUX_K(IT);
+               CTRL_DMUX_K [CS, CTRL]
+         []
+         [LAST (IT)] ->
+            CTRL_DMUX_K [CS, CTRL]
+      )
+endproc
+
+(* ------------------------------------------------------------------------- *)
+

@@ -1,0 +1,137 @@
+(*
+ * The module QUEUE needs the MESSAGES module as the elements of the queue
+ * are messages.
+ *)
+
+module QUEUE (MESSAGES) is
+
+-------------------------------------------------------------------------------
+
+type QUEUE is !implementedby "TFTP_QUEUE"
+   CONS (M : MESSAGE, NEXT : QUEUE),
+   EMPTY_QUEUE
+end type
+
+-------------------------------------------------------------------------------
+
+function FIRST [NOT_FOUND : none] (Q : QUEUE) : MESSAGE is
+   case Q in
+   var
+      M : MESSAGE
+   in
+
+      EMPTY_QUEUE ->
+         raise NOT_FOUND
+
+   |  CONS (M, any QUEUE) ->
+         return M
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+function DEQUEUE [BAD_VALUE : none] (Q : QUEUE) : QUEUE is
+   case Q in
+   var
+      NEXT : QUEUE
+   in
+
+      EMPTY_QUEUE ->
+         raise BAD_VALUE
+
+   |  CONS (any MESSAGE, NEXT) ->
+         return NEXT
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Remove the Nth element of the queue. *)
+
+function REMOVE [BAD_VALUE, NOT_FOUND : none] (N : NAT, Q : QUEUE) : QUEUE is
+   case Q in
+   var
+      M : MESSAGE,
+      NEXT : QUEUE
+   in
+
+      EMPTY_QUEUE ->
+         raise NOT_FOUND
+
+   |  CONS (M, NEXT) ->
+         if N == 0 then
+            raise BAD_VALUE
+         elsif N == 1 then
+            return NEXT
+         else
+            return CONS (M, REMOVE [BAD_VALUE, NOT_FOUND] (N - 1, NEXT))
+         end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Return the Nth element of the queue. *)
+
+function NTH [BAD_VALUE, NOT_FOUND : none] (N : NAT, Q : QUEUE) : MESSAGE
+             is
+   case Q in
+   var
+      M : MESSAGE,
+      NEXT : QUEUE
+   in
+
+      EMPTY_QUEUE ->
+         raise NOT_FOUND
+
+   |  CONS (M, NEXT) ->
+         if N == 0 then
+            raise BAD_VALUE
+         elsif N == 1 then
+            return M
+         else
+            return NTH [BAD_VALUE, NOT_FOUND] (N - 1, NEXT)
+         end if
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Add message M at the end of the queue and return the newly formed queue. *)
+
+function ENQUEUE (M : MESSAGE, Q : QUEUE) : QUEUE is
+   case Q in
+   var
+      N : MESSAGE,
+      NEXT : QUEUE
+   in
+
+      EMPTY_QUEUE ->
+         return CONS (M, EMPTY_QUEUE)
+
+   |  CONS (N, NEXT) ->
+         return CONS (N, ENQUEUE (M, NEXT))
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+(* Return the size of the queue *)
+
+function SIZE (Q : QUEUE) : NAT is
+   case Q in
+   var
+      NEXT : QUEUE
+   in
+
+      EMPTY_QUEUE ->
+         return 0
+
+   |  CONS (any MESSAGE, NEXT) ->
+         return 1 + SIZE (NEXT)
+   end case
+end function
+
+-------------------------------------------------------------------------------
+
+end module

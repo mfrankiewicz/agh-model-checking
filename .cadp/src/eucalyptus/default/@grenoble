@@ -1,0 +1,37 @@
+#!/bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       @grenoble
+#   Auteur              :       Hubert GARAVEL
+#   Version             :       1.12
+#   Date                :       2013/09/02 16:52:09
+##############################################################################
+
+sed -e 's/^/* /' << EOF
+
+Sorry, the "`basename $0`" tool is not available.
+
+This error should not occur actually, unless your copy of the CADP software
+has been corrupted. If this is not the case, please, report the problem to
+cadp@inria.fr
+
+We apologize for the trouble.
+
+Please, enclose in your report the following informations:
+
+EOF
+
+sed -e 's/^/| /' << EOF
+`$CADP/com/tst`
+
+EOF
+
+exit 1

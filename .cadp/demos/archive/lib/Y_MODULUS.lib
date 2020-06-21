@@ -1,0 +1,17 @@
+
+type MODULUS is NATURAL
+   opns
+      N     (*! implementedby N *) : -> Nat
+      _{+}_ (*! implementedby PLUS_MODULO_N *),
+      _{-}_ (*! implementedby MINUS_MODULO_N *) : Nat, Nat -> Nat
+   eqns
+      forall X, Y : Nat
+         ofsort Nat
+            N = 3; (* any value *)
+         ofsort Nat
+            (X + Y) le N => X {+} Y = X + Y;
+            (X + Y) gt N => X {+} Y = X + Y - N; 
+            X le Y => X {-} Y = (X + N) - Y;
+            X gt Y => X {-} Y = X - Y; 
+endtype
+

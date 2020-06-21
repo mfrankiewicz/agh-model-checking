@@ -1,0 +1,13 @@
+
+(*****************************************************************************
+ * Requirement 5
+ * Onhook and offhook for a subscriber are mutually exclusive i.e. it is
+ * never possible for a subscriber to both be able to perform an offhook and an
+ * onhook at the same time.
+ *****************************************************************************)
+
+[ true* ] (
+    not (< 'S !1 !OFFH ![AB]SUBSC' > true and < "S !1 !ONH !TRUE" > true) and
+    not (< 'S !2 !OFFH ![AB]SUBSC' > true and < "S !2 !ONH !TRUE" > true)
+)
+

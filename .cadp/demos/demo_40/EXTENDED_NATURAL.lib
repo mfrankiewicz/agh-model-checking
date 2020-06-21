@@ -1,0 +1,37 @@
+type EXTENDED_NATURAL is
+   NATURAL
+   opns 10 : -> Nat
+        11 : -> Nat
+        12 : -> Nat
+        13 : -> Nat
+        14 : -> Nat
+        15 : -> Nat
+        16 : -> Nat
+        17 : -> Nat
+        18 : -> Nat
+        19 : -> Nat
+        20 : -> Nat
+        21 : -> Nat
+        22 : -> Nat
+        23 : -> Nat
+        24 : -> Nat
+        25 : -> Nat
+   eqns
+      ofsort Nat
+         10 = Succ (9);
+         11 = Succ (10);
+         12 = Succ (11);
+         13 = Succ (12);
+         14 = Succ (13);
+         15 = Succ (14);
+         16 = Succ (15);
+         17 = Succ (16);
+         18 = Succ (17);
+         19 = Succ (18);
+         20 = Succ (19);
+         21 = Succ (20);
+         22 = Succ (21);
+         23 = Succ (22);
+         24 = Succ (23);
+         25 = Succ (24);
+endtype

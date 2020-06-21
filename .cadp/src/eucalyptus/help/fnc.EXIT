@@ -1,0 +1,7 @@
+This button requests that the application terminates.
+
+Beware that some tools launched from IHM may still be running.
+
+Furthermore, some of those might even prevent IHM from terminating.
+ 
+EUCALYPTUS Reference Manual. Last updated 2013/09/02 16:54:54.

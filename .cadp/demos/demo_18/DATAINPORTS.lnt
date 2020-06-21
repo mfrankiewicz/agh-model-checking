@@ -1,0 +1,81 @@
+module DATAINPORTS (TYPES, CHANNELS) is
+
+-------------------------------------------------------------------------------
+
+process DataInPorts [DI:DInChannel, crep:PortChannel, rq:RqChannel,
+                     ra:RaChannel, derri:EnvChannel, io:DOutChannel] is
+
+   par ra in
+      InPorts [DI, crep, rq, ra, derri, io]
+   ||
+      PortGenerator [ra]
+   end par
+
+end process
+
+-------------------------------------------------------------------------------
+
+process PortGenerator [ra:RaChannel] is
+
+   var ps:PortSet in
+      loop
+         select
+            select
+               ps := {0 of PortNo}
+            []
+               ps := {1 of PortNo}
+            []
+               ps := {1 of PortNo, 0 of PortNo}
+            []
+               ps := {0 of PortNo, 1 of PortNo}
+            end select;
+            ra (ps, ?any RouteNo, ?any Env)
+         []
+            ra (Unknown_Route, ?any RouteNo, ?any Env)
+         end select
+      end loop         
+   end var
+
+end process
+
+-------------------------------------------------------------------------------
+
+process InPorts [DI:DInChannel, crep:PortChannel, rq:RqChannel,
+                 ra:RaCHannel, erri:EnvChannel, io:DOutChannel] is
+
+   par
+      crep (0 of PortNo);
+      Inport [DI, rq, ra, erri, io] (0 of PortNo)
+   ||
+      crep (1 of PortNo);
+      Inport [DI, rq, ra, erri, io] (1 of PortNo)
+   end par
+
+end process
+
+-------------------------------------------------------------------------------
+
+process InPort [DI:DInChannel, rq:RqChannel, ra:RaCHannel,
+                erri:EnvChannel, io:DOutChannel] (n:PortNo) is
+
+   var e:Env, r:RouteNo, outp:PortNo, s:PortSet in
+      loop
+         DI (n, ?e, ?r);
+         rq (r, e);
+         select
+            ra (?s, r, e);
+            outp := any PortNo where (outp IsIn s);
+            io (outp, e)
+         []
+            ra (?any ErrorCode, r, e); 
+            erri (e)
+         end select
+      end loop
+   end var
+
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+

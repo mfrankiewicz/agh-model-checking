@@ -1,0 +1,114 @@
+#!/bin/sh
+
+###############################################################################
+#                               C A D P
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_zip
+#   Auteurs             :       Hubert Garavel et Wendelin Serwe
+#   Version             :       1.8
+#   Date                :       2019/02/13 12:27:53
+##############################################################################
+
+# $1 : choix entre "-i" (inquire), "-c" (compression) ou "-d" (decompression)
+# $2 : nom de fichier dont le suffixe determine le format (".Z", ".gz"...)
+#      (une extension inconnue ne produit aucune compression)
+
+# Si interrogation ($1 vaut "-i")
+#    on renvoie le code d'erreur 0 si le suffixe de $2 correspond a un
+#    format de compression connu, et 1 sinon
+
+# Si compression ($1 vaut "-c") : 
+#    on lit le standard input, on le compresse selon le format voulu par le
+#    suffixe de $2 et on ecrit le resultat dans $2
+
+# Si decompression ($1 vaut "-d") :
+#    on lit $2, on le decompresse selon le format voulu par son suffixe
+#    et on ecrit le resultat sur le standard output
+
+COMMAND=`basename "$0"`
+
+case "$1" in
+	"-i" )	# inquire
+		case "$2" in
+			*.Z | *.gz | *.bz2 | *.zip )
+				exit 0
+				;;
+			* )
+				exit 1
+				;;
+		esac
+		;;
+
+	"-c" )  # compression
+		case "$2" in
+			*.Z )	# La commande ``compress'' n'etant pas toujours
+				# installee, il faut d'abord s'assurer qu'elle
+				# est presente ; a noter qu'il n'existe aucun
+				# autre programme permettant de creer des
+				# archive .Z
+				COMPRESS=`cadp_which compress`
+				if [ "$COMPRESS" = "" ]
+				then
+					echo "The command \`\`compress'' is not installed"
+					exit 1
+				fi
+				$COMPRESS -c > "$2"
+				;;
+			*.gz )	gzip -c -q - > "$2"
+				;;
+			*.bz2 )	bzip2 -c -q - > "$2"
+				;;
+			*.zip ) zip -q > "$2"
+				;;
+			* )	cat > "$2"
+				;;
+		esac
+		;;
+
+	"-d" ) # decompression
+		case "$2" in
+			*.Z )   # La commande ``uncompress'' n'etant pas
+				# toujours installee, la commande ``gunzip''
+				# peut la remplacer car elle supporte les
+				# archives .Z
+				UNCOMPRESS=`cadp_which uncompress`
+				if [ "$UNCOMPRESS" = "" ]
+				then
+					UNCOMPRESS="gunzip"
+				fi
+				$UNCOMPRESS -c "$2"
+
+				;;
+			*.gz )	gunzip -c -q "$2"
+				;;
+			*.bz2 )	bunzip2 -c -q "$2"
+				;;
+			*.zip ) # La commande ``unzip'' n'etant pas toujours
+				# installee, la commande ``gunzip'' peut la
+				# remplacer mais avec la limitation suivante :
+				# l'archive .zip ne doit contenir qu'un seul
+				# fichier
+				UNZIP=`cadp_which unzip`
+				if [ "$UNZIP" = "" ]
+				then
+					UNZIP="gunzip -c -q -S .zip"
+				else
+					UNZIP="unzip -p -q"
+				fi
+				$UNZIP "$2"
+				;;
+			* )	cat "$2"
+				;;
+		esac
+		;;
+
+	* )	echo "$COMMAND: unexpected option \`\`$1''"
+		exit 1
+esac
+

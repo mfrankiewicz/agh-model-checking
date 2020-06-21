@@ -1,0 +1,15 @@
+
+(*****************************************************************************
+ * Requirement 4
+ * It should always be possible for every subscriber to perform an
+ * offhook or an onhook.
+ *****************************************************************************)
+ 
+[ true* ] (
+    (* holds *)
+    < 'S !1 !OFFH ![AB]SUBSC' or "S !1 !ONH" > true 	and
+
+    (* fails *)
+    < 'S !2 !OFFH ![AB]SUBSC' or "S !2 !ONH" > true
+)
+ 

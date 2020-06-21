@@ -1,0 +1,88 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_chmod
+#   Auteur              :       Hubert Garavel
+#   Version             :       1.4
+#   Date                :       2018/01/18 11:06:50
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	CADP=$CADP_INSTALLATOR
+	# do not export $CADP here
+fi
+
+DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+# -----------------------------------------------------------------------------
+
+# on suppose que les arguments de cette commande sont ceux de la commande
+# Unix "chmod" avec un seul fichier ou repertoire comme dernier parametre
+
+case $DETAILED_ARCH in
+	win32-cygnus | win64-cygnus )
+		# sous Windows/Cygwin (janvier 2018 et auparavant), la
+		# commande "chmod" n'a aucun effet si le nom du fichier a
+		# traiter commence par "C:", par contre elle fonctionne
+		# normalement si ce nom commence par "/cygdrive/c". La
+		# sequence suivante rend compte de ce probleme :
+		# $ mkdir c:/dir
+		# $ touch c:/dir/file
+		# $ ls -l c:/dir/file ; ls -l /cygdrive/c/dir/file
+		# -rw-r--r-- 1 id None 0 13 janv. 21:01 c:/dir/file
+		# -rwxrwx---+ 1 id None 0 13 janv. 21:01 /cygdrive/c/dir/file
+		# $ chmod a+rx c:/dir/file
+		# $ ls -l c:/dir/file ; ls -l /cygdrive/c/dir/file
+		# -rw-r--r-- 1 id None 0 13 janv. 21:01 c:/dir/file
+		# -rwxrwx---+ 1 id None 0 13 janv. 21:01 /cygdrive/c/dir/file
+		# $ chmod a+rx /cygdrive/c/dir/file
+		# $ ls -l c:/dir/file ; ls -l /cygdrive/c/dir/file
+		# -rw-r--r-- 1 id None 0 13 janv. 21:01 c:/dir/file
+		# -rwxrwxr-x+ 1 id None 0 13 janv. 21:01 /cygdrive/c/dir/file
+
+		# on ne peut donc pas simplement appeler chmod "$@" comme
+		# sur les autres architectures : il faut transformer les
+		# noms de fichiers passes a "chmod" pour remplacer "C:/"
+		# par "/cygdrive/c" ; on suppose qu'il n'y a qu'un seul
+		# nom de fichier passe a "chmod" et on utilise des primitives
+		# propres a bash
+
+		if [ "$SHELL" != "/bin/bash" ]
+		then
+			echo "$COMMAND: current shell is not bash"
+			exit 1
+		fi
+
+		# on affecte a $LAST le dernier argument de la commande
+		LAST="${@: -1}"
+		# on ote le dernier argument (i.e., $LAST) de la commande
+		set -- "${@:1:$(($#-1))}"
+
+		# ensuite, on effectue "chmod" en convertissant le nom de
+		# $LAST pour remplacer C:/ par /cygdir/c
+		chmod "$@" `cygpath -u "$LAST"`
+		RESULT=$?
+		;;
+
+	* )
+		# sous les autres architectures, on se contente d'appeler
+		# la commande native "chmod"
+		chmod "$@"
+		RESULT=$?
+		;;
+esac
+
+exit $RESULT
+

@@ -1,0 +1,158 @@
+#! /bin/sh 
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_hostname
+#   Auteur              :       Hubert GARAVEL
+#   Version             :       1.11
+#   Date                :       2018/12/04 22:04:41
+##############################################################################
+
+# Cette commande permet de traiter deux problemes differents. 
+
+# Probleme 1 : la commande ``hostname'' ne renvoie pas la meme valeur sous
+# Solaris, Linux et Windows. Par exemple,
+# 	- sous Solaris, elle renvoie "dome" 
+#	- sous Linux, elle renvoie "dome.inrialpes.fr"
+# 	- sous Windows, elle renvoie "DOME"
+# Il est donc necessaire de normaliser les valeurs renvoyees.
+#
+# Appel: 
+#    cadp_hostname -short [host]
+# ou
+#    cadp_hostname -long [host]
+#	Si le parametre ``host'' est present, renvoie ``host'' et sinon
+#	renvoie le nom de la machine courante (calculee par appel a hostname).
+#	Dans les deux cas, les majucules sont converties en minuscules.
+#	Avec l'option -short, le nom du domaine est elimine, alors qu'avec
+#	l'option -long, le nom du domaine est conserve' s'il est present.
+
+# Probleme 2 : sous Mac OS X, le nom de machine peut etre alloue dynamiquement
+# et changer en fonction des connexions reseau : on veut pouvoir detecter ce
+# cas pour indiquer a l'utilisateur de passer sa machine en nommage statique
+#
+# Appel:
+#    cadp_hostname -static
+#       Renvoie 0 si la machine a un ``hostname'' statique
+#       Renvoie une valeur > 0 si la machine a un ``hostname'' dynamique
+#       (la valeur retournee peut permettre de savoir quelle heuristique a
+#       permis de conclure qu'on etait dans le cas dynamique)
+
+# -----------------------------------------------------------------------------
+
+STATIC_HOSTNAME() {
+	if [ "$ARCH" != "macOS" -a "$ARCH" != "mac86" -a "$ARCH" != "mac64" ]
+	then
+		# on n'est pas dans le cas de MacOS X
+		echo 0
+		return
+	fi
+
+	# detection des cas ou MacOS X definit dynamiquement la valeur de
+	# "hostname", ce qui est incompatible avec la gestion de CADP
+
+	case `uname -r` in
+		8.* | 9.* | 10.* | 11.* )
+			# Mac OS X 10.4 "Tiger" ... 10.7 "Lion" :
+			# On recupere dans /etc/hostconfig une eventuelle
+			# ligne definissant HOSTNAME et on enleve le
+			# commentaire qui pourrait s'y trouver.
+			HOSTLINE=`grep 'HOSTNAME[ 	]*=' /etc/hostconfig | sed -e 's/#.*$//'`
+			if [ "$HOSTLINE" = "" ]
+			then
+				# en l'absence de la ligne ``HOSTNAME='', hostname
+				# est defini dynamiquement
+				echo 1
+				return
+			else
+				# si la ligne ``HOSTNAME='' existe, on teste si
+				# elle contient ``-AUTOMATIC-''
+				echo "$HOSTLINE" | grep -q '\-AUTOMATIC-' 2>&1 > /dev/null
+				if [ "$?" = 0 ]
+				then
+					# la chaine ``-AUTOMATIC-'' est presente
+					echo 2
+					return
+				fi
+			fi
+			;;
+		* )
+			# Mac OS X 10.8 "Mountain Lion" ou superieur :
+			# Le fichier /etc/hostconfig est devenu obsolete et
+			# ne doit plus etre modifie directement. On utilise
+			# la commande scutil situee dans /usr/sbin
+			PATH="$PATH:/usr/sbin"
+			export PATH
+			if [ "`hostname`" != "`scutil --get LocalHostName`" ]
+			then
+				echo 3
+				return
+			fi
+			;;
+	esac
+
+	# ultime tentative de detecter les noms dynamiques
+	case "`hostname`" in
+		*.local ) echo 4
+		          return
+	esac
+
+	# ici, on pense que le nommage est statique
+	echo 0
+}
+
+# -----------------------------------------------------------------------------
+
+COMMAND=`basename "$0"`
+
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	CADP=$CADP_INSTALLATOR
+	# do not export $CADP here
+fi
+
+ARCH=`"$CADP"/com/arch`
+export ARCH
+
+# -----------------------------------------------------------------------------
+
+case $# in
+	0 )	echo "$COMMAND: argument expected"
+	  	exit 1
+		;;
+	1 )	RAW_HOSTNAME=`hostname`
+		;;
+	2 )	RAW_HOSTNAME="$2"
+		;;
+	* )	echo "$COMMAND: too many arguments"
+		exit 1
+		;;
+esac
+
+# transformation des majuscules en minuscules
+
+HOSTNAME=`echo $RAW_HOSTNAME | tr '[:upper:]' '[:lower:]'`
+
+# suppression eventuelle du nom de domaine
+
+case $1 in
+	-long )		echo $HOSTNAME 
+			;;
+	-short )	echo $HOSTNAME | sed -e 's/[.].*//'
+			;;
+	-static )	STATIC_HOSTNAME
+			;;
+	* )		echo "$COMMAND: incorrect first argument"
+			exit 1
+esac
+
+exit 0
+

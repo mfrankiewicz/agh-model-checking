@@ -1,0 +1,50 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains various C programs to be used with OPEN/CAESAR.
+Each C program constitutes an ``exploration module'', as defined in
+the OPEN/CAESAR Reference Manual.
+
+The purpose of each program is described in a /* ... */ comment located
+at the beginning of the ``.c'' file.
+
+Applying one of these programs (say USER.c) to a given LOTOS specification
+(say SPEC.lotos) can be done using the ``../com/open.caesar'' command, e.g.,
+	lotos.open SPEC.lotos USER.c
+For more explanations, please refer to the ``open.caesar'' manual page.
+
+-------------------------------------------------------------------------------
+
+Note on "generator2.c":
+
+    The file "generator2.c" contains the obsolete version 2.22 of Generator
+    (the most recent version of Generator is contained in "generator.c").
+    This version of Generator does not support the general BCG options
+    (-uncompress, -compress, -treecompress, -size, -register, -short, -medium,
+    and -tmp) nor the hiding and renaming options (-hide, -rename, -total,
+    -partial, -gate, -single, and -multiple). However, we keep it as an
+    example of a simple OPEN/CAESAR application program.
+
+-------------------------------------------------------------------------------
+
+Note on "reductor2.c":
+
+    The file "reductor2.c" contains the obsolete version 2.20 of Reductor.
+    This version of Reductor does not support the general BCG options
+    (-uncompress, -compress, -treecompress, -size, -register, -short, -medium,
+    and -tmp) nor the hiding and renaming options (-hide, -rename, -total,
+    -partial, -gate, -single, and -multiple). However, we keep it as an
+    example of a simple OPEN/CAESAR application program.
+
+-------------------------------------------------------------------------------
+
+Note on "reductor3.c":
+
+    The file "reductor2.c" contains the obsolete version 3.3 of Reductor.
+    This version of Reductor supports all command-line options missing from
+    Reductor 2.*. However, it was replaced by a more efficient implementation
+    (located in bin.*/reductor.a) based on the CAESAR_SOLVE library for
+    boolean equation systems.
+
+-------------------------------------------------------------------------------
+

@@ -1,0 +1,263 @@
+------------------------------------------------------------------------------
+-- Dynamic Task Dispatcher (Wendelin Serwe, INRIA/CONVECS)
+------------------------------------------------------------------------------
+
+% MAKE_LINK () {
+%	rm -f "$2"
+%	ln -s "$1" "$2"
+%	SVL_RECORD_FOR_CLEAN "$2"
+% }
+
+------------------------------------------------------------------------------
+-- analysis of command line arguments
+------------------------------------------------------------------------------
+
+% if test $# = 0
+% then
+%	# default set of scenarios (4 processors, all processors booted),
+%	# which executes in 20-30 minutes
+%	VERSION_LIST="booted"
+%	SIZE_LIST="4"
+%	APPLI_LIST="1 2 2_1 2_2 3 3_1 3_2 4 4_1 5 5_1 6 6_1 7 8 9"
+% elif test $# = 3
+% then
+%	# particular scenario(s) specified on the command line
+%	VERSION_LIST="$1"
+%	SIZE_LIST="$2"
+%	APPLI_LIST="$3"
+%	# Note: to execute the complete set of scenarios listed in Table 1
+%	# of [Lantreibecq-Serwe-14], including those that might fail because
+%	# they are too complex (especially with 6 or 8 processors, and with
+%	# the unconstrained model), one can use the following parameters:
+%	# VERSION_LIST="booted partial unconstrained"
+%	# SIZE_LIST="4 6 8"
+%	# APPLI_LIST="1 2 2_1 2_2 3 3_1 3_2 3_3 4 4_1 5 5_1 6 6_1 7 8 8_1 8_2 9"
+% else
+%	echo "unexpected number of arguments"
+%	exit 1
+% fi
+
+------------------------------------------------------------------------------
+-- state space generation
+------------------------------------------------------------------------------
+
+% for VERSION in $VERSION_LIST
+% do
+
+% MAKE_LINK Scenarios/HMP_${VERSION}.lnt HMP.lnt
+
+% for N in $SIZE_LIST
+% do
+
+% MAKE_LINK Scenarios/SIZE_${N}.lnt SIZE.lnt
+% MAKE_LINK Scenarios/CONFIGURATION_${N}.lnt CONFIGURATION.lnt
+
+% for APPLI in $APPLI_LIST
+% do
+
+% case $APPLI in
+%    1 | 6* )
+%       MAKE_LINK Scenarios/APPLICATION_${N}_${APPLI}.lnt APPLICATION.lnt ;;
+%    * )
+%       MAKE_LINK Scenarios/APPLICATION_X_${APPLI}.lnt APPLICATION.lnt ;;
+% esac
+
+"HMP_${VERSION}_${N}_APPLI_${APPLI}.bcg" = strong reduction of "HMP.lnt" ;
+
+% done # APPLI
+% done # N
+% done # VERSION
+
+------------------------------------------------------------------------------
+
+property PHI_1 (SPEC, RESULT)
+    "scenario terminates"
+    -- The system inevitably reaches either a deadlock or gets stuck in a
+    -- cycle containing a transition labeled with ``LD_RSP !<x> !WAIT_SLAVE''
+    -- (where <x> is a processor number).
+is
+    "${SPEC}_renamed.bcg" |=
+        mu X . (
+            exists x:Nat among { 0 ... $N - 1 } .
+                < true* . { LD_RSP !x !"WAIT_SLAVE" } > @
+            or
+            [ true ] X
+        ) ;
+    expected "$RESULT"
+end property
+
+------------------------------------------------------------------------------
+
+property PHI_2 (SPEC, RESULT)
+    "each processor eventually has no more work to do"
+    -- After waking up a processor, the DTD eventually tells the processor
+    -- that there is no more work left, i.e., each ``WAKEUP !<x>'' is
+    -- eventually followed by ``LD_RSP !<x> !NONE'' (where <x> is a processor
+    -- number).
+is       
+    "${SPEC}_renamed.bcg" |=
+	macro nv () = $NV end_macro
+        library macros.mcl end_library
+
+        [ true* . { WAKEUP ?x:Nat } ]
+            inevitable ( { LD_RSP !x !"NONE" } ) ;
+    expected "$RESULT"
+end property
+
+------------------------------------------------------------------------------
+
+property PHI_3 (SPEC, RESULT)
+    "all tasks requested by a to dup() are executed"
+    -- Each call to dup() executes to completion, i.e., each
+    -- ``ST !<x> !DUP ...'' is eventually followed by ``LD_RSP !<x> !DONE''
+    -- (where <x> is a processor number).
+is
+    "${SPEC}_renamed.bcg" |=
+	macro nv () = $NV end_macro
+        library macros.mcl end_library
+
+        [ true* . { ST ?x:Nat !"DUP" ... } ]
+            inevitable ( { LD_RSP !x !"DONE" } ) ;
+    expected "$RESULT"
+end property
+
+------------------------------------------------------------------------------
+
+property PHI_4 (SPEC, RESULT)
+    "each host task is executed once"
+    -- Each task sent by the host application is executed exactly once,
+    -- i.e., each ``HOST !<c> !<e>'' (<c> being the address of the task to be
+    -- executed and <e> being the required processor extension) is eventually
+    -- followed by a transition of the form ``LD_RSP !<x> !<c>'' (<x> being
+    -- the identifier of a processor with extension <e>), but cannot be
+    -- followed by a sequence containing two transitions of the form
+    -- ``LD_RSP !<x> !<c>''. This property is expressed as a conjunction of
+    -- the properties for each kind of processor extension.
+is
+    "${SPEC}_renamed.bcg" |=
+	macro nv () = $NV end_macro
+        library macros.mcl end_library
+        macro formula (s, p) =
+            [ true* . { HOST ?pc:String !s } ]
+            (
+                inevitable ( { LD_RSP ?x:Nat !pc ... where p (x) } )
+                and
+                [ ( true* . { LD_RSP ?any of Nat !pc ... } ) {2} ] false
+            )
+        end_macro
+
+        formula ("DONT_CARE", dont_care)
+        and
+        formula ("BITSTREAM", bitstream)
+        and
+        formula ("VECTOR", vector) ;
+    expected "$RESULT"
+end property
+
+------------------------------------------------------------------------------
+
+property PHI_5 (SPEC, RESULT)
+    "all tasks requested by a call to dup() are launched"
+    -- Each dup() operation is followed by the correct number of subtask
+    -- assignments. Similar to property PHI_4, this property is expressed as a
+    -- conjunction of properties for each kind of processor extension.
+is
+    "${SPEC}_renamed.bcg" |=
+	macro nv () = $NV end_macro
+        library macros.mcl end_library
+        macro formula (s, p) =
+            [ true* . { ST ?any of Nat !"DUP" ?pc:String !s ?n:Nat } ]
+            forall i:Nat among { 0 ... n-1 } .
+                inevitable ( { LD_RSP ?x:Nat !pc !i where p (x) } )
+        end_macro
+
+        formula ("DONT_CARE", dont_care)
+        and
+        formula ("BITSTREAM", bitstream)
+        and
+        formula ("VECTOR", vector) ;
+    expected "$RESULT"
+end property
+
+------------------------------------------------------------------------------
+-- function to compute the expected result given the name of the BCG file,
+-- according to the results of [Lantreibecq-Serwe-14, Table 2]
+------------------------------------------------------------------------------
+
+% EXPECTED_RESULT () {
+% # $1 = name of the BCG file
+% # $2 = number of the property
+
+%	# compute $VERSION
+%	case "$1" in
+%		HMP_booted_* )
+%			VERSION=booted ;;
+%		HMP_partial_* )
+%			VERSION=partial ;;
+%		* )
+%			VERSION=unconstrained ;;
+%	esac
+
+%	# compute $APPLI
+%	APPLI=`echo "$1" | sed -e 's/.*_APPLI_//' | sed -e 's/\.bcg//'`
+
+%	# compute expected result for $VERSION, $APPLI, and $2
+%	if [ "$2" = 1 -o \( "$2" = 4 -a "$VERSION" != partial \) ] ; then
+%		echo TRUE
+%	elif [ \( "$2" = 4 -a "$VERSION" = partial \) -o \
+%	       \( "$2" != 4 -a "$VERSION" != partial \) ]
+%	then
+%		case "$APPLI" in
+%			8_* )	echo FALSE ;;
+%			* )	echo TRUE ;;
+%		esac
+%	else
+%		case "$APPLI" in
+%			8* )	echo FALSE ;;
+%			* )	echo TRUE ;;
+%		esac
+%	fi
+
+% }
+
+------------------------------------------------------------------------------
+-- model checking for all generated scenarios
+------------------------------------------------------------------------------
+
+% EVALUATOR_EXECUTABLE=evaluator4
+
+% for N in 4 6 8
+% do
+
+% # NV: index number of the first processor with vector extension
+% if [ $N -eq 4 ] ; then
+%	NV=1
+% else
+%	NV=2
+% fi
+
+% for SPEC in `ls HMP_*_${N}_APPLI_*.bcg 2> /dev/null | grep -v renamed`
+% do
+% 	SPEC=`${CADP}/src/com/cadp_basename ${SPEC} .bcg`
+
+	"${SPEC}_renamed.bcg" =
+		total rename
+		"HOST !HOST_JOB (\([^,]*\), \([A-Z_]*\))"
+			-> "HOST !\1 !\2",
+		"LD_RSP !\([0-9][0-9]*\) !EXEC (\([^,]*\), \([-+]*[0-9]*\))"
+			-> "LD_RSP !\1 !\2 !\3",
+		"ST !\([0-9][0-9]*\) !DUP (\([^,]*\), \([^,]*\), +\([0-9]*\))"
+			-> "ST !\1 !DUP !\2 !\3 !\4"
+		in "${SPEC}.bcg" ;
+
+	check PHI_1 ("$SPEC", "`EXPECTED_RESULT $SPEC 1`");
+	check PHI_2 ("$SPEC", "`EXPECTED_RESULT $SPEC 2`");
+	check PHI_3 ("$SPEC", "`EXPECTED_RESULT $SPEC 3`");
+	check PHI_4 ("$SPEC", "`EXPECTED_RESULT $SPEC 4`");
+	check PHI_5 ("$SPEC", "`EXPECTED_RESULT $SPEC 5`");
+
+% done # SPEC
+% done # N
+
+------------------------------------------------------------------------------
+

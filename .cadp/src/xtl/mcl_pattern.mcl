@@ -1,0 +1,546 @@
+(******************************************************************************
+ *                              E V A L U A T O R
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       mcl_pattern.mcl
+ *   Auteur             :       Radu MATEESCU
+ *   Version            :       1.4
+ *   Date               :       2016/09/27 10:23:49
+ *****************************************************************************)
+
+(*
+ * Definition of property patterns in regular alternation-free mu-calculus.
+ * The patterns have been proposed by Matthew Dwyer and al. in the paper
+ *   [Dwyer-Avrunin-Corbett-99] M.B. Dwyer, G.S. Avrunin, and J.C. Corbett.
+ *     Patterns in Property Specifications for Finite-State Verification.
+ *     In Proceedings of the 21st International Conference on Software
+ *     Engineering ICSE'99 (Los Angeles, CA, USA), 1999.
+ * For further information on the pattern system, see the Specification
+ * Patterns Home Page (http://www.cis.ksu.edu/santos/spec-patterns).
+ *
+ * Note: the patterns specified below are intended to be appropriate for
+ * action-based description languages (such as process algebras) rather
+ * than state-based languages. Therefore, they are expressed in terms of
+ * action predicates (P, Q, R, ...) rather than state predicates.
+ *)
+
+(*===========================================================================*)
+(*
+ * Absence (P is false)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Absence_Globally (P) =
+    [ true* . (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Absence_Before (P, R) =
+    [ (not (R))* . (P) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Absence_After (P, Q) =
+    [ (not (Q))* . (Q) . true* . (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Absence_Between (P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Absence_After_Until (P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) ] false
+end_macro
+
+(*===========================================================================*)
+(*
+ * Existence (P occurs)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Existence_Globally (P) =
+    mu X . ((< (P) > true or < not (P) > X) and [ not (P) ] X)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Existence_Before (P, R) =
+    [ (not (P))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Existence_After (P, Q) =
+    [ (not (Q))* . (Q) ]
+        mu X . ((< (P) > true or < not (P) > X) and [ not (P) ] X)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Existence_Between (P, Q, R) =
+    [ true* . (Q) . (not ((P) or (R)))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Existence_After_Until (P, Q, R) =
+    [ true* . (Q) ]
+        mu X . (
+            (< (P) > true or < not (P) > X) and [ R ] false and [ not (P) ] X
+        )
+end_macro
+
+(*===========================================================================*)
+(*
+ * Bounded existence (P occurs at most k=2 times)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Bounded_Existence_Globally (P) =
+    [ (not (P))* . (P) . (not (P))* . (P) . (not (P))* . (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Bounded_Existence_Before (P, R) =
+    [ (not (R))* . (P) . (not (R))* . (P) . (not (R))* . (P) .
+      (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Bounded_Existence_After (P, Q) =
+    [ (not (Q))* . (Q) . (not (P))* . (P) . (not (P))* . (P) .
+      (not (P))* . (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Bounded_Existence_Between (P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) . (not (R))* . (P) . (not (R))* . (P) .
+      (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Bounded_Existence_After_Until (P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) . (not (R))* . (P) .
+      (not (R))* . (P) ] false
+end_macro
+
+(*===========================================================================*)
+(*
+ * Universality (P is true)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Universality_Globally (P) =
+    [ true* . not (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Universality_Before (P, R) =
+    [ (not (R))* . not ((P) or (R)) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Universality_After (P, Q) =
+    [ (not (Q))* . (Q) . true* . not (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Universality_Between (P, Q, R) =
+    [ true* . (Q) . (not (R))* . not ((P) or (R)) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Universality_After_Until (P, Q, R) =
+    [ true* . (Q) . (not (R))* . not ((P) or (R)) ] false
+end_macro
+
+(*===========================================================================*)
+(*
+ * Precedence (S precedes P)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Precedence_Globally (S, P) =
+    [ (not (S))* . (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Precedence_Before (S, P, R) =
+    [ (not ((S) or (R)))* . (P) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Precedence_After (S, P, Q) =
+    [ (not (Q))* . (Q) . (not (S))* . (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Precedence_Between (S, P, Q, R) =
+    [ true* . (Q) . (not ((S) or (R)))* . (P) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Precedence_After_Until (S, P, Q, R) =
+    [ true* . (Q) . (not ((S) or (R)))* . (P) ] false
+end_macro
+
+(*===========================================================================*)
+(*
+ * Response (S responds to P)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Response_Globally (S, P) =
+    [ true* . (P) ] mu X . ((< (S) > true or < not (S) > X) and [ not (S) ] X)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Response_Before (S, P, R) =
+    [ (not (R))* . (P) . (not ((S) or (R)))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Response_After (S, P, Q) =
+    [ (not (Q))* . (Q) . true* . (P) ]
+        mu X . ((< (S) > true or < not (S) > X) and [ not (S) ] X)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Response_Between (S, P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) . (not ((S) or (R)))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Response_After_Until (S, P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) ]
+        mu X . (
+            (< (S) > true or < not (S) > X) and [ R ] false and [ not (S) ] X
+        )
+end_macro
+
+(*===========================================================================*)
+(*
+ * Precedence Chain (S, T precede P)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Precedence_Chain_2_1_Globally (S, T, P) =
+    [ (not (S))* . (nil | ((S) . (not (T))*)) . (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Precedence_Chain_2_1_Before (S, T, P, R) =
+    [ (not ((S) or (R)))* . (nil | ((S) . (not ((T) or (R)))*)) .
+      (P) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Precedence_Chain_2_1_After (S, T, P, Q) =
+    [ (not (Q))* . (Q) . (not (S))* . (nil | ((S) . (not (T))*)) . (P) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Precedence_Chain_2_1_Between (S, T, P, Q, R) =
+    [ true* . (Q) . (not ((S) or (R)))* . (nil | ((S) . (not ((T) or (R)))*)) .
+      (P) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Precedence_Chain_2_1_After_Until (S, T, P, Q, R) =
+    [ true* . (Q) . (not ((S) or (R)))* . (nil | ((S) . (not ((T) or (R)))*)) .
+      (P) ] false
+end_macro
+
+(*===========================================================================*)
+(*
+ * Precedence Chain (P precedes S, T)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Precedence_Chain_1_2_Globally (S, T, P) =
+    [ (not (P))* . (S) . (not (T))* . (T) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Precedence_Chain_1_2_Before (S, T, P, R) =
+    [ (not ((P) or (R)))* . (S) . (not ((T) or (R)))* . (T) .
+      (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Precedence_Chain_1_2_After (S, T, P, Q) =
+    [ (not (Q))* . (Q) . (not (P))* . (S) . (not (T))* . (T) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Precedence_Chain_1_2_Between (S, T, P, Q, R) =
+    [ true* . (Q) . (not ((P) or (R)))* . (S) . (not ((T) or (R)))* .
+      (T) . (not (R))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Precedence_Chain_1_2_After_Until (S, T, P, Q, R) =
+    [ true* . (Q) . (not ((P) or (R)))* . (S) . (not ((T) or (R)))* .
+      (T) ] false
+end_macro
+
+(*===========================================================================*)
+(*
+ * Response Chain (P responds to S, T)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Response_Chain_2_1_Globally (S, T, P) =
+    [ true* . (S) . (not (T))* . (T) ]
+        mu X . ((< (P) > true or < not (P) > X) and [ not (P) ] X)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Response_Chain_2_1_Before (S, T, P, R) =
+    [ true* . (S) . (not (T))* . (T) . (not (P))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Response_Chain_2_1_After (S, T, P, Q) =
+    [ (not (Q))* . (Q) . true* . (S) . (not (T))* . (T) ]
+        mu X . ((< (P) > true or < not (P) > X) and [ not (P) ] X)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Response_Chain_2_1_Between (S, T, P, Q, R) =
+    [ true* . (Q) . (not ((S) or (R)))* . (S) . (not ((T) or (R)))* . (T) .
+      (not ((P) or (R)))* . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Response_Chain_2_1_After_Until (S, T, P, Q, R) =
+    [ true* . (Q) . (not ((S) or (R)))* . (S) . (not ((T) or (R)))* . (T) ]
+        mu X . (
+            (< (P) > true or < not (P) > X) and [ R ] false and [ not (P) ] X
+        )
+end_macro
+
+(*===========================================================================*)
+(*
+ * Response Chain (S, T respond to P)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Response_Chain_1_2_Globally (S, T, P) =
+    [ true* . (P) ]
+        mu X . (
+            (< (S) > true or < not (S) > X) and
+            [ S ] mu Y . (
+                (< (T) > true or < not (T) > Y) and [ not (T) ] Y
+            ) and
+            [ not (S) ] X
+        )
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Response_Chain_1_2_Before (S, T, P, R) =
+    [ (not (R))* . (P) . (not ((S) or (R)))* .
+      (nil | ((S) . (not ((T) or (R)))*)) . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Response_Chain_1_2_After (S, T, P, Q) =
+    [ (not (Q))* . (Q) . true* . (P) ]
+        mu X . (
+            (< (S) > true or < not (S) > X) and
+            [ S ] mu Y . (
+                (< (T) > true or < not (T) > Y) and [ not (T) ] Y
+            ) and
+            [ not (S) ] X
+        )
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Response_Chain_1_2_Between (S, T, P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) . (not ((S) or (R)))* .
+      (nil | ((S) . (not ((T) or (R)))*)) . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Response_Chain_1_2_After_Until (S, T, P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) ]
+        mu X . (
+            (< (S) > true or < not (S) > X) and [ R ] false and
+            [ S ] mu Y . (
+                (< (T) > true or < not (T) > Y) and [ R ] false and
+                [ not (T) ] Y
+            ) and
+            [ not (S) ] X
+        )
+end_macro
+
+(*===========================================================================*)
+(*
+ * Constrained Chain Patterns (S, T without Z respond to P)
+ *)
+
+(*---------------------------------------------------------------------------*)
+(* Globally *)
+
+macro Response_Constrained_Chain_1_2_Globally (S, T, Z, P) =
+    [ true* . (P) ]
+        mu X . (
+            (< (S) > true or < not (S) > X) and
+            [ S ] mu Y . (
+                (< (T) > true or < not (T) > Y) and [ Z ] false and
+                [ not (T) ] Y
+            ) and
+            [ not (S) ] X
+        )
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Before R *)
+
+macro Response_Constrained_Chain_1_2_Before (S, T, Z, P, R) =
+    [ (not (R))* . (P) . (not ((S) or (R)))* .
+      (nil | ((S) . (nil | ((not ((T) or (R)))* . (Z))) .
+              (not ((T) or (R)))*)) . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q *)
+
+macro Response_Constrained_Chain_1_2_After (S, T, Z, P, Q) =
+    [ (not (Q))* . (Q) . true* . (P) ]
+        mu X . (
+            (< (S) > true or < not (S) > X) and
+            [ S ] mu Y . (
+                (< (T) > true or < not (T) > Y) and [ Z ] false and
+                [ not (T) ] Y
+            ) and
+            [ not (S) ] X
+        )
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* Between Q and R *)
+
+macro Response_Constrained_Chain_1_2_Between (S, T, Z, P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) . (not ((S) or (R)))* .
+      (nil | ((S) . (nil | ((not ((T) or (R)))* . (Z))) .
+              (not ((T) or (R)))*)) . (R) ] false
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* After Q until R *)
+
+macro Response_Constrained_Chain_1_2_After_Until (S, T, Z, P, Q, R) =
+    [ true* . (Q) . (not (R))* . (P) ]
+        mu X . (
+            (< (S) > true or < not (S) > X) and [ R ] false and
+            [ S ] mu Y . (
+                (< (T) > true or < not (T) > Y) and [ (Z) or (R) ] false and
+                [ not (T) ] Y
+            ) and
+            [ not (S) ] X
+        )
+end_macro
+

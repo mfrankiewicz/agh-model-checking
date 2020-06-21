@@ -1,0 +1,1362 @@
+module POTS 
+   with "eq", "ne"
+is
+
+(****************************************************************
+
+  Plain Old Telephone System
+
+  from Patrick Ernberg, SICS, Sweden
+
+  translated from LOTOS to LNT by Hubert Garavel
+
+****************************************************************)
+
+------------------------------------------------------------------------------
+-- Definition of types and functions
+------------------------------------------------------------------------------
+
+type Subscriber is
+   -- Possible Roles of a Subscriber:
+   Asubsc, -- originator
+   Bsubsc  -- responder
+end type
+
+-------------------------------------------------------------------------------
+
+type Signal is
+   -- Signals exchanged between MUL and the subscriber's phoneset:
+   Dial,    -- for dialing
+   TimeOut  -- for timeout
+end type
+
+-------------------------------------------------------------------------------
+
+type EnvAct is
+   -- Environment Activity of a phoneset:
+   Offh, -- offhook
+   Onh   -- onhook
+end type
+
+-------------------------------------------------------------------------------
+
+-- Operations of the Environment Activity of a phoneset:
+
+function IsOffh (A:EnvAct) : Bool is
+   -- determine whether the phone is offhook or not
+   return (A eq Offh)
+end function
+
+function IsOnh (A:EnvAct) : Bool is
+   -- determine whether the phone is onhook or not
+   return (A eq Onh)
+end function
+
+------------------------------------------------------------------------------
+
+type Tone is
+   -- Tones carried out or emitted by the telephone:
+   NoTone,      -- silence...
+   DialT,       -- dial tone
+   BusyT,       -- busy tone
+   CongT,
+   ErrorT,      -- error tone
+   RingS,       -- ringing tone, originator's handset
+   SpeechConn,  -- ringing sound, responder's phone bell
+   RingT        -- speech
+end type
+
+------------------------------------------------------------------------------
+
+-- Logical operators on tones:
+
+function IsNoTone (T:Tone) : Bool is
+   -- true when there is no tone
+   return (T eq NoTone)
+end function
+
+function IsDialT (T:Tone) : Bool is
+   -- true when a dial tone is on
+   return (T eq DialT)
+end function
+
+function IsBusyT (T:Tone) : Bool is
+   -- true when a busy tone is on
+   return (T eq BusyT)
+end function
+
+function IsErrorT (T:Tone) : Bool is
+   -- true when an error tone is on
+   return (T eq ErrorT)
+end function
+
+function IsRingT (T:Tone) : Bool is
+   -- true when a ring tone is on
+   return (T eq RingT)
+end function
+
+function IsRingS (T:Tone) : Bool is
+   -- true when the phone is ringing
+   return (T eq RingS)
+end function
+
+function IsSpeechConn (T:Tone) : Bool is
+   -- true when conversation is going on
+   return (T eq SpeechConn)
+end function
+
+------------------------------------------------------------------------------
+
+type Toggle is
+   -- Type of states of activity:
+   -- This is used to turn tones on and off.
+   on,  -- to turn the dial tone on
+   off  -- to turn the dial tone off
+end type
+
+------------------------------------------------------------------------------
+
+type DeciDigit is
+   -- Type of phone buttons (numbers)
+   00, 
+   1,
+   2, 
+   3,
+   NoDigit,
+   ErrorDigit,
+   BusyDigit
+end type
+
+------------------------------------------------------------------------------
+
+function legal (D:DeciDigit) : Bool is
+   -- Operation "legal" on subscriber's identification numbers,
+   -- to determine whether a subscriber is registered or not.
+   case D in
+      1 | 2 -> return true
+   |  any -> return false
+   end case
+end function
+
+------------------------------------------------------------------------------
+
+type Digit is
+   1,
+   2,
+   NoDigit
+end type
+
+------------------------------------------------------------------------------
+
+function legal (D:Digit) : Bool is
+   case D in
+      1 | 2 -> return true
+   |  any -> return false
+   end case
+end function
+
+------------------------------------------------------------------------------
+
+function _eq_ (subsc1:Digit, bsub1:DeciDigit) : Bool is
+   return ((subsc1 eq 1 of Digit) and (bsub1 eq 1 of DeciDigit)) or
+          ((subsc1 eq 2 of Digit) and (bsub1 eq 2 of DeciDigit)) or
+          ((subsc1 eq NoDigit of Digit) and (bsub1 eq NoDigit of DeciDigit))
+end function
+
+function _ne_ (subsc1:Digit, bsub1:DeciDigit) : Bool is
+   return (not (subsc1 eq bsub1))
+end function
+
+function _eq_ (bsub1:DeciDigit, subsc1:Digit) : Bool is
+   return (subsc1 eq bsub1)
+end function
+
+function _ne_ (bsub1:DeciDigit, subsc1:Digit) : Bool is
+   return (subsc1 ne bsub1)
+end function
+
+------------------------------------------------------------------------------
+
+type TerminalTuple is
+   -- Information (tuple) describing the state of a subscriber:
+   -- 1. subscriber id
+   -- 2. connection (called subscriber id)
+   -- 3. phoneset position (onhook, offhook)
+   -- 4. tone (NoTone, DialT, BusyT, RingT, SpeechConn, etc.)
+   Tuple (Subsc:Digit, BSubsc:DeciDigit, Act:EnvAct, Tone:Tone)
+   with "get", "set"
+end type
+
+------------------------------------------------------------------------------
+
+type TerminalSet is
+   -- Set of all subscribers
+   set of TerminalTuple
+   with "empty", "head", "tail"
+end type
+
+-- identifier correspondence with the original LOTOS specification:
+--    "empty" in LOTOS -> "nil" in LNT
+--    "Add" in LOTOS -> "cons" in LNT
+--    "Insert" in LOTOS -> "{...}" in LNT
+
+------------------------------------------------------------------------------
+
+function SetAct (subsc1:Digit, act1:EnvAct, tset1:TerminalSet) : TerminalSet is
+   var subsc2:Digit, bsub2:DeciDigit, tone2:Tone, 
+       tuple2:TerminalTuple, tset2:TerminalSet
+   in
+      case tset1 in
+         nil -> return nil
+      |
+         cons (tuple2 as Tuple (subsc2, bsub2, any EnvAct, tone2), tset2) ->
+            if subsc1 eq subsc2 then
+               return cons (Tuple (subsc2, bsub2, act1, tone2), tset2)
+            else
+               return cons (tuple2, SetAct (subsc1, act1, tset2))
+            end if
+      end case
+   end var
+end function
+
+------------------------------------------------------------------------------
+
+function SetBSubsc (bsub1:DeciDigit, bsub3:DeciDigit, tset1:TerminalSet) : TerminalSet is
+   var subsc2:Digit, act2:EnvAct, tone2:Tone, 
+       tuple2:TerminalTuple, tset2:TerminalSet in
+      case tset1 in
+         nil -> return nil
+      |
+         cons (tuple2 as Tuple (subsc2, any DeciDigit, act2, tone2), tset2) ->
+            if bsub1 eq subsc2 then
+               return cons (Tuple (subsc2, bsub3, act2, tone2), tset2)
+            else
+               return cons (tuple2, SetBSubsc (bsub1, bsub3, tset2))
+            end if
+      end case
+   end var
+end function
+
+function SetBSubsc (subsc1:Digit, bsub1:DeciDigit, tset1:TerminalSet) : TerminalSet is
+   var subsc2:Digit, act2:EnvAct, tone2:Tone, 
+       tuple2:TerminalTuple, tset2:TerminalSet in
+      case tset1 in
+         nil -> return nil
+      |
+         cons (tuple2 as Tuple (subsc2, any DeciDigit, act2, tone2), tset2) ->
+            if subsc1 eq subsc2 then
+               return cons (Tuple (subsc2, bsub1, act2, tone2), tset2)
+            else
+               return cons (tuple2, SetBSubsc (subsc1, bsub1, tset2))
+            end if
+      end case
+   end var
+end function
+
+------------------------------------------------------------------------------
+
+function SetTone (bsub1:DeciDigit, tone1:Tone, tset1:TerminalSet) : TerminalSet is
+   var subsc2:Digit, bsub2:DeciDigit, act2:EnvAct,
+       tuple2:TerminalTuple, tset2:TerminalSet in
+      case tset1 in
+         nil -> return nil
+      |
+         cons (tuple2 as Tuple (subsc2, bsub2, act2, any Tone), tset2) ->
+            if bsub1 eq subsc2 then
+               return cons (Tuple (subsc2, bsub2, act2, tone1), tset2)
+            else
+               return cons (tuple2, SetTone (bsub1, tone1, tset2))
+            end if
+      end case
+   end var
+end function
+
+function SetTone (subsc1:Digit, tone1:Tone, tset1:TerminalSet) : TerminalSet is
+   var subsc2:Digit, bsub2:DeciDigit, act2:EnvAct, 
+       tuple2:TerminalTuple, tset2:TerminalSet in
+      case tset1 in
+         nil -> return nil
+      |
+         cons (tuple2 as Tuple (subsc2, bsub2, act2, any Tone), tset2) ->
+            if subsc1 eq subsc2 then
+               return cons (Tuple (subsc2, bsub2, act2, tone1), tset2)
+            else
+               return cons (tuple2, SetTone (subsc1, tone1, tset2))
+            end if
+      end case
+   end var
+end function
+
+------------------------------------------------------------------------------
+
+function IsBNumber (in bsub1:DeciDigit, in var tset:TerminalSet) : Bool is
+   while not (empty (tset)) loop
+      if head (tset).BSubsc eq bsub1 then
+         return true
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return false
+end function
+
+function IsBNumber (in subsc1:Digit, in var tset:TerminalSet) : Bool is
+   while not (empty (tset)) loop
+      if head (tset).Bsubsc eq subsc1 then
+         return true
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return false
+end function
+
+------------------------------------------------------------------------------
+
+function IsCalledBy (in bsub1:DeciDigit, in var tset:TerminalSet) : Digit is
+   while not (empty (tset)) loop
+      if head (tset).BSubsc eq bsub1 then
+         return head (tset).Subsc
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return NoDigit
+end function
+
+function IsCalledBy (in subsc1:Digit, in var tset:TerminalSet) : Digit is
+   while not (empty (tset)) loop
+      if head (tset).BSubsc eq subsc1 then
+         return head (tset).Subsc
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return NoDigit
+end function
+
+------------------------------------------------------------------------------
+
+function BSubsc (in subsc1:Digit, in var tset:TerminalSet) : DeciDigit is
+   while not (empty (tset)) loop
+      if head (tset).Subsc eq subsc1 then
+         return head (tset).BSubsc
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return NoDigit
+end function
+
+------------------------------------------------------------------------------
+
+function ActStat (in subsc1:DeciDigit, in var tset:TerminalSet) : EnvAct is
+   while not (empty (tset)) loop
+      if head (tset).Subsc eq subsc1 then
+         return head (tset).Act
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return Onh
+end function
+
+function ActStat (in bsub1: Digit, in var tset:TerminalSet) : EnvAct is
+   while not (empty (tset)) loop
+      if head (tset).Subsc eq bsub1 then
+         return head (tset).Act
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return Onh
+end function
+
+------------------------------------------------------------------------------
+
+function Tone (in subsc1:DeciDigit, in var tset:TerminalSet) : Tone is
+   while not (empty (tset)) loop
+      if head (tset).Subsc eq subsc1 then
+         return head (tset).Tone
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return NoTone
+end function
+
+function Tone (in bsub1:Digit, in var tset:TerminalSet) : Tone is
+   while not (empty (tset)) loop
+      if head (tset).Subsc eq bsub1 then
+         return head (tset).Tone
+      else
+         tset := tail (tset)
+      end if
+   end loop;
+   return NoTone
+end function
+
+------------------------------------------------------------------------------
+-- Definition of channels
+------------------------------------------------------------------------------
+
+channel Port is
+   (Digit, EnvAct),
+   (Digit, EnvAct, Subscriber),
+   (Digit, Signal),
+   (Digit, Signal, DeciDigit),
+   (Digit, Tone, Toggle)
+end channel
+
+------------------------------------------------------------------------------
+-- Main behaviour
+------------------------------------------------------------------------------
+
+process MAIN [S:Port] is
+   -- Conns consists of all connections to participate in the
+   -- system. They are being controlled by MUL via the gate S,
+   -- starting with 2 registered users.
+   --
+   -- Each user status is described by a tuple of 4 elements:
+   -- 1) the user identification (e.g. 1)
+   -- 2) the choosen responder (e.g. 2)
+   -- 3) the handset position (onhook or offhook)
+   -- 4) the tone or sound active (e.g. DialT, RingT, RingS)
+
+   par
+      S -> Conns [S]
+   ||
+      S -> MUL [S] ({Tuple (1 of Digit, NoDigit, Onh, NoTone),
+                     Tuple (2 of Digit, NoDigit, Onh, NoTone)})
+   end par
+end process
+
+------------------------------------------------------------------------------
+
+process Conns [S:Port] is
+   -- All subscribers coexist without direct interactions with
+   -- one and others. Each of them may either be an originator
+   -- or a responder, and is given a unique identification.
+   par
+      Subscriber [S] (1 of Digit)        -- Subscriber #1
+   ||
+      Subscriber [S] (2 of Digit)        -- Subscriber #2
+(***
+   ||
+      Subscriber [S] (3 of Digit)        -- Subscriber #3
+   ||
+      Subscriber [S] (4 of Digit)        -- Subscriber #4
+   ||
+      Subscriber [S] (5 of Digit)        -- Subscriber #5
+   ||
+      Subscriber [S] (6 of Digit)        -- Subscriber #6
+***)
+   end par
+end process
+
+------------------------------------------------------------------------------
+
+type SubscriberState is
+   SubscriberInit,
+   CallerOffh,
+   CallerDialTOn,
+   CallerDial,
+   CallerDialTOnOnh,
+   CallerDialTOff,
+   CallerRingTOn,
+   CallerRingTOff,
+   CallerRingTOnOnh,
+   BusyTone,
+   BusyToneOnh,
+   SpeechConnCaller,
+   SpeechConnCallerOnh,
+   CalledRingS,
+   CalledOffh,
+   CalledOnh,
+   CalledOffhRingSOff,
+   SpeechConnCalled,
+   SpeechConnCalledOnh,
+   SpeechConnUserOff,
+   ErrorTone,
+   ErrorToneOnh
+(***
+   , TimeOut
+***)
+end type
+
+process Subscriber [S:Port] (User:Digit) is
+
+   -- Process Subscriber is the starting point of the behaviour
+   -- of each individual subscriber. The specification style
+   -- used is called state-oriented, the structure of the behaviour
+   -- being composed of exclusive choices of events, each event
+   -- leading to a subsequent state.
+
+   var State:SubscriberState in
+      State := SubscriberInit;
+      loop
+         case State in
+
+            SubscriberInit ->
+
+               -- In this initial state, a subscriber is expected to interact
+               -- with the system in 4 possible manners:
+
+               select
+                  -- the originator goes OffHook, leading to state CallerOffh
+                  S (User, Offh, Asubsc);
+                  State := CallerOffh
+               []
+                  -- the subscriber spins the dial, with no effect
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := SubscriberInit
+               []
+                  -- the subscriber's phone starts ringing, leading to the
+                  -- state CalledRingS
+                  S (User, RingS, on);
+                  State := CalledRingS
+               []
+                  -- the responder goes offhook, leading to state CalledOffh
+                  S (User, Offh, Bsubsc);
+                  State := CalledOffh 
+               end select
+         |
+            CallerOffh ->
+
+               -- Originator has picked up the phone while idling: the next
+               -- events consist in either:
+
+               select
+                  -- getting a dial tone
+                  S (User, DialT, on);
+                  State := CallerDialTOn
+               []
+                  -- getting an error tone
+                  S (User, ErrorT, on);
+                  State := ErrorTone
+               []
+                  -- hanging up
+                  S (User, Onh);
+                  State := SubscriberInit
+               []
+                  -- spinning the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := CallerOffh
+               end select
+         |
+            CallerDialTOn ->
+
+               -- After picking up the handset, the originator got a dial
+               -- tone indicating that it's time for:
+
+               select
+                  -- spinning the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := CallerDial
+               []
+                  -- hanging up
+                  S (User, Onh);
+                  State := CallerDialTOnOnh
+(***
+               []
+                  -- being timed out
+                  S (User, TimeOut);
+                  State := TimeOut
+***)
+               end select
+(***
+         |
+            TimeOut ->
+
+               -- The originator has waited too long and has been timed out;
+               -- the available actions are:
+
+               select
+                  -- getting disconnected
+                  S (User, DialT, off);
+                  State := SpeechConnUserOff
+               []
+                  -- hanging up
+                  S (User, Onh);
+                  State := CallerDialTOnOnh
+               []
+                  -- spinning the dial
+                   S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                   State := CallerDial
+               end select
+***)
+         |
+            CallerDial ->
+
+               -- After spinning the dial to enter the called party number,
+               -- the originator may:
+
+               select
+                  -- observe the dial tone going off
+                  S (User, DialT, off);
+                  State := CallerDialTOff
+               []
+                  -- hang up
+                  S (User, Onh);
+                  State := CallerDialTOnOnh
+               []
+                  -- spin the dial again
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := CallerDial
+               end select
+         |
+            CallerDialTOnOnh ->
+
+               -- The originator hung up after hearing the dial tone. It is
+               -- possible to:
+
+               select
+                  -- go offhook
+                  -- should probably be a Bsubsc here as well
+                  S (User, Offh, Asubsc);
+                  State := CallerDialTOn
+               []
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := CallerDialTOnOnh
+               []
+                  -- observe the dial tone cease
+                  S (User, DialT, off);
+                  State := SubscriberInit
+               end select
+         |
+            CallerDialTOff ->
+
+               -- After dialing, the dial tone ceased. The allowed events
+               -- at this moment are:
+
+               select
+                  -- hanging up
+                  S (User, Onh);
+                  State := SubscriberInit
+               []
+                  -- spinning the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := CallerDialTOff 
+               []
+                  -- getting (caller) ringing tone
+                  S (User, RingT, on);
+                  State := CallerRingTOn
+               []
+                  -- getting busy tone
+                  S (User, BusyT, on);
+                  State := BusyTone
+               []
+                  -- getting error tone (false number, etc.)
+                  S (User, ErrorT, on);
+                  State := ErrorTone
+               []
+                  -- getting a connection
+                  S (User, SpeechConn, on);
+                  State := SpeechConnCaller
+               end select
+         |
+            CallerRingTOn ->
+
+               -- While the originator listens to the ringing tone, s/he may:
+
+               select
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := CallerRingTOn
+               []
+                  -- hang up
+                  S (User, Onh);
+                  State := CallerRingTOnOnh
+               []
+                  -- observe the ringing tone ceasing
+                  S (User, RingT, off);
+                  State := CallerRingTOff
+               end select
+         |
+            CallerRingTOff ->
+
+               -- When the (caller) ringing tone stops, it is still time to:
+
+               select
+                  -- hang up
+                  S (User, Onh);
+                  State := SubscriberInit
+               []
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := CallerRingTOff
+               []
+                  -- get a connection
+                  S (User, SpeechConn, on);
+                  State := SpeechConnCaller
+               end select
+         |
+            CallerRingTOnOnh ->
+
+               -- After hanging up while getting the (caller) ringing tone
+               -- was active, the options are to:
+
+               select
+                  -- get offhook
+                  -- should probably be a Bsubsc here as well
+                  S (User, Offh, Asubsc);
+                  State := CallerRingTOn
+               []
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := CallerRingTOnOnh
+               []
+                  -- observe that the (caller) ringing tone ceased
+                  S (User, RingT, off);
+                  State := SubscriberInit
+               end select
+         |
+            BusyTone ->
+
+               -- Out of luck, the originator got a busy tone. Let us now
+               -- either:
+
+               select
+                  -- hang up
+                  S (User, Onh);
+                  State := BusyToneOnh
+               []
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := BusyTone
+               end select
+         |
+            BusyToneOnh ->
+
+               -- After hanging up on the sound of the busy tone, the
+               -- possible interactions are:
+
+               select
+                  -- getting offhook
+                  S (User, Offh, Asubsc);
+                  State := BusyTone
+               []
+                  -- busy tone ceases
+                  S (User, BusyT, off);
+                  State := SubscriberInit
+               []
+                  -- spinning the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := BusyToneOnh
+               end select
+         |
+            SpeechConnCaller ->
+
+               -- The connection was established and conversion went on. The
+               -- next moves would be to:
+
+               select
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := SpeechConnCaller
+               []
+                  -- hang up
+                  S (User, Onh);
+                  State := SpeechConnCallerOnh
+               []
+                  -- get disconnected
+                  S (User, SpeechConn, off);
+                  State := SpeechConnUserOff
+               end select
+         |
+            SpeechConnCallerOnh ->
+
+               -- The originator hung up after the conversation, thus making
+               -- the set of next events the following:
+
+               select
+                  -- going offhook
+                  S (User, Offh, Asubsc);
+                  State := SpeechConnCaller
+               []
+                  -- spinning the dial
+                  S (User, SpeechConn, off);
+                  State := SubscriberInit
+               []
+                  -- talking
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := SpeechConnCallerOnh
+               end select
+         |
+            CalledRingS ->
+
+               -- The responder's phone is ringing; it is time to:
+
+               select
+                  -- go offhook
+                  S (User, Offh, Bsubsc);
+                  State := CalledOffh
+               []
+                  -- keep listening to the ringing bell
+                  S (User, RingS, off);
+                  State := SubscriberInit
+               []
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Other:DeciDigit
+                  State := CalledRingS
+               end select
+         |
+            CalledOffh ->
+
+               -- The following events are expected after picking up the
+               -- phone set while the phone was ringing:
+
+               select
+                  -- the ringing goes off
+                  S (User, RingS, off);
+                  State := CalledOffhRingSOff
+               []
+                 -- the responder hangs up
+                  S (User, Onh);
+                  State := CalledOnh
+               []
+                  S (User, Dial, ?any DeciDigit); -- ?Other:DeciDigit
+                  State := CalledOffh
+               []
+                  -- the responder gets connected
+                  S (User, SpeechConn, on);
+                  State := SpeechConnCalled
+               end select
+         |
+            CalledOnh ->
+
+               -- The responder hung up after having picked up the ringing
+               -- phone set, then :
+
+               select
+                  -- hears that the ringing ceased
+                  S (User, RingS, off);
+                  State := SubscriberInit
+               []
+                  -- gets offhook
+                  S (User, Offh, Bsubsc);
+                  State := CalledOffh
+               []
+                  -- spins the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Other:DeciDigit
+                  State := CalledOnh
+               end select
+         |
+            CalledOffhRingSOff ->
+
+               -- The responder picked up the ringing phone, then either:
+
+               select
+                  -- hangs up
+                  S (User, Onh);
+                  State := SubscriberInit
+               []
+                  -- spins the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Other:DeciDigit
+                  State := CalledOffhRingSOff
+               []
+                  -- gets a connection
+                  S (User, SpeechConn, on);
+                  State := SpeechConnCalled
+               end select
+         |
+            SpeechConnCalled ->
+
+               -- A connection has been established for the responder who
+               -- decides to:
+
+               select
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Other:DeciDigit
+                  State := SpeechConnCalled
+               []
+                  -- hang up
+                  S (User, Onh);
+                  State := SpeechConnCalledOnh
+               []
+                  -- get disconnected
+                  S (User, SpeechConn, off);
+                  State := SpeechConnUserOff
+               end select
+         |
+            SpeechConnCalledOnh ->
+
+               -- The responder terminated the conversation by hanging up the
+               -- phone, but now think about:
+
+               select
+                  -- getting offhook
+                  S (User, Offh, Bsubsc);
+                  State := SpeechConnCalled
+               []
+                  -- talking
+                  S (User, SpeechConn, off);
+                  State := SubscriberInit
+               []
+                  -- spinning the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Other:DeciDigit
+                  State := SpeechConnCalledOnh
+               end select
+         |
+            SpeechConnUserOff ->
+
+               -- A disconnection occurred. Either the originator or the
+               -- responder may now:
+
+               select
+                  -- hang up
+                  S (User, Onh);
+                  State := SubscriberInit
+               []
+                  -- notice the error tone
+                  S (User, ErrorT, on);
+                  State := ErrorTone
+               []
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := SpeechConnUserOff
+               end select
+         |
+            ErrorTone ->
+
+               -- Something went wrong and the error tone in on. Let's:
+
+               select
+                  -- hang up
+                  S (User, Onh);
+                  State := ErrorToneOnh
+               []
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := ErrorTone
+               end select
+         |
+            ErrorToneOnh ->
+
+               -- The error tone is disturbing, so the subscriber hung up.
+               -- It is possible to:
+
+               select
+                  -- go offhook
+                  S (User, Offh, Asubsc);
+                  State := ErrorTone
+               []
+                  -- notice the error tone ceasing
+                  S (User, ErrorT, off);
+                  State := SubscriberInit
+               []
+                  -- spin the dial
+                  S (User, Dial, ?any DeciDigit); -- ?Called:DeciDigit
+                  State := ErrorToneOnh
+               end select
+         end case
+      end loop
+   end var
+end process
+
+------------------------------------------------------------------------------
+
+process MUL [S:Port] (in var TSet:TerminalSet) is
+
+   -- The MUL Process ensures that the actions taken by the subscribers
+   -- are correct. It also keeps track of the state of each subscriber
+   -- on every action taken.
+
+   var User:Digit, Caller:Digit, Called:Digit, DCalled:DeciDigit in
+      loop
+         select
+
+            (* A-subscriber Offhook *)
+
+            -- The A-subscriber is permitted to go offhook as long as:
+            -- a) the user identification number is registered (legal)
+            -- b) the user is not already busy (i.e the user is not
+            --    the end-point of an existing connection)
+            -- c) the user's handset is currently OnHook
+
+            S (?User, Offh, Asubsc) where
+               legal (User)
+               and not (IsBNumber (User, TSet))
+               and (IsOnh (ActStat (User, TSet)));
+
+            -- Provided the previous conditions hold, the status of the
+            -- A-subscriber's phoneset is updated in the database, as:
+            -- a) Tuple (2, ErrorDigit, Offh, -) if user is #2
+            -- b) Tuple (2, -, Offh, -) if user is not #2
+            -- "-" meaning that the current value remains
+            -- (i.e. user #2 is not allowed to originate a call)
+
+            if User eq 2 of Digit then
+               TSet := SetAct (User, Offh, (SetBSubsc (User, ErrorDigit, TSet)))
+            else
+               TSet := SetAct (User, Offh, TSet)
+            end if
+
+         []
+
+            (* B-subscriber Offhook *)
+
+            -- The B-subscriber is permitted to go offhook as long as:
+            -- a) the user identification number is registered (legal)
+            -- b) the user is not already busy (i.e the user is not
+            --    the end-point of an existing connection)
+            -- c) the user's handset is currently OnHook
+
+            S (?User, Offh, Bsubsc) where
+               legal (User)
+               and IsBNumber (User, TSet)
+               and IsOnh (ActStat (User, TSet));
+
+            -- Provided the previous conditions hold, the status of the
+            -- B-subscriber's phoneset is updated in the database, as
+            -- Tuple (2, -, Offh, -), "-" meaning that the current value
+            -- remains.
+
+            TSet := SetAct (User, Offh, TSet)
+
+         []
+
+            (* Onh *)
+
+            -- A subscriber that hangs up gets affects the status of
+            -- terminal set in 2 manners:
+            -- 1) the user is the end-point of a connection, then
+            --    he becomes inactive:
+            --           Tuple (User, NoDigit, Onh, -)
+            --    and the connected party becomes:
+            --           Tuple (B-User, ErrorDigit, -, -)
+            -- 
+            -- 2) only the status of the user is changed to:
+            --           Tuple (User, NoDigit, Onh, -)
+            --    if:
+            --          a) the responder is not a registered one
+            --          b) the responder is registered but hungup
+
+            S (?User, Onh);
+
+            if legal (BSubsc (User, TSet)) and              -- Called is valid
+               IsOffh (ActStat (BSubsc (User, TSet), TSet)) -- Called active
+            then
+                TSet := SetBSubsc (BSubsc (User, TSet), ErrorDigit,
+                        SetBSubsc (User, NoDigit, SetAct (User, Onh, TSet)))
+            else
+                -- Called is not valid or (Called legal or Called hung up)
+                TSet := SetBSubsc (User, NoDigit, SetAct (User, Onh, TSet))
+            end if
+
+         []
+
+            (* Dial *)
+
+            -- Dialing may be performed at just about any point in
+            -- time; the effects on the status of the user will thus
+            -- vary a lot.
+            -- First, the event will take place only if:
+            --      1) the called number is valid
+            --      2) the number called is not the same as the caller's
+
+            S (?Caller, Dial, ?DCalled) where
+               legal (DCalled) and (Caller ne DCalled);
+
+            -- Different dials:
+            -- a) Dialtone on:
+            --   - dial idle number
+            --   - dial same number again
+            --   - dial busy number
+            --   - dial error number
+            -- b) Dialtone off
+
+            -- Then, the status of the dialer changes according to the
+            -- current situation:
+
+            if not (IsDialT (Tone (Caller, TSet)))
+               -- Caller has no dial tone
+            then
+
+               -- If the Dialtone of the dialer is not currently on, nothing
+               -- is changed in the database:
+
+               TSet := TSet
+
+            elsif not (legal (DCalled))
+               -- Caller's dial tone is on and Called # is not valid
+            then
+
+               -- If the Dialtone is on but the Called number is not legal, the
+               -- Caller status becomes: Tuple (Caller, ErrorDigit, -, -)
+
+               TSet := SetBSubsc (Caller, ErrorDigit, TSet)
+
+            elsif IsOnh (ActStat (DCalled, TSet))      -- Called is onhook
+                  and IsNoTone (Tone (DCalled, TSet))  -- Called has no tone
+                  and (not (IsBNumber (DCalled, TSet)) -- Called is not connected
+                  or (IsBNumber (DCalled, TSet)        -- Called is connected ...
+                      and (BSubsc (Caller, TSet) eq DCalled))) -- ... to Caller
+            then
+
+               -- If the caller Dialtone is On and the responder is in idle
+               -- state, a connection is attempted, set the status as:
+               -- Tuple (Caller, DCalled, -, -)
+
+               TSet := SetBSubsc (Caller, DCalled, TSet)
+
+            else
+
+                -- here, Caller's DialTone is on
+                -- and Called number is valid
+                -- and (Called is offhook or Called has a tone or
+                --      Called is connected but NOT to Caller)
+
+                -- If the Dialtone is On but the responder is busy, the Caller get
+                -- the Busy-number status: Tuple (Caller, BusyDigit, -, -)
+
+                TSet := SetBSubsc (Caller, BusyDigit, TSet)
+
+            end if
+
+         []
+
+            (* DialTone *)
+
+            -- The dial tone may be set ON if:
+            --  1) the originator is offhook
+            --  2) there is currently no tone
+            --  3) the originator is not already connected.
+            -- The Caller status is set to Tuple (Caller, -, -, DialT)
+
+            S (?Caller, DialT, on) where
+               IsOffh (ActStat (Caller, TSet)) and
+               IsNoTone (Tone (Caller, TSet)) and
+               (BSubsc (Caller, TSet) eq NoDigit of DeciDigit);
+
+            TSet := SetTone (Caller, DialT, TSet)
+
+         []
+
+            -- The dial may be set OFF only if it is already ON. The
+            -- Caller status is then set to Tuple (Caller, -, -, NoTone)
+
+            S (?Caller, DialT, off) where
+               IsDialT (Tone (Caller, TSet));   -- dialtone is on
+
+            TSet := SetTone (Caller, NoTone, TSet)
+
+         []
+
+            (* RingSound *)
+
+            -- The bell will start ringing if
+            -- 1) the responder is registered, onhook
+            -- 2) the responder is onhook
+            -- 3) an attempt is being made at establishing a connection
+            --    with the responder
+            -- 4) the responder currently has no tone.
+            -- 
+            -- The status of the responder then becomes:
+            -- Tuple (Called, -, -, RingS)
+
+            S (?Called, RingS, on) where
+               IsOnh (ActStat (Called, TSet))      -- Called in onhook
+               and IsBNumber (Called, TSet)        -- trying to connect to Called
+               and legal (Called)                  -- Called # is valid
+               and IsNoTone (Tone (Called, TSet)); -- Called has no tone
+
+            TSet := SetTone (Called, RingS, TSet)
+
+         []
+
+            -- The bell will be set OFF iff
+            --    1) it is already ringing
+            --    2a) the responder picked up the phone
+            -- or 2b) the request for a connection ceased
+            --
+            -- The status of the responder becomes:
+            -- Tuple (Called, -, -, NoTone)
+
+            S (?Called, RingS, off) where
+               IsRingS (Tone (Called, TSet))            -- Called phone is ringing
+               and legal (Called)                       -- Called # is valid
+               and (IsOffh (ActStat (Called, TSet))     -- Called picked up phone
+                    or not (IsBNumber (Called, TSet))); -- don't connect Called
+
+            TSet := SetTone (Called, NoTone, TSet)
+
+         []
+
+            (* RingTone *)
+
+            -- The originator gets a ringing tone if
+            --   1) no tone is currently on
+            --   2) the number requested is registered
+            --   3) the number requested is idle
+            --
+            -- The status of the originator then becomes:
+            -- Tuple (Caller, -, -, RingT)
+
+            S (?Caller, RingT, on) where
+               legal (Caller)                     -- Caller is registered
+               and IsNoTone (Tone (Caller, TSet)) -- Caller has no tone
+               and legal (BSubsc (Caller, TSet))  -- Caller not connected
+               and IsOnh (ActStat (BSubsc (Caller, TSet), TSet)); -- Called is onhook
+
+            TSet := SetTone (Caller, RingT, TSet)
+
+         []
+
+            -- The ringing tone goes OFF when
+            --    1) the responder picked up the phone
+            -- or 2) the originator hung up
+            --
+            -- The status of the originator then becomes:
+            --     Tuple (Caller, -, -, NoTone)
+
+            S (?Caller, RingT, off) where
+               legal (Caller)                  -- Caller is valid
+               and (((BSubsc (Caller, TSet) ne NoDigit of DeciDigit)
+                                               -- Connection established
+                     and IsOffh (ActStat (BSubsc (Caller, TSet), TSet)))
+                                               -- Called picked up the phone
+                   or (BSubsc (Caller, TSet) eq NoDigit of DeciDigit));
+                                               -- Caller hung up
+
+            TSet := SetTone (Caller, NoTone, TSet)
+
+         []
+
+            (* ErrorTone *)
+
+            -- The error tone occurs after dialing an erroneous number.
+            -- The status of the originator then becomes:
+            --     Tuple (Caller, NoDigit, -, ErrorT)
+
+            S (?User, ErrorT, on) where
+               (BSubsc (User, TSet) eq ErrorDigit)  -- Wrong number
+               and IsNoTone (Tone (User, TSet));    -- No tone
+
+            TSet := SetBSubsc (User, NoDigit, SetTone (User, ErrorT, TSet))
+
+         []
+
+            -- The error tone is turned OFF when the originator hangs up.
+            -- The status of the originator then becomes:
+            --       Tuple (Caller, -, -, NoTone)
+
+            S (?User, ErrorT, off) where
+               IsErrorT (Tone (User, TSet))      -- ErrorTone is ON
+               and IsOnh (ActStat (User, TSet)); -- Caller hung up
+
+            TSet := SetTone (User, NoTone, TSet)
+
+         []
+
+            (* BusyTone *)
+
+            -- The busy tone is brought UP in response to dialing the
+            -- number of a user whom is already involved in a connection.
+            -- The status of the Caller becomes:
+            --     Tuple (Caller, NoDigit, -, BusyT)
+
+            S (?Caller, BusyT, on) where
+               (BSubsc (Caller, TSet) eq BusyDigit) -- Busy number
+               and IsNoTone (Tone (Caller, TSet));  -- Caller has no tone
+
+            TSet := SetBSubsc (Caller, NoDigit, SetTone (Caller, BusyT, TSet))
+
+         []
+
+            -- The originator has to hang up to have the busy tone stop.
+            -- The status of the Caller becomes:
+            --       Tuple (Caller, -, -, NoTone)
+
+            S (?Caller, BusyT, off) where
+               IsBusyT (Tone (Caller, TSet))       -- Caller has busy tone ON
+               and IsOnh (ActStat (Caller, TSet)); -- Caller hung up
+
+            TSet := SetTone (Caller, NoTone, TSet)
+
+         []
+
+            (* Speech *)
+
+            -- The connection is established when:
+            --      1) the Caller is OffHook
+            --      2) the Caller has no tone
+            --      and
+            --              3a) Called is valid
+            --              3b) Called is OffHook
+            --      or
+            --             3a) Complete connection
+            --             3b) Called is OffHook
+            --
+            -- The status of the user becomes:
+            --       Tuple (User, -, -, SpeechConn)
+
+            S (?User, SpeechConn, on) where
+                  IsOffh (ActStat (User, TSet))    -- Caller is OffHook
+                  and IsNoTone (Tone (User, TSet)) -- Caller has no tone
+                  and (
+                        ( (legal (BSubsc (User, TSet))) -- Called is valid
+                        and IsOffh (ActStat (BSubsc (User, TSet), TSet)))
+                                                        -- Called is OffHook
+                      or
+                        ( IsBNumber (User, TSet)        -- Complete Connection
+                        and IsOffh (ActStat (IsCalledBy (User, TSet), TSet))
+                                                        -- Called is OffHook
+                        )
+                      );
+
+            TSet := SetTone (User, SpeechConn, TSet)
+
+         []
+
+            -- The conversation is interrupted if
+            --      1) local user has onhooked
+            --   or 2) remote A-subsc has hung up
+            --   and 3) B still active
+            --
+            -- The status of the user becomes:
+            --       Tuple (User, -, -, NoTone)
+
+            S (?User, SpeechConn, off) where
+               IsSpeechConn (Tone (User, TSet))  -- User is connected
+               and (IsOnh (ActStat (User, TSet)) -- User hung up
+                    or
+                       (IsOffh (ActStat (User, TSet))
+                                                 -- User still Offhook
+                        and (BSubsc (User, TSet) eq ErrorDigit)));
+                                                 -- Called party hung up
+
+            TSet := SetTone (User, NoTone, TSet)
+
+         []
+
+            -- The conversation is also interrupted if the remote user
+            -- is a B-subsc but has hung up. The status of the user
+            -- becomes Tuple (User, ErrorDigit, -, NoTone)
+
+            S (?User, SpeechConn, off) where
+               IsSpeechConn (Tone (User, TSet))   -- User is connected
+               and IsOffh (ActStat (User, TSet))  -- User is OffHook
+               and legal (BSubsc (User, TSet))    -- Called is valid
+               and IsOnh (ActStat (BSubsc (User, TSet), TSet));
+                                                  -- Called hung up
+
+            TSet := SetBSubsc (User, ErrorDigit, SetTone (User, NoTone, TSet))
+
+(***
+         []
+
+            ( * Timeout * )
+
+            S (?Caller, Timeout);
+
+            TSet := SetBSubsc (Caller, ErrorDigit, TSet)
+***)
+
+         end select
+      end loop
+   end var
+end process
+
+end module

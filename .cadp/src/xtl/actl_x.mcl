@@ -1,0 +1,282 @@
+(******************************************************************************
+ *                              E V A L U A T O R
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       actl_x.mcl
+ *   Author             :       Radu MATEESCU
+ *   Version            :       1.4
+ *   Date               :       2016/09/26 16:20:57
+ *****************************************************************************)
+
+(*
+ * ACTL\X: Action-based Computation Tree Logic without the neXt time operator,
+ * defined and shown to be adequate w.r.t. divergence-sensitive branching
+ * bisimulation (divbranching) in [DeNicola-Vaandrager-90].
+ * 
+ * The operators of ACTL\X can be freely combined with the Boolean and
+ * fixed point operators of the modal mu-calculus, resulting in the logic
+ * mu-ACTL\X [Fantechi-Gnesi-Ristori-92,94], which has been shown to be
+ * adequate w.r.t. divbranching in [Mateescu-Wijs-14].
+ * 
+ * This file contains the definition in MCL of ACTL\X.
+ * The logic is interpreted on an LTS M = (S, A, T, s0), where:
+ *   - S is the set of states
+ *   - A is the set of actions
+ *   - T included in S * A * S is the transition relation
+ *   - s0 in S is the initial state.
+ * The invisible action is denoted by tau. Visible actions are denoted by
+ * a1, a2, etc. Visible or invisible actions are denoted by b1, b2, etc.
+ * A transition (s1, b, s2) in T, also denoted by s1-b->s2, means that the
+ * system can move from state s1 to state s2 by performing action b.
+ * 
+ * The interpretation of an action formula Ai on A is denoted by [[Ai]],
+ * the subset of actions in A which satisfy Ai. The interpretation of a
+ * state formula P on M is denoted by [[P]], the subset of states in S
+ * which satisfy P.
+ * 
+ * The action formulas A1 and A2 in the definitions below should respect
+ * the following conditions:
+ *   - tau in [[A1]]
+ *   - not (tau in [[A2]])
+ * i.e., A1 may denote visible or invisible actions and A2 must denote
+ * visible actions only. This is required by the definition of ACTL\X and
+ * is essential to guarantee the adequacy of this logic w.r.t. divbranching.
+ * 
+ * References:
+ * 
+ * [DeNicola-Vaandrager-90] R. De Nicola and F. Vaandrager.
+ *   "Action versus State Based Logics for Transition Systems."
+ *   Semantics of Systems of Concurrent Processes, LNCS vol. 469, pp. 407-419.
+ *   Springer Verlag, 1990.
+ * 
+ * [Fantechi-Gnesi-Ristori-92] A. Fantechi, S. Gnesi, and G. Ristori.
+ *   "From ACTL to Mu-Calculus." Proceedings of the ERCIM Workshop on Theory
+ *   and Practice in Verification, pp. 3-10, 1992.
+ * 
+ * [Fantechi-Gnesi-Ristori-94] A. Fantechi, S. Gnesi, and G. Ristori.
+ *   "Model Checking for Action-Based Logics." Formal Methods in System Design
+ *   4:187-203, 1994.
+ * 
+ * [Mateescu-Wijs-14] R. Mateescu and A. Wijs.
+ *   "Property-Dependent Reductions Adequate with Divergence-Sensitive
+ *    Branching Bisimilarity." Science of Computer Programming 96(3):354-376,
+ *    2014.
+ *)
+
+(*===========================================================================*)
+(* Temporal operators *)
+
+(*
+ * E [P1_A1 U P2]
+ * 
+ * [[ E [P1_A1 U P2] ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . (bj in [[ A1 ]] and sj in [[ P1 ]])
+ *               and
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro EU_A (P1, A1, P2) =
+    mu Y . ((P2) or ((P1) and < (A1) > Y))
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * A [P1_A1 U P2]
+ * 
+ * [[ A [P1_A1 U P2] ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . (bj in [[ A1 ]] and sj in [[ P1 ]])
+ *               and
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro AU_A (P1, A1, P2) =
+    mu Y . ((P2) or
+	((P1) and < true > true and [ not (A1) ] false and
+	[ (A1) ] Y)
+    )
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * E [P1_A1 U_A2 P2]
+ * 
+ * [[ E [P1_A1 U_A2 P2] ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . (bj in [[ A1 ]] and sj in [[ P1 ]])
+ *               and
+ *               sk in [[ P1 ]] and bk in [[ A2 ]] and sk+1 in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro EU_A_A (P1, A1, A2, P2) =
+    mu Y . ((P1) and (< (A2) > (P2) or < (A1) > Y))
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * A [P1_A1 U_A2 P2]
+ * 
+ * [[ A [P1_A1 U_A2 P2] ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . (bj in [[ A1 ]] and sj in [[ P1 ]])
+ *               and
+ *               sk in [[ P1 ]] and bk in [[ A2 ]] and sk+1 in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro AU_A_A (P1, A1, A2, P2) =
+    mu Y . (
+        (P1) and (< (A2) > true or < not (A2) > Y) and
+        [ not ((A1) or (A2)) ] false and
+        [ not (A1) and (A2) ] (P2) and [ not (A2) ] Y and
+        [ (A1) and (A2) ] ((P2) or Y)
+    )
+end_macro
+
+(*===========================================================================*)
+(* Derived operators *)
+
+(* EF_A1 P2 = E [ true_A1 U P2 ]
+ * 
+ * [[ EF_A1 P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . bj in [[ A1 ]]
+ *               and
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro EF_A (A1, P2) =
+    mu Y . ((P2) or < (A1) > Y)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* EF P2 = EF_true P2
+ * 
+ * [[ EF P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . sk in [[ P2 ]]
+ *     }
+ *)
+
+macro EF (P2) =
+    mu Y . ((P2) or < true > Y)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AF_A1 P2 = A [ true_A1 U P2 ]
+ * 
+ * [[ AF_A1 P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . (
+ *               forall 1<=j<k . bj in [[ A1 ]]
+ *               and
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro AF_A (A1, P2) = 
+    mu Y . ((P2) or
+	(< true > true and [ not (A1) ] false and [ (A1) ] Y)
+    )
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AF P2 = A [ true_true U P2 ]
+ * 
+ * [[ AF P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           exists k>=1 . sk in [[ P2 ]]
+ *     }
+ *)
+
+macro AF (P2) =
+    mu Y . ((P2) or (< true > true and [ true ] Y))
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * EG_A1 P2 = not AF_A1 not P2
+ * 
+ * [[ EG_A1 P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . (
+ *               forall 1<=j<k . bj in [[ A1 ]]
+ *               implies
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro EG_A (A1, P2) =
+    nu Y . ((P2) and
+	([ true ] false or < not (A1) > true or < (A1) > Y)
+    )
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * EG P2 = EG_true P2
+ * 
+ * [[ EG P2 ]] =
+ *     { s | exists s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . sk in [[ P2 ]]
+ *     }
+ *)
+
+macro EG (P2) =
+    nu Y . ((P2) and ([ true ] false or < true > Y))
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* AG_A1 P2 = not EF_A1 not P2
+ * 
+ * [[ AG_A1 P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . (
+ *               forall 1<=j<k . bj in [[ A1 ]]
+ *               implies
+ *               sk in [[ P2 ]]
+ *           )
+ *     }
+ *)
+
+macro AG_A (A1, P2) =
+    nu Y . ((P2) and [ (A1) ] Y)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(* AG P2 = AG_true P2
+ * 
+ * [[ AG P2 ]] =
+ *     { s | forall s1(=s) -b1-> ... -bi-> si+1 ... .
+ *           forall k>=1 . sk in [[ P2 ]]
+ *     }
+ *)
+
+macro AG (P2) =
+    nu Y . ((P2) and [ true ] Y)
+end_macro
+
+(*---------------------------------------------------------------------------*)

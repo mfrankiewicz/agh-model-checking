@@ -1,0 +1,49 @@
+#!/bin/sh
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_crlf
+#   Auteurs             :       Hubert GARAVEL and Aldo MAZZILLI 
+#   Version             :       1.13
+#   Date                :       2017/12/20 18:02:41
+##############################################################################
+
+COMMAND=`basename "$0"`
+
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	CADP=$CADP_INSTALLATOR
+	# do not export $CADP here
+fi
+
+ARCH=`"$CADP"/com/arch -detailed`
+
+# Ce programme renvoie un mot-cle ("auto", "binary", "crlf", etc.) qui 
+# servira de parametre a la commande Tcl "fconfigure -translation"
+
+case $ARCH in
+	sun3 | sun4 | sun5 | sun64 | sol86 | sol64 | iX86 | iX86-64 | x64 | ia64 | macOS | mac86 | mac64 )
+		echo "auto" 
+		;;
+	win32-cygnus | win64-cygnus | win32-msys )
+		echo "binary" 
+		;;
+	win32-mks )
+		echo "crlf"
+		;;
+	* )
+                echo "$COMMAND: unknown detailed architecture '$ARCH'"
+                exit 1
+                ;;
+esac
+
+exit 0
+

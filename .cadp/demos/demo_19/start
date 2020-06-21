@@ -1,0 +1,104 @@
+#!/bin/sh
+
+set -e 
+
+# -----------------------------------------------------------------------------
+
+case "$1" in 
+	debug | -debug | dbg | -dbg )
+		# debug mode, which produces the "debug.seq" file
+		OPTION_DEBUG="-dbg"
+		OPTION_SILENT=""
+		;;
+	"" )
+		# normal mode
+		OPTION_DEBUG=""
+		OPTION_SILENT="-silent"
+		;;
+	* )
+		echo "unknown option(s): $*"
+		exit 1
+esac
+
+# -----------------------------------------------------------------------------
+
+ARCH=`$CADP/com/arch`
+
+case "$ARCH" in
+	win32 )
+		FZI_TITLE_FONT="-adobe-helvetica-bold-r-normal-*-25-*"
+		export FZI_TITLE_FONT
+		;;
+	* )
+		FZI_TITLE_FONT="-Adobe-Helvetica-Bold-r-Normal-*-240-*"
+		export FZI_TITLE_FONT
+		;;
+esac
+
+# -----------------------------------------------------------------------------
+
+case "$CADP_CC" in
+	*-O* | *-xO* ) 
+		echo "*** Your \$CADP_CC environment variable triggers optimization"
+		echo "    (option -O or -xO...). This is incompatible with Tcl/Tk."
+		echo "    Modify \$CADP_CC to invoke the C compiler without optimization."
+		exit 1
+		;;
+esac 
+
+# -----------------------------------------------------------------------------
+
+if test -f cell 
+then
+	# case of the LOTOS version
+	echo "preprocessing the LOTOS specification..."
+	$CADP/src/com/cadp_cpp cell > cell.lotos
+elif test -f cell.lnt
+then
+	# case of the LNT version
+	echo "translating the LNT specification into LOTOS..."
+	if [ "$OPTION_SILENT" = "" ]
+	then
+		CADP_MORE=cat ; lnt.open cell.lnt -
+	else
+		( CADP_MORE=cat ; lnt.open $OPTION_SILENT cell.lnt - ) > /dev/null 2>&1
+	fi
+else
+	echo "*** Error: no specification found"
+	exit 1
+fi
+
+echo "compiling data types..."
+caesar.adt $OPTION_SILENT cell.lotos
+
+echo "compiling processes..."
+caesar -e7 -exec $OPTION_SILENT cell.lotos
+
+echo "editing links..."
+$CADP/src/com/cadp_cc -I$CADP/incl cell.c gate_functions.c main.c -L$CADP/bin.`$CADP/com/arch` -lcaesar_base -lm -o driver
+
+# -----------------------------------------------------------------------------
+
+SOCKET_FILE=`"$CADP"/src/com/cadp_temporary "cadp_demo19_socket"`
+export SOCKET_FILE
+
+# -----------------------------------------------------------------------------
+
+if [ "$DISPLAY" = "" -o "$DISPLAY" = "unknown" ]
+then
+	echo "unknown display: tcl/tk not started"
+	exit 1
+fi
+
+# -----------------------------------------------------------------------------
+
+if [ "$OPTION_DEBUG" = "" ]
+then
+	echo "starting tcl/tk..."
+else
+	echo "starting tcl/tk (log file in debug.seq)..."
+fi
+$CADP/tcl-tk/com/wish -f graphics/startsimu -snc $OPTION_DEBUG -con ./driver
+
+# -----------------------------------------------------------------------------
+

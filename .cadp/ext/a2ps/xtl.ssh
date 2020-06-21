@@ -1,0 +1,149 @@
+# This file is a customization file for a2ps
+# Style sheet for XTL
+# $Id#
+
+style XTL is
+
+written by "Syntax Editor Configuration Tool <cadp@inria.fr>"
+version is 1.4
+
+documentation is
+ "This style is designed to fontify the XTL language"
+end documentation
+
+alphabets are
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_!"
+
+case sensitive
+
+keywords in Keyword_strong are
+   among,
+   any,
+   apply,
+   assert,
+   "case",
+   current,
+   def,
+   else,
+   else_if,
+   end_assert,
+   end_case,
+   end_def,
+   end_exists,
+   end_flag,
+   end_for,
+   end_forall,
+   end_func,
+   end_if,
+   end_include,
+   end_let,
+   end_library,
+   end_macro,
+   end_type,
+   end_use,
+   exists,
+   flag,
+   for,
+   forall,
+   from,
+   func,
+   if,
+   "in",
+   include,
+   let,
+   library,
+   macro,
+   of,
+   otherwise,
+   select,
+   then,
+   to,
+   type,
+   use,
+   when,
+   where,
+   while,
+   !assignedby,
+   !comparedby,
+   !enumeratedby,
+   !implementedby,
+   !printedby
+end keywords
+
+keywords in Keyword are
+   action,
+   boolean,
+   natural,
+   number,
+   integer,
+   real,
+   character,
+   "string",
+   raw,
+   edge,
+   edgeset,
+   label,
+   labelset,
+   state,
+   stateset,
+   empty,
+   false,
+   full,
+   nop,
+   null,
+   number_of_edges,
+   number_of_labels,
+   number_of_states,
+   true,
+   and,
+   and_then,
+   card,
+   comp,
+   diff,
+   div,
+   extract,
+   fby,
+   iff,
+   implies,
+   includes,
+   init,
+   insert,
+   inter,
+   length,
+   mod,
+   not,
+   or,
+   or_else,
+   out,
+   pred,
+   print,
+   printf,
+   replace,
+   source,
+   succ,
+   target,
+   union,
+   visible
+end keywords
+
+operators in Keyword_strong are
+   _,
+   @,
+   -> \rightarrow,
+   <|,
+   |>,
+   ...
+end operators
+
+sequences are
+   "(*" Comment "*)",
+   C-char,
+   C-string,
+   "`" Plain String "`" Plain
+      exceptions are
+         "\\\\", "\\\`"
+      end exceptions
+end sequences
+
+end style
+

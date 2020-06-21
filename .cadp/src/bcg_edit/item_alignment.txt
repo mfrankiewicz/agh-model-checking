@@ -1,0 +1,15 @@
++----------------+
+| Item alignment |
++----------------+
+
+Before using the "Align horizontally" and "Align vertically" commands 
+of the "Edit" menu), it is necessary to select a group of vertices.
+
+This can be done by simultaneously pressing the <Shift> key,
+clicking with any button to delimit one corner of the selection
+box, dragging the mouse, and clicking again to delimit the 
+second corner of the selection box. The selected vertices 
+will appear drawn in black.
+
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

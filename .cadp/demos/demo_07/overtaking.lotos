@@ -1,0 +1,247 @@
+specification overtaking [S]:noexit
+
+(* ====================================================================== *)
+(* Type definitions *)
+
+library Boolean endlib
+
+library BasicNaturalNumber endlib
+
+library NaturalNumber endlib
+
+type CarId is sorts CarId
+(*! implementedby CARIDENTSORT comparedby CMP_CARIDENTSORT
+    iteratedby ENUM_FIRST_CARIDENTSORT and ENUM_NEXT_CARIDENTSORT
+    printedby PRINT_CARIDENTSORT *)
+opns
+        volvo
+        (*! implementedby VOLVO constructor *),
+        saab
+        (*! implementedby SAAB constructor *),
+        bmw
+        (*! implementedby BMW constructor *) :-> CarId
+endtype
+
+(* Position type *)
+type Position is Boolean, NaturalNumber sorts Position
+(*! implementedby Position comparedby EQUAL_Position
+    iteratedby ENUM_FIRST_Position and ENUM_NEXT_Position
+    printedby PRINT_Position  *)
+
+opns
+        Head (*! implementedby HEAD constructor *) : -> Position
+        Middle (*! implementedby MIDDLE constructor *) : -> Position
+        Tail (*! implementedby TAIL constructor *) : -> Position
+        ord (*! implementedby ORD_Position *) : Position -> Nat
+        _<>_ (*! implementedby NE_Position *) : Position, Position -> Bool
+eqns
+        forall x, y, z  : Position
+        ofsort Nat
+                ord(Tail)   = 0;
+                ord(Middle) = succ(0);
+                ord(Head)   = succ(succ(0));
+
+        ofsort Bool
+                x <> y = ord(x) ne ord(y);
+
+endtype
+
+(* Type to specify ditection of PDUs being sent *)
+type SENDdirection is sorts SENDdirection
+(*! implementedby SEND comparedby CMP_SEND
+    iteratedby ENUM_FIRST_SEND and ENUM_NEXT_SEND
+    printedby PRINT_SEND *)
+opns
+        snd
+        (*! implementedby snd constructor *),
+        rcv
+        (*! implementedby rcv constructor *) :-> SENDdirection
+endtype
+
+(* Service Primitives *)
+type SAPsort is sorts SAPsort
+(*! implementedby SAPSORT comparedby CMP_SAPSORT
+    iteratedby ENUM_FIRST_SAPSORT and ENUM_NEXT_SAPSORT
+    printedby PRINT_SAPSORT *)
+opns
+        ot_req
+        (*! implementedby ot_req constructor *),
+        ot_ind
+        (*! implementedby ot_ind constructor *),
+        ot_begin
+        (*! implementedby ot_begin constructor *),
+        ot_end
+        (*! implementedby ot_end constructor *),
+        ot_resp_no
+        (*! implementedby ot_resp_no constructor *),
+        ot_resp_ok
+        (*! implementedby ot_resp_ok constructor *),
+        ot_conf_ok
+        (*! implementedby ot_conf_ok constructor *) :-> SAPsort
+endtype
+
+(* Protocol Data Units *)
+type PDUSORT is sorts PDUsort
+(*! implementedby PDUSORT comparedby CMP_PDUSORT
+    iteratedby ENUM_FIRST_PDUSORT and ENUM_NEXT_PDUSORT
+    printedby PRINT_PDUSORT *)
+opns
+        p_ot_req
+        (*! implementedby p_ot_req constructor *),
+        p_ot_conf_ok
+        (*! implementedby p_ot_conf_ok constructor *) : -> PDUsort
+endtype
+
+(* Port type for communication medium *)
+type M_Port is Boolean sorts M_Port
+(*! implementedby M_Port comparedby CMP_M_Port
+    iteratedby ENUM_FIRST_M_Port and ENUM_NEXT_M_Port
+    printedby PRINT_M_Port *)
+opns
+        F_Tail
+        (*! implementedby F_Tail constructor *),
+        F_Middle
+        (*! implementedby F_Middle constructor *),
+        F_Head
+        (*! implementedby F_Head constructor *),
+        B_Tail
+        (*! implementedby B_Tail constructor *),
+        B_Middle
+        (*! implementedby B_Middle constructor *),
+        B_Head
+        (*! implementedby B_Head constructor *) :-> M_Port
+endtype
+
+(* Port type for overtaking communication medium *)
+type Ot_Port is sorts Ot_Port
+(*! implementedby Ot_Port comparedby CMP_Ot_Port
+    iteratedby ENUM_FIRST_Ot_Port and ENUM_NEXT_Ot_Port
+    printedby PRINT_Ot_Port *)
+opns
+        ot_Tail
+        (*! implementedby ot_Tail constructor *),
+        ot_Middle
+        (*! implementedby ot_Middle constructor *),
+        ot_Head
+        (*! implementedby ot_Head constructor *) :-> Ot_Port
+endtype
+
+
+(* ====================================================================== *)
+(* Behavioural specification *)
+
+behaviour
+        hide M, OT in
+        (
+        Vehicle[S,M,OT](F_Tail, B_Tail, ot_Tail, Tail, Volvo)
+                |||
+        Vehicle[S,M,OT](F_Middle, B_Middle, ot_Middle, Middle, Saab)
+                |||
+        Vehicle[S,M,OT](F_Head, B_Head, ot_Head, Head, BMW)
+        )
+                |[M,OT]|
+        (
+        Medium[M]
+                |||
+        Overtake_Medium[OT]
+        )
+
+where
+
+
+(* ---------------------------------------------------------------------- *)
+(* Lossy Point-to-Point medium *)
+
+process Medium[M]:noexit :=
+        M_Channel[M](F_Tail,B_Middle) ||| M_Channel[M](F_Middle,B_Head)
+endproc
+
+process M_Channel[M](P1:M_Port,P2:M_Port):noexit :=
+        hide medium_loss in
+           M!P1!snd?pdu:PDUsort;
+                (   M!P2!rcv!pdu;  M_Channel[M](P1,P2)
+                 [] medium_loss; M_Channel[M](P1,P2))
+        [] M!P2!snd?pdu:PDUsort;
+                (   M!P1!rcv!pdu;  M_Channel[M](P1,P2)
+                 [] medium_loss; M_Channel[M](P1,P2))
+endproc
+
+
+(* ---------------------------------------------------------------------- *)
+(* Perfect Overtaking medium *)
+
+process Overtake_Medium[OT]:noexit :=
+        Ot_Channel[OT](ot_Tail, ot_Middle)
+                |||
+        Ot_Channel[OT](ot_Middle, ot_Head)
+endproc
+
+process Ot_Channel[OT](P1:Ot_Port,P2:Ot_Port):noexit :=
+        OT!P1?c_B:M_Port?c_Op:Ot_Port?c_pos:Position;
+        OT!P2!c_B?s_F:M_Port!c_Op?s_Op:Ot_Port!c_pos?s_pos:Position;
+        OT!P1!s_F!s_Op!s_pos;
+        Ot_Channel[OT](P1,P2)
+endproc
+
+
+(* ---------------------------------------------------------------------- *)
+(* Vehicle *)
+
+process Vehicle [S,M,OT](F:M_Port,B:M_Port,Op:Ot_Port,pos:Position,car:CarId):noexit :=
+           S!ot_req!car!pos[pos <> Head]; Client[S,M,OT](F,B,Op,pos,car)
+        [] Server[S,M,OT](F,B,Op,pos,car)
+endproc
+
+
+
+(* Client *)
+
+process Client [S,M,OT](F:M_Port,B:M_Port,Op:Ot_Port,pos:Position,car:CarId):noexit :=
+        hide client_timer in
+           M!F!snd!p_ot_req;
+                ((* time out *)
+                    client_timer!car; (* S!ot_conf_wait!car; *)
+                        Client[S,M,OT](F,B,Op,pos,car)
+                 [] (* or positive acknowledgement *)
+                    M!F!rcv!p_ot_conf_ok;
+                        (* Overtaking starts! *)
+                        S!ot_begin!car!pos;
+                        OT!Op!B!Op!pos;
+                        OT!Op?s_F:M_Port?s_Op:Ot_Port?s_pos:Position;
+                        S!ot_end!car!pos;
+                        Vehicle[S,M,OT](s_F,F,s_Op,s_pos,car))
+
+        (* We ignore "old" confirmation messages *)
+        [] M!F!rcv!p_ot_conf_ok; Client[S,M,OT](F,B,Op,pos,car)
+endproc
+
+
+
+(* Server *)
+
+process Server[S,M,OT](F:M_Port,B:M_Port,Op:Ot_Port,pos:Position,car:CarId):noexit :=
+        M!B!rcv!p_ot_req[pos <> Tail];
+                Server_Query[S,M,OT](F,B,Op,pos,car)
+endproc
+
+process
+Server_Query[S,M,OT](F:M_Port,B:M_Port,Op:Ot_Port,pos:Position,car:CarId):noexit :=
+        S!ot_ind!car!pos;( S!ot_resp_no!car!pos; Server[S,M,OT](F,B,Op,pos,car)
+                        [] S!ot_resp_ok!car!pos;
+                           Server_answer[S,M,OT](F,B,Op,pos,car))
+endproc
+
+process Server_answer[S,M,OT](F:M_Port,B:M_Port,Op:Ot_Port,pos:Position,car:CarId):noexit :=
+           M!B!snd!p_ot_conf_ok; Server_ok[S,M,OT](F,B,Op,pos,car)
+        [] M!B!rcv!p_ot_req; Server_Query[S,M,OT](F,B,Op,pos,car)
+endproc
+
+process Server_ok[S,M,OT](F:M_Port,B:M_Port,Op:Ot_Port,pos:Position,car:CarId):noexit :=
+        OT!Op?c_B:M_Port!F?c_Op:Ot_Port!Op?c_pos:Position!pos;
+                 Vehicle[S,M,OT](B,c_B,c_Op,c_pos,car)
+        [] M!B!rcv!p_ot_req; Server_Query[S,M,OT](F,B,Op,pos,car)
+endproc
+
+endspec
+
+

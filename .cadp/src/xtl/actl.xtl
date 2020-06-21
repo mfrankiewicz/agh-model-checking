@@ -1,0 +1,370 @@
+(******************************************************************************
+ *                                X T L
+ *-----------------------------------------------------------------------------
+ *   INRIA - Unite de Recherche Rhone-Alpes
+ *   655, avenue de l'Europe
+ *   38330 Montbonnot Saint Martin
+ *   FRANCE
+ *-----------------------------------------------------------------------------
+ *   Module             :       actl.xtl
+ *   Author             :       Radu MATEESCU
+ *   Version            :       1.7
+ *   Date               :       2014/05/21 20:00:46
+ *****************************************************************************)
+
+(*
+ * Definition of the ACTL (Action CTL) temporal logic in XTL.
+ * References:
+ * [1] R. De Nicola and F. W. Vaandrager. "Action Versus State Based Logics for
+ *     Transition Systems", Proceedings Ecole de Printemps on Semantics of
+ *     Concurrency, 1990, LNCS v. 469, p. 407-419
+ * [2] R. De Nicola, A. Fantechi, S. Gnesi, and G. Ristori. "An Action-Based
+ *     Framework for Verifying Logical and Behavioural Properties of Concurrent
+ *     Systems", Proceedings of CAV '91, LNCS v. 575, p. 37-47
+ *
+ * The semantics of temporal operators is defined over a Labelled Transition
+ * System (LTS) M = (Q, A, T, q0), where:
+ *  - Q is the set of states
+ *  - A is the set of actions
+ *  - T in Q * A * Q is the transition relation
+ *  - q0 in Q is the initial state.
+ * For each q in Q, we note Path (q) = { q-a1->q1-a2->q2-a3->... } the set of
+ * execution sequences starting at q. For each s in Path (q), we note s(i) the
+ * i-th state of s (s(0)=q). The semantics of a state (resp. action) formula
+ * f (resp. a), noted [[f]] (resp. [[a]]), is the set of states (resp. labels)
+ * satisfying it.
+ *)
+
+(*===========================================================================*)
+(* Libraries used *)
+
+library hml.xtl, mu_calculus.xtl end_library
+
+(*===========================================================================*)
+(* Modal operators *)
+
+(*
+ * EX_a f
+ * [[ EX_a f ]] = { p | exists l, q such that
+ *	(p, l, q) in T and l in [[a]] and q in [[f]] }
+ *)
+
+macro EX_A (A, F) = Dia (A, F) end_macro
+
+(*
+ * EX_tau f
+ * [[ EX_tau f ]] = { p | exists q such that
+ *	(p, tau, q) in T and q in [[f]] }
+ *)
+
+macro EX_TAU (F) = EX_A (TAU, F) end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AX_a f
+ * [[ AX_a f ]] = { p | (exists l, q such that p-l->q) and
+ *	(forall l, q, (p, l, q) in T => (l in [[a]] and q in [[f]])) }
+ *)
+
+def AX_A (A : labelset, F : stateset) : stateset =
+    { S : state where
+	(out (S) <> {}) and
+	forall T : edge among out (S) in
+	    (label (T)  among A) and (target (T) among F)
+	end_forall
+    }
+end_def
+
+(*
+ * AX_tau f
+ * [[ AX_tau f ]] = { p | forall l, q,
+ *	(p, l, q) in T => (l = tau and q in [[f]]) }
+ *)
+
+macro AX_TAU (F) = AX_A (TAU, F) end_macro
+
+(*===========================================================================*)
+(* Temporal operators *)
+
+(*
+ * E [f_a U_b g]
+ * [[ E [f_a U_b g] ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	    (forall i=0..(k-2), s(i)-l->s(i+1) => l in [[a]] or {tau}) and
+ *	    (forall i=0..(k-1), s(i) in [[f]]) and
+ *	    (s(k-1)-l->s(k) => l in [[b]]) and
+ *	    (s(k) in [[g]]) }
+ *)
+
+def EU_A_B (F : stateset, A, B : labelset, G : stateset) : stateset =
+    lfp (X, F and (Dia (B, G) or Dia (A or TAU, X)))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * E [f_a U g]
+ * [[ E [f_a U g] ]] = { p | exists s in Path (p), exists k >= 0 such that
+ *	    (forall i=0..(k-1), s(i)-l->s(i+1) => l in [[a]] or {tau}) and
+ *	    (forall i=0..(k-1), s(i) in [[f]]) and
+ *	    (s(k) in [[g]]) }
+ *)
+
+def EU_A (F : stateset, A : labelset, G : stateset) : stateset =
+    lfp (X, G or (F and Dia (A or TAU, X)))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * A [f_a U_b g]
+ * [[ A [f_a U_b g] ]] = { p | forall s in Path (p), exists k > 0 such that
+ *	    (forall i=0..(k-2), s(i)-l->s(i+1) => l in [[a]] or {tau}) and
+ *	    (forall i=0..(k-1), s(i) in [[f]]) and
+ *	    (s(k-1)-l->s(k) => l in [[b]]) and
+ *	    (s(k) in [[g]]) }
+ *)
+
+def AU_A_B (F : stateset, A, B : labelset, G : stateset) : stateset =
+    lfp (X, F and Dia (true) and Box (not (A or TAU or B), false) and
+	    Box (not (A or TAU), G) and Box (not (B), X) and
+	    Box ((A or TAU) and B, G or X))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * A [f_a U g]
+ * [[ A [f_a U g] ]] = { p | forall s in Path (p), exists k > 0 such that
+ *	    (forall i=0..(k-1), s(i)-l->s(i+1) => l in [[a]] or {tau}) and
+ *	    (forall i=0..(k-1), s(i) in [[f]]) and
+ *	    (s(k) in [[g]]) }
+ *)
+
+def AU_A (F : stateset, A : labelset, G : stateset) : stateset =
+    lfp (X, G or (F and AX_A (A or TAU, X)))
+end_def
+
+(*===========================================================================*)
+(* Derived temporal operators *)
+
+(*
+ * EF_a g = E [true_a U g]
+ * [[ EF_a g ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	    (forall i=0..(k-1), s(i)-l->s(i+1) => l in [[a]] or {tau}) and
+ *	    (s(k) in [[g]]) }
+ *)
+
+def EF_A (A : labelset, G : stateset) : stateset =
+    lfp (X, G or Dia (A or TAU, X))
+end_def
+
+(*
+ * EF g = E [true_true U g]
+ * [[ EF g ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	    s(k) in [[g]] }
+ *)
+
+def EF (G : stateset) : stateset =
+    lfp (X, G or Dia (X))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AF_a g = A [true_a U g]
+ * [[ AF_a g ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	    (forall i=0..(k-1), s(i)-l->s(i+1) => l in [[a]] or {tau}) and
+ *	    (s(k) in [[g]]) }
+ *)
+
+def AF_A (A : labelset, G : stateset) : stateset =
+    lfp (X, G or AX_A (A or TAU, X))
+end_def
+
+(*
+ * AF g = A [true_true U g]
+ * [[ AF g ]] = { p | forall s in Path (p), exists k >= 0 such that
+ *	    s(k) in [[g]] }
+ *)
+
+def AF (G : stateset) : stateset =
+    lfp (X, G or AX_A (true, X))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * EG_a g = not AF_a (not g) = not A [true_a U not g]
+ * [[ EG_a g ]] = { p | exists s in Path (p) such that forall k >= 0,
+ *	    (forall i=0..(k-1), s(i)-l->s(i+1) => l in [[a]] or {tau}) =>
+ *	    (s(k) in [[g]]) }
+ *)
+
+macro EG_A (A, G) = not (AF_A (A, not (G))) end_macro
+
+(*
+ * EG g = not AF (not g) = not A [true_true U not g]
+ * [[ EG g ]] = { p | exists s in Path (p) such that forall k >= 0,
+ *	    s(k) in [[g]] }
+ *)
+
+macro EG (G) = not (AF (not (G))) end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * AG_a g = not EF_a (not g) = not E [true_a U not g]
+ * [[ AG_a g ]] = { p | forall s in Path (p), forall k >= 0,
+ *	    (forall i=0..(k-1), s(i)-l->s(i+1) => l in [[a]] or {tau}) =>
+ *	    (s(k) in [[g]]) }
+ *)
+
+macro AG_A (A, G) = not (EF_A (A, not (G))) end_macro
+
+(*
+ * AG g = not EF (not g) = not E [true_true U not g]
+ * [[ AG g ]] = { p | forall s in Path (p), forall k >= 0,
+ *	    s(k) in [[g]] }
+ *)
+
+macro AG (G) = not (EF (not (G))) end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * f <a> g = E [f_false U_a g]
+ * [[ f <a> g ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	    (forall i=0..(k-2), s(i)-tau->s(i+1)) and
+ *	    (forall i=0..(k-1), s(i) in [[f]]) and
+ *	    (s(k-1)-l->s(k) => l in [[a]]) and
+ *	    (s(k) in [[g]]) }
+ *)
+
+def Dia_2 (F : stateset, A : labelset, G : stateset) : stateset =
+    lfp (X, F and (Dia (A, G) or Dia (TAU, X)))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * f <epsilon> g = E [f_false U g]
+ * [[ f <epsilon> g ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	    (forall i=0..(k-1), s(i)-tau->s(i+1)) and
+ *	    (forall i=0..(k-1), s(i) in [[f]]) and
+ *	    (s(k) in [[g]]) }
+ *)
+
+def Dia_2 (F : stateset, G : stateset) : stateset =
+    lfp (X, G or (F and Dia (TAU, X)))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * <a> g = true <a> g = E [true_false U_a g]
+ * [[ <a> g ]] = { p | exists s in Path (p), exists k > 0 such that
+ *	    (forall i=0..(k-2), s(i)-tau->s(i+1)) and
+ *	    (s(k-1)-l->s(k) => l in [[a]]) and
+ *	    (s(k) in [[g]]) }
+ * NOTE: this is the "weak" diamond operator (tau*-a possibility)
+ *)
+
+def _ wdia _ (A : labelset, G : stateset) : stateset =
+    lfp (X, Dia (A, G) or Dia (TAU, X))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * [a] g = not <a> (not g) = not E [true_false U_a (not g)]
+ * [[ [a] g ]] = { p | forall s in Path (p), forall k > 0,
+ *	    ((forall i=0..(k-2), s(i)-tau->s(i+1)) and
+ *	    (s(k-1)-l->s(k) => l in [[a]])) =>
+ *	    (s(k) in [[g]]) }
+ * NOTE: this is the "weak" box operator (tau*-a necessity)
+ *)
+
+def _ wbox _ (A : labelset, G : stateset) : stateset =
+    not (A wdia (not (G)))
+end_def
+
+(*---------------------------------------------------------------------------*)
+(*
+ * not a to b unless c = [a] (not EF_(not c) <b> true)
+ *)
+
+macro ACTL_NOT_TO_UNLESS (A, B, C) =
+(
+    ((A) of labelset) wbox
+    not (EF_A (not ((C) of labelset), ((B) of labelset) wdia true of stateset))
+)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * after a pot b1 b2 ... bn =
+ * [a] EF_tau <b1> EF_tau <b2> ... EF_tau <bn> true
+ *)
+
+macro AFTER_POT (A, B1) =
+(
+    ((A) of labelset) wbox
+	EF_A (TAU, ((B1) of labelset) wdia true of stateset)
+)
+end_macro
+
+macro AFTER_POT_2 (A, B1, B2) =
+(
+    ((A) of labelset) wbox
+	EF_A (TAU, ((B1) of labelset) wdia
+	    EF_A (TAU, ((B2) of labelset) wdia true of stateset))
+)
+end_macro
+
+macro AFTER_POT_3 (A, B1, B2, B3) =
+(
+    ((A) of labelset) wbox
+	EF_A (TAU, ((B1) of labelset) wdia
+	    EF_A (TAU, ((B2) of labelset) wdia
+		EF_A (TAU, ((B3) of labelset) wdia true of stateset)))
+)
+end_macro
+
+(*---------------------------------------------------------------------------*)
+(*
+ * inev (a) = A [true_true U_a true]
+ *)
+
+def ACTL_INEV (A : labelset) : stateset =
+    lfp (X, Dia (true) and Box (not (A), X))
+end_def
+
+(*
+ * after a1 a2 ... an inev b =
+ * [a1] AG_tau [a2] ... AG_tau [an] A [true_true U_b true]
+ *)
+
+macro AFTER_INEV (A1, B) =
+(
+    ((A1) of labelset) wbox
+	ACTL_INEV (B)
+)
+end_macro
+
+macro AFTER_INEV_2 (A1, A2, B) =
+(
+    ((A1) of labelset) wbox
+	AG_A (TAU, ((A2) of labelset) wbox
+	    ACTL_INEV (B))
+)
+end_macro
+
+macro AFTER_INEV_3 (A1, A2, A3, B) =
+(
+    ((A1) of labelset) wbox
+	AG_A (TAU, ((A2) of labelset) wbox
+	    AG_A (TAU, ((A3) of labelset) wbox
+		ACTL_INEV (B)))
+)
+end_macro
+
+macro AFTER_INEV_4 (A1, A2, A3, A4, B) =
+(
+    ((A1) of labelset) wbox
+	AG_A (TAU, ((A2) of labelset) wbox
+	    AG_A (TAU, ((A3) of labelset) wbox
+		AG_A (TAU, ((A4) of labelset) wbox
+		    ACTL_INEV (B))))
+)
+end_macro
+

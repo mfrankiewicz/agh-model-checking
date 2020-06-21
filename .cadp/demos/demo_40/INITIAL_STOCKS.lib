@@ -1,0 +1,26 @@
+(******************************************************************************
+ * INITIAL_STOCKS.lib: 
+ * Definitions of the initial stocks of all the participants in the stock
+ * management example
+ *****************************************************************************)
+
+type INITIAL_STOCKS is
+   BOOLEAN, NATURAL, STOCK
+   opns stock_supplier_1, stock_supplier_2 : -> Stock
+        stock_local_1,    stock_local_2    : -> Stock
+        stock_central                      : -> Stock
+        18 : -> Nat
+   eqns
+      ofsort Nat
+         18 = 9 + 9
+      ofsort Stock
+         stock_supplier_1 = cons (1, 9, cons (2, 18, empty));
+      ofsort Stock
+         stock_supplier_2 = cons (3, 7, cons (4, 18, empty));
+      ofsort Stock
+         stock_local_1 = cons (1, 9, cons (2, 4, cons (3, 0, empty)));
+      ofsort Stock
+         stock_local_2 = cons (1, 4, cons (2, 0, cons (3, 8, empty)));
+      ofsort Stock
+         stock_central = cons (1, 6, cons (2, 5, cons (3, 8, empty)));
+endtype

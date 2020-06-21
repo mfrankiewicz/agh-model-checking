@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GtkSourceView version 3 definitions for the XTL language -->
+<!-- produced by Syntax Editor Configuration Tool <cadp@inria.fr> -->
+<!-- version 1.4:XTL+1.17:SECT -->
+<language id="xtl" _name="XTL" version="2.0" _section="Sources">
+
+   <metadata>
+      <property name="mimetypes">text/x-xtl</property>
+      <property name="globs">*.xtl</property>
+      <property name="block-comment-start">(*</property>
+      <property name="block-comment-end">*)</property>
+   </metadata>
+
+   <styles>
+      <style id="comment"  _name="Comment"       map-to="def:comment"/>
+      <style id="string"   _name="String"        map-to="def:string"/>
+      <style id="pragma"   _name="Preprocessor"  map-to="def:preprocessor"/>
+      <style id="keyword"  _name="Keyword"       map-to="def:keyword"/>
+      <style id="type"     _name="Data Type"     map-to="def:type"/>
+      <style id="constant" _name="Boolean value" map-to="def:boolean"/>
+      <style id="function" _name="Function"      map-to="def:builtin"/>
+      <style id="operator" _name="Operator"      map-to="def:operator"/>
+   </styles>
+
+   <default-regex-options case-sensitive="true"/>
+
+   <definitions>
+      <context id="block-comment" style-ref="comment" class="comment" class-disabled="no-spell-check">
+         <start>\(\*</start>
+         <end>\*\)</end>
+         <include>
+            <context ref="block-comment"/>
+         </include>
+      </context>
+
+      <context id="single-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>'</start>
+         <end>'</end>
+      </context>
+
+      <context id="double-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>"</start>
+         <end>"</end>
+      </context>
+
+      <context id="back-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+         <start>`</start>
+         <end>`</end>
+      </context>
+
+      <context id="pragma" style-ref="pragma">
+         <prefix>\!</prefix>
+         <keyword>assignedby</keyword>
+         <keyword>comparedby</keyword>
+         <keyword>enumeratedby</keyword>
+         <keyword>implementedby</keyword>
+         <keyword>printedby</keyword>
+      </context>
+
+      <context id="keyword" style-ref="keyword">
+         <keyword>among</keyword>
+         <keyword>any</keyword>
+         <keyword>apply</keyword>
+         <keyword>assert</keyword>
+         <keyword>case</keyword>
+         <keyword>current</keyword>
+         <keyword>def</keyword>
+         <keyword>else</keyword>
+         <keyword>else_if</keyword>
+         <keyword>end_assert</keyword>
+         <keyword>end_case</keyword>
+         <keyword>end_def</keyword>
+         <keyword>end_exists</keyword>
+         <keyword>end_flag</keyword>
+         <keyword>end_for</keyword>
+         <keyword>end_forall</keyword>
+         <keyword>end_func</keyword>
+         <keyword>end_if</keyword>
+         <keyword>end_include</keyword>
+         <keyword>end_let</keyword>
+         <keyword>end_library</keyword>
+         <keyword>end_macro</keyword>
+         <keyword>end_type</keyword>
+         <keyword>end_use</keyword>
+         <keyword>exists</keyword>
+         <keyword>flag</keyword>
+         <keyword>for</keyword>
+         <keyword>forall</keyword>
+         <keyword>from</keyword>
+         <keyword>func</keyword>
+         <keyword>if</keyword>
+         <keyword>in</keyword>
+         <keyword>include</keyword>
+         <keyword>let</keyword>
+         <keyword>library</keyword>
+         <keyword>macro</keyword>
+         <keyword>of</keyword>
+         <keyword>otherwise</keyword>
+         <keyword>select</keyword>
+         <keyword>then</keyword>
+         <keyword>to</keyword>
+         <keyword>type</keyword>
+         <keyword>use</keyword>
+         <keyword>when</keyword>
+         <keyword>where</keyword>
+         <keyword>while</keyword>
+      </context>
+
+      <context id="type" style-ref="type">
+         <keyword>action</keyword>
+         <keyword>boolean</keyword>
+         <keyword>natural</keyword>
+         <keyword>number</keyword>
+         <keyword>integer</keyword>
+         <keyword>real</keyword>
+         <keyword>character</keyword>
+         <keyword>string</keyword>
+         <keyword>raw</keyword>
+         <keyword>edge</keyword>
+         <keyword>edgeset</keyword>
+         <keyword>label</keyword>
+         <keyword>labelset</keyword>
+         <keyword>state</keyword>
+         <keyword>stateset</keyword>
+      </context>
+
+      <context id="constant" style-ref="constant">
+         <keyword>empty</keyword>
+         <keyword>false</keyword>
+         <keyword>full</keyword>
+         <keyword>nop</keyword>
+         <keyword>null</keyword>
+         <keyword>number_of_edges</keyword>
+         <keyword>number_of_labels</keyword>
+         <keyword>number_of_states</keyword>
+         <keyword>true</keyword>
+      </context>
+
+      <context id="function" style-ref="function">
+         <keyword>and</keyword>
+         <keyword>and_then</keyword>
+         <keyword>card</keyword>
+         <keyword>comp</keyword>
+         <keyword>diff</keyword>
+         <keyword>div</keyword>
+         <keyword>extract</keyword>
+         <keyword>fby</keyword>
+         <keyword>iff</keyword>
+         <keyword>implies</keyword>
+         <keyword>includes</keyword>
+         <keyword>init</keyword>
+         <keyword>insert</keyword>
+         <keyword>inter</keyword>
+         <keyword>length</keyword>
+         <keyword>mod</keyword>
+         <keyword>not</keyword>
+         <keyword>or</keyword>
+         <keyword>or_else</keyword>
+         <keyword>out</keyword>
+         <keyword>pred</keyword>
+         <keyword>print</keyword>
+         <keyword>printf</keyword>
+         <keyword>replace</keyword>
+         <keyword>source</keyword>
+         <keyword>succ</keyword>
+         <keyword>target</keyword>
+         <keyword>union</keyword>
+         <keyword>visible</keyword>
+      </context>
+
+      <context id="operator" style-ref="operator">
+         <match extended="true">
+            _ | @ | -&gt; | &lt;\| | \|&gt; | \.\.\.
+         </match>
+      </context>
+
+      <context id="xtl" class="no-spell-check">
+         <include>
+            <context ref="block-comment"/>
+            <context ref="single-quoted-string"/>
+            <context ref="double-quoted-string"/>
+            <context ref="back-quoted-string"/>
+            <context ref="pragma"/>
+            <context ref="keyword"/>
+            <context ref="type"/>
+            <context ref="constant"/>
+            <context ref="function"/>
+            <context ref="operator"/>
+         </include>
+      </context>
+
+   </definitions>
+</language>

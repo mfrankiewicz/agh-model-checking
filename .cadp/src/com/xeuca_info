@@ -1,0 +1,149 @@
+#! /bin/sh 
+
+###############################################################################
+#                       E U C A L Y P T U S - 2
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       xeuca_info
+#   Auteurs             :       Hubert GARAVEL and Aldo MAZZILLI
+#   Version             :       1.28
+#   Date                :       2017/12/20 18:11:43
+##############################################################################
+
+COMMAND=`basename "$0"`
+FILE="$1"
+
+ARCH=`"$CADP"/com/arch`
+DETAILED_ARCH=`"$CADP"/com/arch -detailed`
+
+case $ARCH in
+	sun3 | sun4 )
+		STRING_1=`/bin/ls -ldg "$FILE"`
+		STRING_2=`/bin/ls -ldg -u "$FILE"`
+		;;
+	sun5 | sun64 | sol86 | sol64 | win32 | macOS | mac86 | mac64 )
+		STRING_1=`/bin/ls -ld "$FILE"`
+		STRING_2=`/bin/ls -ld -u "$FILE"`
+		;;
+	iX86 | x64 | ia64 )
+		# par defaut, certaines versions de Linux ont une commande "ls"
+		# qui utilise --time-style=iso et qui produit une date n'ayant
+		# que 2 colonnes au lieu de 3 sur les autres architectures ;
+		# on est donc oblige de forcer un formattage sur 3 colonnes
+		# conforme aux autres versions d'Unix ; attention : le saut
+		# de ligne au milieu des chaines format est indispensable et
+		# ne doit pas etre altere
+		STRING_1=`/bin/ls -ld --time-style="+%h %e %Y
+%h %e %H:%M" "$FILE"`
+		STRING_2=`/bin/ls -ld -u --time-style="+%h %e %Y
+%h %e %H:%M" "$FILE"`
+		;;
+	* )
+		echo "$COMMAND: unknown architecture '$ARCH'"
+		exit 1
+		;;
+esac
+
+# l'option ``-d'' de ``ls'' permet de ne pas afficher le contenu des repertoires
+
+STRING_1=`echo "$STRING_1" | sed -e 's/[ ][ ]*/ /g'`
+STRING_2=`echo "$STRING_2" | sed -e 's/[ ][ ]*/ /g'` 
+
+# si $1 est un lien, la sortie des commandes ``ls'' se termine par " -> path"
+# ou "path" designe le fichier vers lequel pointe $1 ; on enleve cette 
+# information des chaines $STRING_1 et de $STRING_2 pour ne pas fausser le
+# nombre de colonnes et car la commande ``file'' appelee plus tard fournira
+# aussi la meme information sur les liens symboliques
+if test -L "$FILE"
+then
+      STRING_1=`echo "$STRING_1" | sed -e 's/ ->.*$//'`
+      STRING_2=`echo "$STRING_2" | sed -e 's/ ->.*$//'`
+fi
+
+# on supprime des chaines $STRING_1 et $STRING_2 le nom du fichier $FILE
+# qui figure en fin de chaine (car ce nom de fichier peut comporter des
+# blancs et, donc, fausser le nombre total de colonnes)
+
+FILENAME_LENGTH=`echo "$FILE" | wc -c`
+
+STRING_1_LENGTH=`echo "$STRING_1" | wc -c`
+STRING_1_LENGTH=`expr $STRING_1_LENGTH - $FILENAME_LENGTH`
+STRING_1=`echo $STRING_1 | cut -b1-$STRING_1_LENGTH`
+
+STRING_2_LENGTH=`echo "$STRING_2" | wc -c`
+STRING_2_LENGTH=`expr $STRING_2_LENGTH - $FILENAME_LENGTH`
+STRING_2=`echo $STRING_2 | cut -b1-$STRING_2_LENGTH`
+
+NB_COLUMNS=`echo "$STRING_1" | wc -w`
+END_OWNER=`expr 3 + \( $NB_COLUMNS - 8 \) / 2`
+MODE_RANGE="1"
+OWNER_RANGE="3-$END_OWNER"
+GROUP_RANGE="`expr $END_OWNER + 1`-`expr $NB_COLUMNS - 4`"
+SIZE_RANGE="`expr $NB_COLUMNS - 3`"			
+TIME_RANGE="`expr $NB_COLUMNS - 2`-`expr $NB_COLUMNS`"
+
+# valeurs standard lorsque les champs Owner et Group ne comportent aucun espace
+# (ceci n'est pas toujours vrai sous Windows, par exemple "Tout le monde")
+# MODE_RAGE = 1
+# OWNER_RANGE = 3-3
+# GROUP_RANGE = 4-4
+# SIZE_RANGE = 5
+# TIME_RANGE = 6-8
+
+MODE=`echo $STRING_1 | cut -d' ' -f$MODE_RANGE`
+OWNER=`echo $STRING_1 | cut -d' ' -f$OWNER_RANGE`
+GROUP=`echo $STRING_1 | cut -d' ' -f$GROUP_RANGE`
+SIZE=`echo $STRING_1 | cut -d' ' -f$SIZE_RANGE`
+MTIME=`echo $STRING_1 | cut -d' ' -f$TIME_RANGE`
+ATIME=`echo $STRING_2 | cut -d' ' -f$TIME_RANGE`
+
+echo "	Filename:		$FILE"
+
+case $DETAILED_ARCH in
+	win32-cygnus | win64-cygnus )
+		if test -x /bin/file
+		then
+			TYPE=`/bin/file -h "$1" | sed -e 's/\(.*:[ 	]*\)//'`
+		else 
+			# les anciennes versions de Cygwin n'ont pas la 
+			# commande "file"
+			TYPE="unknown"
+		fi
+		;;
+	* )
+		TYPE=`/usr/bin/file -h "$1" | sed -e 's/\(.*:[ 	]*\)//'`
+		# note : sous toutes ces architectures, la commande ``file''
+		# se trouve dans /usr/bin (ou bien dans /bin qui est identique
+		# a /usr/bin) ; sous Solaris, on est oblige de preciser
+		# /usr/bin/file car /usr/ubc/file est un script qui ne gere
+		# pas correctement les espaces dans les noms de fichiers
+		;;
+esac
+
+if [ "$TYPE" != "ascii text" -a \
+     "$TYPE" != "ASCII text" -a \
+     "$TYPE" != "data" -a \
+     "$TYPE" != "commands text" -a \
+     "$TYPE" != "English text" -a \
+     "$TYPE" != "unknown" ]
+then
+	echo "	Type:			$TYPE"
+fi
+
+echo "	Size:			$SIZE bytes"
+
+echo "	Mode:			$MODE"
+
+echo "	Owner:			$OWNER"
+
+echo "	Group:			$GROUP"
+
+echo "	Last modified:		$MTIME"
+
+echo "	Last accessed:		$ATIME"
+

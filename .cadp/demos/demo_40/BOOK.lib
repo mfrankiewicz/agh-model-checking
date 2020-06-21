@@ -1,0 +1,30 @@
+(******************************************************************************
+ * BOOK.lib: data type of books for the book auction example
+ *
+ * Books are represented by four-tuples <ref, price, days, returnok>, where
+ *  - ref is the reference number of the book,
+ *  - price is the price of the book,
+ *  - days is the number of days for delivery of the book, and 
+ *  - returnok equals true iff the book can be returned after purchase.
+ *****************************************************************************)
+
+type BOOK is
+   NATURAL, BOOLEAN
+   sorts Book
+   opns book (*! constructor *) : Nat, Nat, Nat, Bool -> Book
+        ref      : Book -> Nat
+        price    : Book -> Nat
+        days     : Book -> Nat
+        returnok : Book -> Bool
+   eqns
+      forall r, p, d : Nat,
+             ro      : Bool
+      ofsort Nat
+         ref (book (r, p, d, ro)) = r;
+      ofsort Nat
+         price (book (r, p, d, ro)) = p;
+      ofsort Nat
+         days (book (r, p, d, ro)) = d;
+      ofsort Bool
+         returnok (book (r, p, d, ro)) = ro;
+endtype

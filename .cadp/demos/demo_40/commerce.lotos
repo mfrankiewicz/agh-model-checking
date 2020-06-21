@@ -1,0 +1,54 @@
+(******************************************************************************
+ * commerce.lotos: 
+ * A stock management system, composed of a central store acting as a wholesale
+ * merchant between two suppliers and two local stores. This case study is
+ * described in [Chirichiello-Salaun-05].
+ *
+ * All transaction are organised as follows. The potential buyer (the central 
+ * or one of the local stores) requests a quantity of an item (both modelled by 
+ * natural numbers). If a request can be fulfilled, it is followed by a rendez-
+ * vous on a gate "ok", otherwise the request is followed by a rendez-vous on a
+ * gate "nok".
+ * The two suppliers (respectively the two local stores) do not interact with
+ * each other.
+ ******************************************************************************)
+
+specification COMMERCE [request_local,    ok_local,    nok_local,
+                        request_supplier, ok_supplier, nok_supplier] : noexit
+
+   (* import of the data type definitions *)
+   library
+      BOOLEAN, NATURAL,
+      STOCK, INITIAL_STOCKS
+   endlib
+
+behaviour
+
+   (
+      (* two suppliers *)
+      Supplier [request_supplier, ok_supplier, nok_supplier] (stock_supplier_1)
+      |||
+      Supplier [request_supplier, ok_supplier, nok_supplier] (stock_supplier_2)
+   )
+
+   |[request_supplier, ok_supplier, nok_supplier]|
+
+   (* central store acting as wholesale merchand *)
+   CentralStore [request_local,    ok_local,    nok_local,
+                 request_supplier, ok_supplier, nok_supplier] (stock_central)
+
+   |[request_local, ok_local, nok_local]|
+
+   (
+      (* two local stores *)
+      LocalStore [request_local, ok_local, nok_local] (stock_local_1)
+      |||
+      LocalStore [request_local, ok_local, nok_local] (stock_local_2)
+   )
+
+where
+   (* import of the process definitions *)
+   library
+      SUPPLIER, CENTRAL_STORE, LOCAL_STORE
+   endlib
+endspec

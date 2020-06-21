@@ -1,0 +1,105 @@
+#!/bin/sh
+
+###############################################################################
+#                               C A D P 
+#-----------------------------------------------------------------------------
+#   INRIA
+#   Unite de Recherche Rhone-Alpes
+#   655, avenue de l'Europe
+#   38330 Montbonnot Saint Martin
+#   FRANCE
+#-----------------------------------------------------------------------------
+#   Module              :       cadp_tail
+#   Auteurs             :       Nicolas Descoubes, David Champelovier et
+#				Hubert Garavel
+#   Version             :       1.7
+#   Date                :       2010/09/27 10:47:30
+##############################################################################
+
+# Ce shell-script constitue une version portable de la commande "tail"
+
+# Les parametres attendus pour ce shell-script doivent etre de la forme
+# -n NN ... ou -n +NN ... (ou NN est un nombre de lignes et ... designe des
+# parametres supplementaires optionnels). 
+# Note 1: il n'est pas permis (ou pas prudent) d'ecrire -n -NN ...
+# Note 2: l'option -n doit toujours figurer en premier argument. Ainsi
+#     $CADP/src/com/cadp_tail -n 10 -f /tmp/log
+# est permis, mais pas
+#     $CADP/src/com/cadp_tail -f -n 10 /tmp/log
+
+# ----------------------------------------------------------------------------
+
+if test "$CADP_INSTALLATOR" != ""
+then
+	# in such case, this shell-script is certainly invoked by installator
+	CADP="$CADP_INSTALLATOR"
+	# do not export $CADP here
+fi
+
+# ----------------------------------------------------------------------------
+
+# On doit traiter la presence eventuelle de signaux 13 (SIGPIPE) qui se 
+# produisent (sous Solaris, Linux, etc.) lorsque deux conditions sont reunies
+# 1) l'appel a cadp_tail intervient en partie gauche d'un pipe Unix avec, en
+#    en partie droite du pipe, une commande Unix qui va clore prematurement
+#    le pipe sans lire tout son contenu ;
+# 2) l'appel a cadp_tail aurait encore des choses a ecrire lorsque le pipe
+#    est clos prematurement, ce qui se produit lorsque le fichier d'entree
+#    passe' a cadp_tail est suffisamment gros (par exemple, plus gros que la
+#    taille de la memoire tampon allouee pour le pipe).
+
+trap "" 13
+
+# Si on ne met pas la commande "trap" ci-dessus, alors on obtient un message
+# d'erreur "Broken pipe" chaque fois que l'on execute, par exemple, sous
+# Solaris :
+# 	./cadp_tail -n +10 /usr/dict/words | head -n 1
+# ou, sous Linux :
+#	./cadp_tail -n +10 /usr/dict/words | head -n 1
+
+#-----------------------------------------------------------------------------
+
+ARCH=`"$CADP"/com/arch`
+
+case $ARCH in
+	sun3 | sun4 | sun5 | sun64 | sol86 | sol64 )
+
+		# la commande "tail" de SunOS n'accepte pas l'option -n de la
+		# norme POSIX. On ne peut pas ecrire :
+		#     tail -n 10 /etc/passwd
+		#     tail -n +10 /etc/passwd
+		# et il faut ecrire (respectivement) :
+		#     tail -10 /etc/passwd
+		#     tail +10 /etc/passwd
+
+		if [ "@$1" = "@-n" -a $# -ge 2 ]
+		then
+			case "$2" in
+			    +*)
+				LINES=$2
+				;;
+			    *)
+				LINES="-$2"
+				;;
+			esac
+			shift 2
+			tail "$LINES" "$@"
+		else
+			tail "$@"
+		fi
+		;;
+	
+	* )
+		tail "$@" 2> /dev/null
+		;;
+esac
+
+# La clause "2> /dev/null" ci-dessus sert sous Linux a eviter le message 
+# d'erreur "tail: write error".
+
+exit 0
+
+# La clause "exit 0" ci-dessus sert a masquer les erreurs provoquees par
+# l'occurrence d'un signal SIGPIPE ; si on ne met pas cette clause, la
+# commande "cadp_tail" va renvoyer un code d'erreur anormal (souvent, 141).
+

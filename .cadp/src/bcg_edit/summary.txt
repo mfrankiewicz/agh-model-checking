@@ -1,0 +1,57 @@
++---------------------------------------+
+| Summary of keybord and mouse bindings |
++---------------------------------------+
+
+*** TWO-BUTTON MOUSE
+
+   If your mouse has only two buttons, the middle button can be emulated 
+   by pressing the <Shift> key + the right button together (this also 
+   works with a three-button mouse).
+    
+*** EVERYWHERE
+
+   <Shift> key + left bouton: select a group of vertices for alignment
+
+*** ON VERTICES AND VERTICE LABELS
+
+   Left button: move a vertice to another position
+ 
+*** ON EDGE LABELS
+
+   Left button: move the label along its edge 
+   Middle button: same effect as on the edge itself (see below)
+   Right button: same effect as on the edge itself (see below)
+
+*** ON EDGE CONTROL POINTS
+
+   Note: Control points only exist for curved edges and loops
+
+   Left button, single click: move the control point, thus changing
+                              the shape of the edge
+   Left button, double click: hide the control point(s) for this edge
+   Middle button: same effect as on the edge itself (see below)
+   Right button: same effect as on the edge itself (see below)
+
+*** ON ALL TYPES OF EDGES 
+
+   <Control> key + left button: change the size of the arrow
+
+*** ON STRAIGHT EDGES
+
+   Middle button: change the straight edge into a symmetrical curved edge
+   Right button: open a window to change the type of the edge 
+
+*** ON SYMMETRICAL AND ASYMMETRICAL CURVED EDGES
+
+   Left button: display the control points of the edge
+   Middle button: change the curved edge into a straight edge or a loop
+   Right button: open a window to change the type of the edge 
+
+*** ON LOOPS 
+
+   Left button: display the control points of the edge
+   Middle button: change the loop into a symmetrical curved edge
+   Right button: open a window to change the type of the edge 
+
+
+BCG_EDIT on-line help -- Last updated: 2013/09/09 10:30:04

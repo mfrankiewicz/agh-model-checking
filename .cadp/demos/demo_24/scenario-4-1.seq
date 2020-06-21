@@ -1,0 +1,92 @@
+################################################################
+# @(#)scenario-4-1.seq	1.2 - 97/07/11 - Charles Pecheur, INRIA Rhone-Alpes
+# Find deadlocks in scenario 4.1
+# The model of 4.1 is too big for exhaustive exploration.
+# The following traces produce a guided exploration where the different
+# requests are handled sequentially.
+################################################################
+
+### Successful execution of all requests
+
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOFORWARD !REQREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOFORWARD !REQACHIEVE.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGSTORED.*]
+<until> "OK"
+[]
+
+### deadlock during first request
+
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*]
+<deadlock>
+[]
+
+### deadlock during second request
+
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*]
+<deadlock>
+[]
+
+### deadlock during third request
+
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*]
+<deadlock>
+[]
+
+### deadlock during fourth request
+
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOFORWARD !REQREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*]
+<deadlock>
+[]
+
+### deadlock during fifth request
+
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOFORWARD !REQREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOFORWARD !REQACHIEVE.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*]
+<deadlock>
+[]
+
+### deadlock after fifth request
+
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOFORWARD !REQREGISTER.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGREGISTERED.*]
+[.*!DOFORWARD !REQACHIEVE.*]
+<while> ~[.*!DOREGISTER.*] & ~[.*!DOFORWARD.*] <until> [.*!SIGSTORED.*]
+<deadlock>
+[]

@@ -1,0 +1,51 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains various libraries to be used with
+XTL and EVALUATOR 3 and 4
+
+XTL libraries written by Radu Mateescu
+--------------------------------------
+
+actl.xtl		XTL library for ACTL
+basic.xtl		XTL library with general purpose operators
+ctl.xtl			XTL library for CTL
+hml.xtl			XTL library for HML
+info.xtl		XTL library for computing information about BCG files
+ltac.xtl		XTL library for LTAC
+mu_calculus.xtl		XTL library for the modal mu-calculus
+nondet.xtl		XTL library for computing the shortest path from the
+			initial state to a nondeterministic state
+path.xtl		XTL library for computing the shortest path from the
+			initial state to (a state of) a given state set
+xtl_info.xtl		XTL library of higher level to be used with info.xtl
+
+XTL libraries written by Charles Pecheur
+----------------------------------------
+
+misc.xtl		XTL library with miscellaneous
+			general-purpose definitions
+
+walk.xtl		XTL library for exploration with
+			diagnostic traces: basic definitions
+
+walk_actl.xtl 		XTL library for exploration with
+			diagnostic traces: CTL and ACTL operators
+
+walk_print_nice.xtl	XTL library for exploration with
+			diagnostic traces: more detailed printing primitives
+
+EVALUATOR libraries written by Mihaela Sighireanu and Radu Mateescu
+-------------------------------------------------------------------
+
+standard.mcl		EVALUATOR library of usual property patterns
+actl.mcl		EVALUATOR library defining the ACTL logic
+actl_x.mcl		EVALUATOR library defining the ACTL\X logic
+actl_pattern.mcl	EVALUATOR library of generic patterns in ACTL
+mcl_pattern.mcl		EVALUATOR library of generic patterns in mu-calculus 
+divbranching.mcl	EVALUATOR library of operators adequate w.r.t.
+			divergence-sensitive branching bisimulation
+ctl.mcl			EVALUATOR library defining the CTL logic
+livelock.mcl		EVALUATOR library to search livelocks (EUCALYPTUS)
+deadlock.mcl		EVALUATOR library to search deadlock (EUCALYPTUS)
+

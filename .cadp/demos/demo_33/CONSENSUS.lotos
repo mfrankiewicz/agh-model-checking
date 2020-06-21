@@ -1,0 +1,249 @@
+specification PROTOCOL_CONSENSUS [SEND, RECV, DEC, PROP] : noexit 
+
+library
+  BOOLEAN, NATURAL, TRISTATE
+endlib
+
+behavior
+  stop
+where
+
+(*
+ * This file describes a consensus algorithm that proceeds in several 
+ * rounds to decide a boolean value.
+ *
+ * At each round, each process accepts (on gate INPUT) an estimation 
+ * EST of type BOOL and provides either a new estimation (on gate 
+ * OUTPUT), or a decision value (on gate DEC). The estimation produced
+ * at round n is taken as input estimation at round n+1. The initial 
+ * estimation is provided by the environment. 
+ *
+ * More precisely, each round is divided in two 'broadcast-gathering'
+ * phases:
+ *
+ * In the first phase, each process broadcasts its estimation towards
+ * the other processes (via gate SEND), and gathers the estimations 
+ * sent by the other processes (via gate RECV).
+ *
+ * In the second phase, broadcast/gathering is repeated with an 
+ * auxilliary value deduced from estimations gathered in the first
+ * phase.
+ *
+ * At last, from gathered auxilliary values, each process can decide
+ * whether providing a new estimation for a new round, or a final
+ * decision value.
+ *)
+
+(*
+ * Parameters:
+ *    - NB_PROC is the total number of processes
+ *    - NB_FAULTS is the number of potentially faulty processes
+ *    - ID is the identifier of the current process
+ *    - ROUND is the current round
+ *    - MAX_ROUND is the maximal number of rounds for simulation
+ *)
+
+(*
+ * INPUT_VALUES starts the protocol for process ID: initial estimation
+ * is received on gate INPUT.
+ *)
+
+process INPUT_VALUES [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND: NAT) : noexit :=
+  INPUT !ID ?EST: BOOL ;
+    CONSENSUS [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, EST)
+endproc
+
+(* 
+ * CONSENSUS is the main recursive process. Each recursive call to
+ * CONSENSUS models one round of the protocol for process ID.
+ *)
+
+process CONSENSUS [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND: NAT, EST: BOOL) : noexit :=
+  [ROUND le MAX_ROUND] ->
+    BROADCAST_PHASE_1 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, 1, ROUND, MAX_ROUND, EST)
+endproc
+
+(* 
+ * BROADCAST_PHASE_1 broadcasts the current process estimation until
+ * all processes have been reached.
+*)
+
+process BROADCAST_PHASE_1 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO, ROUND, MAX_ROUND: NAT, EST: BOOL) : noexit :=
+  [not (ID eq TO)] ->
+    (* TO is a different process, send the estimation and then continue *)
+    SEND !ID !TO !ROUND !1 !EST ;
+      BROADCAST_PHASE_1_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO, ROUND, MAX_ROUND, EST)
+  []
+  [ID eq TO] ->
+    (* Don't send a message to myself *) 
+    BROADCAST_PHASE_1_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO, ROUND, MAX_ROUND, EST)
+endproc
+
+process BROADCAST_PHASE_1_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO, ROUND, MAX_ROUND: NAT, EST: BOOL) : noexit :=
+  [TO lt NB_PROC] ->
+    (* Broadcast is not complete *)
+    BROADCAST_PHASE_1 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO+1, ROUND, MAX_ROUND, EST)
+  []
+  [TO eq NB_PROC] ->
+    (* Broadcast is complete: start gathering *)
+    GATHERING_PHASE_1 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, EST)
+endproc
+
+(*
+ * GATHERING_PHASE_1 collects estimations broadcast by NB_PROC - NB_FAULTS
+ * other processes. This ensures that gathering will not deadlock since at
+ * most NB_FAULTS processes might be down.
+ *)
+
+process GATHERING_PHASE_1 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND: NAT, EST: BOOL) : noexit :=
+  (* Initialization, depending on my own estimation. *)
+  [EST eq FALSE] ->
+    GATHERING_PHASE_1_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, 1, 0)
+  []
+  [EST eq TRUE] ->
+    GATHERING_PHASE_1_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, 0, 1)
+endproc
+
+(*
+ * New parameters:
+ *     - NB_FALSE is the number of gathered estimations with value FALSE
+ *     - NB_TRUE is the number of gathered estimations with value TRUE
+ *)
+
+process GATHERING_PHASE_1_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_FALSE, NB_TRUE: NAT) : noexit :=
+  [(NB_FALSE+NB_TRUE) lt (NB_PROC-NB_FAULTS)] ->
+    RECV ?FROM: NAT !ID !ROUND !1 ?EST: BOOL [FROM ne ID] ;
+      (
+        [EST eq FALSE] ->
+          GATHERING_PHASE_1_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_FALSE+1, NB_TRUE)
+        []
+        [EST eq TRUE] ->
+          GATHERING_PHASE_1_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_FALSE, NB_TRUE+1)
+      )
+  []
+  [(NB_FALSE+NB_TRUE) eq (NB_PROC-NB_FAULTS)] ->
+    COMPUTE_AUX_VALUE [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_FALSE, NB_TRUE)
+endproc
+ 
+(*
+ * COMPUTE_AUX_VALUE computes an auxilliary value from the proportion 
+ * of FALSE and TRUE estimations. This value, used in the second phase
+ * of the protocol, belongs to the set {TOPTRUE, TOPFALSE, BOTTOM}. It
+ * is chosen as follows:
+ *
+ *   - TOPFALSE if the number of FALSE estimations gathered constitutes
+ *     a majority over all processes (including the potentially faulty
+ *     ones).
+ *
+ *   - TOPTRUE if the number of TRUE estimations gathered constitutes
+ *     a majority over all processes (including the potentially faulty
+ *     ones).
+ *
+ *   - BOTTOM otherwise.
+ *
+ * Remark that different processes may have collected different sets
+ * of estimations since not all estimations are (and can be safely)
+ * collected. However, if a process chooses TOPTRUE (respectively 
+ * TOPFALSE) as auxilliary value, then no other process can choose
+ * TOPFALSE (respectively TOPTRUE) at the same time, because there is
+ * at most one majority.
+ *)
+
+process COMPUTE_AUX_VALUE [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_FALSE, NB_TRUE: NAT) : noexit :=
+  [NB_FALSE ge ((NB_PROC div 2)+1)] ->
+    BROADCAST_PHASE_2 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, 1, ROUND, MAX_ROUND, TOPFALSE)
+  []
+  [NB_TRUE ge ((NB_PROC div 2)+1)] ->
+    BROADCAST_PHASE_2 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, 1, ROUND, MAX_ROUND, TOPTRUE)
+  []
+  [not ((NB_FALSE ge ((NB_PROC div 2)+1)) or (NB_TRUE ge ((NB_PROC div 2)+1)))] ->
+    BROADCAST_PHASE_2 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, 1, ROUND, MAX_ROUND, BOTTOM)
+endproc
+
+(*
+ * BROADCAST_PHASE_2 broadcasts the auxilliary values, similarly to
+ * phase 1.
+ *)
+
+process BROADCAST_PHASE_2 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO, ROUND, MAX_ROUND: NAT, AUX: TRISTATE) : noexit :=
+  [not (ID eq TO)] ->
+    SEND !ID !TO !ROUND !2 !AUX ;
+      BROADCAST_PHASE_2_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO, ROUND, MAX_ROUND, AUX)
+  []
+  [ID eq TO] -> 
+      BROADCAST_PHASE_2_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO, ROUND, MAX_ROUND, AUX)
+endproc
+
+process BROADCAST_PHASE_2_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO, ROUND, MAX_ROUND: NAT, AUX: TRISTATE) : noexit :=
+  [TO lt NB_PROC] ->
+    BROADCAST_PHASE_2 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, TO+1, ROUND, MAX_ROUND, AUX)
+  []
+  [TO eq NB_PROC] ->
+    GATHERING_PHASE_2 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, AUX)
+endproc
+
+(*
+ * GATHERING_PHASE_2 gathers auxilliary values similarly to the first
+ * phase.
+ *)
+
+process GATHERING_PHASE_2 [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND: NAT, AUX: TRISTATE) : noexit :=
+  [AUX eq BOTTOM] ->
+    GATHERING_PHASE_2_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, 1, 0, AUX)
+  []
+  [not (AUX eq BOTTOM)] -> 
+    GATHERING_PHASE_2_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, 1, 1, AUX)
+endproc 
+
+(*
+ * New parameters:
+ *     - NB_RECEIVED: number of received messages
+ *     - NEW_AUX: new auxilliary value deduced from gathered auxilliary
+ *       values
+ *     - NB_TOP: number of TOPFALSE or TOPTRUE received.
+ *)
+
+process GATHERING_PHASE_2_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_RECEIVED, NB_TOP: NAT, NEW_AUX: TRISTATE) : noexit :=
+  [NB_RECEIVED lt (NB_PROC-NB_FAULTS)] ->
+    RECV ?FROM: NAT !ID !ROUND !2 ?AUX: TRISTATE [FROM ne ID] ;
+      (
+        [AUX eq BOTTOM] ->
+          GATHERING_PHASE_2_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_RECEIVED+1, NB_TOP, NEW_AUX)
+        []
+        [not (AUX eq BOTTOM)] ->
+          GATHERING_PHASE_2_AUX [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_RECEIVED+1, NB_TOP+1, AUX)
+      )
+  []
+  [NB_RECEIVED eq (NB_PROC-NB_FAULTS)] ->
+    NEW_ESTIMATION [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_TOP, NEW_AUX)
+endproc
+
+(*
+ * NEW_ESTIMATION either computes a new estimation, or decides the
+ * final value.
+ *
+ * We can safely decide when we have collected more than NB_FAULTS
+ * top values. The decided value is then the value carried by the TOP
+ * value.
+ * 
+ * Else, if we received at least one TOP value, we start next round
+ * with the value it carried. Otherwise, we only received BOTTOM values.
+ * In that case we randomly choose the new estimation.
+ *)
+ 
+process NEW_ESTIMATION [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND, MAX_ROUND, NB_TOP: NAT, NEW_AUX: TRISTATE) : noexit := 
+  [NB_TOP gt NB_FAULTS] ->
+    DEC !ID !BOOL(NEW_AUX) ;
+      STOP
+  []
+  [(NB_TOP gt 0) and (NB_TOP le NB_FAULTS)] ->
+    OUTPUT !ROUND !ID !BOOL(NEW_AUX) ;
+      CONSENSUS [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND+1, MAX_ROUND, BOOL(NEW_AUX))
+  []
+  [NB_TOP eq 0] ->
+    OUTPUT !ROUND !ID ?B: BOOL ;
+        CONSENSUS [SEND, RECV, DEC, INPUT, OUTPUT] (NB_PROC, NB_FAULTS, ID, ROUND+1, MAX_ROUND, B)
+endproc
+
+endspec
+

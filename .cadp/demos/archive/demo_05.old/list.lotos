@@ -1,0 +1,45 @@
+specification LIST : noexit
+
+library NATURAL endlib
+library BOOLEAN endlib
+
+type LIST is NATURAL
+  sorts
+    LIST  (*! implementedby LIST 
+	      comparedby CMP_LIST
+ 	      iteratedby ENUM_FIRST_LIST and ENUM_NEXT_LIST
+	      printedby PRINT_LIST *)
+  opns
+    <>      (*! implementedby EMPTY constructor *) : -> LIST
+    _+_     (*! implementedby ADD constructor *)  : NAT, LIST -> LIST 
+    _++_    (*! implementedby CONCAT *) : LIST, LIST -> LIST
+    REVERSE (*! implementedby REVERSE *) : LIST -> LIST
+    FIRST   (*! implementedby FIRST *)  : LIST -> NAT 
+    LAST    (*! implementedby LAST *)  : LIST -> NAT 
+    LENGTH  (*! implementedby LENGTH *) : LIST -> NAT
+
+  eqns forall 	s, t : LIST, 
+		x, y : NAT
+
+	ofsort LIST
+	<> ++ s		= s;
+	(y + s) ++ t	= y + (s ++ t);
+
+	REVERSE(<>)	= <>;
+	REVERSE(y + s)	= REVERSE(s) ++ (y + <>);
+
+	ofsort NAT
+	LENGTH(<>)	= 0;
+	LENGTH(y + s)	= SUCC(LENGTH(s));
+
+	FIRST (y + s)	= y;
+	
+	LAST (y + <>)	= y;
+	LAST (y + s)	= LAST (s);
+ 		
+endtype
+
+behavior 
+	stop 
+endspec
+

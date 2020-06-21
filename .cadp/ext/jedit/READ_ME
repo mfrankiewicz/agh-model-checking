@@ -1,0 +1,56 @@
+-- CADP (CONSTRUCTION AND ANALYSIS OF DISTRIBUTED PROCESSES)
+-- http://cadp.inria.fr
+
+This directory contains the following files:
+
+ - bes.xml:         jEdit syntax mode for the BES format
+ - exp.xml:         jEdit syntax mode for the EXP format
+ - lnt.xml:         jEdit syntax mode for the LNT language
+ - lotos.xml:       jEdit syntax mode for the LOTOS language
+ - mcl.xml:         jEdit syntax mode for the MCL language
+ - nupn.xml:        jEdit syntax mode for the NUPN format
+ - rbc.xml:         jEdit syntax mode for the RBC format
+ - svl.xml:         jEdit syntax mode for the SVL language
+ - xtl.xml:         jEdi syntax mode for the XTL language
+
+The file "lotosnt.xml" is a symbolic link kept for backward compatibility.
+
+Note: Before CADP 2015-j (included), this directory used to contain two files:
+"lotos.xml", a jEdit mode for LOTOS developed by Ken Turner, and "lnt.xml",
+a jEdit mode for LNT developed by Yves Guerte, Hubert Garavel, and Frederic
+Lang. Both files, which were found to work properly for jEdit version 4.1,
+are superseded by the current files.
+
+How to use these files:
+-----------------------
+
+1) If you have never invoked jEdit previously, launch it. This will create
+   a ".jedit" directory in your $HOME directory. This ".jedit" directory
+   should itself contain a "modes" sub-directory.
+
+2) Type the following command to create symbolic links:
+
+     ln -s "$CADP"/ext/jedit/*.xml   "$HOME"/.jedit/modes/
+
+  where $CADP is the pathname of the directory in which the CADP software
+  is installed on your machine.
+
+3) Edit the file $HOME/.jedit/modes/catalog and insert the following
+   lines between <MODES> and </MODES>: 
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+     <MODE NAME="bes" FILE="bes.xml" FILE_NAME_GLOB="*.bes" />
+     <MODE NAME="exp" FILE="exp.xml" FILE_NAME_GLOB="*.exp" />
+     <MODE NAME="lnt" FILE="lnt.xml" FILE_NAME_GLOB="*.lnt" />
+     <MODE NAME="lotos" FILE="lotos.xml" FILE_NAME_GLOB="*.lotos" />
+     <MODE NAME="lot" FILE="lotos.xml" FILE_NAME_GLOB="*.lot" />
+     <MODE NAME="lib" FILE="lotos.xml" FILE_NAME_GLOB="*.lib" />
+     <MODE NAME="mcl" FILE="mcl.xml" FILE_NAME_GLOB="*.mcl" />
+     <MODE NAME="nupn" FILE="nupn.xml" FILE_NAME_GLOB="*.nupn" />
+     <MODE NAME="rbc" FILE="rbc.xml" FILE_NAME_GLOB="*.rbc" />
+     <MODE NAME="svl" FILE="svl.xml" FILE_NAME_GLOB="*.svl" />
+     <MODE NAME="xtl" FILE="xtl.xml" FILE_NAME_GLOB="*.xtl" />
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+

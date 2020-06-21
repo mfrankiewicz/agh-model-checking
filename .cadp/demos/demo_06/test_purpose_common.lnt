@@ -1,0 +1,94 @@
+module test_purpose_common (handshake_interactions) is
+
+------------------------------------------------------------------------------
+
+process ClientHello_TP [clienth: CH] (is_hello_retry_request: bool,
+                                      in out CH_p: ClientHello,
+                                      HRR_p: HelloRetryRequest,
+                                      out alert: AlertType) is
+  -- Hello retry request sent by the server
+  if is_hello_retry_request then
+    if (CH_p.legacy_version == HRR_p.protocol_version) and
+       (CH_p.cipher_suite == HRR_p.cipher_suite) and
+       (CH_p.extensions == HRR_p.extensions) then
+      -- The request would not result in any change in the ClientHello
+      alert := illegal_parameter
+    else
+      alert := undefined
+    end if
+  else
+    use is_hello_retry_request;
+    use HRR_p;
+    -- initialisation with standard arguments
+    CH_p := CH_p.{legacy_version -> TLS12,
+                  random -> 28byteRand,
+                  legacy_session_id -> T_NULL,
+                  -- AED algo/HKDF hash pairs supported by the Client
+                  cipher_suite -> {},
+                  legacy_compression_methods -> T_NULL,
+                  extensions -> {Extension (supported_versions,
+                                            SupportedVersions ({TLS13}))}};
+    var sas: SignatureSchemeList in
+      sas := random_signature_algorithms;
+      CH_p := CH_p.{extensions ->
+                      add_extension (Extension (signature_algorithms,
+                                                SignatureSchemeList (sas)),
+                                     CH_p.extensions)}
+    end var;
+    alert := undefined
+  end if;
+  clienth (ClientHello (CH_p.legacy_version, CH_p.random,
+                        CH_p.legacy_session_id, CH_p.cipher_suite,
+                        CH_p.legacy_compression_methods, CH_p.extensions))
+end process
+
+-------------------------------------------------------------------------------
+
+process EncryptedExtensions_TP [encryptede: EE] is
+  encryptede (EncryptedExtensions ({}))
+end process
+
+-------------------------------------------------------------------------------
+
+process CertificateRequest_TP [certificater: CR] is
+  var v_certificate_context: CertificateRequestContext,
+      v_extensions: Extensions in
+    v_certificate_context := {};
+    v_extensions := {Extension (void_filters,
+                                OIDFilterExtension ({peer ({x00}, {x00})}))};
+    v_extensions := add_extension (Extension (signature_algorithms,
+                    SignatureSchemeList ({rsa_pkcs1_sha256})), v_extensions);
+    certificater (CertificateRequest (v_certificate_context, v_extensions))
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process Certificate_S_TP [certificate: C] (in out C_p: Certificate,
+                                           CH_p: ClientHello,
+                                           CR_p: CertificateRequest) is
+  var ed: ExtensionData in
+    C_p := C_p.{crc -> CR_p.certificate_context};
+    -- X509
+    ed := CertificateType (x509);
+    C_p := C_p.{certificate_list ->
+                  cons (add_Entry (ed.ct, CH_p), C_p.certificate_list)};
+    certificate (Certificate (C_p.crc, C_p.certificate_list))
+  end var
+end process
+
+-------------------------------------------------------------------------------
+
+process Certificate_C_TP [certificate: C] (in out C_p: Certificate,
+                                           CH_p: ClientHello,
+                                           CR_p: CertificateRequest) is
+  use CH_p;
+  use CR_p;
+  C_p := C_p.{certificate_list -> {}, crc -> {}};
+  certificate (Certificate (C_p.crc, C_p.certificate_list))
+end process
+
+-------------------------------------------------------------------------------
+
+end module
+
